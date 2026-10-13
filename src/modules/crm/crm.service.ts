@@ -2206,14 +2206,18 @@ export class CrmService implements OnModuleInit {
       if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation') {
         try {
           const appointmentId = action.metadata.appointmentId;
-          await this.appointmentsRepository.update(appointmentId, {
-            status: AppointmentStatus.CONFIRMED,
-            updatedAt: new Date()
-          });
-          this.logger.log(`[Flow] Appointment ${appointmentId} auto-confirmed via CRM task completion.`);
+          const apt = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
+          const isCompleted = apt && ['COMPLETED', 'EXECUTED'].includes(String(apt.status || '').toUpperCase());
+          if (apt && !isCompleted) {
+            await this.appointmentsRepository.update(appointmentId, {
+              status: AppointmentStatus.CONFIRMED,
+              updatedAt: new Date()
+            });
+            this.logger.log(`[Flow] Appointment ${appointmentId} auto-confirmed via CRM task completion.`);
 
-          // Trigger Notification for Confirmation
-          this.eventEmitter.emit('appointment.confirmed', { id: appointmentId });
+            // Trigger Notification for Confirmation
+            this.eventEmitter.emit('appointment.confirmed', { id: appointmentId });
+          }
         } catch (confirmErr) {
           this.logger.error(`Failed to auto-confirm appointment upon task completion: ${confirmErr.message}`);
         }

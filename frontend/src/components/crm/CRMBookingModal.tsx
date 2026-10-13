@@ -244,9 +244,14 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  bookingPayload.bookedById = bookedByIdUUID;
  }
 
- if (initialAppointment?.id) {
- // UPDATE branch
- await bookingAPI.updateAppointment(initialAppointment.id, {
+  if (initialAppointment?.id) {
+    const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(initialAppointment.status || '').toUpperCase());
+    if (isCompleted) {
+      alert("Completed appointments are locked and cannot be modified.");
+      return;
+    }
+    // UPDATE branch
+    await bookingAPI.updateAppointment(initialAppointment.id, {
  clinicId: selectedClinic,
  serviceId: selectedService,
  startTime: bookingPayload.startTime,

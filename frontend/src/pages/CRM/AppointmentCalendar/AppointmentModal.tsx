@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   X, Search, User, Scissors, MapPin, Clock, StickyNote,
-  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink
+  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink, Lock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -52,6 +52,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+  const isCompleted = Boolean(
+    existingAppointment &&
+    ['COMPLETED', 'EXECUTED'].includes(String(existingAppointment.status || '').toUpperCase())
+  );
 
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -448,6 +452,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   }, [form, clinics, checkConflict, mode, existingAppointment]);
 
   const handleSave = async (eOrOverrideStatus?: any) => {
+    if (isCompleted) {
+      toast.error(isGreek ? 'Το ολοκληρωμένο ραντεβού είναι κλειδωμένο και δεν μπορεί να τροποποιηθεί.' : 'Completed appointments are locked and cannot be modified.');
+      return;
+    }
     const overrideStatus = typeof eOrOverrideStatus === 'string' ? eOrOverrideStatus : undefined;
     if (!validateAndCheckConflict()) return;
     setIsSubmitting(true);
@@ -510,6 +518,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const handleDelete = async () => {
+    if (isCompleted) {
+      toast.error(isGreek ? 'Το ολοκληρωμένο ραντεβού είναι κλειδωμένο και δεν μπορεί να διαγραφεί.' : 'Completed appointments are locked and cannot be deleted.');
+      return;
+    }
     if (!existingAppointment || !window.confirm('Are you sure you want to delete this appointment?')) return;
     setIsDeleting(true);
     try {
@@ -525,6 +537,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const handlePayAtVenue = async () => {
+    if (isCompleted) return;
     if (!existingAppointment) return;
     setIsSubmitting(true);
     try {
@@ -540,6 +553,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const handlePayCard = async () => {
+    if (isCompleted) return;
     if (!existingAppointment) return;
     const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
@@ -561,6 +575,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const handlePayCash = async () => {
+    if (isCompleted) return;
     if (!existingAppointment) return;
     const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
@@ -624,7 +639,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-4">
+          {isCompleted && (
+            <div className="flex items-center gap-2 p-3 mb-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-semibold">
+              <Lock className="w-4 h-4 flex-shrink-0 text-amber-600" />
+              <span>
+                {isGreek
+                  ? 'Αυτό το ραντεβού έχει ολοκληρωθεί και είναι κλειδωμένο. Η ημερομηνία, ώρα, θεραπεία, ποσό και κατάσταση δεν μπορούν να τροποποιηθούν.'
+                  : 'This appointment is completed and locked. Date, time, treatment, price, and status cannot be modified.'}
+              </span>
+            </div>
+          )}
+          <div className={`space-y-4 ${isCompleted ? 'pointer-events-none opacity-75 select-none' : ''}`}>
             {/* Patient Search */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -996,7 +1021,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           </div>
 
           {/* ── Payment Section ── */}
-          <div className="pt-2 border-t border-slate-100">
+          <div className={`pt-2 border-t border-slate-100 ${isCompleted ? 'pointer-events-none opacity-75 select-none' : ''}`}>
 
             {/* Services breakdown (edit mode, multi-service) */}
             {mode === 'edit' && existingAppointment && (() => {
@@ -1149,7 +1174,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          {mode === 'edit' && form.paymentStatus === 'UNPAID' ? (
+          {mode === 'edit' && form.paymentStatus === 'UNPAID' && !isCompleted ? (
             <button
               onClick={handleDelete}
               disabled={isDeleting}
@@ -1167,9 +1192,14 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               onClick={onClose}
               className="px-4 py-2.5 text-[12px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              {isGreek ? 'Ακύρωση' : 'Cancel'}
+              {isGreek ? 'Κλείσιμο' : 'Close'}
             </button>
-            {mode === 'edit' && form.paymentStatus === 'PAID' && existingAppointment?.status !== 'completed' ? (
+            {isCompleted ? (
+              <div className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-[11px] font-black uppercase tracking-wider">
+                <Lock className="w-3.5 h-3.5" />
+                {isGreek ? 'Ολοκληρωμένο & Κλειδωμένο' : 'Completed & Locked'}
+              </div>
+            ) : mode === 'edit' && form.paymentStatus === 'PAID' && existingAppointment?.status !== 'completed' ? (
               <button
                 onClick={() => handleSave('completed')}
                 disabled={isSubmitting}

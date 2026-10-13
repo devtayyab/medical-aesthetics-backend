@@ -7,7 +7,7 @@ import {
  MoreHorizontal, Trash2, PhoneCall,
  Activity, CheckCircle, Repeat, RefreshCw, Bell,
  ClipboardCheck, ShieldCheck, MessageSquare, MessageCircle,
- ChevronDown, ArrowLeft, Sparkles, UserPlus, DollarSign, CalendarDays, Briefcase
+ ChevronDown, ArrowLeft, Sparkles, UserPlus, DollarSign, CalendarDays, Briefcase, Lock
 } from"lucide-react";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from"@/components/molecules/Card/Card";
@@ -1479,8 +1479,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   <span>at {item.data.clinicName}</span>
   </div>
   <div className="flex gap-2 items-center border-t border-slate-100 pt-3">
-  {item.data.status === 'COMPLETED' ? (
-  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPendingAptId(item.data.id); setPendingAptObj(item.data); setPaymentAmt(item.data.amountPaid?.toString() || ''); setPaymentMethod(item.data.paymentMethod || 'cash'); setIsPaymentPrompt(true); }}>Update Record</Button>
+  {item.data.status === 'COMPLETED' || item.data.status === 'EXECUTED' ? (
+  <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+    <Lock className="w-3.5 h-3.5" /> Locked
+  </span>
   ) : (
   <>
   <Button size="sm" className="h-8 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm" onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}>Complete</Button>
