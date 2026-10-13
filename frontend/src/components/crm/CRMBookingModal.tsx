@@ -232,7 +232,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  })(),
  notes,
  status: initialAppointment?.status || 'PENDING',
- providerId: selectedSlot.providerId || (user?.role === 'salesperson' ? user.id : undefined),
+ providerId: selectedSlot.providerId || undefined,
+ representativeId: user?.role === 'salesperson' ? user.id : undefined,
  clientDetails: {
  fullName: finalCustomerName || 'Unknown',
  email: finalCustomerEmail || `noemail@placeholder.com`,

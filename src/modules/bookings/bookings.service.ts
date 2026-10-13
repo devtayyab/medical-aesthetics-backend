@@ -338,16 +338,16 @@ export class BookingsService {
 
     // --- ENHANCED: Beauty Doctors Client Identification ---
     let isBeautyDoctorsClient = false;
-    let representativeId = null;
+    let representativeId = createAppointmentDto.representativeId || null;
 
-    if (userExists) {
+    if (!representativeId && userExists) {
       // 1. Check if user is assigned to a salesperson
       const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } });
       if (customerRecord?.assignedSalespersonId) {
         isBeautyDoctorsClient = true;
         representativeId = customerRecord.assignedSalespersonId;
       }
-    } else {
+    } else if (!userExists) {
       // Or if they were from a source that implies central ownership
       if (createAppointmentDto.appointmentSource === 'platform_broker') {
         isBeautyDoctorsClient = true;
@@ -362,7 +362,7 @@ export class BookingsService {
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
       clientDetails: createAppointmentDto.clientDetails,
-      bookedById: createAppointmentDto.bookedById,
+      bookedById: createAppointmentDto.bookedById || null,
       isBeautyDoctorsClient,
       representativeId,
     };
@@ -725,7 +725,7 @@ export class BookingsService {
   async findById(id: string): Promise<Appointment> {
     const appointment = await this.appointmentsRepository.findOne({
       where: { id },
-      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client', 'bookedBy'],
+      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client', 'bookedBy', 'executedBy', 'representative'],
     });
 
     if (!appointment) {
@@ -804,6 +804,11 @@ export class BookingsService {
 
     if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
       updateData.completedAt = new Date();
+      updateData.executedAt = new Date();
+      updateData.serviceExecuted = true;
+      if (userId) {
+        updateData.executedById = userId;
+      }
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
@@ -1078,7 +1083,8 @@ export class BookingsService {
         .leftJoinAndSelect('appointment.provider', 'provider')
         .leftJoinAndSelect('appointment.client', 'client')
         .leftJoinAndSelect('appointment.bookedBy', 'bookedBy')
-        .leftJoinAndSelect('appointment.representative', 'representative');
+        .leftJoinAndSelect('appointment.representative', 'representative')
+        .leftJoinAndSelect('appointment.executedBy', 'executedBy');
 
       const normalizedRole = userRole.toLowerCase();
       // 1. Role-based visibility
@@ -1216,6 +1222,16 @@ export class BookingsService {
             name: apt.bookedBy ? `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}` : 
                   apt.representative ? `${apt.representative.firstName} ${apt.representative.lastName}` : 'System',
             role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
+          } : (apt.provider && (apt.provider.role === 'SUPER_ADMIN' || apt.provider.role === 'admin' || apt.provider.role === 'salesperson') ? {
+            id: apt.provider.id,
+            name: `${apt.provider.firstName} ${apt.provider.lastName}`,
+            role: apt.provider.role,
+          } : null),
+          executedByName: apt.executedBy ? `${apt.executedBy.firstName} ${apt.executedBy.lastName}` : null,
+          executedByInfo: apt.executedBy ? {
+            id: apt.executedBy.id,
+            name: `${apt.executedBy.firstName} ${apt.executedBy.lastName}`,
+            role: apt.executedBy.role,
           } : null,
           isReturned: repeatClients.has(apt.clientId),
           isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false,
@@ -1526,6 +1542,11 @@ export class BookingsService {
 
     appointment.status = AppointmentStatus.COMPLETED;
     appointment.completedAt = new Date();
+    appointment.executedAt = new Date();
+    appointment.serviceExecuted = true;
+    if (userId) {
+      appointment.executedById = userId;
+    }
 
     if (serviceId) {
       appointment.serviceId = serviceId;

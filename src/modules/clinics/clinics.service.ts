@@ -698,7 +698,7 @@ export class ClinicsService {
   async getClinicStaff(ownerId: string, role?: string, clinicId?: string): Promise<User[]> {
     let clinicIdToUse: string;
 
-    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+    if (clinicId) {
       clinicIdToUse = clinicId;
     } else if (role === UserRole.DOCTOR || role === UserRole.SECRETARIAT) {
       // Find clinic they are assigned to
@@ -727,12 +727,44 @@ export class ClinicsService {
     staffData: any,
   ): Promise<User> {
     let clinic = null;
-    if (staffData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(staffData.clinicId);
-    } else if (role === UserRole.CLINIC_OWNER || role === UserRole.DOCTOR || role === UserRole.SECRETARIAT) {
-      clinic = await this.findByOwnerId(ownerId);
+
+    // 1. If explicit clinicId provided, look it up directly regardless of user role
+    if (staffData.clinicId) {
+      try {
+        clinic = await this.findById(staffData.clinicId);
+      } catch (err) {
+        console.warn(`[ClinicsService] Clinic with id ${staffData.clinicId} not found`);
+      }
     }
-    // If Admin/SuperAdmin/Manager doesn't provide clinicId, 'clinic' stays null and we proceed without assignment
+
+    // 2. If no clinicId or not found, resolve from owner/caller context
+    if (!clinic) {
+      try {
+        clinic = await this.findByOwnerId(ownerId);
+      } catch (err) {
+        const owner = await this.usersRepository.findOne({
+          where: { id: ownerId },
+          relations: ['ownedClinics'],
+        });
+        if (owner?.assignedClinicId) {
+          clinic = await this.findById(owner.assignedClinicId);
+        } else if (owner?.ownedClinics && owner.ownedClinics.length > 0) {
+          clinic = owner.ownedClinics[0];
+        }
+      }
+    }
+
+    // 3. Fallback for single-clinic environments
+    if (!clinic) {
+      const activeClinics = await this.clinicsRepository.find({ where: { isActive: true }, take: 2 });
+      if (activeClinics.length === 1) {
+        clinic = activeClinics[0];
+      }
+    }
+
+    if (!clinic) {
+      throw new BadRequestException('Could not determine clinic to assign staff to. Please select or specify a clinic.');
+    }
 
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
@@ -740,37 +772,54 @@ export class ClinicsService {
     });
 
     if (existingUser) {
-      // If user exists, we update their assignment to the new clinic
-      if (clinic) {
-        existingUser.assignedClinicId = clinic.id;
-        // Also ensure the role is updated if provided
-        if (staffData.role) {
-          existingUser.role = staffData.role;
-        }
-        return this.usersRepository.save(existingUser);
-      } else if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN) {
-        // SuperAdmin might be updating a user's role without changing clinic
-        if (staffData.role) {
-          existingUser.role = staffData.role;
-        }
-        return this.usersRepository.save(existingUser);
+      // If user exists, we update their assignment to this clinic
+      existingUser.assignedClinicId = clinic.id;
+      if (staffData.role) {
+        existingUser.role = staffData.role;
       }
-      
-      if (clinic && existingUser.assignedClinicId === clinic.id) {
-        throw new BadRequestException('User is already staff at this clinic');
+      const updated = await this.usersRepository.save(existingUser);
+
+      if (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner') {
+        const existingOwnership = await this.clinicOwnershipRepository.findOne({
+          where: { clinicId: clinic.id, ownerUserId: updated.id },
+        });
+        if (!existingOwnership) {
+          await this.clinicOwnershipRepository.save(
+            this.clinicOwnershipRepository.create({
+              clinicId: clinic.id,
+              ownerUserId: updated.id,
+            }),
+          );
+        }
       }
-      return existingUser;
+      return updated;
     }
 
     const newUser = this.usersRepository.create({
       ...staffData,
       role: staffData.role || UserRole.DOCTOR,
-      assignedClinicId: clinic?.id,
+      assignedClinicId: clinic.id,
       passwordHash: staffData.password || 'TemporaryPassword123!',
       isActive: true,
     } as any);
 
     const savedUser = await this.usersRepository.save(newUser);
+
+    // If role is clinic_owner, also ensure mapping in clinicOwnership
+    if (clinic && (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner')) {
+      const existingOwnership = await this.clinicOwnershipRepository.findOne({
+        where: { clinicId: clinic.id, ownerUserId: (savedUser as any).id },
+      });
+      if (!existingOwnership) {
+        await this.clinicOwnershipRepository.save(
+          this.clinicOwnershipRepository.create({
+            clinicId: clinic.id,
+            ownerUserId: (savedUser as any).id,
+          }),
+        );
+      }
+    }
+
     return savedUser as unknown as User;
   }
 
@@ -779,9 +828,9 @@ export class ClinicsService {
     return this.removeStaffById(staffId, clinic.id);
   }
 
-  async removeStaffById(staffId: string, clinicId: string): Promise<void> {
+  async removeStaffById(staffId: string, clinicId?: string): Promise<void> {
     const staff = await this.usersRepository.findOne({
-      where: { id: staffId, assignedClinicId: clinicId },
+      where: { id: staffId },
     });
 
     if (!staff) {
@@ -790,6 +839,12 @@ export class ClinicsService {
 
     staff.assignedClinicId = null;
     await this.usersRepository.save(staff);
+
+    if (clinicId) {
+      try {
+        await this.clinicOwnershipRepository.delete({ clinicId, ownerUserId: staffId });
+      } catch (err) {}
+    }
   }
 
   async getClinicProviders(clinicId: string): Promise<any[]> {

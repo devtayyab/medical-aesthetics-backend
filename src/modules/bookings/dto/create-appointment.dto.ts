@@ -90,6 +90,11 @@ export class CreateAppointmentDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsUUID()
+  representativeId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsObject()
   clientDetails?: {
     fullName: string;

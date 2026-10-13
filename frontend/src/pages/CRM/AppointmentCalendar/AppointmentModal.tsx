@@ -149,8 +149,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       const isActuallyPaid = apt.status !== 'CANCELLED' && ((apt.paymentMethod != null && apt.paymentMethod !== '') || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0);
       if (isActuallyPaid) paymentStatus = 'PAID';
 
-      // Default salesperson: assign to provider, or whoever booked it, or current logged-in user
-      const bookedPersonId = apt.providerId || (apt as any).bookedById || (apt as any).bookedBy?.id || effectiveUserId;
+      // Salesperson/Booked by: assign to representative or whoever booked it.
+      // NEVER fallback to providerId (Doctor), because doctor is the practitioner, not the salesperson!
+      // If direct online booking without salesperson, it remains empty string (Unassigned).
+      const bookedPersonId = (apt as any).representativeId || (apt as any).representative?.id || (apt as any).bookedById || (apt as any).bookedBy?.id || '';
 
       setSelectedPatient(apt.client || { id: apt.clientId, firstName: clientName });
       setForm({
@@ -256,7 +258,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       clinicId: form.clinicId,
       serviceId: form.serviceId,
       date: form.date,
-      providerId: form.salesPersonId || undefined,
+      providerId: (existingAppointment?.providerId || existingAppointment?.provider?.id) || undefined,
       allowPast: true,
       excludeAppointmentId: mode === 'edit' && existingAppointment ? existingAppointment.id : undefined,
     })
@@ -474,7 +476,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           clinicId: form.clinicId,
           serviceId: form.serviceId,
           additionalServiceIds: additionalServiceIds.length > 0 ? additionalServiceIds : undefined,
-          providerId: form.salesPersonId || effectiveUserId || undefined,
+          providerId: undefined, // Let backend assign the clinic doctor or use selected provider
+          representativeId: form.salesPersonId || undefined,
           bookedById: effectiveUserId || undefined,
           startTime: startUTC.toISOString(),
           endTime: endUTC.toISOString(),
@@ -498,7 +501,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           endTime: endUTC.toISOString(),
           serviceId: form.serviceId,
           additionalServiceIds: form.additionalServiceIds,
-          providerId: form.salesPersonId || undefined,
+          representativeId: form.salesPersonId || undefined,
+          bookedById: form.salesPersonId || undefined,
           notes: form.notes,
         });
         // Update status separately if changed
@@ -864,7 +868,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
-                <option value="">{isGreek ? 'Χωρίς ανάθεση' : 'Unassigned'}</option>
+                <option value="">{isGreek ? 'Χωρίς ανάθεση (Απευθείας Κράτηση)' : 'Unassigned (Direct Online Booking)'}</option>
                 {salespersons.map(sp => (
                   <option key={sp.id} value={sp.id}>{sp.name}</option>
                 ))}
@@ -878,24 +882,49 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       {`${existingAppointment.bookedBy.firstName || ''} ${existingAppointment.bookedBy.lastName || ''} (Booked by)`.trim()}
                     </option>
                 )}
-                {existingAppointment?.provider &&
-                  !salespersons.some(sp => sp.id === existingAppointment.provider.id) &&
-                  existingAppointment.provider.id !== user?.id &&
-                  existingAppointment.provider.id !== existingAppointment?.bookedBy?.id && (
-                    <option value={existingAppointment.provider.id}>
-                      {`${existingAppointment.provider.firstName || ''} ${existingAppointment.provider.lastName || ''}`.trim()}
+                {(existingAppointment as any)?.representative &&
+                  !salespersons.some(sp => sp.id === (existingAppointment as any).representative?.id) &&
+                  (existingAppointment as any).representative?.id !== user?.id && (
+                    <option value={(existingAppointment as any).representative.id}>
+                      {`${(existingAppointment as any).representative.firstName || ''} ${(existingAppointment as any).representative.lastName || ''}`.trim()}
                     </option>
                 )}
                 {form.salesPersonId &&
                   !salespersons.some(sp => sp.id === form.salesPersonId) &&
                   form.salesPersonId !== user?.id &&
                   form.salesPersonId !== existingAppointment?.bookedBy?.id &&
-                  form.salesPersonId !== existingAppointment?.provider?.id && (
+                  form.salesPersonId !== (existingAppointment as any)?.representative?.id && (
                     <option value={form.salesPersonId}>
-                      {existingAppointment?.providerName || (existingAppointment as any)?.bookedByName || 'Assigned Staff'}
+                      {(existingAppointment as any)?.bookedByName || 'Assigned Staff'}
                     </option>
                 )}
               </select>
+
+              {/* Doctor / Specialist & Execution info display in edit mode */}
+              {mode === 'edit' && existingAppointment && (
+                <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">
+                      {isGreek ? 'Ιατρός / Ειδικός' : 'Doctor / Specialist'}:
+                    </span>
+                    <span className="font-black text-indigo-600">
+                      {existingAppointment.provider
+                        ? `Dr. ${existingAppointment.provider.firstName} ${existingAppointment.provider.lastName}`
+                        : (existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : (isGreek ? 'Κλινική' : 'Clinic Doctor'))}
+                    </span>
+                  </div>
+                  {((existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName) && (
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                      <span className="font-bold text-emerald-600 uppercase text-[9px] tracking-wider">
+                        {isGreek ? 'Εκτελέστηκε από' : 'Executed By'}:
+                      </span>
+                      <span className="font-black text-emerald-700">
+                        {(existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Target Date */}

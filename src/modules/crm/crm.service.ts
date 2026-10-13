@@ -148,6 +148,16 @@ export class CrmService implements OnModuleInit {
       }
       // ─────────────────────────────────────────────────────────────────────
 
+      // ─── Backfill: Set executedById on completed appointments if recorded in completion report ───
+      await queryRunner.query(`
+        UPDATE appointments
+        SET "executedById" = ("appointmentCompletionReport"->>'recordedById')::uuid,
+            "serviceExecuted" = true,
+            "executedAt" = COALESCE("completedAt", "updatedAt")
+        WHERE "executedById" IS NULL
+          AND "appointmentCompletionReport"->>'recordedById' IS NOT NULL;
+      `);
+
       await queryRunner.release();
     } catch (err) {
       this.logger.error('Failed to auto-fix DB schema in CrmService', err);

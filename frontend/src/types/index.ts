@@ -25,7 +25,9 @@ export interface User {
  updatedAt: string;
  beautyPoints?: number;
  monthlyTarget?: number;
+ assignedClinicId?: string;
  assignedClinics?: Clinic[];
+ ownedClinics?: Clinic[];
  pendingTasksCount?: number;
  marketingEmailConsent?: boolean;
 }

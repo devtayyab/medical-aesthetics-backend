@@ -11,7 +11,8 @@ import {
  Search,
  X,
  CheckCircle2,
- AlertCircle
+ AlertCircle,
+ Trash2
 } from"lucide-react";
 
 import clinicApi from"@/services/api/clinicApi";
@@ -29,6 +30,8 @@ interface StaffMember {
 const StaffPage: React.FC = () => {
  const navigate = useNavigate();
  const { profile } = useSelector((state: RootState) => state.clinic);
+ const { user } = useSelector((state: RootState) => state.auth);
+ const effectiveClinicId = profile?.id || user?.assignedClinicId || user?.ownedClinics?.[0]?.id || user?.assignedClinics?.[0]?.id || '';
  const [staff, setStaff] = useState<StaffMember[]>([]);
  const [isLoading, setIsLoading] = useState(true);
  const [showAddModal, setShowAddModal] = useState(false);
@@ -66,7 +69,7 @@ const StaffPage: React.FC = () => {
  const fetchStaff = async () => {
  setIsLoading(true);
  try {
- const data = await clinicApi.staff.getAll();
+ const data = await clinicApi.staff.getAll(effectiveClinicId);
  setStaff(data);
  } catch (error) {
  console.error("Failed to fetch staff:", error);
@@ -77,32 +80,39 @@ const StaffPage: React.FC = () => {
 
  useEffect(() => {
  fetchStaff();
- }, [profile?.id]);
+ }, [effectiveClinicId]);
 
  const handleAddStaff = async (e: React.FormEvent) => {
  e.preventDefault();
  setIsSubmitting(true);
  setMsg(null);
  try {
- await clinicApi.staff.create(newStaff);
- setMsg({ type: 'success', text:"Staff member created successfully!" });
+ await clinicApi.staff.create({
+   ...newStaff,
+   clinicId: effectiveClinicId,
+ });
+ setMsg({ type: 'success', text: isGreek ? "Το μέλος προσωπικού δημιουργήθηκε επιτυχώς!" : "Staff member created successfully!" });
  setShowAddModal(false);
  setNewStaff({ firstName:"", lastName:"", email:"", password:"", role:"doctor", phone:"" });
  fetchStaff();
  } catch (error: any) {
- setMsg({ type: 'error', text: error.response?.data?.message ||"Failed to create staff member" });
+ setMsg({ type: 'error', text: error.response?.data?.message || "Failed to create staff member" });
  } finally {
  setIsSubmitting(false);
  }
  };
 
  const handleRemoveStaff = async (id: string) => {
- if (!window.confirm("Are you sure you want to remove this staff member? They will no longer be associated with this clinic.")) return;
+ const confirmMsg = isGreek
+   ? "Είστε σίγουροι ότι θέλετε να αφαιρέσετε αυτό το μέλος από το προσωπικό της κλινικής;"
+   : "Are you sure you want to remove this staff member from this clinic?";
+ if (!window.confirm(confirmMsg)) return;
  try {
  await clinicApi.staff.remove(id);
+ setMsg({ type: 'success', text: isGreek ? "Το μέλος προσωπικού αφαιρέθηκε επιτυχώς!" : "Staff member removed successfully!" });
  fetchStaff();
- } catch (error) {
- alert("Failed to remove staff");
+ } catch (error: any) {
+ setMsg({ type: 'error', text: error.response?.data?.message || (isGreek ? "Αποτυχία αφαίρεσης προσωπικού" : "Failed to remove staff") });
  }
  };
 
@@ -203,41 +213,65 @@ const StaffPage: React.FC = () => {
 
  {/* Premium Add Staff Modal */}
  {showAddModal && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
- <div className="w-full max-w-lg bg-white rounded-3xl md:rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
- <div className="p-6 md:p-10 border-b border-gray-100 flex justify-between items-center bg-black text-white">
+ <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+ <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 flex flex-col my-auto animate-in zoom-in-95 duration-200">
+ <div className="px-6 py-5 md:px-8 md:py-6 border-b border-gray-100 flex justify-between items-center bg-black text-white shrink-0">
  <div>
- <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Personnel Intake</h2>
- <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mt-1">Credential Provisioning</p>
+ <div className="flex items-center gap-2 mb-1">
+ <span className="size-2 rounded-full bg-[#CBFF38]" />
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38]">
+ {isGreek ? 'Διαχείριση Κλινικής' : 'Clinic Management'}
+ </span>
+ </div>
+ <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">
+ {isGreek ? 'Προσθήκη μέλους προσωπικού' : 'Add Staff Member'}
+ </h2>
+ <p className="text-xs text-gray-400 font-medium">
+ {isGreek ? 'Στοιχεία λογαριασμού και ρόλος μέλους' : 'Staff credentials and clinic role'}
+ </p>
  </div>
  <button
+ type="button"
  onClick={() => setShowAddModal(false)}
- className="size-11 md:size-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all shrink-0"
+ className="size-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-colors text-white shrink-0 ml-4"
  >
- <X className="w-6 h-6" />
+ <X className="w-5 h-5" />
  </button>
  </div>
 
- <form onSubmit={handleAddStaff} className="p-6 md:p-10 space-y-6">
+ <form onSubmit={handleAddStaff} className="p-6 md:p-8 space-y-4 overflow-y-auto max-h-[calc(85vh-120px)]">
+ <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px]">
+ <span className="font-bold text-slate-500 uppercase tracking-wide">
+ {isGreek ? 'Κλινική Ανάθεσης' : 'Assigned Clinic'}:
+ </span>
+ <span className="font-black text-indigo-600 uppercase">
+ {profile?.name || (user as any)?.assignedClinic?.name || 'Current Clinic'}
+ </span>
+ </div>
+
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Identity Alpha</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Όνομα *' : 'First Name *'}
+ </label>
  <input
  required
  type="text"
  placeholder="Jane"
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold"
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.firstName}
  onChange={(e) => setNewStaff({ ...newStaff, firstName: e.target.value })}
  />
  </div>
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Identity Beta</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Επώνυμο *' : 'Last Name *'}
+ </label>
  <input
  required
  type="text"
  placeholder="Doe"
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold"
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.lastName}
  onChange={(e) => setNewStaff({ ...newStaff, lastName: e.target.value })}
  />
@@ -245,62 +279,79 @@ const StaffPage: React.FC = () => {
  </div>
 
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Digital Coordinates</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Email Address *' : 'Email Address *'}
+ </label>
  <input
  required
  type="email"
  placeholder="specialist@clinic.com"
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold"
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.email}
  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
  />
  </div>
 
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Secure Protocol</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Κωδικός πρόσβασης *' : 'Password *'}
+ </label>
  <input
  required
  type="password"
  placeholder="••••••••"
  minLength={8}
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold tracking-widest"
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold tracking-wider transition-all"
  value={newStaff.password}
  onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
  />
+ <p className="text-[10px] text-gray-400 font-medium pl-1">
+ {isGreek ? 'Τουλάχιστον 8 χαρακτήρες' : 'Minimum 8 characters'}
+ </p>
  </div>
 
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Expertise Tier</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Ρόλος / Ειδικότητα *' : 'Role / Position *'}
+ </label>
  <select
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-black uppercase appearance-none cursor-pointer"
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-bold uppercase transition-all cursor-pointer"
  value={newStaff.role}
  onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
  >
- <option value="doctor">Medical Doctor</option>
- <option value="secretariat">Front Office</option>
- <option value="salesperson">Revenue Agent</option>
+ <option value="doctor">{isGreek ? 'Ιατρός (Doctor)' : 'Medical Doctor'}</option>
+ <option value="secretariat">{isGreek ? 'Γραμματεία (Front Office)' : 'Front Office / Secretary'}</option>
+ <option value="salesperson">{isGreek ? 'Πωλητής (Salesperson)' : 'Salesperson / Revenue'}</option>
  </select>
  </div>
  <div className="space-y-1.5">
- <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Comm Link</label>
+ <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
+ {isGreek ? 'Τηλέφωνο' : 'Phone Number'}
+ </label>
  <input
  type="text"
- placeholder="+44 20 ..."
- className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold"
+ placeholder="+30 69..."
+ className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.phone}
  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
  />
  </div>
  </div>
 
+ <div className="pt-2">
  <button
  type="submit"
  disabled={isSubmitting}
- className="w-full h-16 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-widest rounded-3xl hover:bg-black hover:text-[#CBFF38] transition-all shadow-xl shadow-lime-500/10 disabled:opacity-50"
+ className="w-full h-12 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 disabled:opacity-50 flex items-center justify-center gap-2"
  >
- {isSubmitting ?"ENROLLING..." :"COMMIT ENROLLMENT"}
+ {isSubmitting ? (
+ <span>{isGreek ? 'Προσθήκη...' : 'Enrolling...'}</span>
+ ) : (
+ <span>{isGreek ? 'Προσθήκη Μέλους Προσωπικού' : 'Add Staff Member'}</span>
+ )}
  </button>
+ </div>
  </form>
  </div>
  </div>
@@ -314,8 +365,18 @@ const StaffPage: React.FC = () => {
 const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
  return (
  <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:border-black transition-all duration-300 group relative">
- <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
- {/* Remove staff button disabled as requested */}
+ <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
+ <button
+ type="button"
+ onClick={(e) => {
+   e.stopPropagation();
+   onRemove();
+ }}
+ title="Remove staff member"
+ className="size-8 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl flex items-center justify-center transition-all border border-gray-100 hover:border-red-200 shadow-sm"
+ >
+ <Trash2 size={13} />
+ </button>
  </div>
 
  <div className="flex flex-col h-full">

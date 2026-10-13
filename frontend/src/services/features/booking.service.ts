@@ -38,6 +38,7 @@ export const bookingService = {
     holdId?: string;
     status?: string;
     bookedById?: string;
+    representativeId?: string;
     clientDetails?: {
       fullName: string;
       email: string;
@@ -84,6 +85,8 @@ export const bookingService = {
     notes?: string;
     totalAmount?: number;
     additionalServiceIds?: string[];
+    representativeId?: string | null;
+    bookedById?: string | null;
   }) => api.patch(`/appointments/${id}/update`, data),
 
   deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),

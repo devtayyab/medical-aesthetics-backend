@@ -141,9 +141,25 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
   <div className="flex justify-between text-xs">
   <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Booked By</span>
   <span className="text-gray-900 font-black uppercase">
-  {((appointment as any).bookedByInfo?.name) || (appointment.provider ? `${appointment.provider.firstName} ${appointment.provider.lastName}` : 'System')}
+  {((appointment as any).bookedByInfo?.name) || 'Direct Online Booking'}
   </span>
   </div>
+  {((appointment as any).providerName || appointment.provider) && (
+    <div className="flex justify-between text-xs">
+      <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Doctor / Specialist</span>
+      <span className="text-indigo-600 font-black uppercase">
+        {appointment.provider ? `Dr. ${appointment.provider.firstName} ${appointment.provider.lastName}` : `Dr. ${(appointment as any).providerName}`}
+      </span>
+    </div>
+  )}
+  {(((appointment as any).executedByName || (appointment as any).executedByInfo?.name || (appointment as any).appointmentCompletionReport?.recordedByName) && (
+    <div className="flex justify-between text-xs">
+      <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Executed By</span>
+      <span className="text-emerald-600 font-black uppercase">
+        {(appointment as any).executedByName || (appointment as any).executedByInfo?.name || (appointment as any).appointmentCompletionReport?.recordedByName}
+      </span>
+    </div>
+  ))}
   <div className="flex justify-between text-xs">
   <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Duration</span>
   <span className="text-gray-900 font-black">
