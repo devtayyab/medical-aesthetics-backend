@@ -487,9 +487,14 @@ const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onEx
  <User size={8} className="text-gray-400" />
  </div>
  <span className="text-[9px] font-black uppercase text-gray-600">
- {appointment.bookedByInfo ? appointment.bookedByInfo.name : 'System'}
+ {appointment.bookedByInfo ? appointment.bookedByInfo.name : (isGreek ? 'Απευθείας Κράτηση' : 'Direct Booking')}
  </span>
  </div>
+ {appointment.executedByName && (
+   <p className="text-[7.5px] font-semibold text-emerald-600 truncate">
+     {isGreek ? 'Εκτελέστηκε: ' : 'Exec: '}{appointment.executedByName}
+   </p>
+ )}
  </div>
  </div>
  </div>

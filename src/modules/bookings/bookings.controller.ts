@@ -89,13 +89,18 @@ export class BookingsController {
   @ApiOperation({ summary: 'Confirm appointment booking' })
   async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req: any) {
     try {
+      const caller = req.user;
+      const bookedById = caller?.id || createAppointmentDto.bookedById;
+      const representativeId = createAppointmentDto.representativeId || (caller?.role === 'salesperson' ? caller.id : undefined);
+
       const payload: any = {
         ...createAppointmentDto,
-        bookedById: req.user?.id,
+        bookedById: bookedById || undefined,
+        representativeId: representativeId || undefined,
       };
       // A public/non-staff caller must never dictate the appointment status (e.g. self-confirm
       // without paying). Only staff may pass an explicit status; otherwise it's derived server-side.
-      if (!this.isStaff(req.user)) {
+      if (!this.isStaff(caller) && !createAppointmentDto.bookedById) {
         delete payload.status;
       }
       return await this.bookingsService.createAppointment(payload);
@@ -132,6 +137,22 @@ export class BookingsController {
       providerName: appointment.provider
         ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
+      bookedByInfo: (appointment.bookedBy || appointment.representative) ? { 
+        id: appointment.bookedBy?.id || appointment.representative?.id, 
+        name: appointment.bookedBy ? `${appointment.bookedBy.firstName} ${appointment.bookedBy.lastName}` : 
+              appointment.representative ? `${appointment.representative.firstName} ${appointment.representative.lastName}` : 'System',
+        role: appointment.bookedBy?.role || appointment.representative?.role || 'salesperson' 
+      } : (appointment.provider && (appointment.provider.role === 'SUPER_ADMIN' || appointment.provider.role === 'admin' || appointment.provider.role === 'salesperson') ? {
+        id: appointment.provider.id,
+        name: `${appointment.provider.firstName} ${appointment.provider.lastName}`,
+        role: appointment.provider.role,
+      } : null),
+      executedByName: appointment.executedBy ? `${appointment.executedBy.firstName} ${appointment.executedBy.lastName}` : null,
+      executedByInfo: appointment.executedBy ? {
+        id: appointment.executedBy.id,
+        name: `${appointment.executedBy.firstName} ${appointment.executedBy.lastName}`,
+        role: appointment.executedBy.role,
+      } : null,
     };
 
     // If pending payment, generate a fresh Viva Wallet redirect URL
@@ -194,7 +215,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment details (provider, time, notes, price, services)' })
   async updateAppointment(
     @Param('id') id: string,
-    @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[] },
+    @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[]; representativeId?: string; bookedById?: string },
     @Request() req,
   ) {
     // Editing appointment details (incl. price) is a staff action, and must be authorized.
@@ -211,6 +232,8 @@ export class BookingsController {
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.totalAmount !== undefined) updateData.totalAmount = body.totalAmount;
     if (body.additionalServiceIds !== undefined) updateData.additionalServiceIds = body.additionalServiceIds;
+    if (body.representativeId !== undefined) updateData.representativeId = body.representativeId || null;
+    if (body.bookedById !== undefined) updateData.bookedById = body.bookedById || null;
     return this.bookingsService.updateAppointmentDetails(id, updateData);
   }
 

@@ -71,12 +71,15 @@ export class VivaWalletController {
                     // Try Appointment
                     const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
                     if (appointment) {
+                        const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(appointment.status || '').toUpperCase());
                         // NOTE: do not set amountPaid here — recordPayment() is the single source of
                         // truth and increments amountPaid, otherwise the amount is counted twice.
-                        await this.appointmentsRepository.update(merchantTrns, {
-                            status: AppointmentStatus.CONFIRMED,
-                            paymentMethod: PaymentMethod.VIVA_WALLET,
-                        });
+                        if (!isCompleted) {
+                            await this.appointmentsRepository.update(merchantTrns, {
+                                status: AppointmentStatus.CONFIRMED,
+                                paymentMethod: PaymentMethod.VIVA_WALLET,
+                            });
+                        }
 
                         await this.financialService.recordPayment({
                             appointmentId: merchantTrns,
@@ -201,11 +204,14 @@ export class VivaWalletController {
                 // Try Appointment
                 const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
                 if (appointment) {
+                    const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(appointment.status || '').toUpperCase());
                     // Do not set amountPaid here — recordPayment() increments it (avoids double count).
-                    await this.appointmentsRepository.update(merchantTrns, {
-                        status: AppointmentStatus.CONFIRMED,
-                        paymentMethod: PaymentMethod.VIVA_WALLET,
-                    });
+                    if (!isCompleted) {
+                        await this.appointmentsRepository.update(merchantTrns, {
+                            status: AppointmentStatus.CONFIRMED,
+                            paymentMethod: PaymentMethod.VIVA_WALLET,
+                        });
+                    }
 
                     await this.financialService.recordPayment({
                         appointmentId: merchantTrns,

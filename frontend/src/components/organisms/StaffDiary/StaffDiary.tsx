@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
-    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
+    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2, Lock
 } from 'lucide-react';
 import {
     format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
@@ -433,6 +433,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     };
 
     const handleStatusUpdate = async (id: string, st: string) => {
+        if (selectedApt?.status === 'COMPLETED' || selectedApt?.status === 'EXECUTED') {
+            toast.error("Completed appointments are locked and cannot be modified.");
+            return;
+        }
         if (st === 'COMPLETED') {
             setIsPaymentPrompt(true);
             return;
@@ -1172,12 +1176,14 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         </div>
                         <div className="flex items-center gap-2 text-sm font-medium text-white/90 mt-1">
                             <MapPin size={14} /> {formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)} - {formatClinicTime(selectedApt.endTime, selectedApt.clinic?.timezone)}
-                            <button 
-                                onClick={() => setIsEditingDuration(!isEditingDuration)} 
-                                className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
-                            >
-                                {isEditingDuration ? 'Cancel' : 'Edit Duration'}
-                            </button>
+                            {!(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') && (
+                                <button 
+                                    onClick={() => setIsEditingDuration(!isEditingDuration)} 
+                                    className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
+                                >
+                                    {isEditingDuration ? 'Cancel' : 'Edit Duration'}
+                                </button>
+                            )}
                         </div>
 
                         {isEditingDuration && (
@@ -1233,19 +1239,20 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         <div>
                             <div className="flex justify-between items-center mb-2">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Service Details</p>
-                                <button onClick={() => {
-                                    if (!isEditingService) {
-                                        setEditPrice(calculateAptTotal(selectedApt).toFixed(2));
-                                        const mainSrv = allAvailableServices.find(s => s.id === selectedApt.serviceId) || drawerServices.find(s => s.id === selectedApt.serviceId) || selectedApt.service;
-                                        const initialExtra = selectedApt.additionalServiceIds?.map((id: string) =>
-                                            allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
-                                        ) || [];
-                                        setEditServices([mainSrv, ...initialExtra].filter(Boolean));
-                                    }
-                                    setIsEditingService(!isEditingService);
-                                }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
-                                    {isEditingService ? 'Cancel Edit' : 'Edit Services'}
-                                </button>
+                                {!(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') && (
+                                    <button onClick={() => {
+                                        if (!isEditingService) {
+                                            const mainSrv = selectedApt.service || drawerServices.find(s => s.id === selectedApt.serviceId) || allAvailableServices.find(s => s.id === selectedApt.serviceId);
+                                            const initialExtra = selectedApt.additionalServiceIds?.map((id: string) =>
+                                                allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
+                                            ) || [];
+                                            setEditServices([mainSrv, ...initialExtra].filter(Boolean));
+                                        }
+                                        setIsEditingService(!isEditingService);
+                                    }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
+                                        {isEditingService ? 'Cancel Edit' : 'Edit Services'}
+                                    </button>
+                                )}
                             </div>
 
                             {isEditingService ? (
@@ -1371,6 +1378,16 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         </div>
 
                         {/* Rescheduling & Reassignment (Requirement 12c) */}
+                        {selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED' ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-1">
+                                <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                                    <Lock size={14} /> Completed & Locked
+                                </div>
+                                <p className="text-[11px] text-amber-700">
+                                    This appointment is complete and locked. Date, time, staff, services, and price cannot be modified.
+                                </p>
+                            </div>
+                        ) : (
                         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-4">
                             <div className="flex items-center gap-2 text-indigo-700">
                                 <Calendar size={14} /> <span className="text-[10px] font-black uppercase tracking-widest">Reschedule & Reassign</span>
@@ -1444,6 +1461,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                 Confirm Updates
                             </Button>
                         </div>
+                        )}
 
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Status</p>

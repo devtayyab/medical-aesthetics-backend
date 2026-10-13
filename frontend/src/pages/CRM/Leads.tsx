@@ -335,21 +335,16 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const [isExporting, setIsExporting] = useState(false);
 
  useEffect(() => {
- (async () => {
- try {
- const salesRes = await crmAPI.getSalespersons();
- const salesOptions = (salesRes.data || [])
- .filter((s: any) => s.role === 'salesperson')
- .map((s: any) => ({
- value: s.id,
- label: `${s.firstName} ${s.lastName}`
- }));
- setProviders(salesOptions);
- } catch (e) {
- console.error("Failed to load providers", e);
- }
- })();
- }, []);
+    if (salespersons && salespersons.length > 0) {
+      const salesOptions = salespersons
+        .filter((s: any) => s.role === 'salesperson')
+        .map((s: any) => ({
+          value: s.id,
+          label: `${s.firstName} ${s.lastName}`
+        }));
+      setProviders(salesOptions);
+    }
+  }, [salespersons]);
 
  // Initial form state
  const initialFormState = {
@@ -388,15 +383,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   }, [dispatch, leadFilters, currentPage, leadsPerPage]);
 
  // Refetch when the tab regains focus so leads imported by the background
- // Facebook sync (or another user) show up without a manual reload
- useEffect(() => {
-  const onFocus = () => {
-    dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
-    dispatch(fetchLeadStats(leadFilters));
-  };
-  window.addEventListener('focus', onFocus);
-  return () => window.removeEventListener('focus', onFocus);
- }, [dispatch, leadFilters, currentPage, leadsPerPage]);
+  // Facebook sync (or another user) show up without a manual reload (throttled to 30s)
+  useEffect(() => {
+   let lastFocusRefetch = Date.now();
+   const onFocus = () => {
+     if (Date.now() - lastFocusRefetch > 30000) {
+       lastFocusRefetch = Date.now();
+       dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
+       dispatch(fetchLeadStats(leadFilters));
+     }
+   };
+   window.addEventListener('focus', onFocus);
+   return () => window.removeEventListener('focus', onFocus);
+  }, [dispatch, leadFilters, currentPage, leadsPerPage]);
 
   // Export ALL Leads to CSV
   const handleExportLeads = async () => {
@@ -1301,11 +1300,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  )}
 
  {/* Table Section */}
- <Card className="border-none shadow-md overflow-visible bg-white rounded-2xl">
- <CardContent className="p-0">
- {isLoading ? (
- <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
- ) : leads.length === 0 ? (
+  <Card className="border-none shadow-md overflow-visible bg-white rounded-2xl">
+  <CardContent className="p-0">
+  {isLoading && leads.length === 0 ? (
+  <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
+  ) : leads.length === 0 ? (
  <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
  <Users className="w-8 h-8 mb-2 opacity-20" />
  <p className="text-xs">No leads found matching your filters.</p>

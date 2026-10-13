@@ -13,6 +13,7 @@ import {
   HttpStatus,
   HttpCode,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -714,21 +715,17 @@ export class ClinicManagementController {
     @Param('id') id: string,
     @Request() req,
   ) {
-    const role = req.user.role;
-    let clinicToUse;
-    
-    if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER) {
-      // For admins, we need to know WHICH clinic they are removing staff from.
-      // Usually passed via query or the staff member's own assignment
-      const staff = await this.usersRepository.findOne({ where: { id: id } });
-      clinicToUse = staff?.assignedClinicId;
-    } else {
-      const clinic = await this.clinicsService.findByOwnerId(req.user.id);
-      clinicToUse = clinic.id;
+    const staff = await this.usersRepository.findOne({ where: { id: id } });
+    if (!staff) {
+      throw new NotFoundException('Staff member not found');
     }
 
+    let clinicToUse = staff.assignedClinicId;
     if (!clinicToUse) {
-      throw new BadRequestException('Could not determine clinic context for staff removal');
+      try {
+        const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+        clinicToUse = clinic?.id;
+      } catch (err) {}
     }
 
     return this.clinicsService.removeStaffById(id, clinicToUse);

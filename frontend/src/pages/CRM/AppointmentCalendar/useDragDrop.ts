@@ -19,6 +19,12 @@ export function useDragDrop({ onSuccess }: UseDragDropOptions) {
   const onDragStart = useCallback(
     (e: React.MouseEvent, apt: any) => {
       e.stopPropagation();
+      const status = String(apt?.status || '').toUpperCase();
+      if (status === 'COMPLETED' || status === 'EXECUTED') {
+        toast.error('Completed appointments are locked and cannot be moved.');
+        return;
+      }
+
       // offsetY = how far from the top of the card the user clicked
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
       const offsetY = e.clientY - rect.top;
@@ -117,6 +123,11 @@ export function useDragDrop({ onSuccess }: UseDragDropOptions) {
   const onResizeStart = useCallback(
     (e: React.MouseEvent, apt: any) => {
       e.stopPropagation();
+      const status = String(apt?.status || '').toUpperCase();
+      if (status === 'COMPLETED' || status === 'EXECUTED') {
+        toast.error('Completed appointments are locked and cannot be resized.');
+        return;
+      }
       setResizing({
         appointmentId: apt.id,
         originalEnd: apt.endTime,

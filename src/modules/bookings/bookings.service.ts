@@ -338,16 +338,16 @@ export class BookingsService {
 
     // --- ENHANCED: Beauty Doctors Client Identification ---
     let isBeautyDoctorsClient = false;
-    let representativeId = null;
+    let representativeId = createAppointmentDto.representativeId || null;
 
-    if (userExists) {
+    if (!representativeId && userExists) {
       // 1. Check if user is assigned to a salesperson
       const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } });
       if (customerRecord?.assignedSalespersonId) {
         isBeautyDoctorsClient = true;
         representativeId = customerRecord.assignedSalespersonId;
       }
-    } else {
+    } else if (!userExists) {
       // Or if they were from a source that implies central ownership
       if (createAppointmentDto.appointmentSource === 'platform_broker') {
         isBeautyDoctorsClient = true;
@@ -362,7 +362,7 @@ export class BookingsService {
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
       clientDetails: createAppointmentDto.clientDetails,
-      bookedById: createAppointmentDto.bookedById,
+      bookedById: createAppointmentDto.bookedById || null,
       isBeautyDoctorsClient,
       representativeId,
     };
@@ -725,7 +725,7 @@ export class BookingsService {
   async findById(id: string): Promise<Appointment> {
     const appointment = await this.appointmentsRepository.findOne({
       where: { id },
-      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client', 'bookedBy'],
+      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client', 'bookedBy', 'executedBy', 'representative'],
     });
 
     if (!appointment) {
@@ -770,9 +770,24 @@ export class BookingsService {
     });
   }
 
+  isAppointmentCompleted(appointment: Appointment | any): boolean {
+    if (!appointment) return false;
+    const status = String(appointment.status || '').toUpperCase();
+    return (
+      status === AppointmentStatus.COMPLETED ||
+      status === AppointmentStatus.EXECUTED ||
+      status === 'COMPLETED' ||
+      status === 'EXECUTED'
+    );
+  }
+
   // Update whitelisted appointment detail fields (provider/time/service/price). Authorization
   // and field whitelisting are enforced by the controller; this replaces direct private-repo access.
   async updateAppointmentDetails(id: string, updateData: any): Promise<Appointment> {
+    const appointment = await this.findById(id);
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be modified.');
+    }
     await this.appointmentsRepository.update(id, updateData);
     return this.findById(id);
   }
@@ -781,10 +796,19 @@ export class BookingsService {
     const appointment = await this.findById(id);
     const oldStatus = appointment.status;
 
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be modified.');
+    }
+
     const updateData: any = { status };
 
     if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
       updateData.completedAt = new Date();
+      updateData.executedAt = new Date();
+      updateData.serviceExecuted = true;
+      if (userId) {
+        updateData.executedById = userId;
+      }
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
@@ -967,6 +991,9 @@ export class BookingsService {
 
   async reschedule(id: string, newStartTime: Date, newEndTime: Date, notes?: string): Promise<Appointment> {
     let appointment = await this.findById(id);
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
+    }
     
     let updatedNotes = appointment.notes;
     if (notes) {
@@ -1056,7 +1083,8 @@ export class BookingsService {
         .leftJoinAndSelect('appointment.provider', 'provider')
         .leftJoinAndSelect('appointment.client', 'client')
         .leftJoinAndSelect('appointment.bookedBy', 'bookedBy')
-        .leftJoinAndSelect('appointment.representative', 'representative');
+        .leftJoinAndSelect('appointment.representative', 'representative')
+        .leftJoinAndSelect('appointment.executedBy', 'executedBy');
 
       const normalizedRole = userRole.toLowerCase();
       // 1. Role-based visibility
@@ -1194,6 +1222,16 @@ export class BookingsService {
             name: apt.bookedBy ? `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}` : 
                   apt.representative ? `${apt.representative.firstName} ${apt.representative.lastName}` : 'System',
             role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
+          } : (apt.provider && (apt.provider.role === 'SUPER_ADMIN' || apt.provider.role === 'admin' || apt.provider.role === 'salesperson') ? {
+            id: apt.provider.id,
+            name: `${apt.provider.firstName} ${apt.provider.lastName}`,
+            role: apt.provider.role,
+          } : null),
+          executedByName: apt.executedBy ? `${apt.executedBy.firstName} ${apt.executedBy.lastName}` : null,
+          executedByInfo: apt.executedBy ? {
+            id: apt.executedBy.id,
+            name: `${apt.executedBy.firstName} ${apt.executedBy.lastName}`,
+            role: apt.executedBy.role,
           } : null,
           isReturned: repeatClients.has(apt.clientId),
           isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false,
@@ -1327,6 +1365,10 @@ export class BookingsService {
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     const oldStatus = appointment.status;
+
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be modified.');
+    }
 
     // 1. CONFIRMATION RESTRICTION: Clinique can confirm, sales and admin
     if (status === AppointmentStatus.CONFIRMED) {
@@ -1491,12 +1533,20 @@ export class BookingsService {
   ): Promise<Appointment> {
     console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, paymentData, serviceId, giftCardCode });
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('This appointment has already been completed and is locked.');
+    }
     const oldStatus = appointment.status;
     const oldTotal = Number(appointment.totalAmount ?? 0);
     const oldAdvance = Number(appointment.advancePaymentAmount ?? 0);
 
     appointment.status = AppointmentStatus.COMPLETED;
     appointment.completedAt = new Date();
+    appointment.executedAt = new Date();
+    appointment.serviceExecuted = true;
+    if (userId) {
+      appointment.executedById = userId;
+    }
 
     if (serviceId) {
       appointment.serviceId = serviceId;
@@ -1709,6 +1759,9 @@ export class BookingsService {
   ): Promise<any> {
     const appointment = await this.findById(appointmentId);
     if (!appointment) throw new NotFoundException('Appointment not found');
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
+    }
 
     // Normalize method to lowercase to match PaymentMethod enum (cash, card, pos, etc.)
     const normalizedMethod = method?.toLowerCase() as any;
@@ -1734,6 +1787,10 @@ export class BookingsService {
   // RULE 7: Soft-delete an appointment (sets status = DELETED, voids revenue)
   async softDeleteAppointment(appointmentId: string, userId: string, userRole: string): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be deleted.');
+    }
 
     if (appointment.status === AppointmentStatus.DELETED) {
       throw new BadRequestException('Appointment is already deleted');
@@ -1794,6 +1851,9 @@ export class BookingsService {
     paymentData: RecordPaymentDto,
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, 'admin');
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
+    }
     const beforeAdvance = Number(appointment.advancePaymentAmount ?? 0);
     const beforeTotal = Number(appointment.totalAmount ?? 0);
 
@@ -2213,6 +2273,9 @@ export class BookingsService {
     reason?: string,
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+    if (this.isAppointmentCompleted(appointment)) {
+      throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
+    }
 
     // Check for conflicts with the new time
     const conflictingAppointment = await this.appointmentsRepository.findOne({
