@@ -850,28 +850,22 @@ export class ClinicsService {
   async getClinicProviders(clinicId: string): Promise<any[]> {
     const uniqueProviders = new Map();
 
-    // 1. Get all users who have the role of doctor, owner or secretariat and are assigned to this clinic
+    // 1. Get all staff assigned to this clinic (Doctor, Clinic Owner, Secretariat)
     const assignedStaff = await this.usersRepository.find({
       where: [
         { assignedClinicId: clinicId, role: UserRole.DOCTOR },
         { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
         { assignedClinicId: clinicId, role: UserRole.SECRETARIAT },
-      ]
+      ],
+      order: { firstName: 'ASC' },
     });
 
-    // 1b. Salespersons are default staff for ALL clinics, so we fetch them regardless of assignedClinicId
-    const salespersons = await this.usersRepository.find({
-      where: { role: UserRole.SALESPERSON }
-    });
-
-    const allStaff = [...assignedStaff, ...salespersons];
-
-    allStaff.forEach((user) => {
+    assignedStaff.forEach((user) => {
       uniqueProviders.set(user.id, {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
-        fullName: `${user.firstName} ${user.lastName}`,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
         phone: user.phone,
         role: user.role,
@@ -895,7 +889,7 @@ export class ClinicsService {
           id: owner.id,
           firstName: owner.firstName,
           lastName: owner.lastName,
-          fullName: `${owner.firstName} ${owner.lastName}`,
+          fullName: `${owner.firstName} ${owner.lastName}`.trim(),
           email: owner.email,
           phone: owner.phone,
           role: owner.role,
@@ -904,11 +898,69 @@ export class ClinicsService {
       }
     }
 
-    // 3. Get any other users who already have appointments at this clinic (legacy/fallback)
+    // 2b. Co-owners from clinic_ownership for this clinic
+    const clinicOwnerships = await this.clinicOwnershipRepository.find({
+      where: { clinicId },
+    });
+    const missingOwnerUserIds = clinicOwnerships
+      .map((co) => co.ownerUserId)
+      .filter((id) => id && !uniqueProviders.has(id));
+
+    if (missingOwnerUserIds.length > 0) {
+      const coOwners = await this.usersRepository.findBy({
+        id: In(missingOwnerUserIds),
+      });
+      for (const owner of coOwners) {
+        if (!uniqueProviders.has(owner.id)) {
+          uniqueProviders.set(owner.id, {
+            id: owner.id,
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+            fullName: `${owner.firstName} ${owner.lastName}`.trim(),
+            email: owner.email,
+            phone: owner.phone,
+            role: owner.role,
+            profilePictureUrl: owner.profilePictureUrl,
+          });
+        }
+      }
+    }
+
+    // 3. Visiting/shared doctors or secretariat with explicit multi-clinic access
+    const agentAccess = await this.agentAccessRepository.find({
+      where: { clinicId },
+      relations: ['agent'],
+    });
+    const agentStaff = agentAccess
+      .map((a) => a.agent)
+      .filter(
+        (u) =>
+          u &&
+          u.isActive !== false &&
+          (u.role === UserRole.DOCTOR || u.role === UserRole.SECRETARIAT),
+      );
+
+    agentStaff.forEach((user) => {
+      if (!uniqueProviders.has(user.id)) {
+        uniqueProviders.set(user.id, {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: `${user.firstName} ${user.lastName}`.trim(),
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profilePictureUrl: user.profilePictureUrl,
+        });
+      }
+    });
+
+    // 4. Doctors who already have appointments at this clinic (legacy/fallback)
     const providersFromAppointments = await this.usersRepository
       .createQueryBuilder('user')
       .innerJoin('user.providerAppointments', 'appointment')
       .where('appointment.clinicId = :clinicId', { clinicId })
+      .andWhere('user.role = :role', { role: UserRole.DOCTOR })
       .getMany();
 
     providersFromAppointments.forEach((user) => {
@@ -917,7 +969,7 @@ export class ClinicsService {
           id: user.id,
           firstName: user.firstName,
           lastName: user.lastName,
-          fullName: `${user.firstName} ${user.lastName}`,
+          fullName: `${user.firstName} ${user.lastName}`.trim(),
           email: user.email,
           phone: user.phone,
           role: user.role,

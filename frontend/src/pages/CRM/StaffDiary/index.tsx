@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
@@ -41,11 +41,11 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   // ── View State ──────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
   const [filters, setFilters] = useState<StaffCalendarFilters>({
     ...DEFAULT_FILTERS,
     clinicId: clinicId || 'all'
   });
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
 
   // ── Modal State ─────────────────────────────────────────────────────────────
   const [isAptModalOpen, setIsAptModalOpen] = useState(false);
@@ -75,6 +75,26 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
       viewMode,
       filters: filtersWithProvider,
     });
+
+  // Keep clinicId synced with prop
+  useEffect(() => {
+    if (clinicId && clinicId !== 'all') {
+      setFilters(prev => ({ ...prev, clinicId }));
+    }
+  }, [clinicId]);
+
+  // Set default clinic when clinics load if not yet selected
+  useEffect(() => {
+    if (clinics && clinics.length > 0) {
+      setFilters(prev => {
+        if (!prev.clinicId || prev.clinicId === 'all') {
+          const targetId = (clinicId && clinicId !== 'all') ? clinicId : clinics[0].id;
+          return { ...prev, clinicId: targetId };
+        }
+        return prev;
+      });
+    }
+  }, [clinics, clinicId]);
 
   // ── Filtered appointments (by payment status, which isn't server-side) ──────
   const displayAppointments = useMemo(() => {
@@ -162,7 +182,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   }, [refreshAppointments]);
 
   return (
-    <div className="flex h-full w-full bg-slate-50 overflow-hidden">
+    <div className="flex flex-1 h-full w-full min-h-0 bg-slate-50 overflow-hidden">
       {/* Provider / Clinic Sidebar */}
       <StaffSidebar
         providers={providers}
@@ -182,7 +202,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
       />
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden">
         {/* Toolbar */}
         <CalendarToolbar
           viewDate={viewDate}
@@ -242,7 +262,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         </div>
 
         {/* Calendar Grid or Month List */}
-        <div className="flex-1 overflow-hidden bg-white flex flex-col">
+        <div className="flex-1 h-0 min-h-0 overflow-hidden bg-white flex flex-col">
           {viewMode === 'month-list' ? (
             <MonthListView
               appointments={displayAppointments}

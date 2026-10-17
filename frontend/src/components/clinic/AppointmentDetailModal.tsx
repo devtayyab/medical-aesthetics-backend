@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Appointment } from '../../types/clinic.types';
+import { Appointment, AppointmentStatus } from '../../types/clinic.types';
 import { X, User, Calendar, Clock, Euro, FileText, Shield, Info, ExternalLink, CheckCircle } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
@@ -243,12 +243,18 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
  </div>
 
   {/* Payment & Settlement Info */}
-  {(appointment.paymentMethod || appointment.amountPaid != null || appointment.appointmentCompletionReport?.amountPaid != null) && (() => {
+  {(appointment.paymentMethod || appointment.amountPaid != null || appointment.appointmentCompletionReport?.amountPaid != null || appointment.totalAmount != null) && (() => {
     const primaryPrice = Number(appointment.service?.price || 0);
     const additionalPrice = ((appointment as any).additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.price || 0), 0);
     const baseAmount = primaryPrice + additionalPrice;
-    const amountPaid = Number(appointment.amountPaid != null ? appointment.amountPaid : (appointment.appointmentCompletionReport?.amountPaid || 0));
-    const diff = amountPaid - baseAmount;
+    const isVenue = String(appointment.paymentMethod || '').toLowerCase() === 'venue';
+    const statusUpper = String(appointment.status || '').toUpperCase();
+    const isCompleted = statusUpper === 'COMPLETED' || statusUpper === 'EXECUTED' || !!appointment.executedAt || !!(appointment as any).serviceExecuted;
+    const expectedTotal = Number(appointment.totalAmount != null ? appointment.totalAmount : baseAmount);
+    const rawAmountPaid = Number(appointment.amountPaid != null ? appointment.amountPaid : (appointment.appointmentCompletionReport?.amountPaid || 0));
+    const effectiveAmountPaid = (isCompleted && rawAmountPaid <= 0 && expectedTotal > 0) ? expectedTotal : rawAmountPaid;
+    const amountPaid = effectiveAmountPaid;
+    const diff = effectiveAmountPaid - baseAmount;
     const bookedByName = (appointment as any).bookedByInfo?.name || (appointment.provider ? `${appointment.provider.firstName} ${appointment.provider.lastName}` : 'System');
     const hasBaseAmount = baseAmount > 0;
 
@@ -263,13 +269,20 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Payment Method</p>
               <p className="font-black text-gray-900 uppercase">
-                {appointment.paymentMethod ? appointment.paymentMethod.replace('_', ' ') : 'Not Specified'}
+                {isVenue ? 'Pay at Venue (Clinic)' : (appointment.paymentMethod ? appointment.paymentMethod.replace('_', ' ') : 'Not Specified')}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Final Amount Paid</p>
-              <p className="font-black text-emerald-600 text-xl">
-                €{amountPaid.toFixed(2)}
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                {isCompleted ? 'Final Amount Paid' : (isVenue ? 'Amount Due at Venue' : (rawAmountPaid > 0 ? 'Amount Paid' : 'Total Amount'))}
+              </p>
+              <p className={`font-black text-xl ${(!isCompleted && rawAmountPaid <= 0) ? 'text-amber-600' : 'text-emerald-600'}`}>
+                €{((!isCompleted && rawAmountPaid <= 0) ? expectedTotal : effectiveAmountPaid).toFixed(2)}
+                {!isCompleted && rawAmountPaid <= 0 && (
+                  <span className="text-[10px] font-bold text-amber-600 ml-2 uppercase tracking-widest block sm:inline">
+                    (To Collect)
+                  </span>
+                )}
               </p>
             </div>
           </div>

@@ -178,7 +178,7 @@ export const AppointmentCalendar: React.FC = () => {
   }, [refreshAppointments]);
 
   return (
-    <div className="flex h-full w-full bg-slate-50 overflow-hidden">
+    <div className="flex flex-1 h-full w-full min-h-0 bg-slate-50 overflow-hidden">
       {/* Salesperson Sidebar */}
       <SalesPersonSidebar
         salespersons={visibleSalespersons}
@@ -192,7 +192,7 @@ export const AppointmentCalendar: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden">
         {/* Toolbar */}
         <CalendarToolbar
           viewDate={viewDate}
@@ -252,7 +252,7 @@ export const AppointmentCalendar: React.FC = () => {
         </div>
 
         {/* Calendar Grid */}
-        <div className="flex-1 overflow-hidden bg-white flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden bg-white flex flex-col">
           <CalendarGrid
             viewDate={viewDate}
             viewMode={viewMode}

@@ -17,8 +17,10 @@ import {
   Sparkles,
   Mail,
   ShieldCheck,
-  Info
+  Info,
+  Lock
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 
 
@@ -29,7 +31,7 @@ import type { RootState, AppDispatch } from"@/store";
 import type { Clinic } from"@/types";
 
 // Images
-import HeaderBanner from"@/assets/NewHeroBanner.jpeg";
+import HeaderBanner from"@/assets/HomeHeroBanner.png";
 import LayeredBG from"@/assets/LayeredBg.svg";
 import PlusIcon from"@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from"@/assets/Icons/CalendarIcon.svg";
@@ -37,11 +39,77 @@ import TickIcon from"@/assets/Icons/TickIcon.svg";
 import GiftConfidenceImg from"@/assets/GiftConfidenceImg.svg";
 import TopRatedClinicImg from"@/assets/TopRatedClinicImg.svg";
 import OnlineClinicHome from"@/assets/OnlineClinicHome.svg";
-// Fallback category icon (used when a category has no custom icon)
-import DermaIcon from"@/assets/Icons/TreatmentIcons/DermaIcon.svg";
-import { useCategoryTree, useTopTreatments } from"@/hooks/useCategoryTree";
-import { getImageUrl } from"@/utils/imageUrl";
-import HomeMobAppImg from"@/assets/HomeMobAppImg.svg";
+// Distinct Category Icons matching the 9 reference categories
+import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
+import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
+import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
+import Dentisticon from "@/assets/Icons/TreatmentIcons/Dentisticon.svg";
+import HairIcon from "@/assets/Icons/TreatmentIcons/HairIcon.svg";
+import SpaAestheticsIcon from "@/assets/Icons/TreatmentIcons/SpaAestheticsIcon.svg";
+import FacialMedicineIcon from "@/assets/Icons/TreatmentIcons/FacialMedicineIcon.svg";
+import GynecologyIcon from "@/assets/Icons/TreatmentIcons/GynecologyIcon.svg";
+import LongevityIcon from "@/assets/Icons/TreatmentIcons/LongevityIcon.svg";
+import { useCategoryTree, useTopTreatments } from "@/hooks/useCategoryTree";
+import { getImageUrl } from "@/utils/imageUrl";
+import HomeMobAppImg from "@/assets/HomeMobAppImg.svg";
+
+export const getCategoryDistinctIcon = (name: string, apiIcon?: string | null): string => {
+  if (apiIcon && (apiIcon.startsWith('http') || apiIcon.startsWith('/') || apiIcon.startsWith('data:'))) {
+    return apiIcon;
+  }
+  const n = (name || '').toLowerCase().trim();
+
+  // 1. Spa & Skincare: ΑΙΣΘΗΤΙΚΗ & ΠΕΡΙΠΟΙΗΣΗ, Aesthetics & Care, Skincare, Beauty
+  if (n.includes('περιποιηση') || n.includes('αισθητικη &') || n.includes('aesthetics &') || n.includes('skincare') || n.includes('facial care') || n.includes('beauty')) {
+    return SpaAestheticsIcon;
+  }
+  // 2. Facial Aesthetic Medicine: ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΠΡΟΣΩΠΟΥ, Facial Aesthetic Medicine
+  if (n.includes('προσωπου') || n.includes('facial') || n.includes('face') || n.includes('botox') || n.includes('filler')) {
+    return FacialMedicineIcon;
+  }
+  // 3. Body Aesthetic Medicine: ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΣΩΜΑΤΟΣ, Body Aesthetic Medicine
+  if (n.includes('σωματοσ') || n.includes('body') || n.includes('contour') || n.includes('liposuction')) {
+    return BodyIcon;
+  }
+  // 4. Gynecology: ΑΙΣΘΗΤΙΚΗ ΚΑΙ ΕΠΑΝΟΡΘΩΤΙΚΗ ΓΥΝΑΙΚΟΛΟΓΙΑ, Gynecology
+  if (n.includes('γυναικολογια') || n.includes('gynecology') || n.includes('intimate')) {
+    return GynecologyIcon;
+  }
+  // 5. Dermatology: ΔΕΡΜΑΤΟΛΟΓΙΑ, Dermatology, Medical Dermatology
+  if (n.includes('δερματολογια') || n.includes('derma') || n.includes('skin')) {
+    return DermaIcon;
+  }
+  // 6. Longevity & Wellness: ΜΑΚΡΟΖΩΙΑ & ΕΥΕΞΙΑ, Longevity & Wellness
+  if (n.includes('μακροζωια') || n.includes('ευεξια') || n.includes('longevity') || n.includes('wellness')) {
+    return LongevityIcon;
+  }
+  // 7. Hair Removal: ΜΟΝΙΜΗ ΑΠΟΤΡΙΧΩΣΗ, Αποτρίχωση, Hair Removal, Laser Hair Removal, Hair
+  if (n.includes('αποτριχωση') || n.includes('hair removal') || n.includes('laser') || n.includes('hair') || n.includes('μαλλια')) {
+    return HairIcon;
+  }
+  // 8. Dentistry: ΟΔΟΝΤΙΑΤΡΙΚΗ, Dentistry, Dental
+  if (n.includes('οδοντιατρικη') || n.includes('dental') || n.includes('dentist') || n.includes('teeth')) {
+    return Dentisticon;
+  }
+  // 9. Plastic Surgery: ΠΛΑΣΤΙΚΗ ΧΕΙΡΟΥΡΓΙΚΗ, Plastic Surgery
+  if (n.includes('πλαστικη') || n.includes('χειρουργικη') || n.includes('plastic') || n.includes('surgery')) {
+    return CosmeticIcon;
+  }
+  return DermaIcon;
+};
+
+// Curated 9 Popular Categories matching the reference design exactly
+export const REFERENCE_POPULAR_CATEGORIES = [
+  { id: 'cat-spa', nameEl: 'ΑΙΣΘΗΤΙΚΗ & ΠΕΡΙΠΟΙΗΣΗ', nameEn: 'Aesthetics & Care', icon: SpaAestheticsIcon },
+  { id: 'cat-face', nameEl: 'ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΠΡΟΣΩΠΟΥ', nameEn: 'Facial Aesthetic Medicine', icon: FacialMedicineIcon },
+  { id: 'cat-body', nameEl: 'ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΣΩΜΑΤΟΣ', nameEn: 'Body Aesthetic Medicine', icon: BodyIcon },
+  { id: 'cat-gyn', nameEl: 'ΑΙΣΘΗΤΙΚΗ ΚΑΙ ΕΠΑΝΟΡΘΩΤΙΚΗ ΓΥΝΑΙΚΟΛΟΓΙΑ', nameEn: 'Aesthetic & Reconstructive Gynecology', icon: GynecologyIcon },
+  { id: 'cat-derma', nameEl: 'ΔΕΡΜΑΤΟΛΟΓΙΑ', nameEn: 'Dermatology', icon: DermaIcon },
+  { id: 'cat-longevity', nameEl: 'ΜΑΚΡΟΖΩΙΑ & ΕΥΕΞΙΑ', nameEn: 'Longevity & Wellness', icon: LongevityIcon },
+  { id: 'cat-hair', nameEl: 'ΜΟΝΙΜΗ ΑΠΟΤΡΙΧΩΣΗ', nameEn: 'Permanent Hair Removal', icon: HairIcon },
+  { id: 'cat-dentist', nameEl: 'ΟΔΟΝΤΙΑΤΡΙΚΗ', nameEn: 'Dentistry', icon: Dentisticon },
+  { id: 'cat-surgery', nameEl: 'ΠΛΑΣΤΙΚΗ ΧΕΙΡΟΥΡΓΙΚΗ', nameEn: 'Plastic Surgery', icon: CosmeticIcon },
+];
 
 // Premium Assets
 import BotoxImg from"@/assets/Botox.jpg";
@@ -125,8 +193,9 @@ const mainCategories = [
   const [showConsultModal, setShowConsultModal] = useState(false);
 
   const { featuredClinics, isLoading, treatments, error } = useSelector(
- (state: RootState) => state.client
- );
+    (state: RootState) => state.client
+  );
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
  // Super-admin-managed categories + top treatments (replaces hardcoded lists)
  const { categories: dynamicCategories, loading: categoriesLoading } = useCategoryTree();
@@ -162,6 +231,54 @@ const mainCategories = [
      .catch(() => setClinicCities(['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Volos', 'Ioannina']));
  }, []);
  // Prefer the curated"Top Treatments"; fall back to live search results when none are featured.
+  // Memoized 9 categories for Popular Categories (guarantees 9 visually differentiated items matching Image 2)
+  const popularCategoriesList = React.useMemo(() => {
+    return REFERENCE_POPULAR_CATEGORIES.map((refCat) => {
+      const matched = dynamicCategories?.find(dc => {
+        const dcn = dc.name.toLowerCase();
+        return dcn.includes(refCat.nameEn.toLowerCase()) || 
+               refCat.nameEl.toLowerCase().includes(dcn) ||
+               (refCat.nameEn.toLowerCase().includes('skincare') && dcn.includes('aesthetic')) ||
+               (refCat.nameEn.toLowerCase().includes('dermatology') && dcn.includes('derma'));
+      });
+      return {
+        id: matched ? matched.id : refCat.id,
+        name: isGreek ? refCat.nameEl : refCat.nameEn,
+        icon: refCat.icon,
+        rawName: matched ? matched.name : (isGreek ? refCat.nameEl : refCat.nameEn),
+      };
+    });
+  }, [dynamicCategories, isGreek]);
+
+  // Browse by treatment categories (3 distinct columns with separate icons matching Image 1)
+  const browseCategoriesList = React.useMemo(() => {
+    const defaultCols = [
+      { id: 'b-spa', name: isGreek ? 'ΑΙΣΘΗΤΙΚΗ & ΠΕΡΙΠΟΙΗΣΗ' : 'Aesthetics & Care', icon: SpaAestheticsIcon },
+      { id: 'b-face', name: isGreek ? 'ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΠΡΟΣΩΠΟΥ' : 'Facial Aesthetic Medicine', icon: FacialMedicineIcon },
+      { id: 'b-body', name: isGreek ? 'ΑΙΣΘΗΤΙΚΗ ΙΑΤΡΙΚΗ ΣΩΜΑΤΟΣ' : 'Body Aesthetic Medicine', icon: BodyIcon },
+    ];
+    if (dynamicCategories && dynamicCategories.length >= 3) {
+      return dynamicCategories.slice(0, 3).map((c, i) => ({
+        id: c.id,
+        name: isGreek ? getCategoryLabel(c.name) : c.name,
+        icon: getCategoryDistinctIcon(c.name, c.icon) || defaultCols[i % defaultCols.length].icon,
+        children: c.children || [],
+        rawName: c.name,
+      }));
+    }
+    return defaultCols.map(c => ({
+      ...c,
+      children: [],
+      rawName: c.name,
+    }));
+  }, [dynamicCategories, isGreek]);
+
+  const referenceBrowseCities = [
+    'Cyprus', 'Egkomi', 'Άνω Γλυφάδα', 'Αγία Παρασκευή-Αθήνα', 'Αθήνα-Κολωνάκι',
+    'Αμπελόκηποι-Αθήνα', 'Γαλάτσι', 'Θεσσαλονίκη', 'Κολωνάκι-Αθήνα', 'Μέγαρο Μουσικής-Αθήνα',
+    'Νέα Ιωνία', 'Νέα Μάκρη', 'Νέα Σμύρνη', 'Παγκράτι', 'Πειραιάς', 'Περιστέρι', 'Πλατεία Μαβίλη-Αθήνα'
+  ];
+
  const displayTreatments: any[] = topTreatments.length > 0 ? topTreatments : (treatments || []);
 
  useEffect(() => {
@@ -216,9 +333,15 @@ const mainCategories = [
  <div className="space-y-4">
  <a
  href="mailto:info@beautydoctors.gr?subject=Professional%20Consultation%20Request"
- target="_blank"
- rel="noopener noreferrer"
- className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
+ onClick={() => {
+   try {
+     if (navigator.clipboard) {
+       navigator.clipboard.writeText("info@beautydoctors.gr");
+     }
+   } catch {}
+   toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "email-copy-home" });
+ }}
+ className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent cursor-pointer"
  >
  <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
  <Mail size={24} />
@@ -238,34 +361,31 @@ const mainCategories = [
 
  {/* Hero Section */}
  <section 
- className="relative w-full bg-cover bg-no-repeat bg-[85%_top] md:bg-[center_top] flex items-center"
+ className="relative w-full bg-cover bg-no-repeat bg-[82%_center] sm:bg-[85%_center] md:bg-[88%_center] lg:bg-center flex items-center min-h-[660px] lg:min-h-[740px]"
  style={{ 
- backgroundImage: `url(${HeaderBanner})`,
- height: '95vh',
- minHeight: '850px'
+ backgroundImage: `url(${HeaderBanner})`
  }}
  >
- <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-white/40 to-transparent md:from-transparent md:to-transparent" />
+ <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/50 to-transparent sm:from-white/70 sm:via-white/30 md:from-white/20 md:via-transparent md:to-transparent pointer-events-none" />
 
  {/* Content Overlay */}
- <div className="relative z-10 w-full -mt-24 md:-mt-40">
- <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6">
+ <div className="relative z-10 w-full py-12 md:py-20">
+ <div className="max-w-[1280px] mx-auto w-full px-5 sm:px-8 lg:px-12">
  <div className="flex flex-col max-w-xl">
-  <div className="bg-white/90 md:bg-transparent backdrop-blur-md md:backdrop-blur-none p-4 sm:p-5 md:p-0 rounded-3xl border border-white/60 md:border-none shadow-xl md:shadow-none mb-3 md:mb-0">
-   <h1 className="text-gray-950 text-xl sm:text-3xl md:text-[40px] font-black mb-1.5 leading-tight uppercase tracking-tight">
+  <div className="mb-6">
+   <h1 className="text-gray-950 text-2xl sm:text-4xl md:text-[44px] lg:text-[48px] font-black mb-3 leading-[1.12] uppercase tracking-tight">
    FIND THE RIGHT <br />
-                   <span className="text-[#65a30d] md:text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
+   <span className="text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
    </h1>
 
-  <p className="text-gray-800 md:text-gray-700 text-xs sm:text-sm max-w-md leading-relaxed font-bold md:font-medium">
+  <p className="text-gray-700 text-xs sm:text-sm md:text-[15px] max-w-lg leading-relaxed font-medium">
   Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
   </p>
   </div>
 
- <div className="w-full max-w-[480px]">
+ <div className="w-full max-w-[500px]">
  <SearchBar
  onSearch={handleSearch}
- className="!shadow-2xl border-none"
  />
  </div>
  </div>
@@ -311,37 +431,26 @@ const mainCategories = [
  View All <ArrowRight className="inline-block ml-1 h-4 w-4" />
  </button>
  </div>
- {categoriesLoading ? (
- <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
- {Array.from({ length: 7 }).map((_, i) => (
- <div key={i} className="flex flex-col items-center p-6 bg-gray-100 border border-gray-100 rounded-2xl animate-pulse">
- <div className="size-16 bg-gray-200 rounded-full mb-4" />
- <div className="h-3 bg-gray-200 rounded w-16" />
- </div>
- ))}
- </div>
- ) : dynamicCategories.length === 0 ? (
- <p className="text-gray-400 text-sm">No categories available yet.</p>
- ) : (
- <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
- {dynamicCategories.map((category) => (
+ <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+ {popularCategoriesList.map((category, index) => (
  <button
  key={category.id}
- onClick={() => handleCategoryClick(category.name)}
- className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
+ onClick={() => handleCategoryClick(category.rawName || category.name)}
+ className="relative flex flex-col items-center justify-between p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group min-h-[175px] overflow-hidden"
  >
- <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors text-2xl font-black text-[#33373F]">
- {category.icon
- ? (category.icon.startsWith('http') || category.icon.startsWith('/')
- ? <img src={category.icon} alt={category.name} className="size-8" />
- : <span>{category.icon}</span>)
- : <img src={DermaIcon} alt={category.name} className="size-8" />}
+ {index === 0 && (
+ <div className="absolute top-0 left-0 w-8 h-8 pointer-events-none rounded-tl-3xl border-t-2 border-l-2 border-[#CBFF38]" />
+ )}
+ <div className="size-16 sm:size-20 rounded-full bg-slate-50/70 border border-slate-100/60 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+ <img src={category.icon} alt={category.name} className="size-10 sm:size-12 object-contain" />
  </div>
- <span className="font-semibold text-[#33373F] text-sm text-center leading-tight">{category.name}</span>
+ <span className="font-bold text-[#1E293B] text-[11px] sm:text-[12px] text-center leading-snug uppercase tracking-tight line-clamp-2 px-1">
+ {category.name}
+ </span>
+ <div className="w-8 h-1 bg-[#CBFF38] rounded-full mt-3 opacity-90 group-hover:w-12 transition-all" />
  </button>
  ))}
  </div>
- )}
  </div>
  </section>
 
@@ -403,11 +512,20 @@ const mainCategories = [
  </div>
  <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
  <div className="flex flex-col">
- {treatment.fromPrice ? (
+ {isAuthenticated && treatment.fromPrice ? (
  <>
  <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Price Starting From</span>
  <span className="text-lg font-black text-gray-900 tracking-tighter">€{treatment.fromPrice}</span>
  </>
+ ) : !isAuthenticated ? (
+ <span 
+ onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+ className="text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-widest flex items-center gap-1 cursor-pointer transition-colors"
+ title={isGreek ? "Σύνδεση για εμφάνιση τιμής" : "Login to view price"}
+ >
+ <Lock size={11} className="text-lime-600 shrink-0" />
+ <span>{isGreek ? "Σύνδεση για τιμές" : "Login to view price"}</span>
+ </span>
  ) : (
  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">View Details</span>
  )}
@@ -575,61 +693,41 @@ const mainCategories = [
  </div>
 
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
- {categoriesLoading ? (
- Array.from({ length: 6 }).map((_, i) => (
- <div key={i} className="space-y-3 animate-pulse">
- <div className="flex items-center gap-3 border-b border-gray-200 pb-2">
- <div className="size-[56px] bg-gray-200 rounded-sm" />
- <div className="h-4 bg-gray-200 rounded w-32" />
- </div>
- {Array.from({ length: 5 }).map((_, j) => (
- <div key={j} className="h-3 bg-gray-100 rounded w-24" />
- ))}
- </div>
- ))
- ) : dynamicCategories.length === 0 ? (
- <p className="col-span-3 text-center text-gray-400">No categories found.</p>
- ) : (
- dynamicCategories.slice(0, 6).map((category) => {
+ {browseCategoriesList.map((category) => {
  const subs = category.children || [];
- const citiesToShow = clinicCities.length > 0 ? clinicCities : ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Volos', 'Ioannina'];
+ const citiesToShow = referenceBrowseCities;
  return (
  <div key={category.id} className="space-y-3">
  <div
- className="flex items-center gap-3 border-b border-gray-200 pb-2 cursor-pointer group"
- onClick={() => handleCategoryClick(category.name)}
+ className="flex items-center gap-3 border-b border-gray-200 pb-3 cursor-pointer group"
+ onClick={() => handleCategoryClick(category.rawName || category.name)}
  >
- <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center group-hover:scale-105 transition-transform text-2xl font-black text-[#0B1120]">
- {category.icon
- ? (category.icon.startsWith('http') || category.icon.startsWith('/')
- ? <img src={category.icon} alt={category.name} className="p-1" />
- : <span>{category.icon}</span>)
- : <img src={DermaIcon} alt={category.name} className="p-1" />}
+ <div className="size-[56px] bg-[#CBFF38] rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform text-[#0B1120] shadow-sm flex-shrink-0">
+ <img src={category.icon} alt={category.name} className="size-10 object-contain p-1" />
  </div>
- <h3 className="text-gray-800 font-semibold group-hover:text-lime-600 transition-colors">
- <span className="notranslate" translate="no">{getCategoryLabel(category.name)}</span>
+ <h3 className="text-gray-900 font-bold text-sm tracking-tight group-hover:text-lime-600 transition-colors">
+ <span className="notranslate" translate="no">{category.name}</span>
  </h3>
  </div>
- <ul className="space-y-1 text-gray-700">
+ <ul className="space-y-1.5 text-gray-600 text-sm">
  {subs.length > 0
- ? subs.map((sub) => (
- <li key={sub.id} className="hover:text-lime-600 cursor-pointer" onClick={() => handleCategoryClick(sub.name)}><span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span></li>
+ ? subs.map((sub: any) => (
+ <li key={sub.id} className="hover:text-lime-600 cursor-pointer transition-colors" onClick={() => handleCategoryClick(sub.name)}><span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span></li>
  ))
  : citiesToShow.map((city, i) => (
  <li
  key={i}
- className="flex items-center gap-1.5 hover:text-lime-600 cursor-pointer group/city transition-colors duration-150"
- onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}&location=${encodeURIComponent(city)}`)}
+ className="flex items-center gap-2 hover:text-lime-600 cursor-pointer group/city transition-colors duration-150 py-0.5"
+ onClick={() => navigate(`/search?category=${encodeURIComponent(category.rawName || category.name)}&location=${encodeURIComponent(city)}`)}
  >
  <FaMapMarkerAlt className="w-2.5 h-2.5 text-gray-300 group-hover/city:text-lime-500 flex-shrink-0 transition-colors" />
- <span>{city}</span>
+ <span className="hover:underline">{city}</span>
  </li>
  ))}
  </ul>
  </div>
  );
- })
- )}
+ })}
  </div>
 
  <div className="text-center mt-12">

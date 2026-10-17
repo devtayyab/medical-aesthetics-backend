@@ -55,7 +55,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  setEditForm({
  role: user.role,
  monthlyTarget: user.monthlyTarget ? user.monthlyTarget.toString() :"",
- assignedClinicIds: user.assignedClinics ? user.assignedClinics.map(c => c.id) : [],
+ assignedClinicIds: (user.assignedClinics && user.assignedClinics.length > 0) ? user.assignedClinics.map(c => c.id) : (user.assignedClinicId ? [user.assignedClinicId] : []), 
  });
  };
 
@@ -115,9 +115,11 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  try {
  const submitData: any = { ...createForm };
  // For clinic_owner: send assignedClinicIds instead of clinicId
- if (createForm.role === 'clinic_owner') {
+ if (['clinic_owner', 'doctor', 'secretariat', 'manager'].includes(createForm.role)) {
+        if (createForm.assignedClinicIds.length > 0) submitData.clinicId = createForm.assignedClinicIds[0];
  submitData.assignedClinicIds = createForm.assignedClinicIds;
- delete submitData.clinicId;
+ // keep clinicId as primary
+		if (createForm.assignedClinicIds.length > 0) submitData.clinicId = createForm.assignedClinicIds[0];
  } else {
  delete submitData.assignedClinicIds;
  }
@@ -506,9 +508,11 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  {/* Clinic selection: depends on role */}
  {clinics?.length > 0 && createForm.role !== 'client' && createForm.role !== 'SUPER_ADMIN' && createForm.role !== 'admin' && (
  <div>
- {createForm.role === 'clinic_owner' ? (
+ {['clinic_owner', 'doctor', 'secretariat', 'manager'].includes(createForm.role) ? (
  <>
- <label className="block text-sm font-medium text-gray-700 mb-1">Assign Clinics (Owner of)</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">
+              {createForm.role === "clinic_owner" ? "Assign Clinics (Owner of)" : "Assign Clinics (Staff Mapping)"}
+            </label>
  <div className="space-y-2 border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto bg-gray-50">
  {clinics.map(c => (
  <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">

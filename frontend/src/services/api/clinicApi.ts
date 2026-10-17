@@ -25,8 +25,13 @@ import { api as apiClient } from '../api';
 
 // Clinic Profile API
 export const clinicProfileApi = {
- getProfile: async (): Promise<ClinicProfile> => {
- const response = await apiClient.get('/clinic/profile');
+ getProfile: async (clinicId?: string): Promise<ClinicProfile> => {
+ const response = await apiClient.get('/clinic/profile', { params: clinicId ? { clinicId } : undefined });
+ return response.data;
+ },
+
+ getMyClinics: async (): Promise<ClinicProfile[]> => {
+ const response = await apiClient.get('/clinic/my-clinics');
  return response.data;
  },
 

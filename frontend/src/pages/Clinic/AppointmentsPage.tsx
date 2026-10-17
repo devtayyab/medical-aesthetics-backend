@@ -17,7 +17,7 @@ import { rescheduleAppointment } from '../../store/slices/clinicSlice';
 
 const AppointmentsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { appointments, isLoading } = useSelector((state: RootState) => state.clinic);
+ const { appointments, isLoading, profile } = useSelector((state: RootState) => state.clinic);
  const user = useSelector((state: RootState) => (state.auth as AuthState).user);
 
  const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -509,7 +509,12 @@ const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onEx
  </button>
  )}
  {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && (() => {
-    const isPaid = appointment.paymentMethod != null || Number(appointment.amountPaid) > 0 || Number(appointment.appointmentCompletionReport?.amountPaid) > 0;
+    const isVenue = String(appointment.paymentMethod || '').toLowerCase() === 'venue';
+    const isPaid = !isVenue && (
+      Number(appointment.amountPaid) > 0 || 
+      Number(appointment.appointmentCompletionReport?.amountPaid) > 0 ||
+      (appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD' && Number(appointment.amountPaid || appointment.totalAmount || 0) > 0)
+    );
     return (
       <button onClick={onExecute} className={`h-9 px-4 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${
         isPaid 

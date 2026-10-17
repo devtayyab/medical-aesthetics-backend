@@ -1,0 +1,19 @@
+<svg width="49" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pelvic V-contour silhouette -->
+  <path d="M14 14C17 21 21 28 24 33C27 28 31 21 34 14" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Dotted treatment contour lines on hips -->
+  <path d="M11 15C13.5 22 17 28 20 33" stroke="#94A3B8" stroke-width="1.75" stroke-linecap="round" stroke-dasharray="2 3"/>
+  <path d="M37 15C34.5 22 31 28 28 33" stroke="#94A3B8" stroke-width="1.75" stroke-linecap="round" stroke-dasharray="2 3"/>
+  
+  <!-- Lotus Flower at bottom center -->
+  <!-- Center petal -->
+  <path d="M24 23C22.5 26.5 23.5 29 24 30C24.5 29 25.5 26.5 24 23Z" fill="#CBFF38" stroke="#1E293B" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Left petal -->
+  <path d="M24 30C21.5 29.5 19.5 27 20 25C21.5 26 23 28 24 30Z" fill="#CBFF38" stroke="#1E293B" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Right petal -->
+  <path d="M24 30C26.5 29.5 28.5 27 28 25C26.5 26 25 28 24 30Z" fill="#CBFF38" stroke="#1E293B" stroke-width="1.5" stroke-linejoin="round"/>
+  
+  <!-- Base arch -->
+  <path d="M19.5 32C22 34 26 34 28.5 32" stroke="#1E293B" stroke-width="1.75" stroke-linecap="round"/>
+</svg>

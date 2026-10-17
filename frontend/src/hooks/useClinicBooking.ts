@@ -62,12 +62,12 @@ export const useClinicBooking = ({
   const fetchClinicData = async () => {
     setIsLoading(true);
     try {
-      const [servicesRes, clinicRes] = await Promise.all([
+      const [servicesRes, providersRes] = await Promise.all([
         clinicsAPI.getServices(clinicId),
-        clinicsAPI.getById(clinicId),
+        clinicsAPI.getProviders(clinicId),
       ]);
       setServices(servicesRes.data || []);
-      setProviders(clinicRes.data.staff || []);
+      setProviders(providersRes.data || []);
     } catch (err) {
       console.error('Failed to fetch clinic data', err);
     } finally {

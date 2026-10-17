@@ -167,7 +167,9 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  >
  <option value="">Any Staff Member</option>
  {providers.map(p => (
- <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+ <option key={p.id} value={p.id}>
+   {p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.email || 'Staff Member'}
+ </option>
  ))}
  </select>
  </div>

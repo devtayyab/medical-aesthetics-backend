@@ -92,6 +92,7 @@ export const Search: React.FC = () => {
  );
  const totalClinics = useSelector((state: RootState) => state.client.totalClinics);
  const totalTreatments = useSelector((state: RootState) => state.client.totalTreatments);
+ const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
  const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
@@ -293,11 +294,13 @@ export const Search: React.FC = () => {
  className="absolute top-full left-8 mt-2 w-64 bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-gray-100 p-3 z-20"
  >
  {openDropdown === 'sort' && [
- { id: 'recommended', label: 'Recommended' },
- { id: 'distance', label: 'Distance' },
- { id: 'price-asc', label: 'Price: Low to High' },
- { id: 'price-desc', label: 'Price: High to Low' },
- { id: 'rating', label: 'Top Rated' }
+  { id: 'recommended', label: 'Recommended' },
+  { id: 'distance', label: 'Distance' },
+  ...(isAuthenticated ? [
+    { id: 'price-asc', label: 'Price: Low to High' },
+    { id: 'price-desc', label: 'Price: High to Low' },
+  ] : []),
+  { id: 'rating', label: 'Top Rated' }
  ].map(opt => (
  <button 
  key={opt.id}

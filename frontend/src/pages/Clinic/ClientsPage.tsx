@@ -39,7 +39,13 @@ const ClientsPage: React.FC = () => {
  const { profile } = useSelector((state: RootState) => state.clinic);
  const user = useSelector((state: RootState) => state.auth.user);
  
- const activeClinicId = profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
+ const activeClinicId =
+   localStorage.getItem('activeClinicId') ||
+   profile?.id ||
+   user?.assignedClinicId ||
+   (user as any)?.associatedClinicId ||
+   (user as any)?.ownedClinics?.[0]?.id ||
+   (user as any)?.assignedClinics?.[0]?.id;
 
  useEffect(() => {
  dispatch(fetchClients({}));
@@ -254,20 +260,20 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  initial={{ opacity: 0 }}
  animate={{ opacity: 1 }}
  exit={{ opacity: 0 }}
- className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+ className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[1001] p-3 sm:p-6 overflow-y-auto"
  >
  <motion.div 
  initial={{ scale: 0.95, opacity: 0, y: 20 }}
  animate={{ scale: 1, opacity: 1, y: 0 }}
  exit={{ scale: 0.95, opacity: 0, y: 20 }}
- className="bg-white rounded-[48px] shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+ className="bg-white rounded-[28px] md:rounded-[40px] shadow-2xl max-w-5xl w-full max-h-[86vh] overflow-hidden flex flex-col my-auto border border-white/20"
  >
  <div className="bg-black text-white p-6 md:p-10 flex items-center justify-between relative overflow-hidden shrink-0">
  <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#CBFF38]/20 to-transparent" />
  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full gap-6">
  <div className="flex items-center gap-4 md:gap-6 min-w-0">
  <div className="size-14 md:size-20 rounded-2xl md:rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-xl md:text-3xl shadow-lg shrink-0">
- {innerClient.firstName?.[0] ||"?"}
+ {innerClient.firstName?.[0] || clientName?.[0] || "?"}
  </div>
  <div className="min-w-0">
  <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none mb-1 truncate">{clientName}</h2>
@@ -318,7 +324,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
  <div>
  <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||"Clinical Service"}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: System Agent</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "Assigned Practitioner"}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">

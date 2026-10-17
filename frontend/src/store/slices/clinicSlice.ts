@@ -23,6 +23,7 @@ export interface ClinicState {
  reviewStats: ReviewStatistics | null;
  availability: AvailabilitySettings | null;
  staff: any[];
+  myClinics: ClinicProfile[];
  isLoading: boolean;
  error: string | null;
 }
@@ -37,6 +38,7 @@ const initialState: ClinicState = {
  reviewStats: null,
  availability: null,
  staff: [],
+  myClinics: [],
  isLoading: false,
  error: null,
 };
@@ -52,15 +54,26 @@ export const fetchClinicProviders = createAsyncThunk(
  }
  }
 );
+export const fetchMyClinics = createAsyncThunk(
+  'clinic/fetchMyClinics',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clinicProfile.getMyClinics();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch clinics');
+    }
+  }
+);
+
 export const fetchClinicProfile = createAsyncThunk(
- 'clinic/fetchProfile',
- async (_, { rejectWithValue }) => {
- try {
- return await clinicApi.clinicProfile.getProfile();
- } catch (error: any) {
- return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
- }
- }
+  'clinic/fetchProfile',
+  async (clinicId: string | undefined = undefined, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clinicProfile.getProfile(clinicId);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
+    }
+  }
 );
 
 export const updateClinicProfile = createAsyncThunk(
@@ -293,6 +306,9 @@ const clinicSlice = createSlice({
  state.isLoading = false;
  state.profile = action.payload;
  })
+      .addCase(fetchMyClinics.fulfilled, (state, action) => {
+        state.myClinics = Array.isArray(action.payload) ? action.payload : [];
+      })
  .addCase(fetchClinicProfile.rejected, (state, action) => {
  state.isLoading = false;
  state.error = action.payload as string;

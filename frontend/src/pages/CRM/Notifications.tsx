@@ -17,6 +17,11 @@ export const Notifications: React.FC = () => {
  dispatch(fetchNotifications(50)); // Fetch last 50 notifications
  }, [dispatch]);
 
+ const [currentPage, setCurrentPage] = React.useState(1);
+ const itemsPerPage = 8;
+ const totalPages = Math.ceil(notifications.length / itemsPerPage) || 1;
+ const paginatedNotifications = notifications.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
 
  const getIcon = (notif: any) => {
  const type = notif.data?.type || notif.type;
@@ -82,7 +87,7 @@ export const Notifications: React.FC = () => {
  </div>
  ) : (
  <div className="space-y-4">
- {notifications.map((notif) => (
+ {paginatedNotifications.map((notif) => (
  <div
  key={notif.id}
  onClick={() => {
@@ -126,6 +131,33 @@ export const Notifications: React.FC = () => {
  </div>
  </div>
  ))}
+
+ {notifications.length > 0 && (
+ <div className="flex items-center justify-between pt-6 border-t border-gray-100 text-xs font-bold text-gray-400">
+ <div>
+ Showing {Math.min((currentPage - 1) * itemsPerPage + 1, notifications.length)} - {Math.min(currentPage * itemsPerPage, notifications.length)} of {notifications.length}
+ </div>
+ <div className="flex items-center gap-1.5">
+ <button
+ onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+ disabled={currentPage === 1}
+ className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-[#CBFF38] hover:text-black disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+ >
+ Prev
+ </button>
+ <span className="px-2 text-gray-700 font-black">
+ {currentPage} / {totalPages}
+ </span>
+ <button
+ onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+ disabled={currentPage === totalPages}
+ className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-[#CBFF38] hover:text-black disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+ >
+ Next
+ </button>
+ </div>
+ </div>
+ )}
  </div>
  )}
  </div>

@@ -1,7 +1,10 @@
 import React, { useState } from"react";
 import { createPortal } from"react-dom";
-import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X, Image as ImageIcon, Building2 } from"lucide-react";
-import type { Treatment } from"@/types";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X, Image as ImageIcon, Building2, Lock } from "lucide-react";
+import type { Treatment } from "@/types";
 import { motion, AnimatePresence } from"framer-motion";
 import { css } from"@emotion/css";
 
@@ -50,6 +53,8 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  treatment,
  onSelect,
 }) => {
+ const navigate = useNavigate();
+ const { isAuthenticated } = useSelector((state: RootState) => state.auth);
  const [showExplanation, setShowExplanation] = useState(false);
  const [imgError, setImgError] = useState(false);
 
@@ -135,13 +140,26 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
 
             {/* Price Tag - Top Right Overlay */}
             <div className="absolute top-5 right-5 text-right z-10">
-              <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">
-                  {(treatment as any).fromPrice > 0 ? "Starts From" : "Treatment"}
-                </p>
-                <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">
-                  {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : "Available"}
-                </p>
+              <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                {isAuthenticated ? (
+                  <>
+                    <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">
+                      {(treatment as any).fromPrice > 0 ? "Starts From" : "Treatment"}
+                    </p>
+                    <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">
+                      {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : "Available"}
+                    </p>
+                  </>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+                    className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[#CBFF38] hover:underline"
+                    title="Login required to view prices"
+                  >
+                    <Lock size={10} className="text-[#CBFF38]" />
+                    <span>Login for price</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

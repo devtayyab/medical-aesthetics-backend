@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import { logout } from"@/store/slices/authSlice";
-import { fetchClinicProfile } from '@/store/slices/clinicSlice';
+import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices } from '@/store/slices/clinicSlice';
+import { ChevronDown, Building2 } from 'lucide-react';
 import {
  LayoutDashboard,
  Calendar,
@@ -45,20 +46,29 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const ClinicLayout: React.FC = () => {
  const navigate = useNavigate();
+  const location = useLocation();
+  const isDiaryOrCalendar = location.pathname.includes('/diary') || location.pathname.includes('/calendar');
  const dispatch = useDispatch<AppDispatch>();
  const user = useSelector((state: RootState) => state.auth.user);
- const { profile } = useSelector((state: RootState) => state.clinic);
+ const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
  const { unreadCount } = useSelector((state: RootState) => state.notifications);
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
  React.useEffect(() => {
- if (!profile) {
- dispatch(fetchClinicProfile());
- }
+ dispatch(fetchMyClinics());
+ const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
+ dispatch(fetchClinicProfile(savedClinicId));
  if (user) {
  dispatch(fetchUnreadCount());
  }
- }, [dispatch, profile, user]);
+ }, [dispatch, user]);
+
+ const handleClinicChange = async (newClinicId: string) => {
+ localStorage.setItem('activeClinicId', newClinicId);
+ await dispatch(fetchClinicProfile(newClinicId));
+ dispatch(fetchAppointments({ clinicId: newClinicId }));
+ dispatch(fetchServices(newClinicId));
+ };
 
  const menuItems = getMenuItemsForRole(user?.role || '');
 
@@ -87,7 +97,7 @@ const ClinicLayout: React.FC = () => {
   };
 
   return (
-  <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden font-sans">
+  <div className="flex h-[calc(100vh-100px)] lg:h-[calc(100vh-108px)] bg-[#F8FAFC] overflow-hidden font-sans">
   {/* Mobile sidebar toggle */}
   <button
   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -125,7 +135,46 @@ const ClinicLayout: React.FC = () => {
   <div className="size-1.5 rounded-full bg-green-500" />
   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">System Online</span>
   </div>
-  </div>
+  
+
+      {/* Multi-Clinic Switcher Dropdown */}
+      {((myClinics && myClinics.length > 0) || profile) && (
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-[#CBFF38]" />
+              {myClinics && myClinics.length > 1 ? 'Switch Clinic' : 'Active Clinic'}
+            </label>
+            {myClinics && myClinics.length > 1 && (
+              <span className="text-[9px] font-bold bg-[#CBFF38]/20 text-[#0B1120] px-1.5 py-0.5 rounded">
+                {myClinics.length} Clinics
+              </span>
+            )}
+          </div>
+          <div className="relative">
+            <select
+              value={profile?.id || (myClinics[0]?.id) || ''}
+              onChange={(e) => handleClinicChange(e.target.value)}
+              disabled={!myClinics || myClinics.length <= 1}
+              className={`w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-black text-gray-900 appearance-none pr-8 outline-none truncate transition-colors ${
+                myClinics && myClinics.length > 1
+                  ? 'cursor-pointer hover:bg-gray-100 focus:ring-2 focus:ring-[#CBFF38]'
+                  : 'cursor-default opacity-90'
+              }`}
+            >
+              {(myClinics && myClinics.length > 0 ? myClinics : (profile ? [profile] : [])).map((c) => (
+                <option key={c.id} value={c.id}>
+                  🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
+                </option>
+              ))}
+            </select>
+            {myClinics && myClinics.length > 1 && (
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
 
   {/* Navigation */}
   <nav className="flex-1 px-4 py-4 overflow-y-auto no-scrollbar">
@@ -217,11 +266,11 @@ const ClinicLayout: React.FC = () => {
  </aside>
 
  {/* Main Content */}
- <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
- <div className="flex-1 overflow-y-auto no-scrollbar">
- <Outlet />
- </div>
- </main>
+ <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+  <div className={`flex-1 flex flex-col min-h-0 h-full ${isDiaryOrCalendar ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar'}`}>
+  <Outlet />
+  </div>
+  </main>
  </div>
  );
 };

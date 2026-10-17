@@ -379,8 +379,10 @@ const clientSlice = createSlice({
  appointment.id === action.payload.id
  ? {
  ...appointment,
+ ...action.payload,
  startTime: action.payload.startTime,
  endTime: action.payload.endTime,
+ status: action.payload.status || appointment.status,
  }
  : appointment
  );

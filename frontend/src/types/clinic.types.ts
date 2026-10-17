@@ -182,7 +182,8 @@ export interface Appointment {
  giftCardAmountRedeemed?: number;
  giftCardId?: string;
  executedAt?: string;
- executedById?: string;
+ 
+  serviceExecuted?: boolean;
  paymentMethod?: string;
  amountPaid?: number;
  clinicNotes?: string;

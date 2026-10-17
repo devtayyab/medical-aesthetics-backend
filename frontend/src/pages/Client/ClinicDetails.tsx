@@ -395,7 +395,13 @@ export const ClinicDetails: React.FC = () => {
                 <div className="text-right sm:text-left">
                   <p className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Payload</p>
                   <p className="text-lg sm:text-2xl font-black tracking-tighter">
-                    <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {isAuthenticated ? (
+                      <>
+                        <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </>
+                    ) : (
+                      <span className="text-xs sm:text-sm text-[#CBFF38] font-bold uppercase tracking-wider">Login to view</span>
+                    )}
                   </p>
                 </div>
               </div>

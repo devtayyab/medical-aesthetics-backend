@@ -23,48 +23,52 @@ export interface SearchBarProps {
 }
 
 const containerStyle = css`
- background: white;
- border-radius: 24px;
- box-shadow: 0 50px 100px rgba(0,0,0,0.15);
- border: 1px solid rgba(0,0,0,0.05);
- display: flex;
- flex-direction: column;
- width: 100%;
- max-width: 500px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
 `;
 
 const searchInputBlock = css`
- padding: 16px 24px;
- display: flex;
- align-items: center;
- gap: 16px;
- border-bottom: 1px solid #F1F5F9;
- transition: all 0.3s ease;
- cursor: pointer;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  transition: all 0.25s ease;
+  cursor: pointer;
 
- &:hover {
- background: #FAFAFA;
- }
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
 
- &:last-child {
- border-bottom: none;
- }
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const inputLabel = css`
- font-size: 14px;
- font-weight: 700;
- color: #1E293B;
- display: block;
- text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+  display: block;
+  text-align: left;
+  line-height: 1.25;
 `;
 
 const inputSubLabel = css`
- font-size: 11px;
- font-weight: 500;
- color: #94A3B8;
- display: block;
- text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+  display: block;
+  text-align: left;
+  margin-top: 2px;
 `;
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -110,14 +114,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  <div className="relative" ref={searchRef}>
  <div
  className={searchInputBlock}
- style={{ borderTopLeftRadius: '24px', borderTopRightRadius: '24px' }}
+ style={{ borderTopLeftRadius: '28px', borderTopRightRadius: '28px' }}
  >
- <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
+ <div className="size-12 bg-white/95 shadow-sm rounded-2xl flex items-center justify-center text-gray-600 flex-shrink-0">
  <Search size={20} />
  </div>
- <div className="flex-1 text-center">
+ <div className="flex-1 text-left">
  <input
- className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900 text-center"
+ className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900 text-left text-[15px]"
  placeholder="Search Treatments"
  autoComplete="one-time-code"
  value={query}
@@ -191,12 +195,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  <div
  className={searchInputBlock}
  onClick={() => setShowDatePicker(!showDatePicker)}
- style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}
+ style={{ borderBottomLeftRadius: '28px', borderBottomRightRadius: '28px' }}
  >
- <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
+ <div className="size-12 bg-white/95 shadow-sm rounded-2xl flex items-center justify-center text-gray-600 flex-shrink-0">
  <CalendarIcon size={20} />
  </div>
- <div className="flex-1 text-center">
+ <div className="flex-1 text-left">
  <span className={inputLabel}>
  {searchDate ? new Date(searchDate).toLocaleDateString() :"Select Date"}
  </span>

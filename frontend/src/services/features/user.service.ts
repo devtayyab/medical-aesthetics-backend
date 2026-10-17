@@ -7,6 +7,8 @@ export const userService = {
   exportData: () => api.get('/users/me/export'),
   deleteData: () => api.post('/users/me/delete'),
   deactivateData: () => api.post('/users/me/deactivate'),
+  cancelDeletion: () => api.post('/users/me/cancel-deletion'),
+  permanentDelete: () => api.post('/users/me/permanent-delete'),
   getAllUsers: (params: { limit?: number; offset?: number; role?: string; search?: string }) =>
     api.get('/users', { params }),
   createUser: (userData: any) => api.post('/users', userData),

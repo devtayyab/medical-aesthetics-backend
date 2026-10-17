@@ -13,6 +13,7 @@ import { publicCatalogAPI } from"@/services/api";
 
 import SiteLogo from"@/assets/SiteLogo.png";
 import { NotificationDropdown } from"@/components/molecules/NotificationDropdown";
+import toast from "react-hot-toast";
 
 const containerStyle = css`
   width: 100%;
@@ -314,6 +315,19 @@ export const Header: React.FC = () => {
  }
  };
 
+  const handleEmailClick = (e: React.MouseEvent, email: string = "info@beautydoctors.gr") => {
+    e.preventDefault();
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(email);
+      }
+    } catch {}
+    toast.success(`Copied ${email} to clipboard!`, { id: 'email-copy-toast' });
+    const link = document.createElement('a');
+    link.href = `mailto:${email}`;
+    link.click();
+  };
+
  const handleLogout = async () => {
  setIsUserMenuOpen(false);
  setIsMobileMenuOpen(false);
@@ -428,10 +442,21 @@ export const Header: React.FC = () => {
                 2112184564
               </a>
             </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <MessageCircle className="h-3 w-3 text-[#CBFF38] shrink-0" />
+            <div 
+              onClick={(e) => handleEmailClick(e, "info@beautydoctors.gr")}
+              className="hidden sm:flex items-center gap-2 cursor-pointer group hover:opacity-90"
+              title="Click to copy email or open mail client"
+            >
+              <MessageCircle className="h-3 w-3 text-[#CBFF38] shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Email:</span>
-              <a href="mailto:info@beautydoctors.gr" className="hover:text-[#CBFF38] font-bold text-white transition-colors">
+              <a 
+                href="mailto:info@beautydoctors.gr" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEmailClick(e, "info@beautydoctors.gr");
+                }}
+                className="hover:text-[#CBFF38] font-bold text-white transition-colors"
+              >
                 info@beautydoctors.gr
               </a>
             </div>

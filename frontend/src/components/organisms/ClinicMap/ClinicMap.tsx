@@ -32,9 +32,9 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
  attributionControl: true
  });
 
- // Add Tile Layer (Treatwell Style - CartoDB Light)
- L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
- attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+ // Add Tile Layer (OpenStreetMap standard layer, no API key required)
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+ attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
  }).addTo(map);
 
  mapInstanceRef.current = map;

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { X, Calendar, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
 import { fetchAvailability, rescheduleAppointment, fetchUserAppointments } from "@/store/slices/bookingSlice";
+import { fetchNotifications, fetchUnreadCount } from "@/store/slices/notificationsSlice";
 import toast from "react-hot-toast";
 import { Appointment } from "@/types";
 
@@ -61,6 +62,8 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
         })
       ).unwrap();
       dispatch(fetchUserAppointments());
+      dispatch(fetchNotifications(10));
+      dispatch(fetchUnreadCount());
       toast.success("Appointment rescheduled successfully!");
       onClose();
     } catch (error: any) {

@@ -90,7 +90,10 @@ export class BookingsController {
   async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req: any) {
     try {
       const caller = req.user;
-      const bookedById = caller?.id || createAppointmentDto.bookedById;
+      const callerIsStaff = this.isStaff(caller);
+      const bookedById = callerIsStaff
+        ? (createAppointmentDto.bookedById || caller?.id)
+        : undefined;
       const representativeId = createAppointmentDto.representativeId || (caller?.role === 'salesperson' ? caller.id : undefined);
 
       const payload: any = {
@@ -100,7 +103,7 @@ export class BookingsController {
       };
       // A public/non-staff caller must never dictate the appointment status (e.g. self-confirm
       // without paying). Only staff may pass an explicit status; otherwise it's derived server-side.
-      if (!this.isStaff(caller) && !createAppointmentDto.bookedById) {
+      if (!callerIsStaff && !createAppointmentDto.bookedById) {
         delete payload.status;
       }
       return await this.bookingsService.createAppointment(payload);
@@ -130,6 +133,12 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get appointment details' })
   async getAppointment(@Param('id') id: string, @Request() req) {
     const appointment = await this.assertCanAccess(id, req.user);
+    const isStaffBooker = appointment.bookedBy &&
+      appointment.bookedBy.role !== 'client' &&
+      appointment.bookedBy.id !== appointment.clientId;
+    const staffRepresentative = appointment.representative?.role !== 'client' ? appointment.representative : null;
+    const booker = isStaffBooker ? appointment.bookedBy : staffRepresentative;
+
     const result: any = {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
@@ -137,11 +146,10 @@ export class BookingsController {
       providerName: appointment.provider
         ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
-      bookedByInfo: (appointment.bookedBy || appointment.representative) ? { 
-        id: appointment.bookedBy?.id || appointment.representative?.id, 
-        name: appointment.bookedBy ? `${appointment.bookedBy.firstName} ${appointment.bookedBy.lastName}` : 
-              appointment.representative ? `${appointment.representative.firstName} ${appointment.representative.lastName}` : 'System',
-        role: appointment.bookedBy?.role || appointment.representative?.role || 'salesperson' 
+      bookedByInfo: booker ? {
+        id: booker.id,
+        name: `${booker.firstName || ''} ${booker.lastName || ''}`.trim(),
+        role: booker.role || 'salesperson'
       } : (appointment.provider && (appointment.provider.role === 'SUPER_ADMIN' || appointment.provider.role === 'admin' || appointment.provider.role === 'salesperson') ? {
         id: appointment.provider.id,
         name: `${appointment.provider.firstName} ${appointment.provider.lastName}`,
@@ -185,7 +193,7 @@ export class BookingsController {
     });
 
     // Security check: Ensure clients can only reschedule their own appointments
-    const isClient = req.user.role?.toLowerCase() === 'client';
+    const isClient = req.user.role?.toLowerCase() === 'client' || !this.isStaff(req.user);
     if (isClient && String(appointment.clientId) !== String(req.user.id)) {
       console.warn(`[Reschedule Forbidden] User ${req.user.id} tried to reschedule appointment ${id} belonging to client ${appointment.clientId}`);
       throw new ForbiddenException('You can only reschedule your own appointments');
@@ -203,7 +211,8 @@ export class BookingsController {
         id,
         start,
         end,
-        body.notes
+        body.notes,
+        isClient,
       );
     } catch (error) {
       console.error('[Reschedule error in controller]:', error);

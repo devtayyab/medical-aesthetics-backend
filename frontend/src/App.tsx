@@ -111,6 +111,7 @@ import { Tags } from"./pages/CRM/Tags";
 import { FacebookIntegration } from"./pages/CRM/FacebookIntegration";
 import { Settings as CrmSettings } from"./pages/CRM/Settings";
 import { Notifications as NotificationsCrm } from"./pages/CRM/Notifications";
+import { ClientNotifications } from "@/pages/Client/Notifications";
 import { SalesAnalyticsDashboard } from"./pages/CRM/SalesAnalyticsDashboard";
 import ClinicAnalyticsPage from"./pages/Admin/ClinicAnalyticsPage";
 import { ChangePassword } from"@/pages/Account/ChangePassword";
@@ -364,6 +365,7 @@ function AppContent() {
  <Route path="/blog" element={<ClientLayout><Blog /></ClientLayout>} />
  <Route path="/articles" element={<ClientLayout><Blog /></ClientLayout>} />
  <Route path="/blog/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
+ <Route path="/articles/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
  <Route path="/treatments" element={<ClientLayout><Treatments /></ClientLayout>} />
  <Route path="/services" element={<ClientLayout><Services /></ClientLayout>} />
  <Route path="/for-clinics" element={<ClientLayout><ForClinics /></ClientLayout>} />
@@ -426,7 +428,7 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["client"]}>
  <ClientLayout>
- <NotificationsCrm />
+ <ClientNotifications />
  </ClientLayout>
  </ProtectedLayout>
  }

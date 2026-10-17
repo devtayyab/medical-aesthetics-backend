@@ -146,13 +146,25 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       const paid = parseFloat(String(apt.amountPaid || 0));
 
       let paymentStatus: 'UNPAID' | 'PAID' | 'PARTIALLY_PAID' = 'UNPAID';
-      const isActuallyPaid = apt.status !== 'CANCELLED' && ((apt.paymentMethod != null && apt.paymentMethod !== '') || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0);
-      if (isActuallyPaid) paymentStatus = 'PAID';
+      const isVenuePayment = String(apt.paymentMethod || '').toLowerCase() === 'venue';
+      const isActuallyPaid = apt.status !== 'CANCELLED' && (
+        paid > 0 ||
+        Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0 ||
+        (!isVenuePayment && apt.paymentMethod != null && apt.paymentMethod !== '')
+      );
+      if (isActuallyPaid) {
+        paymentStatus = (paid > 0 && paid < serviceAmount) ? 'PARTIALLY_PAID' : 'PAID';
+      }
 
       // Salesperson/Booked by: assign to representative or whoever booked it.
       // NEVER fallback to providerId (Doctor), because doctor is the practitioner, not the salesperson!
-      // If direct online booking without salesperson, it remains empty string (Unassigned).
-      const bookedPersonId = (apt as any).representativeId || (apt as any).representative?.id || (apt as any).bookedById || (apt as any).bookedBy?.id || '';
+      // If direct online booking without salesperson or booked by the client themselves, it remains empty string (Unassigned).
+      const rawBookedId = (apt as any).representativeId || (apt as any).representative?.id || (apt as any).bookedById || (apt as any).bookedBy?.id || '';
+      const isClientBooker = (apt as any).bookedBy?.role === 'client' ||
+        (apt as any).bookedByInfo?.role === 'client' ||
+        rawBookedId === apt.clientId ||
+        rawBookedId === (apt as any).client?.id;
+      const bookedPersonId = isClientBooker ? '' : rawBookedId;
 
       setSelectedPatient(apt.client || { id: apt.clientId, firstName: clientName });
       setForm({
@@ -547,8 +559,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     try {
       await bookingAPI.updateStatus(existingAppointment.id, 'PENDING');
       toast.success('Marked as Pay at Venue — appointment stays pending.');
+      if (existingAppointment) {
+        existingAppointment.paymentMethod = 'VENUE';
+      }
+      setForm(prev => ({ ...prev, paymentStatus: 'UNPAID', paymentMethod: 'VENUE' }));
       onSuccess();
-      onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to update.');
     } finally {
@@ -568,9 +583,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         notes: 'Paid via Card',
       });
       toast.success('Card payment recorded!');
-      setForm(prev => ({ ...prev, paymentStatus: 'PAID' }));
+      existingAppointment.amountPaid = chargeAmount;
+      existingAppointment.paymentMethod = 'CARD';
+      setForm(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod: 'card', amount: chargeAmount }));
       onSuccess();
-      onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to record card payment.');
     } finally {
@@ -590,9 +606,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         notes: 'Paid via Cash',
       });
       toast.success('Cash payment recorded!');
-      setForm(prev => ({ ...prev, paymentStatus: 'PAID' }));
+      existingAppointment.amountPaid = chargeAmount;
+      existingAppointment.paymentMethod = 'CASH';
+      setForm(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod: 'cash', amount: chargeAmount }));
       onSuccess();
-      onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to record cash payment.');
     } finally {
@@ -876,6 +893,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`.trim()}</option>
                 )}
                 {existingAppointment?.bookedBy &&
+                  existingAppointment.bookedBy.role !== 'client' &&
+                  existingAppointment.bookedBy.id !== existingAppointment.clientId &&
+                  existingAppointment.bookedBy.id !== (existingAppointment as any).client?.id &&
                   !salespersons.some(sp => sp.id === existingAppointment.bookedBy?.id) &&
                   existingAppointment.bookedBy?.id !== user?.id && (
                     <option value={existingAppointment.bookedBy.id}>
@@ -883,6 +903,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </option>
                 )}
                 {(existingAppointment as any)?.representative &&
+                  (existingAppointment as any).representative.role !== 'client' &&
+                  (existingAppointment as any).representative.id !== existingAppointment?.clientId &&
+                  (existingAppointment as any).representative.id !== (existingAppointment as any)?.client?.id &&
                   !salespersons.some(sp => sp.id === (existingAppointment as any).representative?.id) &&
                   (existingAppointment as any).representative?.id !== user?.id && (
                     <option value={(existingAppointment as any).representative.id}>
@@ -890,6 +913,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </option>
                 )}
                 {form.salesPersonId &&
+                  form.salesPersonId !== existingAppointment?.clientId &&
+                  form.salesPersonId !== (existingAppointment as any)?.client?.id &&
                   !salespersons.some(sp => sp.id === form.salesPersonId) &&
                   form.salesPersonId !== user?.id &&
                   form.salesPersonId !== existingAppointment?.bookedBy?.id &&
@@ -1094,14 +1119,16 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             {form.paymentStatus === 'PAID' ? (() => {
               const bookedByName = (existingAppointment as any)?.bookedByInfo?.name || 'System';
               const isOnline = existingAppointment?.appointmentSource === 'platform_broker' && existingAppointment?.paymentMethod === 'CARD';
+              const paidAmt = parseFloat(String(existingAppointment?.amountPaid || form.amount || 0));
+              const payMethod = existingAppointment?.paymentMethod || form.paymentMethod || 'N/A';
               return (
                 <div className="flex items-center gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 mb-3">
                   <CheckCircle className="w-5 h-5 text-emerald-600" />
                   <div>
                     <p className="text-[12px] font-black text-emerald-700">Payment Complete</p>
-                    {existingAppointment?.amountPaid && parseFloat(String(existingAppointment.amountPaid)) > 0 && (
+                    {paidAmt > 0 && (
                       <p className="text-[11px] text-emerald-600">
-                        Paid: €{parseFloat(String(existingAppointment.amountPaid)).toFixed(2)} via {existingAppointment.paymentMethod || 'N/A'}
+                        Paid: €{paidAmt.toFixed(2)} via {payMethod}
                         <span className="block mt-0.5 text-emerald-700/80">
                           {isOnline ? '— Paid Online' : `— Received by ${bookedByName}`}
                         </span>

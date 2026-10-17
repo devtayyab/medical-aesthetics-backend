@@ -22,7 +22,7 @@ export const useAppointmentExecution = ({
   const [giftCardCodeInput, setGiftCardCodeInput] = useState('');
   const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; balance: number } | null>(null);
   const [isValidatingCard, setIsValidatingCard] = useState(false);
-  const [finalAmount, setFinalAmount] = useState<number>(appointment.totalAmount || 0);
+  const [finalAmount, setFinalAmount] = useState<number>(Number(appointment.totalAmount || (appointment.service?.price || 0)));
   const [treatmentNotes, setTreatmentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -137,8 +137,12 @@ export const useAppointmentExecution = ({
         serviceId: selectedServiceIds[0],
         additionalServiceIds: selectedServiceIds.slice(1),
         totalAmount: calculateTotal(),
-        amountPaid: calculateTotal(),
-        paymentMethod: paymentMethod,
+        amountPaid: (appointment.paymentMethod === 'CARD' && appointment.appointmentSource === 'platform_broker' && Number(appointment.amountPaid) > 0) 
+          ? Number(appointment.amountPaid) 
+          : calculateTotal(),
+        paymentMethod: (appointment.paymentMethod === 'CARD' && appointment.appointmentSource === 'platform_broker')
+          ? appointment.paymentMethod
+          : paymentMethod,
         rewardPointsRedeemed: pointsToRedeem,
         giftCardCode: appliedGiftCard?.code,
       };

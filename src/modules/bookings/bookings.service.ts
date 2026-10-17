@@ -26,6 +26,7 @@ import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -362,7 +363,7 @@ export class BookingsService {
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
       clientDetails: createAppointmentDto.clientDetails,
-      bookedById: createAppointmentDto.bookedById || null,
+      bookedById: (createAppointmentDto.bookedById && createAppointmentDto.bookedById !== clientId) ? createAppointmentDto.bookedById : null,
       isBeautyDoctorsClient,
       representativeId,
     };
@@ -572,31 +573,36 @@ export class BookingsService {
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
 
-    // Trigger Notification for Booked
-    if (appointmentWithRelations.clientId) {
-      await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
-        customerName: `${appointmentWithRelations.client?.firstName || 'Customer'}`,
-        serviceName: appointmentWithRelations.service?.treatment?.name || 'Treatment',
-        appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-        appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-        clinicName: appointmentWithRelations.clinic?.name,
-      });
-    }
+    // Trigger Notification for Booked (Safe try/catch so notification failures never abort booking completion)
+    try {
+      const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
+      if (appointmentWithRelations.clientId && appointmentWithRelations.clientId !== WALK_IN_DUMMY_ID) {
+        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
+          customerName: `${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Customer'}`,
+          serviceName: appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment',
+          appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
+          appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
+          clinicName: appointmentWithRelations.clinic?.name,
+        });
+      }
 
-    // Notify Staff
-    await this.notificationsService.notifyAllStaff(
-      'New Appointment Booked',
-      `Client ${appointmentWithRelations.client?.firstName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-      { appointmentId: savedAppointment.id }
-    );
-
-    if (appointmentWithRelations.clinicId) {
-      await this.notificationsService.notifyClinicStaff(
-        appointmentWithRelations.clinicId,
-        'New Clinic Appointment',
-        `A new appointment has been scheduled for your clinic on ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
+      // Notify Staff
+      await this.notificationsService.notifyAllStaff(
+        'New Appointment Booked',
+        `Client ${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
         { appointmentId: savedAppointment.id }
       );
+
+      if (appointmentWithRelations.clinicId) {
+        await this.notificationsService.notifyClinicStaff(
+          appointmentWithRelations.clinicId,
+          'New Clinic Appointment',
+          `A new appointment has been scheduled for your clinic on ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
+          { appointmentId: savedAppointment.id }
+        );
+      }
+    } catch (notifErr: any) {
+      console.warn('⚠️ [BookingsService] Non-blocking notification error during appointment creation:', notifErr?.message || notifErr);
     }
 
       // If card payment, generate Viva Wallet redirect URL
@@ -716,8 +722,12 @@ export class BookingsService {
       console.error('Task automation failed during appointment creation', err);
     }
 
-    // Emit event for notifications with full relations
-    this.eventEmitter.emit('appointment.created', appointmentWithRelations);
+    // Emit event for notifications with full relations (safe try/catch)
+    try {
+      this.eventEmitter.emit('appointment.created', appointmentWithRelations);
+    } catch (eventErr: any) {
+      console.warn('⚠️ [BookingsService] Non-blocking event emission error:', eventErr?.message || eventErr);
+    }
 
     return appointmentWithRelations;
   }
@@ -989,7 +999,13 @@ export class BookingsService {
     return updatedAppointment;
   }
 
-  async reschedule(id: string, newStartTime: Date, newEndTime: Date, notes?: string): Promise<Appointment> {
+  async reschedule(
+    id: string,
+    newStartTime: Date,
+    newEndTime: Date,
+    notes?: string,
+    isClientReschedule: boolean = false,
+  ): Promise<Appointment> {
     let appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
@@ -1002,35 +1018,114 @@ export class BookingsService {
       updatedNotes = updatedNotes ? `${updatedNotes}${rescheduleNote}` : rescheduleNote;
     }
 
-    await this.appointmentsRepository.update(id, {
+    const oldStatus = appointment.status;
+    const updatePayload: any = {
       startTime: newStartTime,
       endTime: newEndTime,
-      notes: updatedNotes
-    });
+      notes: updatedNotes,
+    };
+
+    if (isClientReschedule) {
+      updatePayload.status = AppointmentStatus.PENDING;
+    }
+
+    await this.appointmentsRepository.update(id, updatePayload);
 
     appointment = await this.findById(id);
 
-    // Trigger Notification
+    const formattedDate = formatDateInTz(appointment.startTime, appointment.clinic?.timezone);
+    const formattedTime = formatTimeInTz(appointment.startTime, appointment.clinic?.timezone);
+    const formattedDateTime = formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone);
+    const serviceName = appointment.service?.treatment?.name || 'Treatment';
+    const providerName = appointment.provider
+      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`.trim()
+      : '';
+    const clientName = appointment.client
+      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
+      : 'Client';
+
+    // 1. In-App Notification directly for the client (shows in notification bell dropdown)
     if (appointment.clientId) {
       try {
+        await this.notificationsService.sendAppointmentRescheduled(appointment.clientId, {
+          id: appointment.id,
+          serviceName,
+          providerName,
+          date: formattedDate,
+          time: formattedTime,
+          isPending: isClientReschedule,
+          status: appointment.status,
+        });
+      } catch (clientNotifErr) {
+        console.error('[BookingsService] Failed to send client reschedule push notification:', clientNotifErr);
+      }
+
+      // Also send template-based notifications (e.g. Email)
+      try {
         await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
-          customerName: `${appointment.client?.firstName || 'Customer'}`,
-          serviceName: appointment.service?.treatment?.name || 'Treatment',
-          appointmentDate: formatDateInTz(appointment.startTime, appointment.clinic?.timezone),
-          appointmentTime: formatTimeInTz(appointment.startTime, appointment.clinic?.timezone),
-          clinicName: appointment.clinic?.name,
+          customerName: clientName,
+          serviceName,
+          appointmentDate: formattedDate,
+          appointmentTime: formattedTime,
+          clinicName: appointment.clinic?.name || 'Clinic',
         });
       } catch (error) {
-        console.error('Failed to send reschedule notification:', error);
+        console.error('[BookingsService] Failed to send triggered reschedule notification:', error);
       }
     }
 
-    // Notify Staff
-    await this.notificationsService.notifyAllStaff(
-      'Appointment Rescheduled',
-      `Appointment for ${appointment.client?.firstName || 'Guest'} moved to ${formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone)}.`,
-      { appointmentId: id }
-    );
+    // 2. Direct notification to assigned Provider (Doctor / Aesthetician)
+    if (appointment.providerId && appointment.providerId !== appointment.clientId) {
+      try {
+        await this.notificationsService.create(
+          appointment.providerId,
+          NotificationType.PUSH,
+          'Appointment Rescheduled',
+          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
+          {
+            appointmentId: id,
+            type: 'appointment_rescheduled',
+            status: appointment.status,
+          }
+        );
+      } catch (providerNotifErr) {
+        console.error('[BookingsService] Failed to send provider reschedule notification:', providerNotifErr);
+      }
+    }
+
+    // 3. Notify Clinic Staff & Owner
+    if (appointment.clinicId) {
+      try {
+        await this.notificationsService.notifyClinicStaff(
+          appointment.clinicId,
+          'Appointment Rescheduled',
+          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
+          { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status },
+          appointment.providerId ? [appointment.providerId] : []
+        );
+      } catch (clinicStaffErr) {
+        console.error('[BookingsService] Failed to notify clinic staff:', clinicStaffErr);
+      }
+    }
+
+    // 4. Notify Platform Staff / Admins
+    try {
+      await this.notificationsService.notifyAllStaff(
+        'Appointment Rescheduled',
+        `Appointment for ${clientName} moved to ${formattedDateTime}${isClientReschedule ? ' and requires re-confirmation (Status: PENDING).' : '.'}`,
+        { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status }
+      );
+    } catch (allStaffErr) {
+      console.error('[BookingsService] Failed to notify all staff:', allStaffErr);
+    }
+
+    if (isClientReschedule && oldStatus !== AppointmentStatus.PENDING) {
+      this.eventEmitter.emit('appointment.status.changed', {
+        appointment,
+        oldStatus,
+        newStatus: AppointmentStatus.PENDING,
+      });
+    }
 
     this.eventEmitter.emit('appointment.rescheduled', appointment);
 
@@ -1212,16 +1307,21 @@ export class BookingsService {
           };
         }
 
+        const isStaffBooker = apt.bookedBy &&
+          apt.bookedBy.role !== 'client' &&
+          apt.bookedBy.id !== apt.clientId;
+        const staffRepresentative = apt.representative?.role !== 'client' ? apt.representative : null;
+        const booker = isStaffBooker ? apt.bookedBy : staffRepresentative;
+
         return {
           ...apt,
           displayName: this.formatAppointmentDisplayName(apt),
           serviceName: apt.service?.treatment?.name,
           providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-          bookedByInfo: (apt.bookedBy || apt.representative) ? { 
-            id: apt.bookedBy?.id || apt.representative?.id, 
-            name: apt.bookedBy ? `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}` : 
-                  apt.representative ? `${apt.representative.firstName} ${apt.representative.lastName}` : 'System',
-            role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
+          bookedByInfo: booker ? {
+            id: booker.id,
+            name: `${booker.firstName || ''} ${booker.lastName || ''}`.trim(),
+            role: booker.role || 'salesperson'
           } : (apt.provider && (apt.provider.role === 'SUPER_ADMIN' || apt.provider.role === 'admin' || apt.provider.role === 'salesperson') ? {
             id: apt.provider.id,
             name: `${apt.provider.firstName} ${apt.provider.lastName}`,
@@ -2157,13 +2257,27 @@ export class BookingsService {
       }
 
       const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) {
+      if (user.assignedClinicId && !clinicIds.includes(user.assignedClinicId)) {
         clinicIds.push(user.assignedClinicId);
       }
 
+      try {
+        const ownershipRepo = this.usersRepository.manager.getRepository('clinic_ownership');
+        const ownerships = await ownershipRepo.find({ where: { ownerUserId: userId } });
+        ownerships.forEach((o: any) => {
+          if (o.clinicId && !clinicIds.includes(o.clinicId)) clinicIds.push(o.clinicId);
+        });
+
+        const agentAccessRepo = this.usersRepository.manager.getRepository('agent_clinic_access');
+        const agentAccess = await agentAccessRepo.find({ where: { agentUserId: userId } });
+        agentAccess.forEach((a: any) => {
+          if (a.clinicId && !clinicIds.includes(a.clinicId)) clinicIds.push(a.clinicId);
+        });
+      } catch (e) {}
+
       if (clinicIds.length > 0) {
         baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
-          .where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+          .where('(appointment.clinicId IN (:...clinicIds) OR appointment.providerId = :userId)', { clinicIds, userId });
       } else {
         // Fallback: If no clinic assigned, only show their own
         baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
@@ -2216,41 +2330,80 @@ export class BookingsService {
     let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.clinic', 'clinic')
       .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
       .leftJoinAndSelect('appointment.client', 'client')
       .where('appointment.clientId = :clientId', { clientId });
 
-    // SECRETARIAT and CLINIC_OWNER have same permissions
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      baseQuery = baseQuery.andWhere('clinic.ownerId = :userId', { userId });
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      // Admins and SuperAdmins have access to all clients
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const clinicIds: string[] = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId && !clinicIds.includes(user.assignedClinicId)) {
+        clinicIds.push(user.assignedClinicId);
+      }
+
+      try {
+        const ownershipRepo = this.usersRepository.manager.getRepository('clinic_ownership');
+        const ownerships = await ownershipRepo.find({ where: { ownerUserId: userId } });
+        ownerships.forEach((o: any) => {
+          if (o.clinicId && !clinicIds.includes(o.clinicId)) clinicIds.push(o.clinicId);
+        });
+
+        const agentAccessRepo = this.usersRepository.manager.getRepository('agent_clinic_access');
+        const agentAccess = await agentAccessRepo.find({ where: { agentUserId: userId } });
+        agentAccess.forEach((a: any) => {
+          if (a.clinicId && !clinicIds.includes(a.clinicId)) clinicIds.push(a.clinicId);
+        });
+      } catch (e) {}
+
+      if (clinicIds.length > 0) {
+        baseQuery = baseQuery.andWhere(
+          '(appointment.clinicId IN (:...clinicIds) OR appointment.providerId = :userId)',
+          { clinicIds, userId },
+        );
+      } else {
+        baseQuery = baseQuery.andWhere('appointment.providerId = :userId', { userId });
+      }
     } else if (userRole === 'manager') {
-      // Managers can view client details
-      // We should ideally check if client has appointments in a clinic the manager has access to
-      // For now, we allow managers to view all client details (similar to salesperson/provider check above)
-      // although provider check is restrictive.
+      // Managers can view all client details
     } else {
       baseQuery = baseQuery.andWhere('appointment.providerId = :userId', { userId });
     }
 
     const appointments = await baseQuery.orderBy('appointment.startTime', 'DESC').getMany();
 
-    if (appointments.length === 0) {
-      throw new NotFoundException('Client not found or access denied');
+    let client = appointments[0]?.client;
+    if (!client) {
+      client = await this.usersRepository.findOne({ where: { id: clientId } });
     }
 
-    const client = appointments[0].client;
+    if (!client) {
+      throw new NotFoundException('Client not found or access denied');
+    }
 
     return {
       client: {
         id: client.id,
-        name: `${client.firstName} ${client.lastName}`,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        name: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email,
         email: client.email,
         phone: client.phone,
       },
       appointments: appointments.map(apt => ({
         id: apt.id,
-        serviceName: apt.service?.treatment?.name,
-        providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+        serviceName: apt.service?.treatment?.name || 'Treatment',
+        providerName: apt.provider ? `${apt.provider.firstName || ''} ${apt.provider.lastName || ''}`.trim() : null,
         startTime: apt.startTime,
         status: apt.status,
         totalAmount: apt.totalAmount,
@@ -2258,8 +2411,8 @@ export class BookingsService {
       })),
       summary: {
         totalVisits: appointments.length,
-        totalSpent: appointments.reduce((sum, apt) => sum + (apt.totalAmount || 0), 0),
-        lastVisit: appointments[0].startTime,
+        totalSpent: appointments.reduce((sum, apt) => sum + (Number(apt.totalAmount) || 0), 0),
+        lastVisit: appointments[0]?.startTime || null,
       },
     };
   }
@@ -2299,16 +2452,102 @@ export class BookingsService {
     }
 
     const updatedAppointment = await this.appointmentsRepository.save(appointment);
+    const fullAppointment = await this.findById(updatedAppointment.id);
+
+    const formattedDate = formatDateInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
+    const formattedTime = formatTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
+    const formattedDateTime = formatDateTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
+    const serviceName = fullAppointment.service?.treatment?.name || 'Treatment';
+    const providerName = fullAppointment.provider
+      ? `${fullAppointment.provider.firstName} ${fullAppointment.provider.lastName}`.trim()
+      : '';
+    const clientName = fullAppointment.client
+      ? `${fullAppointment.client.firstName} ${fullAppointment.client.lastName || ''}`.trim()
+      : 'Client';
+
+    // 1. Notify Client
+    if (fullAppointment.clientId) {
+      try {
+        await this.notificationsService.sendAppointmentRescheduled(fullAppointment.clientId, {
+          id: fullAppointment.id,
+          serviceName,
+          providerName,
+          date: formattedDate,
+          time: formattedTime,
+          isPending: false,
+          status: fullAppointment.status,
+        });
+      } catch (clientNotifErr) {
+        console.error('[BookingsService] Failed to send client reschedule notification:', clientNotifErr);
+      }
+
+      try {
+        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, fullAppointment.clientId, {
+          customerName: clientName,
+          serviceName,
+          appointmentDate: formattedDate,
+          appointmentTime: formattedTime,
+          clinicName: fullAppointment.clinic?.name || 'Clinic',
+        });
+      } catch (err) {
+        console.error('[BookingsService] Failed to send triggered notification:', err);
+      }
+    }
+
+    // 2. Direct notification to assigned Provider
+    if (fullAppointment.providerId && fullAppointment.providerId !== fullAppointment.clientId) {
+      try {
+        await this.notificationsService.create(
+          fullAppointment.providerId,
+          NotificationType.PUSH,
+          'Appointment Rescheduled',
+          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
+          {
+            appointmentId: fullAppointment.id,
+            type: 'appointment_rescheduled',
+            status: fullAppointment.status,
+          }
+        );
+      } catch (providerErr) {
+        console.error('[BookingsService] Failed to send provider reschedule notification:', providerErr);
+      }
+    }
+
+    // 3. Notify Clinic Staff & Owner
+    if (fullAppointment.clinicId) {
+      try {
+        await this.notificationsService.notifyClinicStaff(
+          fullAppointment.clinicId,
+          'Appointment Rescheduled',
+          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
+          { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status },
+          fullAppointment.providerId ? [fullAppointment.providerId] : []
+        );
+      } catch (clinicErr) {
+        console.error('[BookingsService] Failed to notify clinic staff:', clinicErr);
+      }
+    }
+
+    // 4. Notify Platform Staff
+    try {
+      await this.notificationsService.notifyAllStaff(
+        'Appointment Rescheduled',
+        `Appointment for ${clientName} moved to ${formattedDateTime}.`,
+        { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status }
+      );
+    } catch (staffErr) {
+      console.error('[BookingsService] Failed to notify all staff:', staffErr);
+    }
 
     // Emit event for notifications
     this.eventEmitter.emit('appointment.rescheduled', {
-      appointment: updatedAppointment,
+      appointment: fullAppointment,
       oldStartTime,
       newStartTime,
       reason,
     });
 
-    return updatedAppointment;
+    return fullAppointment;
   }
 
   async findAppointmentsInRange(startDate: Date, endDate: Date, status?: AppointmentStatus): Promise<Appointment[]> {
