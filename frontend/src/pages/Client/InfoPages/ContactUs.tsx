@@ -126,7 +126,18 @@ export const ContactUs: React.FC = () => {
  <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8">
  <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6">Contact Details</h2>
  <div className="space-y-5">
- <a href="mailto:info@beautydoctors.gr" className="flex items-start gap-4 group">
+ <a
+ href="mailto:info@beautydoctors.gr"
+ onClick={() => {
+   try {
+     if (navigator.clipboard) {
+       navigator.clipboard.writeText("info@beautydoctors.gr");
+     }
+   } catch {}
+   toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "contact-email-copy" });
+ }}
+ className="flex items-start gap-4 group cursor-pointer"
+ >
  <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
  <Mail size={18} className="text-lime-700" />
  </div>
@@ -179,7 +190,18 @@ export const ContactUs: React.FC = () => {
  </span>
  <ChevronRight size={14} className="text-gray-500 group-hover:text-[#CBFF38] transition-colors" />
  </Link>
- <a href="mailto:info@beautydoctors.gr" className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group">
+ <a
+ href="mailto:info@beautydoctors.gr"
+ onClick={() => {
+   try {
+     if (navigator.clipboard) {
+       navigator.clipboard.writeText("info@beautydoctors.gr");
+     }
+   } catch {}
+   toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "contact-direct-email-copy" });
+ }}
+ className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group cursor-pointer"
+ >
  <span className="flex items-center gap-3 text-sm font-bold">
  <MessageCircle size={16} className="text-[#CBFF38]" /> Email us directly
  </span>

@@ -226,7 +226,12 @@ export class AdminService {
         }
       } else {
         const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: u.id }, relations: ['clinic'] });
-        (u as any).assignedClinics = accesses.map(a => a.clinic);
+        const clinicsList = accesses.map(a => a.clinic).filter(Boolean);
+        if (clinicsList.length === 0 && (u as any).assignedClinicId) {
+          const directClinic = await this.clinicsRepository.findOne({ where: { id: (u as any).assignedClinicId } });
+          if (directClinic) clinicsList.push(directClinic);
+        }
+        (u as any).assignedClinics = clinicsList;
       }
     }
 
@@ -391,6 +396,8 @@ export class AdminService {
       const effectiveRole = (dataToUpdate as any).role || user?.role;
 
       if (effectiveRole === 'clinic_owner') {
+        // Clear non-owner agent access if role changed to owner
+        await this.agentClinicAccessRepository.delete({ agentUserId: id });
         // Update clinic_ownership mapping table for owner
         await this.clinicOwnershipRepository.delete({ ownerUserId: id });
         for (const clinicId of assignedClinicIds) {
@@ -403,6 +410,8 @@ export class AdminService {
           await this.clinicsRepository.update(assignedClinicIds[0], { ownerId: id });
         }
       } else {
+        // Clear owner mapping if role changed to non-owner
+        await this.clinicOwnershipRepository.delete({ ownerUserId: id });
         // For non-owners: update agent_clinic_access table
         await this.agentClinicAccessRepository.delete({ agentUserId: id });
         for (const clinicId of assignedClinicIds) {
@@ -410,6 +419,9 @@ export class AdminService {
             this.agentClinicAccessRepository.create({ agentUserId: id, clinicId })
           );
         }
+        await this.usersRepository.update(id, {
+          assignedClinicId: assignedClinicIds.length > 0 ? assignedClinicIds[0] : null
+        });
       }
     }
 

@@ -67,9 +67,13 @@ export class NotificationsService implements OnModuleInit {
     }
 
     // Queue for processing (push, email, etc.)
-    await this.notificationsQueue.add('send-notification', {
-      notificationId: savedNotification.id,
-    });
+    try {
+      await this.notificationsQueue.add('send-notification', {
+        notificationId: savedNotification.id,
+      });
+    } catch (qErr: any) {
+      console.warn('⚠️ [NotificationsService] Queue add error (non-blocking):', qErr?.message || qErr);
+    }
 
     return savedNotification;
   }
@@ -90,6 +94,25 @@ export class NotificationsService implements OnModuleInit {
     }));
 
     const savedNotifications = await this.notificationsRepository.save(notifications);
+
+    // Send real-time notifications via WebSocket to connected recipients
+    if (this.notificationsGateway) {
+      for (const notif of savedNotifications) {
+        try {
+          this.notificationsGateway.sendToUser(notif.recipientId, {
+            id: notif.id,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            data: notif.data,
+            isRead: notif.isRead,
+            createdAt: notif.createdAt,
+          });
+        } catch (wsErr) {
+          // Non-blocking error
+        }
+      }
+    }
 
     // Queue all for processing
     const jobs = savedNotifications.map(notification => ({
@@ -189,6 +212,38 @@ export class NotificationsService implements OnModuleInit {
     );
   }
 
+  async sendAppointmentRescheduled(
+    recipientId: string,
+    appointmentDetails: any,
+  ): Promise<Notification> {
+    const serviceName = appointmentDetails.serviceName || 'Appointment';
+    const providerName = appointmentDetails.providerName ? ` with ${appointmentDetails.providerName}` : '';
+    const date = appointmentDetails.date instanceof Date
+      ? appointmentDetails.date.toLocaleDateString()
+      : appointmentDetails.date;
+    const time = appointmentDetails.time instanceof Date
+      ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : appointmentDetails.time;
+    const isPending = appointmentDetails.isPending;
+    const statusNote = isPending ? ' (Status: Pending Confirmation)' : '';
+
+    return this.create(
+      recipientId,
+      NotificationType.PUSH,
+      'Appointment Rescheduled',
+      `Your appointment for ${serviceName}${providerName} has been rescheduled to ${date} at ${time}${statusNote}.`,
+      {
+        appointmentId: appointmentDetails.id,
+        serviceName,
+        providerName: appointmentDetails.providerName,
+        date,
+        time,
+        status: isPending ? 'PENDING' : (appointmentDetails.status || 'CONFIRMED'),
+        type: 'appointment_rescheduled',
+      },
+    );
+  }
+
   async sendLoyaltyUpdate(
     recipientId: string,
     loyaltyDetails: any,
@@ -208,8 +263,8 @@ export class NotificationsService implements OnModuleInit {
     data?: any,
   ): Promise<{ message: string; sentTo: number }> {
     // Find all admin and super admin users
-    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
-    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
+    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true, limit: 1000 });
+    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true, limit: 1000 });
     const platformAdmins = [...admins, ...superAdmins];
 
     if (platformAdmins.length === 0) {
@@ -240,9 +295,9 @@ export class NotificationsService implements OnModuleInit {
     data?: any,
   ): Promise<{ sentTo: number }> {
     // Find all users who should be notified (Admins, Super Admins, and Salespeople)
-    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
-    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
-    const salespeople = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true });
+    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true, limit: 1000 });
+    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true, limit: 1000 });
+    const salespeople = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true, limit: 1000 });
 
     const recipientIds = [...new Set([...admins, ...superAdmins, ...salespeople].map(u => u.id))];
 
@@ -264,12 +319,13 @@ export class NotificationsService implements OnModuleInit {
     title: string,
     message: string,
     data?: any,
+    additionalRecipientIds: string[] = [],
   ): Promise<{ sentTo: number }> {
     // Find the clinic to get the owner
     const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
 
     // Find all users related to this clinic (Secretariat, Doctors)
-    const users = await this.usersService.findAll({ isActive: true });
+    const users = await this.usersService.findAll({ isActive: true, limit: 1000 });
     const clinicStaff = users.filter(u =>
       u.assignedClinicId === clinicId ||
       [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(u.role as UserRole)
@@ -277,7 +333,8 @@ export class NotificationsService implements OnModuleInit {
 
     const recipientIds = [...new Set([
       ...clinicStaff.map(u => u.id),
-      ...(clinic?.ownerId ? [clinic.ownerId] : [])
+      ...(clinic?.ownerId ? [clinic.ownerId] : []),
+      ...additionalRecipientIds.filter(Boolean),
     ])];
 
     if (recipientIds.length === 0) return { sentTo: 0 };

@@ -250,6 +250,13 @@ export class EventHandlersService {
     );
   }
 
+  @OnEvent('appointment.rescheduled')
+  async handleAppointmentRescheduled(eventData: any) {
+    const appointment = eventData?.appointment || eventData;
+    if (!appointment) return;
+    this.logger.log(`Handling appointment.rescheduled event for appointment ${appointment.id}`);
+  }
+
   @OnEvent('blocked_slot.created')
   async handleBlockedSlotCreated(slot: any) {
     this.logger.log(`Blocked slot created for clinic ${slot.clinicId}`);

@@ -37,21 +37,31 @@ export class UsersService {
 
     const { assignedClinicIds, ...userData } = createUserDto as any;
 
+    const primaryClinicId = (assignedClinicIds && assignedClinicIds.length > 0) ? assignedClinicIds[0] : userData.assignedClinicId;
     const user = this.usersRepository.create({
       ...userData,
+      assignedClinicId: primaryClinicId,
       passwordHash,
       role: createUserDto.role || UserRole.CLIENT,
     });
 
     const savedUser = await this.usersRepository.save(user) as unknown as User;
 
-    // If creating a clinic_owner with multiple clinic assignments, create ownership records
-    if ((createUserDto.role === UserRole.CLINIC_OWNER || createUserDto.role === 'clinic_owner' as any)
-      && assignedClinicIds && assignedClinicIds.length > 0) {
-      for (const clinicId of assignedClinicIds) {
-        await this.clinicOwnershipRepository.save(
-          this.clinicOwnershipRepository.create({ clinicId, ownerUserId: savedUser.id, visibilityScope: 'shared' })
-        );
+    // Handle multiple clinic assignments for owners and staff/doctors
+    if (assignedClinicIds && assignedClinicIds.length > 0) {
+      if (createUserDto.role === UserRole.CLINIC_OWNER || createUserDto.role === 'clinic_owner' as any) {
+        for (const clinicId of assignedClinicIds) {
+          await this.clinicOwnershipRepository.save(
+            this.clinicOwnershipRepository.create({ clinicId, ownerUserId: savedUser.id, visibilityScope: 'shared' })
+          );
+        }
+      } else {
+        const agentAccessRepo = this.usersRepository.manager.getRepository('agent_clinic_access');
+        for (const clinicId of assignedClinicIds) {
+          await agentAccessRepo.save(
+            agentAccessRepo.create({ agentUserId: savedUser.id, clinicId })
+          );
+        }
       }
     }
 
@@ -213,12 +223,71 @@ export class UsersService {
     await this.consentRepository.delete({ userId });
   }
 
-  async deactivateUserData(userId: string): Promise<void> {
+  async deactivateUserData(userId: string): Promise<any> {
     const user = await this.findById(userId);
+    const updatedProfile = {
+      ...(user.profile || {}),
+      deletionRequestedAt: new Date().toISOString(),
+      deletionStatus: 'pending',
+    };
+
+    // Submitting the deletion request does not immediately block access (GDPR grace period)
     await this.usersRepository.update(userId, {
-      isActive: false,
-      refreshToken: null, // Invalidate any existing session
+      profile: updatedProfile,
     });
+
+    return {
+      success: true,
+      message: 'Account deletion requested successfully. You can cancel this request at any time before final execution.',
+      deletionRequestedAt: updatedProfile.deletionRequestedAt,
+      deletionStatus: 'pending',
+    };
+  }
+
+  async cancelAccountDeletion(userId: string): Promise<any> {
+    const user = await this.findById(userId);
+    const updatedProfile = {
+      ...(user.profile || {}),
+      deletionRequestedAt: null,
+      deletionStatus: 'active',
+    };
+
+    await this.usersRepository.update(userId, {
+      isActive: true,
+      profile: updatedProfile,
+    });
+
+    return {
+      success: true,
+      message: 'Account deletion request has been cancelled. Your account remains active.',
+    };
+  }
+
+  async executePermanentDeletion(userId: string): Promise<any> {
+    const user = await this.findById(userId);
+    const originalEmail = user.email;
+    const anonymizedEmail = `deleted_${userId.slice(0, 8)}_${Date.now()}@anonymized.local`;
+
+    // Scrub PII and release the user's email address so they can re-register in the future without "User with this email already exists" error
+    await this.usersRepository.update(userId, {
+      email: anonymizedEmail,
+      firstName: 'Deleted',
+      lastName: 'User',
+      phone: '0000000000',
+      isActive: false,
+      refreshToken: null,
+      profile: {
+        ...(user.profile || {}),
+        deletionStatus: 'executed',
+        anonymizedAt: new Date().toISOString(),
+        previousEmailHash: originalEmail ? Buffer.from(originalEmail).toString('base64').slice(0, 10) : undefined,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Account permanently deleted and personal data anonymized in compliance with GDPR.',
+    };
   }
 
   async getReferralStats(userId: string): Promise<any> {

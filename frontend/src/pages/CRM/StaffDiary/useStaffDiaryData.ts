@@ -109,17 +109,23 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
   // Fetch providers whenever clinicId changes
   useEffect(() => {
     const fetchProvidersForClinic = async () => {
-      if (!filters.clinicId || filters.clinicId === 'all') {
-        setProviders([]);
-        return;
+      let targetClinicId = filters.clinicId;
+      if (!targetClinicId || targetClinicId === 'all') {
+        if (clinics && clinics.length > 0) {
+          targetClinicId = clinics[0].id;
+        } else {
+          setProviders([]);
+          return;
+        }
       }
       setIsLoadingMeta(true);
       try {
-        const res = await clinicsAPI.getProviders(filters.clinicId);
+        const res = await clinicsAPI.getProviders(targetClinicId);
         const pList = (res.data || []).map((p: any, idx: number) => ({
           id: p.id,
-          name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-          initials: `${p.firstName?.[0] || ''}${p.lastName?.[0] || ''}`.toUpperCase() || '?',
+          name: `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.email || 'Staff Member',
+          initials: (`${p.firstName?.[0] || ''}${p.lastName?.[0] || ''}`.toUpperCase()) || 'ST',
+          role: p.role,
           colorIndex: idx,
         }));
         setProviders(pList);
@@ -130,7 +136,7 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
       }
     };
     fetchProvidersForClinic();
-  }, [filters.clinicId]);
+  }, [filters.clinicId, clinics]);
 
   // Build fetch params from view + filters
   const fetchParams = useMemo(() => {

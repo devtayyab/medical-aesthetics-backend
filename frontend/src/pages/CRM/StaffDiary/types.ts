@@ -48,7 +48,7 @@ export interface AppointmentFormData {
   status: AppointmentStatusType;
   notes: string;
   // Payment
-  paymentMethod: 'cash' | 'card' | '';
+  paymentMethod: 'cash' | 'card' | 'venue' | string;
   amount: number;
   tax: number;
   discount: number;

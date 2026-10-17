@@ -1,4 +1,5 @@
 import React, { useState } from"react";
+import { useLocation } from "react-router-dom";
 import { Sidebar } from"@/components/organisms/Sidebar";
 import { Menu, X } from"lucide-react";
 
@@ -6,6 +7,8 @@ type Props = { children: React.ReactNode };
 
 const AdminLayout: React.FC<Props> = ({ children }) => {
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+  const isCalendar = location.pathname.includes('/calendar');
 
  return (
  <div className="flex h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] bg-[#F8FAFC] relative">
@@ -34,9 +37,9 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
  </div>
 
  {/* Main Content Area */}
- <div className="flex-1 flex flex-col min-w-0 overflow-auto relative">
- <main className="flex-1 overflow-y-auto p-4 md:p-8" style={{ WebkitOverflowScrolling: 'touch' }}>
- <div className="max-w-[1600px] mx-auto h-full">
+ <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+ <main className={`flex-1 flex flex-col min-h-0 h-full ${isCalendar ? "overflow-hidden p-0" : "overflow-y-auto p-4 md:p-8"}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+ <div className={isCalendar ? "w-full h-full flex flex-col min-h-0" : "max-w-[1600px] mx-auto h-full"}>
  {children}
  </div>
  </main>

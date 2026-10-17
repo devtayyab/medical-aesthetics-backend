@@ -3,6 +3,7 @@ import { Link } from"react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from"react-icons/fa";
 import { FaXTwitter } from"react-icons/fa6";
 import { Phone, Mail } from"lucide-react";
+import toast from "react-hot-toast";
 import SiteLogo from"@/assets/SiteLogo.png";
 
 export const Footer: React.FC = () => {
@@ -161,7 +162,15 @@ export const Footer: React.FC = () => {
       <li>
         <a
           href="mailto:info@beautydoctors.gr"
-          className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
+          onClick={() => {
+            try {
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText("info@beautydoctors.gr");
+              }
+            } catch {}
+            toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "footer-email-copy" });
+          }}
+          className="text-white transition hover:text-[#CBFF38] decoration-none no-underline cursor-pointer"
           style={{ textDecoration: 'none' }}
         >
           <span className="flex items-center justify-start gap-1">

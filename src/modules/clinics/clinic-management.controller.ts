@@ -84,8 +84,21 @@ export class ClinicManagementController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
-  async getClinicProfile(@Request() req) {
+  async getClinicProfile(@Request() req, @Query('clinicId') clinicId?: string) {
+    if (clinicId) {
+      return this.clinicsService.findById(clinicId);
+    }
     return this.clinicsService.findByOwnerId(req.user.id);
+  }
+
+  @Get('my-clinics')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Get all clinics accessible to current user' })
+  async getMyClinics(@Request() req) {
+    if (req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN) {
+      return this.clinicsRepository.find({ where: { isActive: true }, order: { name: 'ASC' } });
+    }
+    return this.clinicsService.findAllByOwner(req.user.id);
   }
 
   @Put('profile')

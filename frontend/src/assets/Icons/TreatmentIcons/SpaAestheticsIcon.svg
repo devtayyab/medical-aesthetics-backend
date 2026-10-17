@@ -1,0 +1,23 @@
+<svg width="49" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Spa towel / turban -->
+  <path d="M16 22C16 16.5 19.5 10 25.5 10C31.5 10 33 14 33 17" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  <path d="M19 12C23 15 29 16 32 20" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  <path d="M25 10C24 7.5 21.5 6 18.5 7C16 7.8 14.5 10.5 15 13.5C15.5 16.5 17 19 17 21" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  <path d="M22 6.5C25 6 29 7.5 30.5 10" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Face outline -->
+  <path d="M16.5 22C16.5 28 20 33.5 25 33.5C30 33.5 32.5 28.5 32.5 22" stroke="#1E293B" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Closed eyes & serene smile -->
+  <path d="M20 23.5C21 24.5 22.5 24.5 23.5 23.5" stroke="#1E293B" stroke-width="1.75" stroke-linecap="round"/>
+  <path d="M26.5 23.5C27.5 24.5 29 24.5 30 23.5" stroke="#1E293B" stroke-width="1.75" stroke-linecap="round"/>
+  <path d="M23.5 28.5C24.5 29.5 26 29.5 27 28.5" stroke="#1E293B" stroke-width="1.75" stroke-linecap="round"/>
+  
+  <!-- Sparkles / Stars in neon lime and dark -->
+  <!-- Top right lime sparkle -->
+  <path d="M37 17L38 14L41 13L38 12L37 9L36 12L33 13L36 14L37 17Z" fill="#CBFF38" stroke="#A3E635" stroke-width="0.5"/>
+  <!-- Bottom left small lime sparkle -->
+  <circle cx="12" cy="27" r="1.5" fill="#CBFF38"/>
+  <circle cx="37" cy="26" r="1.5" fill="#CBFF38"/>
+  <circle cx="14" cy="18" r="1" fill="#1E293B"/>
+</svg>

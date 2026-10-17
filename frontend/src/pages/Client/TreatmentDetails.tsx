@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo } from"react";
 import type { Treatment } from"@/types";
-import { useParams, useNavigate } from"react-router-dom";
-import { clinicsAPI } from"@/services/api";
-import { Button } from"@/components/atoms/Button/Button";
-import { css } from"@emotion/css";
-import { MapPin, ChevronRight, Info, Shield, Award, Sparkles, Star, Check, Euro, Clock, Map as MapIcon, Layout, Maximize2, Settings2 } from"lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import { clinicsAPI } from "@/services/api";
+import { Button } from "@/components/atoms/Button/Button";
+import { css } from "@emotion/css";
+import { MapPin, ChevronRight, Info, Shield, Award, Sparkles, Star, Check, Euro, Clock, Map as MapIcon, Layout, Maximize2, Settings2, Lock } from "lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
 import { ClinicMap } from"@/components/organisms/ClinicMap/ClinicMap";
 import { SearchBar } from"@/components/organisms/SearchBar";
@@ -94,15 +96,17 @@ const treatmentCardImage = css`
   width: 100%;
   @media (min-width: 768px) {
     width: 45%;
+    max-width: 440px;
   }
-  height: 220px;
+  height: 280px;
   @media (min-width: 768px) {
     height: 100%;
   }
-  object-fit: contain;
-  object-position: center left;
-  filter: saturate(0.8) contrast(1.1);
-  padding: 1rem;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.95) contrast(1.05);
+  border-radius: 1.5rem;
+  padding: 0.75rem;
 `;
 
 const glassOverlay = css`
@@ -113,8 +117,9 @@ const glassOverlay = css`
 `;
 
 export const TreatmentDetails: React.FC = () => {
- const { id } = useParams<{ id: string }>();
- const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
  const [treatment, setTreatment] = useState<Treatment & { offerings: any[] } | null>(null);
  const [isLoading, setIsLoading] = useState(true);
  const [showMap, setShowMap] = useState(true);
@@ -213,14 +218,6 @@ export const TreatmentDetails: React.FC = () => {
  {treatment.shortDescription ||"Precision clinical implementation with results optimized for individual anatomical structures."}
  </p>
 
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-8">
- <div className="flex items-center gap-2 text-[9px] font-black text-white uppercase tracking-widest">
- <Check size={12} className="text-[#CBFF38]" /> Dynamic Rejuvenation
- </div>
- <div className="flex items-center gap-2 text-[9px] font-black text-white uppercase tracking-widest">
- <Check size={12} className="text-[#CBFF38]" /> Clinical Precision
- </div>
- </div>
 
  <div className="flex flex-wrap gap-3 mt-auto">
  <button 
@@ -302,9 +299,20 @@ export const TreatmentDetails: React.FC = () => {
  </div>
  </div>
  <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">
- <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 leading-none mb-0 sm:mb-1">
- <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
- </div>
+  {isAuthenticated ? (
+    <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 leading-none mb-0 sm:mb-1">
+      <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
+    </div>
+  ) : (
+    <button
+      onClick={() => navigate('/login')}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50 text-[10px] font-black uppercase text-lime-700 hover:bg-lime-100 transition-colors border border-lime-200 mb-1"
+      title="Login required to view prices"
+    >
+      <Lock size={12} className="text-lime-600 shrink-0" />
+      <span>Login for price</span>
+    </button>
+  )}
  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}m</span>
  </div>
  </div>

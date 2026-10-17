@@ -1,6 +1,9 @@
-import React, { useState } from"react";
-import { css } from"@emotion/css";
-import { ChevronDown, ChevronUp, Plus, Check } from"lucide-react";
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import type { RootState } from "@/store";
+import { css } from "@emotion/css";
+import { ChevronDown, ChevronUp, Plus, Check, Lock } from "lucide-react";
 import { Button } from"@/components/atoms/Button/Button";
 import type { Service } from"@/types";
 
@@ -29,7 +32,9 @@ export const ServiceCard: React.FC<{
  isSelected?: boolean;
  onSelect?: (service: Service) => void;
 }> = ({ service, onBook, isSelected, onSelect }) => {
- const [showDetails, setShowDetails] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const [showDetails, setShowDetails] = useState(false);
 
  return (
  <div className={`group transition-all ${isSelected ? 'bg-lime-50/30' : ''}`}>
@@ -77,8 +82,21 @@ export const ServiceCard: React.FC<{
 
  <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-4 sm:gap-8 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-50">
  <div className="text-left sm:text-right">
- <span className="block text-xl sm:text-2xl font-black text-gray-900"><span className="font-sans">€</span>{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
- {service.price > 100 && <span className="text-[9px] text-lime-600 font-bold uppercase">ELITE_PRICING</span>}
+  {isAuthenticated ? (
+    <>
+      <span className="block text-xl sm:text-2xl font-black text-gray-900"><span className="font-sans">€</span>{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      {service.price > 100 && <span className="text-[9px] text-lime-600 font-bold uppercase">ELITE_PRICING</span>}
+    </>
+  ) : (
+    <button
+      onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50 text-[10px] font-black uppercase text-lime-700 hover:bg-lime-100 transition-colors border border-lime-200"
+      title="Login required to view prices"
+    >
+      <Lock size={12} className="text-lime-600 shrink-0" />
+      <span>Login to view price</span>
+    </button>
+  )}
  </div>
 
  <div className="flex items-center gap-2">

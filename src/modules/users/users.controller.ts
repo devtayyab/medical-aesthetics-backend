@@ -135,6 +135,22 @@ export class UsersController {
     return this.usersService.deactivateUserData(req.user.id);
   }
 
+  @Post('me/cancel-deletion')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel pending account deletion' })
+  cancelDeletion(@Request() req) {
+    return this.usersService.cancelAccountDeletion(req.user.id);
+  }
+
+  @Post('me/permanent-delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Permanently delete and anonymize user account' })
+  permanentDelete(@Request() req) {
+    return this.usersService.executePermanentDeletion(req.user.id);
+  }
+
   @Post('me/change-password')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

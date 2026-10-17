@@ -69,13 +69,22 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Scroll to current time on mount
+  // Scroll to current time or daytime hours (8:00 AM) on mount/view change
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const scrollTarget = currentTimeTop - 120;
-      scrollContainerRef.current.scrollTop = Math.max(0, scrollTarget);
-    }
-  }, []);
+    const scrollToTime = () => {
+      if (scrollContainerRef.current) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        let targetScroll = 8 * HOUR_HEIGHT_PX; // Default to 8:00 AM (512px)
+        if (currentHour >= 8 && currentHour <= 20) {
+          targetScroll = Math.max(0, (currentHour - 1) * HOUR_HEIGHT_PX);
+        }
+        scrollContainerRef.current.scrollTop = targetScroll;
+      }
+    };
+    const timer = setTimeout(scrollToTime, 120);
+    return () => clearTimeout(timer);
+  }, [viewDate, viewMode]);
 
   // Get timezone for an appointment
   const getAptTimezone = (apt: any): string => {
@@ -203,9 +212,9 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
 
 
   return (
-    <div className="flex flex-col flex-1 h-full w-full relative overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 h-full w-full relative overflow-hidden">
       {/* Day Header Row */}
-      <div className="flex bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="flex bg-white border-b border-slate-200 sticky top-0 z-10 flex-shrink-0">
         {/* Time gutter */}
         <div className="w-14 flex-shrink-0 border-r border-slate-100" />
         {/* Day headers */}
@@ -229,7 +238,11 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
       </div>
 
       {/* Scrollable Grid */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-auto relative">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 h-0 min-h-0 overflow-y-scroll overflow-x-auto relative custom-scrollbar"
+        style={{ height: 'calc(100vh - 250px)', maxHeight: 'calc(100vh - 250px)' }}
+      >
         <div className="flex" style={{ height: GRID_TOTAL_HEIGHT }}>
           {/* Time Gutter */}
           <div className="w-14 flex-shrink-0 border-r border-slate-100 relative">

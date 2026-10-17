@@ -1,5 +1,8 @@
-import React from"react";
-import { Star, MapPin, Clock, Heart, Zap, ArrowRight, Calendar } from"lucide-react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import { Star, MapPin, Clock, Heart, Zap, ArrowRight, Calendar, Lock } from "lucide-react";
 import type { Clinic } from"@/types";
 import { motion, AnimatePresence } from"framer-motion";
 import { css } from"@emotion/css";
@@ -65,6 +68,8 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
  searchQuery,
  searchDate,
 }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
  const [isExpanded, setIsExpanded] = React.useState(false);
  const [isMapExpanded, setIsMapExpanded] = React.useState(false);
 
@@ -161,8 +166,21 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
  <span className="text-[9px] font-bold text-gray-400 uppercase mt-1">premium protocol</span>
  </div>
  <div className="text-right">
- <span className="text-[16px] font-black text-gray-900 block">€{service.price}</span>
- <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none">starts from</span>
+  {isAuthenticated ? (
+    <>
+      <span className="text-[16px] font-black text-gray-900 block">€{service.price}</span>
+      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none">starts from</span>
+    </>
+  ) : (
+    <button
+      onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+      className="flex items-center gap-1 text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-wider transition-colors"
+      title="Login required to view prices"
+    >
+      <Lock size={10} className="text-lime-600 shrink-0" />
+      <span>Login for price</span>
+    </button>
+  )}
  </div>
  </div>
  ))}

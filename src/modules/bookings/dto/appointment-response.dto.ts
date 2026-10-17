@@ -45,7 +45,7 @@ export class AppointmentResponseDto {
     dto.serviceName = serviceName;
     dto.providerName = providerName;
 
-    if (appointment.bookedBy) {
+    if (appointment.bookedBy && appointment.bookedBy.role !== 'client' && appointment.bookedById !== appointment.clientId) {
       dto.bookedByInfo = {
         id: appointment.bookedBy.id,
         name: `${appointment.bookedBy.firstName} ${appointment.bookedBy.lastName}`,

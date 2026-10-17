@@ -49,7 +49,12 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', icon: <Building2 className="w-5 h-5" /> },
   ];
 
-  const isAlreadyPaid = appointment.paymentMethod != null || Number(appointment.amountPaid) > 0 || Number(appointment.appointmentCompletionReport?.amountPaid) > 0;
+  const isVenuePayment = String(appointment.paymentMethod || '').toLowerCase() === 'venue';
+  const hasActualPayment = Number(appointment.amountPaid) > 0 || Number(appointment.appointmentCompletionReport?.amountPaid) > 0;
+  const isOnlineCardPaid = appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD' && Number(appointment.amountPaid || appointment.totalAmount || 0) > 0;
+  
+  // An appointment is only already paid if money was actually paid online or recorded, NOT if it was booked to pay at venue
+  const isAlreadyPaid = !isVenuePayment && (hasActualPayment || isOnlineCardPaid);
   const bookedByName = (appointment as any).bookedByInfo?.name || 'System';
   const isOnline = appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD';
 
@@ -126,7 +131,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  {isOnline ? 'Paid Online' : `Received by ${bookedByName}`}
  </p>
  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest pt-2">
- Amount Paid: €{Number(appointment.amountPaid || appointment.appointmentCompletionReport?.amountPaid || 0).toFixed(2)}
+ Amount Paid: €{Number(appointment.amountPaid || appointment.appointmentCompletionReport?.amountPaid || appointment.totalAmount || 0).toFixed(2)}
  </p>
  </div>
  ) : (
