@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/utils/imageUrl";
 
 // Custom clinical hero visual
-import HeroBg from "@/assets/Blog_Hero.jpg";
+import HeroBg from "@/assets/image copy.png";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -207,7 +207,7 @@ export const BlogPost: React.FC = () => {
       <div className="absolute top-0 inset-x-0 h-[440px] sm:h-[500px] lg:h-[540px] z-0 pointer-events-none overflow-hidden">
         <img 
           src={HeroBg} 
-          style={{ objectPosition: 'center 85%', filter: 'none', imageRendering: 'auto' }}
+          style={{ objectPosition: 'center 50%', filter: 'none', imageRendering: 'auto' }}
           className="w-full h-full object-cover" 
           alt="Article Background" 
         />

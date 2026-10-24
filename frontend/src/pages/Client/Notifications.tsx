@@ -353,17 +353,17 @@ export const ClientNotifications: React.FC = () => {
   return (
     <div className="min-h-screen relative bg-[#F8FAFC] overflow-x-hidden flex flex-col justify-between">
       {/* Background Hero Banner - 100% Crisp, unblurred aesthetic clinic visual */}
-      <div className="absolute top-0 inset-x-0 h-[680px] sm:h-[780px] lg:h-[860px] z-0 pointer-events-none overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-[880px] sm:h-[1000px] lg:h-[1150px] z-0 pointer-events-none overflow-hidden">
         <img
           src={NotificationsBg}
           className="w-full h-full object-cover"
           style={{ objectPosition: 'center 38%', filter: "none", imageRendering: "auto" }}
           alt="Luxury Clinic Lounge"
         />
-        {/* Soft Ambient Left Gradient behind text so typography is 100% readable while the clinic room remains visible */}
-        <div className="absolute inset-y-0 left-0 w-full sm:w-2/3 max-w-2xl bg-gradient-to-r from-white/90 via-white/40 to-transparent pointer-events-none" />
+        {/* Soft Ambient Left Gradient behind text so typography is 100% readable while the clinic room remains fully visible */}
+        <div className="absolute inset-y-0 left-0 w-full sm:w-2/3 max-w-2xl bg-gradient-to-r from-white/45 via-white/15 to-transparent pointer-events-none" />
         {/* Soft bottom blend to transition smoothly into page base */}
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/60 to-transparent pointer-events-none" />
       </div>
 
       <div className="relative z-10 max-w-[1400px] w-full mx-auto px-4 sm:px-8 pt-8 sm:pt-14 pb-24">
@@ -373,7 +373,7 @@ export const ClientNotifications: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/75 backdrop-blur-md border border-white/85 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] shadow-sm mb-4"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-md border border-white/60 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] shadow-sm mb-4"
           >
             <span className="text-gray-900 border-b border-gray-900/30 pb-0.5">
               BEAUTY DOCTORS
@@ -413,7 +413,7 @@ export const ClientNotifications: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="lg:col-span-4 bg-white/65 hover:bg-white/75 backdrop-blur-xl rounded-[32px] p-6 border border-white/85 shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-300"
+            className="lg:col-span-4 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-[32px] p-6 border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.03)] transition-all duration-300"
           >
             {/* Search Input */}
             <div className="relative mb-5">
@@ -423,7 +423,7 @@ export const ClientNotifications: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={isGreek ? "Αναζήτηση ειδοποιήσεων..." : "Search notifications..."}
-                className="w-full bg-white/50 border border-white/75 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#CBFF38] focus:bg-white/85 transition-all shadow-sm backdrop-blur-sm"
+                className="w-full bg-white/35 border border-white/50 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#CBFF38] focus:bg-white/60 transition-all shadow-xs backdrop-blur-sm"
               />
             </div>
 
@@ -439,7 +439,7 @@ export const ClientNotifications: React.FC = () => {
                     className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                       isActive
                         ? "bg-[#CBFF38] text-black shadow-sm scale-105"
-                        : "text-gray-500 hover:text-gray-900 bg-white/40 hover:bg-white/60 border border-white/60"
+                        : "text-gray-600 hover:text-gray-900 bg-white/25 hover:bg-white/45 border border-white/45"
                     }`}
                   >
                     {tab.label}
@@ -558,15 +558,15 @@ export const ClientNotifications: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12 }}
-            className="lg:col-span-8 bg-white/65 hover:bg-white/75 backdrop-blur-xl rounded-[32px] p-6 sm:p-8 border border-white/85 shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-300"
+            className="lg:col-span-8 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-[32px] p-6 sm:p-8 border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.03)] transition-all duration-300"
           >
             {/* Header Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/40">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
                   {isGreek ? "Πρόσφατες Ειδοποιήσεις" : "Recent Notifications"}
                 </h2>
-                <p className="text-xs text-gray-400 font-medium mt-0.5">
+                <p className="text-xs text-gray-500 font-medium mt-0.5">
                   {filteredNotifications.length}{" "}
                   {isGreek ? "συνολικές ειδοποιήσεις" : "total notifications"}
                 </p>
@@ -577,7 +577,7 @@ export const ClientNotifications: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => dispatch(markAllAsRead())}
-                    className="text-[10px] font-black uppercase tracking-wider text-gray-500 hover:text-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/60 transition-all cursor-pointer"
+                    className="text-[10px] font-black uppercase tracking-wider text-gray-700 hover:text-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/60 border border-white/50 transition-all cursor-pointer"
                   >
                     <CheckCheck size={14} className="text-[#84cc16]" />
                     <span>{isGreek ? "Ανάγνωση όλων" : "Mark all read"}</span>
@@ -587,7 +587,7 @@ export const ClientNotifications: React.FC = () => {
                 <select
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value as any)}
-                  className="bg-white/65 border border-white/80 text-xs font-bold text-gray-800 rounded-xl px-3.5 py-2 focus:outline-none focus:border-[#CBFF38] shadow-sm backdrop-blur-sm cursor-pointer"
+                  className="bg-white/35 border border-white/50 text-xs font-bold text-gray-800 rounded-xl px-3.5 py-2 focus:outline-none focus:border-[#CBFF38] shadow-xs backdrop-blur-sm cursor-pointer"
                 >
                   <option value="newest">{isGreek ? "Νεότερες πρώτα" : "Newest first"}</option>
                   <option value="oldest">{isGreek ? "Παλαιότερες πρώτα" : "Oldest first"}</option>
@@ -599,13 +599,13 @@ export const ClientNotifications: React.FC = () => {
             {/* Notification Items List */}
             {filteredNotifications.length === 0 ? (
               <div className="py-16 text-center">
-                <div className="size-14 rounded-2xl bg-white/60 border border-white/80 backdrop-blur-md flex items-center justify-center text-gray-400 mx-auto mb-3 shadow-sm">
+                <div className="size-14 rounded-2xl bg-white/35 border border-white/50 backdrop-blur-md flex items-center justify-center text-gray-400 mx-auto mb-3 shadow-xs">
                   <Bell size={28} className="text-[#84cc16]" />
                 </div>
                 <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
                   {isGreek ? "Δεν βρέθηκαν ειδοποιήσεις" : "No Notifications Found"}
                 </h4>
-                <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+                <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
                   {isGreek
                     ? "Δεν υπάρχουν ειδοποιήσεις που να ταιριάζουν με τα κριτήρια αναζήτησης."
                     : "There are no notifications matching your search or category filter."}
@@ -618,7 +618,7 @@ export const ClientNotifications: React.FC = () => {
                     key={notif.id}
                     layout
                     onClick={() => handleNotificationClick(notif)}
-                    className="bg-white/50 hover:bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/75 hover:border-[#CBFF38] shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between gap-4 cursor-pointer group"
+                    className="bg-white/25 hover:bg-white/55 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/45 hover:border-[#CBFF38] shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between gap-4 cursor-pointer group"
                   >
                     <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
                       {getNotificationIcon(notif.type)}

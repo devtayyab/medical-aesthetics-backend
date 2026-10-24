@@ -11,7 +11,7 @@ import { User, Mail, Phone, Lock, ChevronRight, Edit3, ShieldCheck, Sparkles } f
 import toast from "react-hot-toast";
 
 // High-clarity hero portrait
-import HeroBg from "@/assets/personal_details_bg.png";
+import HeroBg from "@/assets/personal detailis.jpg.jpeg";
 
 const glassCard = css`
   background: rgba(255, 255, 255, 0.65);
@@ -212,17 +212,17 @@ export const PersonalDetails: React.FC = () => {
   return (
     <div className="min-h-screen relative bg-[#F8FAFC] overflow-x-hidden">
       {/* Background Hero Portrait - 100% Crisp, natural clarity & warmth */}
-      <div className="absolute top-0 right-0 h-[520px] sm:h-[620px] lg:h-[680px] w-full sm:w-2/3 lg:w-1/2 z-0 pointer-events-none overflow-hidden">
+      <div className="absolute top-0 right-0 h-[520px] sm:h-[620px] lg:h-[700px] w-full sm:w-2/3 lg:w-3/5 z-0 pointer-events-none overflow-hidden opacity-40 sm:opacity-90 lg:opacity-100 transition-opacity duration-300">
         <img
           src={HeroBg}
-          style={{ objectPosition: 'center 20%', filter: 'none', imageRendering: 'auto' }}
-          className="w-full h-full object-contain sm:object-cover object-right-top sm:object-center"
+          style={{ objectPosition: 'right 15%', filter: 'none', imageRendering: 'auto' }}
+          className="w-full h-full object-cover object-right"
           alt="Personal Details Hero"
         />
         {/* Soft left gradient fade to blend smoothly into background */}
-        <div className="absolute inset-y-0 left-0 w-24 sm:w-44 bg-gradient-to-r from-[#F8FAFC] to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-28 sm:w-48 bg-gradient-to-r from-[#F8FAFC] to-transparent pointer-events-none" />
         {/* Soft bottom blend to transition smoothly into page base */}
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent pointer-events-none" />
       </div>
 
       <div className="relative z-10 max-w-[1250px] w-full mx-auto px-4 sm:px-8 pt-8 sm:pt-14 pb-24">

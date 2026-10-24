@@ -23,7 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { api } from '@/services/api';
-import OnlineClinicHome from '@/assets/OnlineClinicHome.svg';
+import PartnerHeroImg from '@/assets/partner with us.jpg.jpeg';
 
 export const ForClinics: React.FC = () => {
   const [isGreek, setIsGreek] = useState(
@@ -145,14 +145,24 @@ export const ForClinics: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
-            <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-[#CBFF38]/20 to-transparent blur-2xl -z-10 rounded-3xl" />
-              <img
-                src={OnlineClinicHome}
-                alt="Clinic Partner Portal"
-                className="w-full max-w-[540px] rounded-2xl shadow-2xl border-4 border-slate-800 bg-slate-900"
-              />
+          <div className="flex justify-center lg:justify-end w-full">
+            <div className="relative w-full max-w-[580px] group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-[#CBFF38]/25 via-emerald-500/10 to-transparent blur-3xl -z-10 rounded-3xl" />
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 sm:border-4 border-slate-700/80 shadow-2xl bg-slate-900">
+                <img
+                  src={PartnerHeroImg}
+                  alt="Partner With Us - Medical Aesthetics Doctors & Clinics"
+                  className="w-full h-[320px] sm:h-[400px] lg:h-[440px] object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/70 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4 flex items-center justify-between text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-white/90 bg-black/60 backdrop-blur-md px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border border-white/10">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-[#CBFF38] animate-pulse" />
+                    Verified Partner Network
+                  </span>
+                  <span className="text-[#CBFF38]">BeautyDoctors</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

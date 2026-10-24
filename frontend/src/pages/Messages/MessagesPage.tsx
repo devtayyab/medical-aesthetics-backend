@@ -66,7 +66,7 @@ export const MessagesPage: React.FC = () => {
   return (
     <div className="min-h-screen relative bg-[#F8FAFC] overflow-x-hidden flex flex-col justify-between text-gray-900">
       {/* Background Hero Banner - 100% Crisp, unblurred aesthetic clinic visual */}
-      <div className="absolute top-0 inset-x-0 h-[680px] sm:h-[780px] lg:h-[860px] z-0 pointer-events-none overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-[880px] sm:h-[1000px] lg:h-[1150px] z-0 pointer-events-none overflow-hidden">
         <img
           src={MessagesBg}
           className="w-full h-full object-cover"
@@ -74,9 +74,9 @@ export const MessagesPage: React.FC = () => {
           alt="Luxury Aesthetic Consultation Lounge"
         />
         {/* Soft Ambient Left Gradient behind text so typography is 100% readable while the clinic room remains visible */}
-        <div className="absolute inset-y-0 left-0 w-full sm:w-2/3 max-w-2xl bg-gradient-to-r from-white/90 via-white/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-full sm:w-2/3 max-w-2xl bg-gradient-to-r from-white/45 via-white/15 to-transparent pointer-events-none" />
         {/* Soft bottom blend to transition smoothly into page base */}
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/60 to-transparent pointer-events-none" />
       </div>
 
       <div className="relative z-10 max-w-[1400px] w-full mx-auto px-4 sm:px-8 pt-8 sm:pt-14 pb-16 flex-1 flex flex-col min-h-0">
@@ -87,7 +87,7 @@ export const MessagesPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/75 backdrop-blur-md border border-white/85 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] shadow-sm mb-4"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-md border border-white/60 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] shadow-sm mb-4"
             >
               <span className="text-gray-900 border-b border-gray-900/30 pb-0.5">
                 BEAUTY DOCTORS
@@ -140,7 +140,7 @@ export const MessagesPage: React.FC = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className={`w-full lg:w-[360px] xl:w-[400px] h-full flex-col min-h-0 bg-white/65 hover:bg-white/75 backdrop-blur-xl rounded-[32px] p-5 sm:p-6 border border-white/85 shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-300 ${activeConversationId ? 'hidden lg:flex' : 'flex'}`}
+            className={`w-full lg:w-[360px] xl:w-[400px] h-full flex-col min-h-0 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-[32px] p-5 sm:p-6 border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.03)] transition-all duration-300 ${activeConversationId ? 'hidden lg:flex' : 'flex'}`}
           >
             {/* Search Input */}
             <div className="relative mb-4 shrink-0">
@@ -148,7 +148,7 @@ export const MessagesPage: React.FC = () => {
               <input 
                 type="text" 
                 placeholder={isGreek ? "Αναζήτηση συνομιλιών..." : "Search conversations..."}
-                className="w-full bg-white/50 border border-white/75 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#CBFF38] focus:bg-white/85 transition-all shadow-sm backdrop-blur-sm"
+                className="w-full bg-white/35 border border-white/50 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#CBFF38] focus:bg-white/60 transition-all shadow-xs backdrop-blur-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -166,7 +166,7 @@ export const MessagesPage: React.FC = () => {
                     className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                       isActive 
                         ? 'bg-[#CBFF38] text-black shadow-sm scale-105' 
-                        : 'text-gray-500 hover:text-gray-900 bg-white/40 hover:bg-white/60 border border-white/60'
+                        : 'text-gray-600 hover:text-gray-900 bg-white/25 hover:bg-white/45 border border-white/45'
                     }`}
                   >
                     {tab.label}
@@ -176,7 +176,7 @@ export const MessagesPage: React.FC = () => {
             </div>
 
             {/* Channel List Header */}
-            <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200/50 shrink-0">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200/40 shrink-0">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
                 {isGreek ? 'ΚΑΝΑΛΙΑ' : 'CHANNELS'}
               </span>
@@ -201,7 +201,7 @@ export const MessagesPage: React.FC = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className={`flex-1 h-full min-h-0 bg-white/65 hover:bg-white/75 backdrop-blur-xl rounded-[32px] border border-white/85 shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden relative flex-col transition-all duration-300 ${activeConversationId ? 'flex' : 'hidden lg:flex'}`}
+            className={`flex-1 h-full min-h-0 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-[32px] border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden relative flex-col transition-all duration-300 ${activeConversationId ? 'flex' : 'hidden lg:flex'}`}
           >
             <AnimatePresence mode="wait">
               {activeConversationId ? (
@@ -219,7 +219,7 @@ export const MessagesPage: React.FC = () => {
                 </motion.div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 sm:p-16 my-auto">
-                  <div className="size-20 sm:size-24 rounded-3xl bg-white/60 border border-white/85 flex items-center justify-center mb-6 text-gray-400 shadow-sm backdrop-blur-md">
+                  <div className="size-20 sm:size-24 rounded-3xl bg-white/35 border border-white/50 flex items-center justify-center mb-6 text-gray-400 shadow-xs backdrop-blur-md">
                     <MessageSquare className="size-10 sm:size-12 text-[#84cc16]" />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2 text-gray-900">
