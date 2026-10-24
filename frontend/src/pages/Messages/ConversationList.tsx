@@ -98,7 +98,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 className={`w-full p-4 flex items-center gap-3.5 text-left transition-all duration-200 rounded-2xl group relative cursor-pointer ${
                   isActive 
                     ? 'bg-[#CBFF38] text-black shadow-md border border-[#b8f020]' 
-                    : 'bg-white/50 hover:bg-white/85 backdrop-blur-sm text-gray-900 border border-white/70 hover:border-[#CBFF38] shadow-sm hover:shadow-md'
+                    : 'bg-white/25 hover:bg-white/55 backdrop-blur-sm text-gray-900 border border-white/45 hover:border-[#CBFF38] shadow-xs hover:shadow-md'
                 }`}
               >
                 {/* Avatar */}

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/utils/imageUrl";
 
 // Use the custom hero image for blog
-import HeroBg from "@/assets/Blog_Hero_New.png";
+import HeroBg from "@/assets/image copy.png";
 
 const sectionStyles = css`
   min-height: 100vh;

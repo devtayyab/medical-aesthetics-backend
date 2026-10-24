@@ -36,8 +36,8 @@ import LayeredBG from"@/assets/LayeredBg.svg";
 import PlusIcon from"@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from"@/assets/Icons/CalendarIcon.svg";
 import TickIcon from"@/assets/Icons/TickIcon.svg";
-import GiftConfidenceImg from"@/assets/GiftConfidenceImg.svg";
-import TopRatedClinicImg from"@/assets/TopRatedClinicImg.svg";
+import GiftConfidenceImg from "@/assets/image copy 3.png";
+import TopRatedClinicImg from "@/assets/image copy 4.png";
 import OnlineClinicHome from"@/assets/OnlineClinicHome.svg";
 // Distinct Category Icons matching the 9 reference categories
 import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
@@ -373,9 +373,9 @@ const mainCategories = [
  <div className="max-w-[1280px] mx-auto w-full px-5 sm:px-8 lg:px-12">
  <div className="flex flex-col max-w-xl">
   <div className="mb-6">
-   <h1 className="text-gray-950 text-2xl sm:text-4xl md:text-[44px] lg:text-[48px] font-black mb-3 leading-[1.12] uppercase tracking-tight">
-   FIND THE RIGHT <br />
-   <span className="text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
+   <h1 className="text-gray-950 text-2xl sm:text-4xl md:text-[44px] lg:text-[48px] font-black mb-3 leading-[1.12] uppercase tracking-tight notranslate" translate="no">
+   {isGreek ? 'ΒΡΕΙΤΕ ΤΗΝ ΣΩΣΤΗ' : 'FIND THE RIGHT'} <br />
+   <span className="text-[#A3E635] inline-block">{isGreek ? 'ΘΕΡΑΠΕΙΑ ΓΙΑ ΕΣΑΣ' : 'TREATMENT FOR YOU'}</span>
    </h1>
 
   <p className="text-gray-700 text-xs sm:text-sm md:text-[15px] max-w-lg leading-relaxed font-medium">
@@ -636,7 +636,7 @@ const mainCategories = [
  <img
  src={GiftConfidenceImg}
  alt="Gift Confidence"
- className="w-full h-[200px] sm:h-[240px] object-contain bg-gray-50"
+ className="w-full h-[200px] sm:h-[240px] object-cover"
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -660,7 +660,7 @@ const mainCategories = [
  <img
  src={TopRatedClinicImg}
  alt="Discover Treatments"
- className="w-full h-[200px] sm:h-[240px] object-contain bg-gray-50"
+ className="w-full h-[200px] sm:h-[240px] object-cover"
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">

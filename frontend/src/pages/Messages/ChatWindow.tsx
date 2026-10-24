@@ -80,7 +80,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
   return (
     <div className="flex flex-col h-full min-h-0 bg-transparent relative">
       {/* Chat Header */}
-      <header className="shrink-0 p-4 sm:p-5 bg-white/75 backdrop-blur-md border-b border-white/70 flex items-center justify-between relative z-20 shadow-sm">
+      <header className="shrink-0 p-4 sm:p-5 bg-white/40 backdrop-blur-md border-b border-white/45 flex items-center justify-between relative z-20 shadow-xs">
         <div className="flex items-center gap-3.5 sm:gap-4 relative z-10 min-w-0">
           {onBack && (
             <button
@@ -206,13 +206,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
 
       {/* Input or Notice Footer */}
       {user && user.role !== 'client' ? (
-        <div className="shrink-0 p-3 sm:p-4 bg-white/75 backdrop-blur-md border-t border-white/60 relative z-30">
+        <div className="shrink-0 p-3 sm:p-4 bg-white/40 backdrop-blur-md border-t border-white/45 relative z-30">
           <form onSubmit={handleSend} className="flex items-center gap-2 max-w-5xl mx-auto">
             <div className="flex-1 relative group">
               <input
                 type="text"
                 placeholder={isGreek ? "Πληκτρολογήστε μήνυμα..." : "Type a message..."}
-                className="w-full h-11 sm:h-12 pl-4 pr-24 bg-white/60 border border-white/80 rounded-2xl text-xs sm:text-sm font-medium text-gray-900 focus:outline-none focus:border-[#CBFF38] focus:bg-white transition-all shadow-sm placeholder:text-gray-400"
+                className="w-full h-11 sm:h-12 pl-4 pr-24 bg-white/50 border border-white/70 rounded-2xl text-xs sm:text-sm font-medium text-gray-900 focus:outline-none focus:border-[#CBFF38] focus:bg-white/80 transition-all shadow-xs placeholder:text-gray-400"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
               />
@@ -232,7 +232,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
           </form>
         </div>
       ) : (
-        <div className="shrink-0 p-3.5 sm:p-4 bg-white/75 backdrop-blur-md border-t border-white/60 text-center text-[11px] text-gray-600 font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+        <div className="shrink-0 p-3.5 sm:p-4 bg-white/40 backdrop-blur-md border-t border-white/45 text-center text-[11px] text-gray-600 font-bold uppercase tracking-wider flex items-center justify-center gap-2">
           <ShieldCheck size={14} className="text-[#84cc16]" />
           <span>
             {isGreek
