@@ -128,4 +128,14 @@ export class CreateLeadDto {
   @ApiProperty({ required: false, type: 'array', items: { type: 'object' } })
   @IsOptional()
   clinicAffiliations?: Array<{ clinicId: string; status: LeadStatus }>;
+
+  @ApiProperty({ required: false, description: 'Reason the lead was marked Lost (stored in metadata.lostReason)' })
+  @IsOptional()
+  @IsString()
+  lostReason?: string;
+
+  @ApiProperty({ required: false, description: 'Treatment the lead is interested in (stored in metadata.treatmentInterest)' })
+  @IsOptional()
+  @IsString()
+  treatmentInterest?: string;
 }
