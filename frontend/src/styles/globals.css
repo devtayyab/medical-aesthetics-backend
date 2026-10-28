@@ -24,6 +24,24 @@ body {
   /* background-color: #fafafa; */
   background-color: #F5F6F7;
   color: #333;
+  /* Phone width: the page itself never scrolls sideways; wide content scrolls inside its own container */
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Google Maps tiles/controls must not inherit the global img max-width */
+.gm-style img {
+  max-width: none;
+}
+
+/* Phone width: wide tables scroll horizontally inside the page instead of pushing it wider */
+@media (max-width: 767px) {
+  main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* CSS Custom Properties - Medical Aesthetics Theme */

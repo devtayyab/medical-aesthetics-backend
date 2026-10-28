@@ -38,8 +38,8 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
 
  {/* Main Content Area */}
  <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
- <main className={`flex-1 flex flex-col min-h-0 h-full ${isCalendar ? "overflow-hidden p-0" : "overflow-y-auto p-4 md:p-8"}`} style={{ WebkitOverflowScrolling: 'touch' }}>
- <div className={isCalendar ? "w-full h-full flex flex-col min-h-0" : "max-w-[1600px] mx-auto h-full"}>
+ <main className={`flex-1 flex flex-col min-h-0 min-w-0 h-full ${isCalendar ? "overflow-y-hidden overflow-x-auto p-0" : "overflow-y-auto overflow-x-auto p-3 sm:p-4 md:p-8"}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+ <div className={isCalendar ? "w-full h-full flex flex-col min-h-0 min-w-0" : "w-full max-w-[1600px] mx-auto h-full min-w-0"}>
  {children}
  </div>
  </main>

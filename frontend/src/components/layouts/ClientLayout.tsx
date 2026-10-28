@@ -106,7 +106,7 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="min-h-screen bg-[#f8fafc] w-full max-w-full overflow-x-clip">
       <div className={navContainer}>
         <div className={navScroller}>
           <div className={navContent}>
@@ -124,7 +124,7 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           </div>
         </div>
       </div>
-      <main>
+      <main className="w-full min-w-0">
         {children}
       </main>
     </div>
