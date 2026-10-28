@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from"framer-motion";
 import AppointmentExecutionModal from"../../components/clinic/AppointmentExecutionModal";
 import ClinicBookingModal from"../../components/clinic/ClinicBookingModal";
 import { formatTime } from "@/utils/formatters";
+import { analyticsApi } from"../../services/api/clinicApi";
 
 
 
@@ -79,6 +80,18 @@ const ClinicDashboard: React.FC = () => {
  dispatch(fetchAppointments(undefined));
  }, [dispatch, user, navigate]);
 
+ // Revenue: ONE figure from the payments ledger (paid only, EUR, this month, own clinic),
+ // the same number the analytics page and admin pages show.
+ const [paidRevenueMtd, setPaidRevenueMtd] = useState<number>(0);
+ useEffect(() => {
+ const now = new Date();
+ const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+ const startDate = `${parts.slice(0, 7)}-01`;
+ analyticsApi.getRevenueAnalytics({ startDate, endDate: parts })
+ .then((res: any) => setPaidRevenueMtd(Number(res?.totalRevenue || 0)))
+ .catch(() => setPaidRevenueMtd(0));
+ }, []);
+
  const stats = useMemo(() => {
  const today = new Date().toISOString().split("T")[0];
  const todayAppointments = appointments.filter(
@@ -96,11 +109,9 @@ const ClinicDashboard: React.FC = () => {
  completed: appointments.filter(
  (apt) => apt.status === AppointmentStatus.COMPLETED
  ).length,
- totalRevenue: appointments
- .filter((apt) => apt.status === AppointmentStatus.COMPLETED)
- .reduce((sum, apt) => sum + (Number(apt.totalAmount) || 0), 0),
+ totalRevenue: paidRevenueMtd,
  };
- }, [appointments]);
+ }, [appointments, paidRevenueMtd]);
 
  if (isLoading) {
  return (
@@ -180,8 +191,8 @@ const ClinicDashboard: React.FC = () => {
  <StatCard
  title={isGreek ? "Σημερινά Ραντεβού" : "Today's Appointments"}
  value={stats.totalToday}
- percentage="+12%"
- trend="up"
+ percentage={null}
+ trend="neutral"
  icon={<HashRadial size={24} />}
  delay={0}
  />
@@ -197,8 +208,8 @@ const ClinicDashboard: React.FC = () => {
  <StatCard
  title={isGreek ? "Ολοκληρωμένα Ραντεβού" : "Completed Appointments"}
  value={stats.completed}
- percentage="94% Success"
- trend="up"
+ percentage={null}
+ trend="neutral"
  icon={<CheckCircle size={24} />}
  delay={0.2}
  />
@@ -210,12 +221,8 @@ const ClinicDashboard: React.FC = () => {
  {stats.totalRevenue.toLocaleString()}
  </span>
  )}
- percentage={(
- <span className="flex items-center">
- +<span className="font-sans mr-0.5">€</span>4.2k
- </span>
- )}
- trend="up"
+ percentage={isGreek ? "Εισπράξεις μήνα, EUR" : "Paid this month, EUR"}
+ trend="neutral"
  icon={<Euro size={24} />}
  delay={0.3}
  />
@@ -403,24 +410,6 @@ const ClinicDashboard: React.FC = () => {
  </motion.div>
  )}
 
- {/* System Intelligence Feed */}
- <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-200">
- <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-5">{isGreek ? "Πληροφορίες λειτουργίας" : "Operational Insights"}</h3>
- <div className="space-y-6">
- <div className="flex gap-4">
- <div className="size-1 rounded-full bg-[#CBFF38] mt-2" />
- <p className="text-[11px] font-bold text-gray-600 leading-normal">
- Monday evening is your highest <span className="text-black">demand window</span>. Consider adding staff capacity.
- </p>
- </div>
- <div className="flex gap-4">
- <div className="size-1 rounded-full bg-blue-400 mt-2" />
- <p className="text-[11px] font-bold text-gray-600 leading-normal">
- Botox treatments account for <span className="text-black">60%</span> of this month's gross revenue.
- </p>
- </div>
- </div>
- </div>
  </div>
  </div>
  </div>
@@ -457,10 +446,12 @@ const StatCard = React.forwardRef(({ title, value, percentage, trend, icon, dela
  <div className={`size-10 rounded-xl flex items-center justify-center transition-all duration-500 bg-gray-50 text-gray-400 group-hover:bg-black group-hover:text-white`}>
  {React.cloneElement(icon, { size: 18 })}
  </div>
+ {percentage && (
  <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${trend === 'up' ? 'text-green-600 bg-green-50' : trend === 'neutral' ? 'text-orange-500 bg-orange-50' : 'text-gray-400 bg-gray-50'
  }`}>
  {percentage}
  </div>
+ )}
  </div>
 
  <div>

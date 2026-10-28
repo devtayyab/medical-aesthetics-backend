@@ -150,6 +150,8 @@ export const Payments: React.FC = () => {
  // Use items from ledger (assuming backend returns { items, total })
  const transactions = (paymentsLedger as any)?.items || [];
  const totalCount = (paymentsLedger as any)?.total || 0;
+ // Net paid revenue (EUR) for the current filters, computed server-side with the shared definition.
+ const netRevenue = Number((paymentsLedger as any)?.netRevenue || 0);
 
  return (
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
@@ -157,6 +159,7 @@ export const Payments: React.FC = () => {
  <div>
  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{isEl ? 'Πληρωμές & Οικονομική Διαχείριση' : 'Payments & Financial Control'}</h1>
  <p className="text-sm text-gray-500 mt-1">{isEl ? 'Έλεγχος συναλλαγών, διαχείριση επιστροφών και παρακολούθηση κύκλου εργασιών κλινικών' : 'Audit transactions, manage refunds, and track clinic turnover'}</p>
+ <p className="text-sm font-bold text-gray-900 mt-2">{isEl ? 'Καθαρές εισπράξεις (EUR)' : 'Net paid (EUR)'}: €{netRevenue.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
  </div>
  <div className="flex flex-wrap gap-3">
  <button onClick={handleExportCSV} className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2.5 font-semibold rounded-xl hover:bg-gray-50 shadow-sm transition-all text-sm">

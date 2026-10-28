@@ -27,11 +27,16 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ appointment, onClose,
  setIsLoadingSlots(true);
  setError(null);
  try {
+ // All treatments of the visit, so the duration is their sum (2 x 30 min = 60 min),
+ // and the appointment itself is not counted as busy.
+ const serviceIds = [appointment.serviceId, ...(((appointment as any).additionalServiceIds as string[]) || [])]
+ .filter((id, i, arr) => !!id && arr.indexOf(id) === i);
  const response = await bookingAPI.getAvailability({
  clinicId: appointment.clinicId,
- serviceId: appointment.serviceId,
+ serviceId: serviceIds,
  providerId: appointment.providerId,
- date: newDate
+ date: newDate,
+ excludeAppointmentId: appointment.id,
  });
  setAvailableSlots(response.data.slots || []);
  setSelectedSlot(null); // Reset selection when date changes
@@ -120,18 +125,21 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ appointment, onClose,
  <div className="grid grid-cols-3 gap-2">
  {availableSlots.map((slot, index) => {
  const isSelected = selectedSlot?.startTime === slot.startTime;
- const timeStr = new Date(slot.startTime).toLocaleTimeString([], {
+ const isBusy = slot.available === false;
+ const timeStr = new Date(slot.startTime).toLocaleTimeString('el-GR', {
  hour: '2-digit',
  minute: '2-digit',
- hour12: false
+ hour12: false,
+ timeZone: (appointment as any).clinic?.timezone || 'Europe/Athens',
  });
 
  return (
  <button
  key={index}
  type="button"
- onClick={() => setSelectedSlot(slot)}
- className={`p-3 text-sm font-bold border-2 rounded-xl transition-all flex flex-col items-center gap-1 ${isSelected
+ disabled={isBusy}
+ onClick={() => !isBusy && setSelectedSlot(slot)}
+ className={`p-3 text-sm font-bold border-2 rounded-xl transition-all flex flex-col items-center gap-1 ${isBusy ? 'border-red-100 bg-red-50 text-red-300 line-through cursor-not-allowed' : isSelected
  ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
  : 'border-gray-100 hover:border-blue-200 text-gray-600 hover:bg-gray-50'
  }`}

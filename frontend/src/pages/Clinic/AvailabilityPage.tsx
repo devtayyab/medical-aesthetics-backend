@@ -59,10 +59,21 @@ const AvailabilityPage: React.FC = () => {
  const loadClinics = async () => {
  try {
  // Clinic-scoped list (the CRM API is for BeautyDoctors staff only)
- const clinics = await clinicApi.patients.accessibleClinics();
- setAvailableClinics(clinics || []);
- if (clinics?.length > 0) {
- setSelectedClinicId(clinics[0].id);
+ const list = (await clinicApi.patients.accessibleClinics()) || [];
+ setAvailableClinics(list);
+ // Open the clinic being viewed (?clinicId=... or the clinic last selected in a calendar),
+ // falling back to the first accessible clinic.
+ let wanted: string | null = null;
+ try {
+ wanted = new URLSearchParams(window.location.search).get('clinicId') || sessionStorage.getItem('calendar.viewedClinicId');
+ } catch {
+ wanted = null;
+ }
+ const match = wanted ? list.find((c: any) => c.id === wanted) : null;
+ if (match) {
+ setSelectedClinicId(match.id);
+ } else if (list.length > 0) {
+ setSelectedClinicId(list[0].id);
  }
  } catch (err) {
  console.error("Failed to load clinics", err);

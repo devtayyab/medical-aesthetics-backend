@@ -14,6 +14,7 @@ import {
   HttpCode,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -252,7 +253,7 @@ export class ClinicManagementController {
       ...createAppointmentDto,
       appointmentSource: 'clinic_own',
       bookedById: req.user.id,
-    });
+    }, { id: req.user.id, role: req.user.role });
   }
 
   @Get('appointments/:id')
@@ -280,6 +281,13 @@ export class ClinicManagementController {
     @Body() updateAppointmentStatusDto: UpdateAppointmentStatusDto,
     @Request() req,
   ) {
+    // Paid appointments stay locked for salespeople; only an admin can change them.
+    if (String(req.user?.role || '').toLowerCase() === UserRole.SALESPERSON) {
+      const existing = await this.bookingsService.findById(id);
+      if (Number(existing.amountPaid || 0) > 0) {
+        throw new ForbiddenException('This appointment is paid. Only an admin can change it.');
+      }
+    }
     return this.bookingsService.updateAppointmentStatus(
       id,
       updateAppointmentStatusDto.status as AppointmentStatus,
@@ -391,7 +399,7 @@ export class ClinicManagementController {
     }
 
     if (!clinicId) {
-      throw new Error('clinicId is required');
+      throw new BadRequestException('clinicId is required');
     }
 
     const effectiveProviderId = body.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
@@ -416,7 +424,7 @@ export class ClinicManagementController {
   }
 
   @Put('availability/block-time-slot/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Update a blocked time slot' })
   @ApiResponse({ status: 200, description: 'Time slot updated successfully' })
   async updateBlockedTimeSlot(
@@ -438,7 +446,7 @@ export class ClinicManagementController {
   }
 
   @Get('availability/blocked-slots')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Get blocked time slots' })
   @ApiResponse({ status: 200, description: 'Blocked time slots retrieved successfully' })
   async getBlockedTimeSlots(
@@ -451,8 +459,13 @@ export class ClinicManagementController {
     } else {
       clinic = await this.clinicsService.findByOwnerId(req.user.id);
     }
-    
-    const effectiveProviderId = query.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
+    if (!clinic) {
+      throw new NotFoundException('Clinic not found');
+    }
+
+    // Without an explicit provider filter, return EVERY block of the clinic (clinic-wide and
+    // per staff member) so calendars can show and delete them.
+    const effectiveProviderId = query.providerId || null;
 
     return this.availabilityService.getBlockedTimeSlots(
       clinic.id,
@@ -477,6 +490,14 @@ export class ClinicManagementController {
       req.user.id,
       recordPaymentDto,
     );
+  }
+
+  @Get('appointments/:id/payment-summary')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR, UserRole.SALESPERSON, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Total, paid, balance and every payment (with method) of an appointment' })
+  async getAppointmentPaymentSummary(@Param('id') id: string, @Request() req) {
+    await this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    return this.financialService.getAppointmentPaymentSummary(id);
   }
 
   @Get('appointments/:id/payments')

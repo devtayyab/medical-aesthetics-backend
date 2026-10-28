@@ -113,6 +113,10 @@ export const useAppointmentExecution = ({
     status: AppointmentStatus = AppointmentStatus.COMPLETED
   ) => {
     e.preventDefault();
+    if (new Date(appointment.startTime).getTime() > Date.now()) {
+      alert('Completion, no-show and payment are possible from the appointment start time.');
+      return;
+    }
     if (pointsToRedeem > pointsBalance) {
       alert(`Insufficient points! Client only has ${pointsBalance} points.`);
       setIsSubmitting(false);

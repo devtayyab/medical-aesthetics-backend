@@ -44,6 +44,16 @@ export const useClinicBooking = ({
 
   useEffect(() => {
     if (isOpen && clinicId) {
+      // A new booking ALWAYS starts empty: never carry over the treatment, provider, date,
+      // time or busy slots of a previously opened appointment / clinic.
+      setSelectedService('');
+      setSelectedProvider('');
+      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+      setAvailableSlots([]);
+      setSelectedSlot(null);
+      setSlotReason(null);
+      setNotes('');
+      setError(null);
       fetchClinicData();
       if (prefillClient) {
         setClientData({
@@ -83,12 +93,15 @@ export const useClinicBooking = ({
 
   const fetchSlots = async () => {
     setSlotReason(null);
+    // A time picked for another treatment/date/provider is no longer valid.
+    setSelectedSlot(null);
     try {
       const res = await bookingAPI.getAvailability({
         clinicId,
         serviceId: selectedService,
         providerId: selectedProvider || undefined,
         date: selectedDate,
+        // Past slots are only returned for admins (enforced by the server).
         allowPast: true,
       });
       const data = res.data;

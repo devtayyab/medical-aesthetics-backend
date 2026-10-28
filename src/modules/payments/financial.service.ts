@@ -9,6 +9,8 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PAYMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
 import * as crypto from 'crypto';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { getPaidRevenueTotal } from './revenue.util';
 
 @Injectable()
 export class FinancialService {
@@ -38,6 +40,12 @@ export class FinancialService {
         metadata?: any;
         recordedById?: string;
     }): Promise<PaymentRecord> {
+        // Every payment carries the salesperson. When the caller does not pass one, derive it
+        // from the linked appointment (its representative, else whoever booked it, if staff).
+        if (!data.salespersonId && data.appointmentId) {
+            data = { ...data, salespersonId: (await this.resolveAppointmentSalespersonId(data.appointmentId)) || undefined };
+        }
+
         const payment = this.paymentRecordsRepository.create({
             ...data,
             type: data.type || PaymentType.PAYMENT,
@@ -69,6 +77,71 @@ export class FinancialService {
         }
 
         return savedPayment;
+    }
+
+    /**
+     * The salesperson credited for an appointment's payments: the appointment's representative,
+     * otherwise the staff member who booked it (never the client, never a doctor/clinic account).
+     */
+    async resolveAppointmentSalespersonId(appointmentId: string): Promise<string | null> {
+        const appointment = await this.appointmentsRepository.findOne({
+            where: { id: appointmentId },
+            relations: ['representative', 'bookedBy'],
+        });
+        if (!appointment) return null;
+        const salesRoles = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN].map(r => String(r).toLowerCase());
+        const isSales = (u?: any) => !!u && salesRoles.includes(String(u.role || '').toLowerCase());
+        if (appointment.representativeId && isSales(appointment.representative)) return appointment.representativeId;
+        if (appointment.bookedById && isSales(appointment.bookedBy)) return appointment.bookedById;
+        return null;
+    }
+
+    /**
+     * Payment summary for one appointment: total price, every payment with its method,
+     * paid so far (net of refunds/voids) and the open balance. Used for partial payments.
+     */
+    async getAppointmentPaymentSummary(appointmentId: string) {
+        const appointment = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
+        if (!appointment) throw new NotFoundException('Appointment not found');
+
+        const records = await this.paymentRecordsRepository.find({
+            where: { appointmentId },
+            relations: ['recordedBy', 'salesperson'],
+            order: { createdAt: 'ASC' },
+        });
+
+        const counted = records.filter(r =>
+            r.status === PaymentStatus.COMPLETED || r.status === PaymentStatus.REFUNDED || r.status === PaymentStatus.VOIDED,
+        );
+        const paid = counted.reduce((sum, r) => {
+            const sign = r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -1 : 1;
+            return sum + sign * Number(r.amount || 0);
+        }, 0);
+        const giftCard = Number(appointment.giftCardAmountRedeemed || 0);
+        const total = Number(appointment.totalAmount || 0);
+        const balance = Math.max(0, Math.round((total - paid - giftCard) * 100) / 100);
+
+        return {
+            appointmentId,
+            currency: 'EUR',
+            total,
+            paid: Math.round(paid * 100) / 100,
+            giftCardRedeemed: giftCard,
+            balance,
+            isFullyPaid: total > 0 && balance <= 0,
+            payments: records.map(r => ({
+                id: r.id,
+                amount: Number(r.amount || 0),
+                method: r.method,
+                type: r.type,
+                status: r.status,
+                createdAt: r.createdAt,
+                notes: r.notes,
+                recordedBy: r.recordedBy ? `${r.recordedBy.firstName || ''} ${r.recordedBy.lastName || ''}`.trim() : null,
+                salespersonId: r.salespersonId || null,
+                salesperson: r.salesperson ? `${r.salesperson.firstName || ''} ${r.salesperson.lastName || ''}`.trim() : null,
+            })),
+        };
     }
 
     async getLedger(filters: {
@@ -117,7 +190,19 @@ export class FinancialService {
             .skip(isNaN(parsedOffset) ? 0 : parsedOffset)
             .getManyAndCount();
 
-        return { items, total };
+        // Net paid revenue for the same filters: the shared definition used by every revenue page.
+        const end = filters.endDate && filters.endDate.trim() !== '' ? new Date(filters.endDate) : null;
+        if (end && !isNaN(end.getTime())) end.setHours(23, 59, 59, 999);
+        const netRevenue = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, {
+            clinicId: filters.clinicId,
+            providerId: filters.providerId,
+            salespersonId: filters.salespersonId,
+            clientId: filters.clientId,
+            startDate: filters.startDate && filters.startDate.trim() !== '' ? new Date(filters.startDate) : null,
+            endDate: end && !isNaN(end.getTime()) ? end : null,
+        });
+
+        return { items, total, netRevenue, currency: 'EUR' };
     }
 
     /** Look up a payment by its transaction reference (used for webhook idempotency). */

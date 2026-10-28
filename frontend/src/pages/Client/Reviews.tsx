@@ -79,9 +79,11 @@ export const Reviews: React.FC = () => {
     dispatch(fetchUserAppointments());
   }, [dispatch]);
 
-  const completedAppointments = appointments.filter(
-    (apt) => apt.status === AppointmentStatus.COMPLETED
-  );
+  // Reviewable as soon as completed (status is compared case-insensitively; old rows were lowercase).
+  const completedAppointments = appointments.filter((apt) => {
+    const st = String(apt.status || '').toUpperCase();
+    return st === AppointmentStatus.COMPLETED || st === 'EXECUTED';
+  });
 
   const totalPages = Math.ceil(completedAppointments.length / itemsPerPage);
   const paginatedAppointments = completedAppointments.slice(

@@ -65,8 +65,12 @@ export const bookingService = {
   complete: (id: string, data?: any) => api.patch(`/clinic/appointments/${id}/complete`, data),
   validateGiftCard: (code: string) => api.post('/clinic/appointments/validate-gift-card', { code }).then(res => res.data),
 
-  updateStatus: (id: string, status: string) =>
-    api.patch(`/appointments/${id}/status`, { status }),
+  // `refund` is only honoured for admins when cancelling a paid appointment.
+  updateStatus: (id: string, status: string, extra?: { refund?: boolean; notes?: string }) =>
+    api.patch(`/appointments/${id}/status`, { status, ...(extra || {}) }),
+
+  // Total, paid, balance and every payment (with method) of an appointment.
+  getPaymentSummary: (id: string) => api.get(`/appointments/${id}/payment-summary`),
 
   createBlockedSlot: (data: {
     clinicId: string;

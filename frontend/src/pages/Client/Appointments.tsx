@@ -193,7 +193,14 @@ export const Appointments: React.FC = () => {
   }, [dispatch]);
 
   const handleCancelClick = async (apt: Appointment) => {
-    if (window.confirm("Are you sure you want to cancel this reservation?")) {
+    // Late cancellation: less than 24h before the start (the clinic sees it marked as such).
+    const isLate = new Date(apt.startTime).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+    const greek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+    const question = greek ? "Θέλετε σίγουρα να ακυρώσετε την κράτηση;" : "Are you sure you want to cancel this reservation?";
+    const lateWarning = greek
+      ? "Προσοχή: ακύρωση λιγότερο από 24 ώρες πριν το ραντεβού. Θα καταγραφεί ως καθυστερημένη ακύρωση."
+      : "Warning: this is less than 24 hours before your appointment. It will be recorded as a late cancellation.";
+    if (window.confirm(isLate ? `${lateWarning}\n\n${question}` : question)) {
       try {
         await dispatch(cancelAppointment(apt.id)).unwrap();
         toast.success("Appointment cancelled");
@@ -381,7 +388,7 @@ export const Appointments: React.FC = () => {
                         {isGreek ? "ΘΕΡΑΠΕΙΑ ΕΝΔΙΑΦΕΡΟΝΤΟΣ" : "TREATMENT OF INTEREST"}
                       </p>
                       <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tight leading-tight line-clamp-2">
-                        {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
+                        {(apt as any).treatmentLabel || (apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
                       </h3>
                     </div>
 

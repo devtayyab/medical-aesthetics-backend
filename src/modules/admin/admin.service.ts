@@ -16,6 +16,8 @@ import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { PaymentRecord, PaymentStatus, PaymentType } from '../payments/entities/payment-record.entity';
+import { buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { Lead } from '../crm/entities/lead.entity';
 import { Treatment } from '../clinics/entities/treatment.entity';
 import { TreatmentCategory } from '../clinics/entities/treatment-category.entity';
@@ -81,19 +83,23 @@ export class AdminService {
       return { startDate: new Date(dateRange.startDate), endDate: new Date(dateRange.endDate) };
     }
 
-    // Default to Month-To-Date (UTC-ish; stored as timestamptz)
-    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+    // Default to Month-To-Date in Europe/Athens
+    const monthStart = formatInTimeZone(now, 'Europe/Athens', 'yyyy-MM-01');
+    const startDate = fromZonedTime(`${monthStart}T00:00:00`, 'Europe/Athens');
     const endDate = now;
     return { startDate, endDate };
   }
 
   private paymentNetExpression(alias = 'p') {
-    // Net turnover: payments/deposits add, refunds/voids subtract
-    return `SUM(CASE
-      WHEN ${alias}.type IN ('${PaymentType.PAYMENT}', '${PaymentType.DEPOSIT}') THEN ${alias}.amount
-      WHEN ${alias}.type IN ('${PaymentType.REFUND}', '${PaymentType.VOID}') THEN -${alias}.amount
-      ELSE 0
-    END)`;
+    // Net turnover: payments/deposits add, refunds/voids subtract (shared definition).
+    return netPaidExpression(alias);
+  }
+
+  /** Revenue MTD (Athens month) from payments: the same figure every revenue page shows. */
+  async getRevenueSummary(dateRange?: { startDate?: string; endDate?: string }) {
+    const { startDate, endDate } = this.resolveDateRange(dateRange);
+    const total = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, { startDate, endDate });
+    return { total, currency: 'EUR', period: { startDate: startDate.toISOString(), endDate: endDate.toISOString() } };
   }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
@@ -113,8 +119,7 @@ export class AdminService {
   }
 
   async getReports(): Promise<any> {
-    // This would contain complex analytics queries
-    // For now, return mock data structure
+    const revenue = await this.getRevenueSummary();
     return {
       leadsToConversions: {
         totalLeads: 0,
@@ -122,8 +127,9 @@ export class AdminService {
         conversionRate: 0,
       },
       revenueStats: {
-        totalRevenue: 0,
-        monthlyRevenue: 0,
+        // Month-to-date net paid revenue (EUR) from payments.
+        totalRevenue: revenue.total,
+        monthlyRevenue: revenue.total,
         averageAppointmentValue: 0,
       },
       appointmentStats: {
@@ -720,21 +726,29 @@ export class AdminService {
     const stats = await appointmentQuery
       .select([
         'COUNT(appointment.id) as totalAppointments',
-        'SUM(appointment.totalAmount) as totalRevenue',
-        'AVG(appointment.totalAmount) as avgAppointmentValue',
+        `COUNT(CASE WHEN appointment.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.EXECUTED}') THEN 1 END) as completedAppointments`,
         'COUNT(DISTINCT appointment.clientId) as uniqueClients',
       ])
       .getRawOne();
+
+    // Revenue: payments received (EUR, net of refunds), same as every other revenue page.
+    const totalRevenue = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, {
+      clinicId: id,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
+    const completed = parseInt(stats.completedAppointments ?? stats.completedappointments) || 0;
 
     return {
       clinicId: clinic.id,
       clinicName: clinic.name,
       period: dateRange,
       stats: {
-        totalAppointments: parseInt(stats.totalAppointments) || 0,
-        totalRevenue: parseFloat(stats.totalRevenue) || 0,
-        avgAppointmentValue: parseFloat(stats.avgAppointmentValue) || 0,
-        uniqueClients: parseInt(stats.uniqueClients) || 0,
+        totalAppointments: parseInt(stats.totalAppointments ?? stats.totalappointments) || 0,
+        totalRevenue,
+        currency: 'EUR',
+        avgAppointmentValue: completed > 0 ? totalRevenue / completed : 0,
+        uniqueClients: parseInt(stats.uniqueClients ?? stats.uniqueclients) || 0,
       },
     };
   }
@@ -783,10 +797,7 @@ export class AdminService {
       .getRawOne();
 
     // Turnover (payments-derived) in the same period
-    const turnoverRow = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+    const turnoverRow = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .select([
         `${this.paymentNetExpression('p')} as netRevenue`,
         'COUNT(p.id) as paymentCount',
@@ -794,12 +805,9 @@ export class AdminService {
       .getRawOne();
 
     // Turnover MTD (€) vs target per salesperson
-    const salespersonTurnoverRows = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
+    const salespersonTurnoverRows = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .leftJoin(User, 'u', 'u.id = p.salespersonId')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
       .andWhere('p.salespersonId IS NOT NULL')
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
       .select([
         'p.salespersonId as salespersonId',
         `COALESCE(u.firstName, '') as firstName`,
@@ -900,10 +908,7 @@ export class AdminService {
       .addGroupBy('c.name')
       .getRawMany();
 
-    const clinicRevenueRows = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+    const clinicRevenueRows = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .select(['p.clinicId as clinicId', `${this.paymentNetExpression('p')} as netRevenue`])
       .groupBy('p.clinicId')
       .getRawMany();
