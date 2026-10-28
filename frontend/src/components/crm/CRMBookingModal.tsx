@@ -74,7 +74,15 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
  // Selection
  const [selectedClinic, setSelectedClinic] = useState<string>(initialAppointment?.clinicId || clinicId || '');
- const [selectedService, setSelectedService] = useState<string>(initialAppointment?.serviceId || '');
+ // Several treatments per appointment, same shape as the calendar "New Appointment" form:
+ // first id is the primary serviceId, the rest go to additionalServiceIds.
+ const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+ initialAppointment?.serviceId
+ ? [initialAppointment.serviceId, ...((initialAppointment.additionalServiceIds || []) as string[]).filter((id: string) => id && id !== initialAppointment.serviceId)]
+ : []
+ );
+ const selectedService = selectedServiceIds[0] || '';
+ const selectedServiceKey = selectedServiceIds.join(',');
  const [selectedDate, setSelectedDate] = useState<string>(
  initialAppointment?.startTime 
  ? format(new Date(initialAppointment.startTime), 'yyyy-MM-dd') 
@@ -103,7 +111,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  useEffect(() => {
  if (initialAppointment && isOpen) {
  setSelectedClinic(initialAppointment.clinicId);
- setSelectedService(initialAppointment.serviceId);
+ setSelectedServiceIds(
+ initialAppointment.serviceId
+ ? [initialAppointment.serviceId, ...((initialAppointment.additionalServiceIds || []) as string[]).filter((id: string) => id && id !== initialAppointment.serviceId)]
+ : []
+ );
  setSelectedDate(format(new Date(initialAppointment.startTime), 'yyyy-MM-dd'));
  setSelectedSlot({
  startTime: format(new Date(initialAppointment.startTime), 'HH:mm'),
@@ -186,7 +198,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  try {
  const res = await bookingAPI.getAvailability({
  clinicId: selectedClinic,
- serviceId: selectedService,
+ // All selected treatments: the availability service sums their durations
+ serviceId: selectedServiceIds.length > 1 ? selectedServiceIds : selectedService,
  date: selectedDate
  });
  const slotsData = res.data?.slots || res.data?.data?.slots || res.data?.data || res.data;
@@ -200,7 +213,26 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  };
  fetchSlots();
  setSelectedSlot(null);
- }, [selectedClinic, selectedService, selectedDate, isOpen]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [selectedClinic, selectedServiceKey, selectedDate, isOpen]);
+
+ const selectedServiceObjects = selectedServiceIds
+ .map(id => services.find(s => s.id === id))
+ .filter(Boolean) as any[];
+ // Same duration rule as the calendar form: unknown durations count as 30 min, fallback 60.
+ const totalDurationMinutes = (() => {
+ const total = selectedServiceObjects.reduce((sum, svc) => {
+ const dur = parseInt(String(svc.durationMinutes || svc.duration || 0), 10);
+ return sum + (dur > 0 ? dur : 30);
+ }, 0);
+ return total > 0 ? total : 60;
+ })();
+ const totalPrice = selectedServiceObjects.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0);
+ const additionalServiceIds = selectedServiceIds.slice(1).filter(id => !!id && id !== selectedService);
+
+ const toggleService = (id: string) => {
+ setSelectedServiceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+ };
 
  if (!isOpen) return null;
 
@@ -212,24 +244,22 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  const bookedByIdUUID = user?.id;
  setIsLoading(true);
  try {
- const bookingPayload: any = {
- clientId: finalCustomerId,
- clinicId: selectedClinic,
- serviceId: selectedService,
- startTime: (() => {
+ const startISO = (() => {
  if (selectedSlot.startTime.includes('T')) return selectedSlot.startTime;
  const [hh, mm] = selectedSlot.startTime.split(':').map(Number);
  const dt = new Date(selectedDate);
  dt.setHours(hh, mm, 0, 0);
  return dt.toISOString();
- })(),
- endTime: (() => {
- if (selectedSlot.endTime.includes('T')) return selectedSlot.endTime;
- const [hh, mm] = selectedSlot.endTime.split(':').map(Number);
- const dt = new Date(selectedDate);
- dt.setHours(hh, mm, 0, 0);
- return dt.toISOString();
- })(),
+ })();
+ // End = start + sum of all selected treatment durations
+ const endISO = new Date(new Date(startISO).getTime() + totalDurationMinutes * 60000).toISOString();
+ const bookingPayload: any = {
+ clientId: finalCustomerId,
+ clinicId: selectedClinic,
+ serviceId: selectedService,
+ additionalServiceIds: additionalServiceIds.length > 0 ? additionalServiceIds : undefined,
+ startTime: startISO,
+ endTime: endISO,
  notes,
  status: initialAppointment?.status || 'PENDING',
  providerId: selectedSlot.providerId || undefined,
@@ -255,6 +285,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     await bookingAPI.updateAppointment(initialAppointment.id, {
  clinicId: selectedClinic,
  serviceId: selectedService,
+ additionalServiceIds,
  startTime: bookingPayload.startTime,
  endTime: bookingPayload.endTime,
  notes: bookingPayload.notes
@@ -338,7 +369,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  onClick={() => { 
  if (selectedClinic !== c.id) {
  setSelectedClinic(c.id); 
- setSelectedService('');
+ setSelectedServiceIds([]);
  setSelectedSlot(null);
  }
  setStep(2); 
@@ -362,8 +393,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  <Button variant="ghost" size="sm" onClick={() => setStep(clinicId ? 0 : 1)} className="h-8 w-8 p-0 rounded-full">
  <ChevronLeft className="w-4 h-4" />
  </Button>
- <span className="text-sm font-black text-slate-800">Choose Service</span>
+ <span className="text-sm font-black text-slate-800">Choose Treatments</span>
  </div>
+ <div className="text-[10px] text-slate-500 font-medium -mt-2">You can select several treatments for one appointment.</div>
  <div className="grid grid-cols-1 gap-2">
  {services.length === 0 ? (
  <div className="text-center py-10 text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">No services found for this clinic</div>
@@ -371,8 +403,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  services.map(s => (
  <button
  key={s.id}
- onClick={() => { setSelectedService(s.id); setStep(3); }}
- className={`p-4 text-left border rounded-xl transition-all ${selectedService === s.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
+ onClick={() => toggleService(s.id)}
+ aria-pressed={selectedServiceIds.includes(s.id)}
+ className={`p-4 text-left border rounded-xl transition-all ${selectedServiceIds.includes(s.id) ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
  >
  <div className="flex items-center justify-between">
  <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.name?.trim() || (s.treatment?.name)}</div>
@@ -383,6 +416,12 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  ))
  )}
  </div>
+ {selectedServiceObjects.length > 0 && (
+ <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold text-slate-700 flex items-center justify-between">
+ <span>{selectedServiceObjects.length} selected · {totalDurationMinutes} min</span>
+ <span className="text-blue-600 font-black">€{totalPrice}</span>
+ </div>
+ )}
  </div>
  );
  case 3:
@@ -482,8 +521,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  <div className="flex flex-col gap-1">
  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Treatment</span>
  <span className="text-[11px] font-black text-slate-800">
- {services.find(s => s.id === selectedService)?.name || services.find(s => s.id === selectedService)?.treatment?.name || 'Treatment'}
+ {selectedServiceObjects.length > 0
+ ? selectedServiceObjects.map(s => s.name?.trim() || s.treatment?.name || 'Treatment').join(' + ')
+ : 'Treatment'}
  </span>
+ <span className="text-[10px] font-bold text-slate-500">{totalDurationMinutes} min</span>
  </div>
  <div className="flex flex-col gap-1">
  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Location</span>
