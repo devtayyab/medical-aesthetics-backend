@@ -41,6 +41,7 @@ import ClientsPage from"@/pages/Clinic/ClientsPage";
 import ReviewsPage from"@/pages/Clinic/ReviewsPage";
 import NotificationsPage from"@/pages/Clinic/NotificationsPage";
 import SettingsPage from"@/pages/Clinic/SettingsPage";
+import GoogleCalendarPage from"@/pages/Clinic/GoogleCalendarPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
 import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
@@ -627,6 +628,14 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["clinic_owner"]}>
  <SettingsPage />
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="google-calendar"
+ element={
+ <ProtectedLayout allowedRoles={["clinic_owner","doctor","secretariat"]}>
+ <GoogleCalendarPage />
  </ProtectedLayout>
  }
  />
