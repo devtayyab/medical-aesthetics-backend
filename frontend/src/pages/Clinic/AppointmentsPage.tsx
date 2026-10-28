@@ -508,7 +508,8 @@ const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onEx
  Confirm
  </button>
  )}
- {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && (() => {
+ {/* Complete / execute / payment only from the appointment start time */}
+ {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && new Date(appointment.startTime).getTime() <= Date.now() && (() => {
     const isVenue = String(appointment.paymentMethod || '').toLowerCase() === 'venue';
     const isPaid = !isVenue && (
       Number(appointment.amountPaid) > 0 || 
