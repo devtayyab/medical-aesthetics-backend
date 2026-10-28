@@ -134,7 +134,7 @@ export class ClinicPatientsService {
     let profileScope = 'FALSE';
     if (clinicIds) {
       params.push(clinicIds);
-      aptScope += ` AND a."clinicId" = ANY($1)`;
+      aptScope += ` AND a."clinicId"::text = ANY($1::text[])`;
       profileScope = this.profileClinicSql('u').replace(/:clinicIds/g, () => '$1');
     }
 
