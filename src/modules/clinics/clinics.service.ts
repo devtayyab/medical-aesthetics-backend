@@ -50,6 +50,60 @@ export class ClinicsService {
     private notificationsService: NotificationsService,
   ) { }
 
+  private isClinicManagerOrAdmin(user: any, clinicId?: string): boolean {
+    if (!user) return false;
+    const r = (user.role || '').toLowerCase();
+    if (r === 'admin' || r === 'super_admin') return true;
+    if (clinicId && (user.assignedClinicId === clinicId || user.clinicId === clinicId)) {
+      return ['clinic_owner', 'manager', 'doctor', 'secretariat'].includes(r);
+    }
+    return false;
+  }
+
+  sanitizeClinic(clinic: Clinic, user?: any): Clinic {
+    if (!clinic) return clinic;
+
+    const isAdminOrStaff = this.isClinicManagerOrAdmin(user, clinic.id);
+
+    // 1. Bank details: never expose to unauthenticated callers or clients
+    if (!isAdminOrStaff) {
+      delete (clinic as any).bankIban;
+      delete (clinic as any).bankBic;
+      delete (clinic as any).bankAccountHolder;
+      delete (clinic as any).bankName;
+    }
+
+    // 2. Doctor/Owner personal details: personal email, phone and lastLoginAt NEVER go to clients
+    const sanitizeOwnerUser = (u: any) => {
+      if (!u) return;
+      delete u.password;
+      delete u.refreshToken;
+      if (!user || user.role === UserRole.CLIENT || user.role?.toLowerCase() === 'client') {
+        delete u.email;
+        delete u.phone;
+        delete u.lastLoginAt;
+      }
+    };
+
+    if (clinic.owner) {
+      sanitizeOwnerUser(clinic.owner);
+    }
+
+    if (Array.isArray(clinic.owners)) {
+      clinic.owners.forEach((o) => sanitizeOwnerUser(o));
+    }
+
+    // 3. Treatment prices: if not logged in, strip all treatment prices
+    if (!user && Array.isArray(clinic.services)) {
+      clinic.services.forEach((s) => {
+        (s as any).price = null;
+        (s as any).depositAmount = null;
+      });
+    }
+
+    return clinic;
+  }
+
   async search(params: {
     location?: string;
     category?: string;
@@ -61,7 +115,7 @@ export class ClinicsService {
     search_date?: string;
     search_time_window?: string;
     sortBy?: string;
-  }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
+  }, user?: any): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
       .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
@@ -369,9 +423,36 @@ export class ClinicsService {
 
       const processedTreatments = Array.from(treatmentMap.values());
 
+      // If user is NOT logged in:
+      // "NOT logged in → only treatments, NO prices, NO doctor or clinic names."
+      // "Logged in → doctors, clinics, prices."
+      if (!user) {
+        const sanitizedTreatments = processedTreatments.map((t) => ({
+          ...t,
+          fromPrice: null,
+          availableAt: [],
+          clinicsCount: 0,
+          clinicId: null,
+          singleClinicId: null,
+          singleServiceId: null,
+        }));
+
+        return {
+          clinics: [],
+          treatments: sanitizedTreatments,
+          total: sanitizedTreatments.length,
+          totalClinics: 0,
+          totalTreatments: sanitizedTreatments.length,
+          offset: params.offset || 0,
+        };
+      }
+
+      // Logged in: sanitize clinic entities (no bank IBAN for clients, no doctor personal phone/email)
+      const sanitizedClinics = clinics.map((c) => this.sanitizeClinic(c, user));
       const deduplicatedCount = processedTreatments.length;
+
       return {
-        clinics,
+        clinics: sanitizedClinics,
         treatments: processedTreatments,
         total: totalClinics + deduplicatedCount,
         totalClinics,
@@ -384,7 +465,7 @@ export class ClinicsService {
     }
   }
 
-  async getTreatmentDetails(id: string): Promise<any> {
+  async getTreatmentDetails(id: string, user?: any): Promise<any> {
     // Basic UUID format check to avoid 500 errors from DB
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
@@ -400,21 +481,24 @@ export class ClinicsService {
       throw new NotFoundException('Treatment not found');
     }
 
-    const offerings = treatment.offerings
-      .filter(o => o.isActive && o.clinic?.isActive)
-      .map(o => ({
-        id: o.id,
-        clinicId: o.clinic.id,
-        clinicName: o.clinic.name,
-        location: o.clinic.address
-          ? `${o.clinic.address.city || ''}, ${o.clinic.address.state || ''}`.replace(/^,\s*|,\s*$/, '')
-          : 'Location not specified',
-        price: o.price,
-        durationMinutes: o.durationMinutes,
-        latitude: o.clinic.latitude,
-        longitude: o.clinic.longitude,
-        rating: o.clinic.rating,
-      }));
+    // If NOT logged in: only treatments, NO prices, NO doctor or clinic names
+    const offerings = user
+      ? treatment.offerings
+          .filter(o => o.isActive && o.clinic?.isActive)
+          .map(o => ({
+            id: o.id,
+            clinicId: o.clinic.id,
+            clinicName: o.clinic.name,
+            location: o.clinic.address
+              ? `${o.clinic.address.city || ''}, ${o.clinic.address.state || ''}`.replace(/^,\s*|,\s*$/, '')
+              : 'Location not specified',
+            price: o.price,
+            durationMinutes: o.durationMinutes,
+            latitude: o.clinic.latitude,
+            longitude: o.clinic.longitude,
+            rating: o.clinic.rating,
+          }))
+      : [];
 
     return {
       ...treatment,
@@ -422,14 +506,19 @@ export class ClinicsService {
     };
   }
 
-  async getFeatured(): Promise<Clinic[]> {
-    return this.clinicsRepository.createQueryBuilder('clinic')
+  async getFeatured(user?: any): Promise<Clinic[]> {
+    if (!user) {
+      return [];
+    }
+    const clinics = await this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.services', 'services')
       .where('clinic.isActive = :isActive', { isActive: true })
       .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' })
       .orderBy('clinic.createdAt', 'DESC')
       .take(6)
       .getMany();
+
+    return clinics.map((c) => this.sanitizeClinic(c, user));
   }
 
   async getPublicCities(): Promise<string[]> {
@@ -446,7 +535,7 @@ export class ClinicsService {
     return Array.from(citySet).sort();
   }
 
-  async findById(id: string): Promise<Clinic> {
+  async findById(id: string, user?: any): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({
       where: { id, isActive: true },
       relations: ['services', 'owner', 'owners'],
@@ -454,10 +543,10 @@ export class ClinicsService {
     if (!clinic) {
       throw new NotFoundException('Clinic not found');
     }
-    return clinic;
+    return this.sanitizeClinic(clinic, user);
   }
 
-  async findServices(clinicId: string): Promise<any[]> {
+  async findServices(clinicId: string, user?: any): Promise<any[]> {
     const services = await this.servicesRepository.createQueryBuilder('service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .where('service.clinicId = :clinicId', { clinicId })
@@ -468,10 +557,18 @@ export class ClinicsService {
     console.log(`[ClinicsService] Found ${services.length} active services for clinicId: ${clinicId}`);
     
     // Explicitly map name from treatment to service for UI consistency
-    return services.map(s => ({
-      ...s,
-      name: s.treatment?.name || 'Unnamed Service'
-    }));
+    // If not logged in, NO prices should be exposed
+    return services.map(s => {
+      const item: any = {
+        ...s,
+        name: s.treatment?.name || 'Unnamed Service'
+      };
+      if (!user) {
+        item.price = null;
+        item.depositAmount = null;
+      }
+      return item;
+    });
   }
 
   // New clinic management methods
@@ -847,7 +944,7 @@ export class ClinicsService {
     }
   }
 
-  async getClinicProviders(clinicId: string): Promise<any[]> {
+  async getClinicProviders(clinicId: string, user?: any): Promise<any[]> {
     const uniqueProviders = new Map();
 
     // 1. Get all staff assigned to this clinic (Doctor, Clinic Owner, Secretariat)
@@ -978,10 +1075,20 @@ export class ClinicsService {
       }
     });
 
-    return Array.from(uniqueProviders.values());
+    // Doctor's personal email/phone NEVER go to clients
+    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+
+    return Array.from(uniqueProviders.values()).map((provider) => {
+      const p = { ...provider };
+      if (!isStaff) {
+        delete p.email;
+        delete p.phone;
+      }
+      return p;
+    });
   }
 
-  async getServiceProviders(clinicId: string, serviceId: string): Promise<any[]> {
+  async getServiceProviders(clinicId: string, serviceId: string, user?: any): Promise<any[]> {
     // Get providers who have appointments for this specific service
     const providers = await this.usersRepository
       .createQueryBuilder('user')
@@ -990,17 +1097,24 @@ export class ClinicsService {
       .andWhere('appointment.serviceId = :serviceId', { serviceId })
       .getMany();
 
-    // Map to the desired format
-    return providers.map((user) => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      fullName: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      profilePictureUrl: user.profilePictureUrl,
-    }));
+    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+
+    // Map to the desired format: doctor's personal email/phone never go to clients
+    return providers.map((u) => {
+      const p: any = {
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        fullName: `${u.firstName} ${u.lastName}`.trim(),
+        role: u.role,
+        profilePictureUrl: u.profilePictureUrl,
+      };
+      if (isStaff) {
+        p.email = u.email;
+        p.phone = u.phone;
+      }
+      return p;
+    });
   }
 
   async getClinicAnalytics(clinicId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {

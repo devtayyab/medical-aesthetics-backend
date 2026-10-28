@@ -158,7 +158,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
       return;
     }
     setInitialAptData({
-      clinicId: filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id || '',
+      clinicId: filters.clinicId !== 'all' ? filters.clinicId : '',
       providerId: selectedProviderId !== 'all' ? selectedProviderId : user?.id || '',
     });
     setAptModalMode('create');

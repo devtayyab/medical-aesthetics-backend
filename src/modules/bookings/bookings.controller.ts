@@ -173,6 +173,35 @@ export class BookingsController {
       }
     }
 
+    // Internal notes NEVER reach the client
+    // Doctor's personal email/phone never go to clients
+    // The doctor's IBAN is shown to the client ONLY at the payment step
+    const callerIsStaff = this.isStaff(req.user);
+    if (!callerIsStaff) {
+      delete result.notes;
+      delete result.clinicNotes;
+      delete result.appointmentCompletionReport;
+
+      if (result.provider) {
+        result.provider = { ...result.provider };
+        delete result.provider.email;
+        delete result.provider.phone;
+        delete result.provider.lastLoginAt;
+        delete result.provider.password;
+        delete result.provider.refreshToken;
+      }
+      if (result.clinic) {
+        result.clinic = { ...result.clinic };
+        const isPaymentStep = result.status === AppointmentStatus.PENDING_PAYMENT;
+        if (!isPaymentStep) {
+          delete result.clinic.bankIban;
+          delete result.clinic.bankBic;
+          delete result.clinic.bankAccountHolder;
+          delete result.clinic.bankName;
+        }
+      }
+    }
+
     return result;
   }
 
@@ -180,7 +209,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Reschedule appointment' })
   async reschedule(
     @Param('id') id: string,
-    @Body() body: { startTime: string; endTime: string; notes?: string },
+    @Body() body: { startTime: string; endTime: string; notes?: string; reason?: string },
     @Request() req,
   ) {
     const appointment = await this.bookingsService.findById(id);
@@ -211,7 +240,7 @@ export class BookingsController {
         id,
         start,
         end,
-        body.notes,
+        body.reason || body.notes,
         isClient,
       );
     } catch (error) {

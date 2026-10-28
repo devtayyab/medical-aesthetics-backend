@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query, Post, Body, UseGuards, Request, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, UseGuards, Request, Patch, UnauthorizedException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { ReviewStatus } from './enums/review-status.enum';
 import { TreatmentStatus } from './enums/treatment-status.enum';
@@ -13,16 +14,20 @@ import { ClinicsService } from './clinics.service';
 export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) { }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get()
   @ApiOperation({ summary: 'Search clinics with filters' })
-  search(@Query() params: any) {
-    return this.clinicsService.search(params);
+  search(@Query() params: any, @Request() req: any) {
+    return this.clinicsService.search(params, req?.user);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get('featured')
   @ApiOperation({ summary: 'Get featured clinics' })
-  getFeatured() {
-    return this.clinicsService.getFeatured();
+  getFeatured(@Request() req: any) {
+    return this.clinicsService.getFeatured(req?.user);
   }
 
   // Public category tree (top-level categories with their subcategories nested)
@@ -71,10 +76,12 @@ export class ClinicsController {
     return this.clinicsService.setTreatmentStatus(id, body.status);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get('treatments/:id')
   @ApiOperation({ summary: 'Get treatment details with clinics offering it' })
-  getTreatmentDetails(@Param('id') id: string) {
-    return this.clinicsService.getTreatmentDetails(id);
+  getTreatmentDetails(@Param('id') id: string, @Request() req: any) {
+    return this.clinicsService.getTreatmentDetails(id, req?.user);
   }
 
   @Get('suggestions')
@@ -83,31 +90,49 @@ export class ClinicsController {
     return this.clinicsService.getSuggestions(q);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Get clinic details' })
-  findOne(@Param('id') id: string) {
-    return this.clinicsService.findById(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    if (!req?.user) {
+      throw new UnauthorizedException('Authentication required to view clinic details');
+    }
+    return this.clinicsService.findById(id, req.user);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get(':id/services')
   @ApiOperation({ summary: 'Get clinic services' })
-  findServices(@Param('id') id: string) {
-    return this.clinicsService.findServices(id);
+  findServices(@Param('id') id: string, @Request() req: any) {
+    return this.clinicsService.findServices(id, req?.user);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get(':id/providers')
   @ApiOperation({ summary: 'Get clinic providers (doctors/aestheticians)' })
-  getProviders(@Param('id') id: string) {
-    return this.clinicsService.getClinicProviders(id);
+  getProviders(@Param('id') id: string, @Request() req: any) {
+    if (!req?.user) {
+      return [];
+    }
+    return this.clinicsService.getClinicProviders(id, req.user);
   }
 
+  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get(':id/services/:serviceId/providers')
   @ApiOperation({ summary: 'Get providers for a specific service' })
   getServiceProviders(
     @Param('id') clinicId: string,
     @Param('serviceId') serviceId: string,
+    @Request() req: any,
   ) {
-    return this.clinicsService.getServiceProviders(clinicId, serviceId);
+    if (!req?.user) {
+      return [];
+    }
+    return this.clinicsService.getServiceProviders(clinicId, serviceId, req.user);
   }
 
   @Get(':id/reviews')
