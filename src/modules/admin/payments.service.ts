@@ -47,6 +47,7 @@ export class PaymentsService {
             clinicId: data.clinicId,
             clientId: data.clientId,
             appointmentId: data.appointmentId,
+            salespersonId: data.salespersonId,
             notes: data.notes,
             type: PaymentType.PAYMENT,
             status: PaymentStatus.COMPLETED,

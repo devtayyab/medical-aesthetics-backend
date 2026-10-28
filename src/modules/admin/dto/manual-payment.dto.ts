@@ -3,9 +3,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PaymentMethod } from '../../payments/entities/payment-record.entity';
 
 /**
- * Manual payment recorded by staff. Only these fields are accepted — `type`, `status`,
- * and `salespersonId` are intentionally NOT settable by the caller (they are derived
- * server-side) to prevent fabricating turnover or refund records.
+ * Manual payment recorded by staff. Only these fields are accepted — `type` and `status`
+ * are intentionally NOT settable by the caller (they are forced server-side) to prevent
+ * fabricating refund records. `salespersonId` may be chosen; when omitted it is derived
+ * from the linked appointment so every payment carries its salesperson.
  */
 export class ManualPaymentDto {
   @ApiProperty({ example: 50 })
@@ -31,6 +32,11 @@ export class ManualPaymentDto {
   @IsOptional()
   @IsUUID()
   appointmentId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
+  salespersonId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
