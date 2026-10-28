@@ -1138,6 +1138,11 @@ export class BookingsService {
 
     const serviceIds = [next.serviceId, ...next.additionalServiceIds];
     const clinicChanged = String(next.clinicId) !== String(old.clinicId);
+    // The old clinic's doctor does not move with the client to another clinic.
+    if (clinicChanged && updateData.providerId === undefined) {
+      next.providerId = null;
+      updateData.providerId = null;
+    }
     const servicesChanged =
       String(next.serviceId) !== String(old.serviceId) ||
       JSON.stringify([...next.additionalServiceIds].sort()) !== JSON.stringify([...old.additionalServiceIds].sort());
@@ -1364,9 +1369,8 @@ export class BookingsService {
     } else if (status === AppointmentStatus.NO_SHOW) {
       updateData.noShowMarkedAt = new Date();
       updateData.noShowMarkedById = userId;
-      // Financial impact: Revenue becomes 0 for no-shows (unless we implement no-show fee later)
-      updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
+      // Amounts are kept: the price stays for history and amountPaid stays ledger-derived
+      // (revenue comes from payments only).
     }
 
     await this.appointmentsRepository.update(id, updateData);
@@ -1392,7 +1396,7 @@ export class BookingsService {
       if (trigger && updatedAppointment.clientId) {
         await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
           customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
-          serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
+          serviceName: await this.getTreatmentLabel(updatedAppointment),
           appointmentDate: formatDateInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
           appointmentTime: formatTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
           clinicName: updatedAppointment.clinic?.name,
@@ -2072,8 +2076,7 @@ export class BookingsService {
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
-      appointment.amountPaid = 0;
-      appointment.totalAmount = 0;
+      // Amounts kept (price for history, amountPaid ledger-derived).
     }
 
     if (updateData?.notes && updateData.notes.trim()) {
@@ -2156,7 +2159,7 @@ export class BookingsService {
     if (trigger && updated.clientId) {
       await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {
         customerName: `${updated.client?.firstName || 'Customer'}`,
-        serviceName: updated.service?.treatment?.name || 'Treatment',
+        serviceName: await this.getTreatmentLabel(updated),
         appointmentDate: formatDateInTz(updated.startTime, updated.clinic?.timezone),
         appointmentTime: formatTimeInTz(updated.startTime, updated.clinic?.timezone),
         clinicName: updated.clinic?.name,

@@ -616,6 +616,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         toast.success('Appointment created successfully!');
       } else {
         await bookingAPI.updateAppointment(existingAppointment!.id, {
+          // Clinic changes are saved too; the server recalculates price and duration.
+          clinicId: form.clinicId,
           startTime: startUTC.toISOString(),
           endTime: endUTC.toISOString(),
           serviceId: form.serviceId,
