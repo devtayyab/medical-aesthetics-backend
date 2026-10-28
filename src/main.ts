@@ -1,7 +1,30 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+
+/**
+ * Browsers may only send credentialed (cookie) requests from these origins.
+ * CORS_ORIGINS: comma-separated list, e.g. "https://beautydoctors.gr,https://www.beautydoctors.gr".
+ * Falls back to FRONTEND_URL, local dev servers and the Capacitor/WebView origins.
+ */
+function allowedOrigins(): string[] {
+  const fromEnv = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+  const frontend = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+  const defaults = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
+  ];
+  return Array.from(new Set([...fromEnv, ...(frontend ? [frontend] : []), ...defaults]));
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -9,9 +32,37 @@ async function bootstrap() {
   // Enforce @Exclude() on entities (passwordHash, refreshToken, etc.) in all responses.
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  // Enable CORS
+  // Security headers. The API serves uploaded images to the web app on another origin,
+  // so resources must be loadable cross-origin; CSP is relaxed only for Swagger UI.
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
+    }),
+  );
+
+  // Enable CORS. Auth uses cookies, so origins must be an explicit allow-list
+  // (reflecting any origin with credentials would let any site call the API as the user).
+  const origins = allowedOrigins();
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Non-browser clients (curl, server-to-server, native apps) send no Origin header.
+      if (!origin || origins.includes(origin.replace(/\/$/, ''))) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true,
     allowedHeaders: 'Content-Type, Accept, Authorization',
   });
