@@ -19,6 +19,7 @@ import { HoldSlotDto } from './dto/hold-slot.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Public } from '../../common/decorators/public.decorator';
+import { stripUserPersonalData, stripClinicBankData } from '../../common/utils/privacy.util';
 
 const STAFF_ROLES = ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'];
 
@@ -59,9 +60,9 @@ export class BookingsController {
   @ApiQuery({ name: 'serviceId', required: true })
   @ApiQuery({ name: 'providerId', required: false })
   @ApiQuery({ name: 'date', required: true, example: '2025-01-20' })
-  async getAvailability(@Query() query: any) {
+  async getAvailability(@Query() query: any, @Request() req: any) {
     try {
-      const result = await this.availabilityService.getAvailableSlots(
+      const result: any = await this.availabilityService.getAvailableSlots(
         query.clinicId,
         query.serviceId,
         query.providerId || null,
@@ -69,6 +70,10 @@ export class BookingsController {
         query.allowPast === 'true' || query.allowPast === true,
         query.excludeAppointmentId || null
       );
+      // Not logged in: no doctor names
+      if (!req?.user && Array.isArray(result?.slots)) {
+        result.slots = result.slots.map((slot: any) => ({ ...slot, providerName: null }));
+      }
       return result;
     } catch (error) {
       // Log error for debugging
@@ -173,33 +178,20 @@ export class BookingsController {
       }
     }
 
-    // Internal notes NEVER reach the client
-    // Doctor's personal email/phone never go to clients
-    // The doctor's IBAN is shown to the client ONLY at the payment step
+    // Internal notes NEVER reach the client.
+    // Staff personal email/phone/last login never go to clients.
+    // Clinic bank columns are select: false, so they are not loaded here at all;
+    // the client pays through Viva Wallet (redirectUrl) at the payment step.
     const callerIsStaff = this.isStaff(req.user);
     if (!callerIsStaff) {
       delete result.notes;
       delete result.clinicNotes;
       delete result.appointmentCompletionReport;
 
-      if (result.provider) {
-        result.provider = { ...result.provider };
-        delete result.provider.email;
-        delete result.provider.phone;
-        delete result.provider.lastLoginAt;
-        delete result.provider.password;
-        delete result.provider.refreshToken;
+      for (const key of ['provider', 'bookedBy', 'executedBy', 'representative']) {
+        if (result[key]) result[key] = stripUserPersonalData(result[key]);
       }
-      if (result.clinic) {
-        result.clinic = { ...result.clinic };
-        const isPaymentStep = result.status === AppointmentStatus.PENDING_PAYMENT;
-        if (!isPaymentStep) {
-          delete result.clinic.bankIban;
-          delete result.clinic.bankBic;
-          delete result.clinic.bankAccountHolder;
-          delete result.clinic.bankName;
-        }
-      }
+      if (result.clinic) result.clinic = stripClinicBankData(result.clinic);
     }
 
     return result;
@@ -310,8 +302,9 @@ export class BookingsController {
 
   @Post('appointments/:id/payment-url')
   @ApiOperation({ summary: 'Generate Viva Wallet payment URL for an existing appointment (card payment)' })
-  async generatePaymentUrl(@Param('id') id: string) {
-    const appointment = await this.bookingsService.findById(id);
+  async generatePaymentUrl(@Param('id') id: string, @Request() req) {
+    // Only the appointment's own client (or staff) may create its payment link
+    const appointment = await this.assertCanAccess(id, req.user);
     const redirectUrl = await this.bookingsService.generateVivaPaymentUrl(appointment);
     return { redirectUrl };
   }

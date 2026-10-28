@@ -9,7 +9,6 @@ import {
 import { ServiceCard } from "@/components/molecules/ServiceCard/ServiceCard";
 import type { RootState, AppDispatch } from "@/store";
 import { clinicsAPI } from "@/services/api";
-import { format } from "date-fns";
 import type { Service } from "@/types";
 import { css } from "@emotion/css";
 import { Star, MapPin, Clock, Shield, Award, Info, Search, ShoppingBag, ArrowRight, X } from "lucide-react";
@@ -17,6 +16,7 @@ import BotoxImg from "@/assets/Botox.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { getImageUrl } from "@/utils/imageUrl";
+import { formatDate } from "@/utils/formatters";
 
 const heroSection = css`
   height: 320px;
@@ -287,7 +287,7 @@ export const ClinicDetails: React.FC = () => {
                               </div>
                             </div>
                             <span className="text-[9px] sm:text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                              {format(new Date(review.createdAt), "MMM d, yyyy")}
+                              {formatDate(review.createdAt)}
                             </span>
                           </div>
                           <p className="text-gray-600 leading-relaxed border-l-4 border-[#CBFF38] pl-4 py-1 text-sm sm:text-base font-medium">"{review.comment}"</p>

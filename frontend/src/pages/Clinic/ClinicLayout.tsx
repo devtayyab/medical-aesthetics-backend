@@ -267,7 +267,7 @@ const ClinicLayout: React.FC = () => {
 
  {/* Main Content */}
  <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-  <div className={`flex-1 flex flex-col min-h-0 h-full ${isDiaryOrCalendar ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar'}`}>
+  <div className={`flex-1 flex flex-col min-h-0 min-w-0 h-full ${isDiaryOrCalendar ? 'overflow-y-hidden overflow-x-auto' : 'overflow-y-auto overflow-x-auto no-scrollbar'}`}>
   <Outlet />
   </div>
   </main>

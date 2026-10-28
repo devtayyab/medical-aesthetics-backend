@@ -117,7 +117,12 @@ export class ClinicManagementController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic bank/IBAN details for Viva payouts' })
   async getBankDetails(@Request() req) {
-    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    const owned = await this.clinicsService.findByOwnerId(req.user.id);
+    // Bank columns are select: false; load them explicitly for the owner/admin only.
+    const clinic = await this.clinicsRepository.createQueryBuilder('clinic')
+      .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName'])
+      .where('clinic.id = :id', { id: owned.id })
+      .getOne();
     return {
       bankIban: clinic.bankIban || null,
       bankAccountHolder: clinic.bankAccountHolder || null,

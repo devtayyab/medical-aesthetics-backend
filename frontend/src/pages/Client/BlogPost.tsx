@@ -8,6 +8,7 @@ import { getImageUrl } from "@/utils/imageUrl";
 
 // Custom clinical hero visual
 import HeroBg from "@/assets/image copy.png";
+import { formatDate } from "@/utils/formatters";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -250,7 +251,7 @@ export const BlogPost: React.FC = () => {
             <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-2">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/85 text-[10px] font-black uppercase tracking-widest text-gray-500 shadow-xs">
                 <Calendar size={13} className="text-[#84cc16]" />
-                {new Date(post.publishedAt || post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                {formatDate(post.publishedAt || post.createdAt)}
               </div>
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/85 text-[10px] font-black uppercase tracking-widest text-gray-500 shadow-xs">
                 <Clock size={13} className="text-[#84cc16]" />

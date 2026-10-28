@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from"react-router-dom";
 import { Button } from"@/components/atoms/Button/Button";
 import { FaCheckCircle, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaChevronLeft, FaStar, FaShareAlt, FaCalendarPlus } from"react-icons/fa";
 import { css } from"@emotion/css";
-import { format } from"date-fns";
+import { formatWeekdayDate, formatTime } from"@/utils/formatters";
 
 const containerStyle = css`
  max-width: 650px;
@@ -68,8 +68,18 @@ interface Appointment {
  };
 }
 
+// Shows the real booking status: a new online booking waits for the clinic, so it is
+// "Pending confirmation" until staff confirm it.
+const getStatusLabel = (status: string | undefined, isGreek: boolean) => {
+ const s = (status || '').toUpperCase();
+ if (s === 'CONFIRMED') return isGreek ? 'Επιβεβαιωμένο' : 'Confirmed';
+ if (s === 'PENDING_PAYMENT') return isGreek ? 'Αναμονή πληρωμής' : 'Awaiting payment';
+ return isGreek ? 'Αναμονή επιβεβαίωσης' : 'Pending confirmation';
+};
+
 const BookingConfirmation: React.FC = () => {
  const location = useLocation();
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
  const navigate = useNavigate();
  const [appointment, setAppointment] = useState<Appointment | null>(null);
  const [isLoading, setIsLoading] = useState(true);
@@ -118,11 +128,13 @@ const BookingConfirmation: React.FC = () => {
   </div>
 
   <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-gray-900 mb-2 px-2">
-  Booking Confirmed!
+  {(appointment.status || '').toUpperCase() === 'CONFIRMED'
+   ? (isGreek ? 'Το ραντεβού επιβεβαιώθηκε' : 'Booking confirmed')
+   : (isGreek ? 'Το αίτημα κράτησης στάλθηκε' : 'Booking request sent')}
   </h1>
   <div className="flex flex-wrap justify-center gap-2 mb-4 sm:mb-8">
   <p className="text-gray-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em] bg-gray-50 px-2.5 py-1 rounded-md">
-  Status: Confirmed
+  {isGreek ? 'Κατάσταση' : 'Status'}: {getStatusLabel(appointment.status, isGreek)}
   </p>
   <p className="text-gray-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em] bg-gray-50 px-2.5 py-1 rounded-md">
   Ref: #{appointment.id.slice(-8).toUpperCase()}
@@ -137,7 +149,7 @@ const BookingConfirmation: React.FC = () => {
   <div>
   <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Date</p>
   <p className="font-black text-black uppercase text-xs sm:text-sm">
-  {format(new Date(appointment.startTime),"EEEE, MMM d")}
+  {formatWeekdayDate(appointment.startTime)}
   </p>
   </div>
   </div>
@@ -149,7 +161,7 @@ const BookingConfirmation: React.FC = () => {
   <div>
   <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Time</p>
   <p className="font-black text-black uppercase text-xs sm:text-sm">
-  {appointment.startTimeDisplay || format(new Date(appointment.startTime),"HH:mm")}
+  {formatTime(appointment.startTime) || appointment.startTimeDisplay}
   </p>
   </div>
   </div>

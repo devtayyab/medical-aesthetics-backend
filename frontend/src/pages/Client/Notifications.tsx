@@ -27,6 +27,7 @@ import type { RootState, AppDispatch } from "@/store";
 
 // Luxury clinic background
 import NotificationsBg from "@/assets/notifications_bg.png";
+import { formatDateTime } from "@/utils/formatters";
 
 export interface ClientNotificationItem {
   id: string;
@@ -230,7 +231,7 @@ export const ClientNotifications: React.FC = () => {
           type: catType,
           title: n.title || "Notification",
           message: n.message || n.body || "",
-          createdAt: n.createdAt ? new Date(n.createdAt).toLocaleDateString() : "Recently",
+          createdAt: n.createdAt ? formatDateTime(n.createdAt) : "Recently",
           isRead: !!n.isRead,
           link: n.data?.link || (catType === "appointments" ? "/appointments" : undefined)
         };

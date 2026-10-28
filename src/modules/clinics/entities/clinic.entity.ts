@@ -80,17 +80,19 @@ export class Clinic {
   ownerId: string;
 
   // --- Bank / Payout Details ---
-  // Clinic ka IBAN number — Viva payment receive hone ke baad yahan transfer hoga
-  @Column({ nullable: true })
+  // Clinic IBAN: Viva payouts are transferred here after a payment.
+  // select: false => never loaded by default; only the clinic owner, admins and the
+  // payout flow load these columns explicitly (see CLINIC_BANK_FIELDS).
+  @Column({ nullable: true, select: false })
   bankIban: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   bankAccountHolder: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   bankName: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   bankBic: string; // SWIFT/BIC code
 
   @CreateDateColumn()

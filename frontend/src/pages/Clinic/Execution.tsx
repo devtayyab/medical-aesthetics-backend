@@ -5,6 +5,7 @@ import { RootState } from"@/store";
 import { AppDispatch } from"@/store";
 import { Button } from"@/components/atoms/Button/Button";
 import { Input } from"@/components/atoms/Input/Input";
+import { formatTime } from "@/utils/formatters";
 
 export const Execution: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -54,7 +55,7 @@ export const Execution: React.FC = () => {
  </option>
  {appointments.map((a) => (
  <option key={a.id} value={a.id}>
- {`${a.service?.name} - ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`}
+ {`${a.service?.name} - ${formatTime(a.startTime)}`}
  </option>
  ))}
  </select>

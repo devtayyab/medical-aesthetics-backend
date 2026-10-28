@@ -85,7 +85,6 @@ export const ServiceCard: React.FC<{
   {isAuthenticated ? (
     <>
       <span className="block text-xl sm:text-2xl font-black text-gray-900"><span className="font-sans">€</span>{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-      {service.price > 100 && <span className="text-[9px] text-lime-600 font-bold uppercase">ELITE_PRICING</span>}
     </>
   ) : (
     <button

@@ -444,7 +444,9 @@ export class AdminService {
     const queryBuilder = this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.owner', 'owner')
       .leftJoinAndSelect('clinic.owners', 'owners')
-      .leftJoinAndSelect('clinic.services', 'services');
+      .leftJoinAndSelect('clinic.services', 'services')
+      // Bank columns are select: false; admins manage them, so load them here explicitly.
+      .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName']);
 
     if (query?.isActive !== undefined) {
       queryBuilder.andWhere('clinic.isActive = :isActive', { isActive: query.isActive });

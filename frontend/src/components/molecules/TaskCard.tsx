@@ -2,6 +2,7 @@
 import { Card } from"@/components/atoms/Card/Card";
 import { Button } from"@/components/atoms/Button/Button";
 import type { Task } from"@/types";
+import { formatDateTime } from "@/utils/formatters";
 
 interface TaskCardProps {
  task: Task;
@@ -14,7 +15,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdate }) => {
  <div className="flex flex-col gap-2">
  <h3 className="text-lg font-semibold">{task.description}</h3>
  <p className="text-gray-600">
- Due: {new Date(task.dueDate).toLocaleDateString()}
+ Due: {formatDateTime(task.dueDate)}
  </p>
  <p className="text-gray-600">Status: {task.status}</p>
  {onUpdate && task.status !=="completed" && (

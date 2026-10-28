@@ -252,6 +252,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  onClose,
  onSave,
 }) => {
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
  const [categories, setCategories] = useState<any[]>([]);
  const [treatments, setTreatments] = useState<any[]>([]);
  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
@@ -342,6 +343,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
+ if (!(Number(formData.price) > 0)) {
+ alert(isGreek ? "Ορίστε τιμή μεγαλύτερη από €0." : "Please set a price greater than €0.");
+ return;
+ }
+
  setIsSubmitting(true);
 
  try {
@@ -377,9 +383,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  await clinicApi.services.create(payload);
  }
  onSave();
- } catch (error) {
+ } catch (error: any) {
  console.error("Failed to save service:", error);
- alert("Failed to save service. Please try again.");
+ alert(error?.response?.data?.message || (isGreek ? "Η αποθήκευση απέτυχε. Δοκιμάστε ξανά." : "Failed to save service. Please try again."));
  } finally {
  setIsSubmitting(false);
  }

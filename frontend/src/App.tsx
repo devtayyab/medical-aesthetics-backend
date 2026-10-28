@@ -256,11 +256,6 @@ function AppContent() {
     };
   }, []);
 
-  // Re-apply language translation on SPA route change
-  useEffect(() => {
-    (window as any).reapplyLanguage?.();
-  }, [location.pathname]);
-
  // Role-aware redirect after session restore or login
  useEffect(() => {
  if (

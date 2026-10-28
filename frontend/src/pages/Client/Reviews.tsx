@@ -4,7 +4,6 @@ import { AppDispatch, RootState } from "@/store";
 import { fetchUserAppointments, submitReview } from "@/store/slices/clientSlice";
 import { AppointmentStatus } from "@/types";
 import { ReviewForm } from "@/components/molecules/ReviewForm";
-import { format } from "date-fns";
 import { Star, Clock, MapPin, ArrowLeft, ChevronRight, ChevronLeft, MessageSquare, CheckCircle, Sparkles } from "lucide-react";
 import { css } from "@emotion/css";
 import { Link } from "react-router-dom";
@@ -12,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Use the crisp, unblurred reviews hero image
 import HeroBg from "@/assets/Reviews_Hero.png";
+import { formatDate } from "@/utils/formatters";
 
 const glassCard = css`
   background: rgba(255, 255, 255, 0.68);
@@ -212,7 +212,7 @@ export const Reviews: React.FC = () => {
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Detail</p>
                     <h4 className="text-xl font-black text-gray-900 uppercase mb-2">{selectedAppointment.service?.name}</h4>
                     <p className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-2"><MapPin size={12} className="text-[#84cc16]" /> {selectedAppointment.clinic?.name}</p>
-                    <p className="text-xs font-bold text-gray-600 flex items-center gap-2"><Clock size={12} className="text-[#84cc16]" /> {format(new Date(selectedAppointment.startTime),"MMMM d, yyyy")}</p>
+                    <p className="text-xs font-bold text-gray-600 flex items-center gap-2"><Clock size={12} className="text-[#84cc16]" /> {formatDate(selectedAppointment.startTime)}</p>
                   </div>
                 </div>
 
@@ -270,7 +270,7 @@ export const Reviews: React.FC = () => {
                               {isGreek ? "ΕΠΙΒΕΒΑΙΩΜΕΝΟ" : "STATUS VERIFIED"}
                             </span>
                             <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                              {format(new Date(apt.startTime),"MMM dd, yyyy")}
+                              {formatDate(apt.startTime)}
                             </span>
                           </div>
                         </div>

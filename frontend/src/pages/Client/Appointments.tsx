@@ -18,38 +18,14 @@ import { RescheduleModal } from "@/components/organisms/RescheduleModal";
 
 // Luxury Clinic Assets
 import HeroBg from "@/assets/Appointments_Hero.png";
+import { formatDate, formatTime, APP_TIMEZONE } from "@/utils/formatters";
 
-const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
-  const d = new Date(dateStr);
-  try {
-    if (!timezone) throw new Error("No timezone");
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    return formatter.format(d);
-  } catch {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-};
+// Clinic wall-clock time (Europe/Athens by default), 24h and dd/mm/yyyy
+const formatClinicTime = (dateStr: string | Date, timezone?: string) =>
+  formatTime(dateStr, timezone && timezone !== 'null' ? timezone : APP_TIMEZONE);
 
-const formatClinicDate = (dateStr: string | Date, timezone?: string) => {
-  const d = new Date(dateStr);
-  try {
-    if (!timezone) throw new Error("No timezone");
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-    return formatter.format(d);
-  } catch {
-    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
-  }
-};
+const formatClinicDate = (dateStr: string | Date, timezone?: string) =>
+  formatDate(dateStr, timezone && timezone !== 'null' ? timezone : APP_TIMEZONE);
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -178,7 +154,9 @@ const getAppointmentMeta = (apt: Appointment, isGreek: boolean) => {
   }
   return {
     isPast,
-    badgeText: isGreek ? (rawStatus === 'PENDING' ? 'ΣΕ ΑΝΑΜΟΝΗ' : rawStatus) : rawStatus,
+    badgeText: rawStatus === 'PENDING'
+      ? (isGreek ? 'ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ' : 'PENDING CONFIRMATION')
+      : rawStatus.replace(/_/g, ' '),
     badgeClass: 'bg-gray-100/80 text-gray-600 border-gray-200',
     icon: null,
   };
@@ -242,7 +220,9 @@ export const Appointments: React.FC = () => {
 
   const allAppointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
   const filteredAppointments = allAppointments.filter(apt => {
-    const status = apt.status.toLowerCase();
+    const status = (apt.status || '').toLowerCase();
+    // "All" really shows every appointment: past, cancelled and no-show included
+    if (activeFilter === 'all') return true;
     if (status === 'cancelled' || status === 'no_show') return false;
     
     const isPast = new Date(apt.startTime).getTime() < new Date().getTime();
@@ -254,7 +234,6 @@ export const Appointments: React.FC = () => {
       return ['confirmed', 'pending', 'pending_payment'].includes(status);
     }
 
-    if (activeFilter === 'all') return true;
     return status === activeFilter;
   }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 

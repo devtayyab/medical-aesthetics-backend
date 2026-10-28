@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CreateClinicProfileDto,
@@ -15,7 +15,7 @@ import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
-import { Repository, DeepPartial, In, IsNull } from 'typeorm';
+import { Repository, DeepPartial, In, IsNull, ILike } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -24,6 +24,7 @@ import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CLINIC_BANK_FIELDS, stripUserPersonalData, publicDisplayName } from '../../common/utils/privacy.util';
 
 @Injectable()
 export class ClinicsService {
@@ -50,47 +51,37 @@ export class ClinicsService {
     private notificationsService: NotificationsService,
   ) { }
 
-  private isClinicManagerOrAdmin(user: any, clinicId?: string): boolean {
-    if (!user) return false;
+  /** Admin, or the clinic owner of this clinic (primary owner, co-owner or assigned owner). */
+  private isClinicOwnerOrAdmin(user: any, clinic: Clinic): boolean {
+    if (!user || !clinic) return false;
     const r = (user.role || '').toLowerCase();
     if (r === 'admin' || r === 'super_admin') return true;
-    if (clinicId && (user.assignedClinicId === clinicId || user.clinicId === clinicId)) {
-      return ['clinic_owner', 'manager', 'doctor', 'secretariat'].includes(r);
-    }
-    return false;
+    if (r !== 'clinic_owner') return false;
+    return (
+      clinic.ownerId === user.id ||
+      user.assignedClinicId === clinic.id ||
+      (Array.isArray(clinic.owners) && clinic.owners.some((o) => o?.id === user.id))
+    );
+  }
+
+  /** BD staff and clinic-side staff may see staff contact details; clients and anonymous callers may not. */
+  private isStaffUser(user: any): boolean {
+    const r = (user?.role || '').toLowerCase();
+    return ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes(r);
   }
 
   sanitizeClinic(clinic: Clinic, user?: any): Clinic {
     if (!clinic) return clinic;
 
-    const isAdminOrStaff = this.isClinicManagerOrAdmin(user, clinic.id);
-
-    // 1. Bank details: never expose to unauthenticated callers or clients
-    if (!isAdminOrStaff) {
-      delete (clinic as any).bankIban;
-      delete (clinic as any).bankBic;
-      delete (clinic as any).bankAccountHolder;
-      delete (clinic as any).bankName;
+    // 1. Bank details: only the clinic owner and admins. (Columns are select: false, this is a second guard.)
+    if (!this.isClinicOwnerOrAdmin(user, clinic)) {
+      CLINIC_BANK_FIELDS.forEach((f) => delete (clinic as any)[f]);
     }
 
-    // 2. Doctor/Owner personal details: personal email, phone and lastLoginAt NEVER go to clients
-    const sanitizeOwnerUser = (u: any) => {
-      if (!u) return;
-      delete u.password;
-      delete u.refreshToken;
-      if (!user || user.role === UserRole.CLIENT || user.role?.toLowerCase() === 'client') {
-        delete u.email;
-        delete u.phone;
-        delete u.lastLoginAt;
-      }
-    };
-
-    if (clinic.owner) {
-      sanitizeOwnerUser(clinic.owner);
-    }
-
-    if (Array.isArray(clinic.owners)) {
-      clinic.owners.forEach((o) => sanitizeOwnerUser(o));
+    // 2. Doctor/Owner personal email, phone and lastLoginAt NEVER go to clients or anonymous callers
+    if (!this.isStaffUser(user)) {
+      if (clinic.owner) clinic.owner = stripUserPersonalData(clinic.owner);
+      if (Array.isArray(clinic.owners)) clinic.owners = clinic.owners.map((o) => stripUserPersonalData(o));
     }
 
     // 3. Treatment prices: if not logged in, strip all treatment prices
@@ -118,7 +109,7 @@ export class ClinicsService {
   }, user?: any): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
-      .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
+      .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND services.price > 0 AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
       .leftJoinAndSelect('services.treatment', 'treatment')
       .where('clinic.isActive = :isActive', { isActive: true })
       .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' });
@@ -212,7 +203,7 @@ export class ClinicsService {
       .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
       .leftJoin('categoryRef.parent', 'categoryParent')
       .leftJoinAndSelect('service.clinic', 'clinic')
-      .where("service.isActive = :sActive AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
+      .where("service.isActive = :sActive AND service.price > 0 AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
         sActive: true,
         cActive: true
       })
@@ -551,6 +542,7 @@ export class ClinicsService {
       .leftJoinAndSelect('service.treatment', 'treatment')
       .where('service.clinicId = :clinicId', { clinicId })
       .andWhere('service.isActive = :isActive', { isActive: true })
+      .andWhere('service.price > 0')
       .andWhere('treatment.isActive = :tIsActive', { tIsActive: true })
       .andWhere("(service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')")
       .getMany();
@@ -1076,7 +1068,7 @@ export class ClinicsService {
     });
 
     // Doctor's personal email/phone NEVER go to clients
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     return Array.from(uniqueProviders.values()).map((provider) => {
       const p = { ...provider };
@@ -1097,7 +1089,7 @@ export class ClinicsService {
       .andWhere('appointment.serviceId = :serviceId', { serviceId })
       .getMany();
 
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     // Map to the desired format: doctor's personal email/phone never go to clients
     return providers.map((u) => {
@@ -1174,8 +1166,10 @@ export class ClinicsService {
     }
 
     if (!treatment && serviceData.name) {
+      // Case-insensitive match so "botox" and "Botox" do not become two catalog therapies
+      const cleanName = serviceData.name.trim().replace(/[%_\\]/g, (ch) => `\\${ch}`);
       treatment = await this.treatmentsRepository.findOne({
-        where: { name: serviceData.name }
+        where: { name: ILike(cleanName) }
       });
 
       if (!treatment) {
@@ -1193,6 +1187,30 @@ export class ClinicsService {
 
     if (!treatment) {
       throw new NotFoundException('Treatment master record not found');
+    }
+
+    // A service is never created at €0
+    if (!(Number(serviceData.price) > 0)) {
+      throw new BadRequestException('Please set a price greater than €0 for this service.');
+    }
+
+    // One service per therapy per clinic: never create a duplicate
+    const existing = await this.servicesRepository.findOne({
+      where: { clinicId: clinic.id, treatmentId: treatment.id },
+      relations: ['treatment'],
+    });
+    if (existing) {
+      const isPlaceholder = !existing.isActive && !(Number(existing.price) > 0);
+      if (!isPlaceholder) {
+        throw new ConflictException('This therapy is already offered by this clinic. Edit the existing service instead.');
+      }
+      // A therapy linked by the admin waits as a hidden placeholder: fill it in instead of adding a second one
+      existing.price = serviceData.price;
+      existing.durationMinutes = serviceData.durationMinutes ?? existing.durationMinutes;
+      if (serviceData.imageUrl !== undefined) existing.imageUrl = serviceData.imageUrl;
+      existing.isActive = (serviceData as any).isActive ?? true;
+      if (existing.isActive) this.validateServiceForPublishing(existing);
+      return this.servicesRepository.save(existing);
     }
 
     const service = this.servicesRepository.create({
@@ -1261,6 +1279,10 @@ export class ClinicsService {
   private validateServiceForPublishing(service: Service) {
     if (!service.treatment) {
       throw new BadRequestException('Service must be linked to a treatment master record to be active');
+    }
+
+    if (!(Number(service.price) > 0)) {
+      throw new BadRequestException('This service cannot be published without a price greater than €0.');
     }
 
     const t = service.treatment;
@@ -1408,7 +1430,21 @@ export class ClinicsService {
     if (query?.limit) queryBuilder.limit(query.limit);
     if (query?.offset) queryBuilder.offset(query.offset);
 
-    const [reviews, total] = await queryBuilder.getManyAndCount();
+    const [rows, total] = await queryBuilder.getManyAndCount();
+
+    // Public endpoint: never expose the reviewer's email/phone; show "First L." only
+    const reviews = rows.map((r) => ({
+      ...r,
+      client: r.client
+        ? {
+            id: r.client.id,
+            firstName: r.client.firstName,
+            lastName: (r.client.lastName || '').charAt(0) ? `${r.client.lastName.charAt(0)}.` : '',
+            fullName: publicDisplayName(r.client),
+            profilePictureUrl: r.client.profilePictureUrl,
+          }
+        : null,
+    }));
 
     return {
       reviews,
@@ -1978,15 +2014,16 @@ export class ClinicsService {
       for (const clinicId of clinicIds) {
         const existing = existingServices.find(s => s.clinicId === clinicId);
         if (!existing) {
+          // Hidden until the clinic sets its price: never a live €0 service
           const newService = this.servicesRepository.create({
             clinicId,
             treatmentId: id,
             price: 0,
             durationMinutes: 30,
-            isActive: true,
+            isActive: false,
           });
           await this.servicesRepository.save(newService);
-        } else if (!existing.isActive) {
+        } else if (!existing.isActive && Number(existing.price) > 0) {
           existing.isActive = true;
           await this.servicesRepository.save(existing);
         }
@@ -2055,12 +2092,13 @@ export class ClinicsService {
 
     if (clinicIds && clinicIds.length > 0) {
       for (const clinicId of clinicIds) {
+        // Hidden until the clinic sets its price: never a live €0 service
         const service = this.servicesRepository.create({
           clinicId,
           treatmentId: savedTreatment.id,
           price: 0,
           durationMinutes: 30,
-          isActive: true,
+          isActive: false,
         });
         await this.servicesRepository.save(service);
       }

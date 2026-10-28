@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import { User, ChevronRight, ChevronLeft, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History, Gift, X, Sparkles } from "lucide-react";
 import { paymentsAPI, bookingAPI } from "@/services/api";
-import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 // Use the ultra-premium elite aesthetic hero image
 import HeroBg from "@/assets/Payments_Hero.png";
+import { formatDate } from "@/utils/formatters";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -259,7 +259,7 @@ export const Payments: React.FC = () => {
                           </span>
                           <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                           <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest">
-                            {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
+                            {formatDate(payment.createdAt)}
                           </span>
                         </div>
                       </div>

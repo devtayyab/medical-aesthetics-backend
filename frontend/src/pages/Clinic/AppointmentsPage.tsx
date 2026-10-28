@@ -14,6 +14,7 @@ import RescheduleModal from '../../components/clinic/RescheduleModal';
 import AppointmentDetailModal from '../../components/clinic/AppointmentDetailModal';
 import { AuthState } from '../../store/slices/authSlice';
 import { rescheduleAppointment } from '../../store/slices/clinicSlice';
+import { formatTime } from "@/utils/formatters";
 
 const AppointmentsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -351,7 +352,7 @@ const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onEx
  if (isBlocked) {
  const startTime = new Date(appointment.startTime);
  const endTime = new Date(appointment.endTime || appointment.startTime);
- const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+ const fmt = (d: Date) => formatTime(d);
 
  return (
  <div className="bg-red-50 border border-red-200 rounded-2xl flex flex-col md:flex-row md:items-center gap-6 overflow-hidden relative">
