@@ -81,7 +81,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   ) {
     if (!client.userId) return;
 
-    await this.notificationsService.markAsRead(data.notificationId);
+    await this.notificationsService.markAsRead(data.notificationId, client.userId);
     
     // Update unread count
     const unreadCount = await this.notificationsService.getUnreadCount(client.userId);
