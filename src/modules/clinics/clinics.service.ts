@@ -665,7 +665,20 @@ export class ClinicsService {
       where: { id: saved.id },
       relations: ['services', 'owner', 'owners'],
     });
-    return finalClinic;
+    return this.withBankFields(finalClinic);
+  }
+
+  /** Adds the select:false bank columns to a clinic. Only for admin responses (admin edit form needs them). */
+  async withBankFields(clinic: Clinic): Promise<Clinic> {
+    if (!clinic) return clinic;
+    const bank = await this.clinicsRepository
+      .createQueryBuilder('clinic')
+      .select('clinic.id')
+      .addSelect(CLINIC_BANK_FIELDS.map((f) => `clinic.${f}`))
+      .where('clinic.id = :id', { id: clinic.id })
+      .getOne();
+    CLINIC_BANK_FIELDS.forEach((f) => ((clinic as any)[f] = (bank as any)?.[f] ?? null));
+    return clinic;
   }
 
   async updateClinicOwnershipForOwner(ownerUserId: string, clinicIds: string[]): Promise<void> {

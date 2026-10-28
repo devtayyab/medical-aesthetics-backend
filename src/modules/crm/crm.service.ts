@@ -2245,6 +2245,8 @@ export class CrmService implements OnModuleInit {
 
     // Metadata updates are merged: a partial update must not wipe the call history or the
     // appointment link of the confirmation task
+    // Outcome reported with THIS update (before merging): an older call's outcome must not decide completion
+    const requestOutcome = callNote?.outcome ?? updateData.metadata?.callOutcome;
     if (updateData.metadata) {
       updateData.metadata = { ...(action.metadata || {}), ...updateData.metadata };
     }
@@ -2290,8 +2292,7 @@ export class CrmService implements OnModuleInit {
 
       // AUTO-CONFIRMATION FLOW: If this task was for an appointment confirmation, confirm the appointment
       // (not when the call ended negatively, e.g. not interested / wrong number)
-      const finalOutcome = updateData.metadata?.callOutcome ?? action.metadata?.callOutcome;
-      const negativeOutcome = ['not_interested', 'wrong_number', 'no_answer', 'call_later'].includes(finalOutcome);
+      const negativeOutcome = ['not_interested', 'wrong_number', 'no_answer', 'call_later'].includes(requestOutcome);
       if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation' && !negativeOutcome) {
         try {
           const appointmentId = action.metadata.appointmentId;
@@ -2507,12 +2508,14 @@ export class CrmService implements OnModuleInit {
 
       const now = new Date();
 
-      // Custom sorting: Overdue (open + date < now) first, then upcoming
-      qb.orderBy(`CASE 
-          WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 0 
+      // Custom sorting: Overdue (open + date < now) first, then upcoming.
+      // Sort by a selected alias: TypeORM cannot order a raw CASE expression when skip/take is combined with joins.
+      qb.addSelect(`CASE
+          WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 0
           WHEN action.status IN ('pending', 'in_progress') THEN 1
-          ELSE 2 
-        END`, 'ASC')
+          ELSE 2
+        END`, 'sort_bucket')
+        .orderBy('sort_bucket', 'ASC')
         .addOrderBy('action.dueDate', 'ASC', 'NULLS LAST');
 
       if (filters?.page === undefined || filters?.page === null || filters?.page === '') {

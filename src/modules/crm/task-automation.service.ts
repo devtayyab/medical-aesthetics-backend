@@ -55,6 +55,7 @@ const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
 @Injectable()
 export class TaskAutomationService {
   private readonly logger = new Logger(TaskAutomationService.name);
+  private readonly syncLocks = new Map<string, Promise<void>>();
 
   constructor(
     @InjectRepository(CrmAction)
@@ -144,6 +145,19 @@ export class TaskAutomationService {
     const appointmentId = typeof appointmentOrId === 'string' ? appointmentOrId : appointmentOrId?.id;
     if (!appointmentId) return;
 
+    // Event handlers and the hourly reconcile can sync the same appointment at once: run them one after
+    // the other so both don't see "no task yet" and create two
+    const previous = this.syncLocks.get(appointmentId) ?? Promise.resolve();
+    const current = previous.then(() => this.doSyncConfirmationTask(appointmentId));
+    this.syncLocks.set(appointmentId, current);
+    try {
+      await current;
+    } finally {
+      if (this.syncLocks.get(appointmentId) === current) this.syncLocks.delete(appointmentId);
+    }
+  }
+
+  private async doSyncConfirmationTask(appointmentId: string): Promise<void> {
     try {
       const appointment = await this.appointmentsRepository.findOne({
         where: { id: appointmentId },

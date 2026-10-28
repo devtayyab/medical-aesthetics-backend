@@ -90,7 +90,7 @@ export function confirmationCallDueDate(appointmentStart: Date): Date {
 }
 
 /**
- * Parses a wall-clock date "dd/mm/yyyy" (or "yyyy-mm-dd") plus optional "HH:mm" in
+ * Parses a wall-clock date "dd/mm/yyyy" (or "yyyy-mm-dd") plus optional "HH:mm" or "h:mm AM/PM" in
  * `timezone` into a UTC instant. Returns null when the input is not a valid date.
  */
 export function parseWallClockInTz(
@@ -103,15 +103,20 @@ export function parseWallClockInTz(
   let match = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
   if (match) {
     d = Number(match[1]); m = Number(match[2]); y = Number(match[3]);
+    // US export ("10/27/2026"): only unambiguous when the second part cannot be a month
+    if (m > 12 && d <= 12) [d, m] = [m, d];
   } else if ((match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) {
     y = Number(match[1]); m = Number(match[2]); d = Number(match[3]);
   } else {
     return null;
   }
   // Time may be given separately or embedded after the date ("27/10/2026 14:30")
-  const t = (timeStr || s.slice(match[0].length) || '').trim().match(/(\d{1,2})[:.](\d{2})/);
-  const hh = t ? Number(t[1]) : 8;
+  const t = (timeStr || s.slice(match[0].length) || '').trim().match(/(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?/i);
+  let hh = t ? Number(t[1]) : 8;
   const mm = t ? Number(t[2]) : 0;
+  // 12-hour clock ("2:30 PM", "12:15 am")
+  const meridiem = t?.[3]?.toLowerCase().charAt(0);
+  if (meridiem && hh >= 1 && hh <= 12) hh = (hh % 12) + (meridiem === 'p' ? 12 : 0);
   if (m < 1 || m > 12 || d < 1 || d > 31 || hh > 23 || mm > 59) return null;
   const result = fromZonedTime(`${y}-${pad2(m)}-${pad2(d)}T${pad2(hh)}:${pad2(mm)}:00`, timezone);
   return isNaN(result.getTime()) ? null : result;

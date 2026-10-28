@@ -690,7 +690,7 @@ export class AdminService {
   async toggleClinicStatus(id: string): Promise<Clinic> {
     const clinic = await this.getClinicById(id);
     clinic.isActive = !clinic.isActive;
-    return this.clinicsRepository.save(clinic);
+    return this.clinicsService.withBankFields(await this.clinicsRepository.save(clinic));
   }
 
   async createClinic(clinicData: any): Promise<Clinic> {

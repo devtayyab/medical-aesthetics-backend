@@ -33,7 +33,19 @@ const toDate = (value: DateInput): Date | null => {
   return isNaN(date.getTime()) ? null : date;
 };
 
-const dateParts = (date: Date, timeZone: string) => {
+/** Unknown or malformed zones (e.g. a clinic saved with "GMT+2") fall back to Athens instead of throwing. */
+const safeZone = (timeZone?: string | null): string => {
+  if (!timeZone || timeZone === 'null') return APP_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone });
+    return timeZone;
+  } catch {
+    return APP_TIMEZONE;
+  }
+};
+
+const dateParts = (date: Date, zone: string) => {
+  const timeZone = safeZone(zone);
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone,
     day: '2-digit',
@@ -85,7 +97,7 @@ const currentLocale = (): string => {
 export const formatWeekdayDate = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
   const date = toDate(value);
   if (!date) return '';
-  const weekday = new Intl.DateTimeFormat(currentLocale(), { timeZone, weekday: 'long' }).format(date);
+  const weekday = new Intl.DateTimeFormat(currentLocale(), { timeZone: safeZone(timeZone), weekday: 'long' }).format(date);
   return `${weekday}, ${formatDate(date, timeZone)}`;
 };
 
@@ -93,12 +105,12 @@ export const formatWeekdayDate = (value: DateInput, timeZone: string = APP_TIMEZ
 export const formatWeekdayShort = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
   const date = toDate(value);
   if (!date) return '';
-  return new Intl.DateTimeFormat(currentLocale(), { timeZone, weekday: 'short' }).format(date);
+  return new Intl.DateTimeFormat(currentLocale(), { timeZone: safeZone(timeZone), weekday: 'short' }).format(date);
 };
 
 /** Month + year, e.g. "October 2026" or "Οκτώβριος 2026", in Athens time. */
 export const formatMonthYear = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
   const date = toDate(value);
   if (!date) return '';
-  return new Intl.DateTimeFormat(currentLocale(), { timeZone, month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(currentLocale(), { timeZone: safeZone(timeZone), month: 'long', year: 'numeric' }).format(date);
 };
