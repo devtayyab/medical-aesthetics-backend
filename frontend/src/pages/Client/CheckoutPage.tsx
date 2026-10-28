@@ -72,6 +72,7 @@ const sectionTitle = css`
 `;
 
 export const CheckoutPage: React.FC = () => {
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const location = useLocation();
@@ -275,7 +276,7 @@ export const CheckoutPage: React.FC = () => {
  >
  <div className="flex items-center gap-4">
  <div className="size-6 rounded-full border-2 border-gray-300 flex items-center justify-center"></div>
- <span className="font-black uppercase text-sm tracking-tight text-gray-400">Credit or Debit Card</span>
+ <span className="font-black uppercase text-sm tracking-tight text-gray-400">{isGreek ? 'Πιστωτική ή χρεωστική κάρτα' : 'Credit or Debit Card'}</span>
  </div>
  <div className="flex gap-2 opacity-50">
  <img src={VISA} alt="Visa" className="h-5" />
@@ -285,7 +286,9 @@ export const CheckoutPage: React.FC = () => {
 
  <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
  <p className="text-[10px] font-bold text-orange-700 uppercase tracking-tight leading-relaxed">
- ONLINE PAYMENTS DISABLED: Online medical payments are temporarily disabled until clinic payment accounts are connected. Please pay at the clinic.
+ {isGreek
+ ? 'Οι online πληρωμές δεν είναι διαθέσιμες: οι online πληρωμές είναι προσωρινά απενεργοποιημένες μέχρι να συνδεθούν οι λογαριασμοί πληρωμών των κλινικών. Παρακαλούμε πληρώστε στην κλινική.'
+ : 'Online payments disabled: online medical payments are temporarily disabled until clinic payment accounts are connected. Please pay at the clinic.'}
  </p>
  </div>
 
@@ -298,7 +301,7 @@ export const CheckoutPage: React.FC = () => {
  <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'venue' ? 'border-black bg-black' : 'border-gray-300'}`}>
  {paymentMethod === 'venue' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
  </div>
- <span className="font-black uppercase text-sm tracking-tight">Pay at Venue</span>
+ <span className="font-black uppercase text-sm tracking-tight">{isGreek ? 'Πληρωμή στην κλινική' : 'Pay at Venue'}</span>
  </div>
  </button>
 
