@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
+import clinicApi from '@/services/api/clinicApi';
 import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
 import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
@@ -307,6 +308,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     const timer = setTimeout(async () => {
       setIsSearchingPatients(true);
       try {
+        // Clinic accounts never search the BeautyDoctors CRM: only their own
+        // patients, and a BD client only by the exact full phone number
+        const role = String(user?.role || '').toLowerCase();
+        if (['clinic_owner', 'doctor', 'secretariat'].includes(role)) {
+          const own = await clinicApi.patients.search(patientSearch, form.clinicId || undefined);
+          setPatientResults(own || []);
+          return;
+        }
+
         const [leadsRes, custRes] = await Promise.all([
           crmAPI.getLeads({ search: patientSearch }),
           crmAPI.getCustomers({ search: patientSearch })
@@ -339,7 +349,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [patientSearch]);
+  }, [patientSearch, user?.role, form.clinicId]);
 
   const handleServicesChange = (rawSelectedIds: string[]) => {
     // De-duplicate so the same service can't be counted twice (as primary + additional),
@@ -770,7 +780,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       <p className="text-[10px] text-slate-400">{selectedPatient.phone}</p>
                     )}
                   </div>
-                  {(selectedPatient.id || form.patientId) && (
+                  {(selectedPatient.id || form.patientId) && !['clinic_owner', 'doctor', 'secretariat'].includes(String(user?.role || '').toLowerCase()) && (
                     <Link
                       to={`/crm/customer/${selectedPatient.id || form.patientId}`}
                       target="_blank"

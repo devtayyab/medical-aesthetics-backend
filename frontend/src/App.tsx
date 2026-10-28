@@ -649,7 +649,7 @@ function AppContent() {
  <Route
  path="sales-diary"
  element={
- <ProtectedLayout allowedRoles={["clinic_owner","manager","admin","salesperson"]}>
+ <ProtectedLayout allowedRoles={["manager","admin","salesperson"]}>
  <SalesDiaryPage />
  </ProtectedLayout>
  }
@@ -692,7 +692,7 @@ function AppContent() {
  <Route
  path="/crm/customers"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Customers />
  </AdminLayout>
@@ -702,7 +702,7 @@ function AppContent() {
  <Route
  path="/crm/archive"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <ArchivedLeads />
  </AdminLayout>
@@ -712,7 +712,7 @@ function AppContent() {
  <Route
  path="/crm/customer/:id"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CustomerDetails />
  </AdminLayout>
@@ -722,7 +722,7 @@ function AppContent() {
  <Route
  path="/crm/tasks"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Tasks />
  </AdminLayout>
@@ -732,7 +732,7 @@ function AppContent() {
  <Route
  path="/crm/leads"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <LeadsPage />
  </AdminLayout>
@@ -742,7 +742,7 @@ function AppContent() {
  <Route
  path="/crm/lost-leads"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <LostLeadsPage />
  </AdminLayout>
@@ -752,7 +752,7 @@ function AppContent() {
  <Route
  path="/crm/actions"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Actions />
  </AdminLayout>
@@ -762,7 +762,7 @@ function AppContent() {
  <Route
  path="/crm/calendar"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <AppointmentCalendar />
  </AdminLayout>
@@ -772,7 +772,7 @@ function AppContent() {
  <Route
  path="/crm/repeat-management"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <RepeatManagement />
  </AdminLayout>
@@ -782,7 +782,7 @@ function AppContent() {
  <Route
  path="/crm"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CRM />
  </AdminLayout>
@@ -792,7 +792,7 @@ function AppContent() {
  <Route
  path="/crm/diary"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <SalesDiaryPage />
  </AdminLayout>
@@ -813,7 +813,7 @@ function AppContent() {
  <Route
  path="/crm/communication"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Communication />
  </AdminLayout>
@@ -823,7 +823,7 @@ function AppContent() {
  <Route
  path="/crm/analytics"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Analytics />
  </AdminLayout>
@@ -833,7 +833,7 @@ function AppContent() {
  <Route
  path="/crm/sales-analytics"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <SalesAnalyticsDashboard />
  </AdminLayout>
@@ -853,7 +853,7 @@ function AppContent() {
  <Route
  path="/crm/tag"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Tags />
  </AdminLayout>
@@ -926,7 +926,7 @@ function AppContent() {
  <Route
  path="/admin/manager-dashboard"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerDashboard />
  </AdminLayout>
@@ -936,7 +936,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/calls"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmCalls />
  </AdminLayout>
@@ -946,7 +946,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/reports"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmReports />
  </AdminLayout>
@@ -956,7 +956,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/advertising"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmAdvertising />
  </AdminLayout>
@@ -966,7 +966,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/access"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmAccessControl />
  </AdminLayout>
@@ -976,7 +976,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/benefits"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmBenefits />
  </AdminLayout>
@@ -986,7 +986,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/no-show-alerts"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmNoShowAlerts />
  </AdminLayout>
@@ -996,7 +996,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/clinic-stats"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmClinicStats />
  </AdminLayout>
