@@ -83,6 +83,8 @@ const ResetPassword: React.FC = () => {
  const navigate = useNavigate();
  const [searchParams] = useSearchParams();
  const token = searchParams.get("token");
+ // setup=1: link for an account created by staff ("set your password" for the first time)
+ const isSetup = searchParams.get("setup") ==="1";
 
  const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
@@ -126,7 +128,7 @@ const ResetPassword: React.FC = () => {
  <div className={iconContainerStyle} style={{ background: '#dcfce7' }}>
  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
  </div>
- <h2 className={titleStyle}>Password Reset!</h2>
+ <h2 className={titleStyle}>{isSetup ?"Password set!" :"Password Reset!"}</h2>
  <p className={subtitleStyle}>
  Your security credentials have been updated successfully.
  </p>
@@ -150,8 +152,8 @@ const ResetPassword: React.FC = () => {
  <div className={iconContainerStyle}>
  <Lock className="h-8 w-8 text-slate-900" />
  </div>
- <h2 className={titleStyle}>New Password</h2>
- <p className={subtitleStyle}>Please enter a strong new password below.</p>
+ <h2 className={titleStyle}>{isSetup ?"Set your password" :"New Password"}</h2>
+ <p className={subtitleStyle}>{isSetup ?"Choose a password (at least 8 characters) to activate your account." :"Please enter a strong new password below."}</p>
  </div>
 
  {(passwordError || error) && (
