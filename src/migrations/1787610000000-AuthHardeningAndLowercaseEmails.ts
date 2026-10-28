@@ -20,6 +20,9 @@ export class AuthHardeningAndLowercaseEmails1787610000000 implements MigrationIn
         await queryRunner.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "accountSetupPending" boolean NOT NULL DEFAULT false`);
         await queryRunner.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "isEmailVerified" boolean NOT NULL DEFAULT false`);
 
+        // Clients created by staff without an email get NULL instead of a fake address (item 18).
+        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "email" DROP NOT NULL`);
+
         // Existing accounts are trusted: email verification only applies to new registrations.
         await queryRunner.query(`UPDATE "users" SET "isEmailVerified" = true WHERE "isEmailVerified" = false`);
 
