@@ -460,7 +460,7 @@ export const Search: React.FC = () => {
  <button onClick={() => setShowMobileMap(false)} className="bg-white/10 p-2 rounded-xl text-[#CBFF38]"><X size={24} /></button>
  </div>
  <div className="flex-1">
- <ClinicMap clinics={clinics} center={mapCenter} zoom={13} />
+ <ClinicMap clinics={clinics} center={mapCenter} />
  </div>
  </motion.div>
  )}

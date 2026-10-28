@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from"react";
+import React, { useEffect, useState } from"react";
 import type { Treatment } from"@/types";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -137,14 +137,6 @@ export const TreatmentDetails: React.FC = () => {
  window.scrollTo(0, 0);
  }, [id]);
 
- const mapCenter = useMemo(() => {
- if (treatment?.offerings && treatment.offerings.length > 0) {
- const lat = treatment.offerings.reduce((sum, o) => sum + Number(o.latitude || 0), 0) / treatment.offerings.length;
- const lng = treatment.offerings.reduce((sum, o) => sum + Number(o.longitude || 0), 0) / treatment.offerings.length;
- return [lat || 37.9838, lng || 23.7275] as [number, number];
- }
- return [37.9838, 23.7275] as [number, number];
- }, [treatment]);
 
  const handleSearch = (filters: any) => {
  const params = new URLSearchParams();
@@ -252,8 +244,6 @@ export const TreatmentDetails: React.FC = () => {
  latitude: o.latitude,
  longitude: o.longitude
  })) || []} 
- center={mapCenter} 
- zoom={13} 
  />
  </motion.div>
  )}
