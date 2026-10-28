@@ -152,12 +152,7 @@ export class BookingsService {
     // Lookup by Details if Walk-in or Not found as User
     if (!userExists && createAppointmentDto.clientDetails) {
       const { email, phone } = createAppointmentDto.clientDetails;
-      userExists = await this.usersRepository.findOne({
-        where: [
-          { email: email || 'never-match' },
-          { phone: phone || 'never-match' }
-        ]
-      });
+      userExists = await this.crmService.findClientUserByContact(email, phone);
       if (userExists) clientId = userExists.id;
     }
 
@@ -205,20 +200,12 @@ export class BookingsService {
         // 2. Try by phone/email from details if not found by ID
         if (!lead && createAppointmentDto.clientDetails) {
           const { email, phone } = createAppointmentDto.clientDetails;
-          const leads = await this.crmService.findAll({
-            search: email || phone
-          });
-          if (leads && leads.length > 0) {
-            // Find best match (exact email or phone)
-            lead = leads.find(l => l.email === email || l.phone === phone);
-          }
+          lead = await this.crmService.findLeadByContact(email, phone);
         }
 
         if (lead) {
           // Check if user with this email already exists (safety)
-          const existingUser = await this.usersRepository.findOne({
-            where: [{ email: lead.email }, { phone: lead.phone }]
-          });
+          const existingUser = await this.crmService.findClientUserByContact(lead.email, lead.phone);
 
           if (existingUser) {
             clientId = existingUser.id;
@@ -248,7 +235,7 @@ export class BookingsService {
 
               // Link the lead to the new user so the CRM page can find its appointments
               await this.leadsRepository.update(lead.id, {
-                status: 'converted' as any,
+                status: LeadStatus.APPOINTMENT_SCHEDULED as any,
                 metadata: {
                   ...(lead.metadata || {}),
                   convertedToUserId: savedUser.id,
@@ -257,9 +244,7 @@ export class BookingsService {
               });
             } catch (createErr) {
               console.error('createCustomer failed during booking:', createErr);
-              const retryUser = await this.usersRepository.findOne({
-                where: [{ email: lead.email }, { phone: lead.phone }]
-              });
+              const retryUser = await this.crmService.findClientUserByContact(lead.email, lead.phone);
               if (retryUser) {
                 clientId = retryUser.id;
                 userExists = retryUser;
@@ -276,13 +261,21 @@ export class BookingsService {
               const nameParts = fullName.trim().split(/\s+/);
               const firstName = nameParts[0] || 'Unknown';
               const lastName = nameParts.slice(1).join(' ') || 'Client';
-              console.log('🔍 [BookingsService] Attempting to create new customer in CRM...');
-              const { user: savedUser } = await this.crmService.createCustomer({
-                email: createAppointmentDto.clientDetails.email || `guest-${Date.now()}@example.com`,
-                firstName,
-                lastName,
-                phone: createAppointmentDto.clientDetails.phone || undefined,
-              });
+              const isClinicOwnClient = createAppointmentDto.appointmentSource === 'clinic_own';
+              console.log(`🔍 [BookingsService] Attempting to create new ${isClinicOwnClient ? 'clinic-own client' : 'customer in CRM'}...`);
+              const { user: savedUser } = isClinicOwnClient
+                ? await this.crmService.createClinicOwnClient({
+                    email: createAppointmentDto.clientDetails.email || undefined,
+                    firstName,
+                    lastName,
+                    phone: createAppointmentDto.clientDetails.phone || undefined,
+                  }, createAppointmentDto.clinicId)
+                : await this.crmService.createCustomer({
+                    email: createAppointmentDto.clientDetails.email || `guest-${Date.now()}@example.com`,
+                    firstName,
+                    lastName,
+                    phone: createAppointmentDto.clientDetails.phone || undefined,
+                  });
               clientId = savedUser.id;
               userExists = savedUser;
               console.log('✅ [BookingsService] CRM Customer created:', { clientId: savedUser.id });
@@ -915,9 +908,9 @@ export class BookingsService {
         }
       }
 
-      // Financial impact: Revenue becomes 0 for canceled appointments
+      // Financial impact: the paid amount is refunded (logged above); the
+      // appointment keeps its price so the client card shows the real amount
       updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
 
       // Release any active hold for this time slot immediately
       try {
@@ -931,9 +924,7 @@ export class BookingsService {
     } else if (status === AppointmentStatus.NO_SHOW) {
       updateData.noShowMarkedAt = new Date();
       updateData.noShowMarkedById = userId;
-      // Financial impact: Revenue becomes 0 for no-shows (unless we implement no-show fee later)
-      updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
+      // A no-show keeps its price and whatever was already paid (e.g. a deposit)
     }
 
     await this.appointmentsRepository.update(id, updateData);
@@ -1554,8 +1545,6 @@ export class BookingsService {
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
-      appointment.amountPaid = 0;
-      appointment.totalAmount = 0;
     }
 
     if (updateData?.notes && updateData.notes.trim()) {
