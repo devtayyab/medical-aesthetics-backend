@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
@@ -84,6 +85,54 @@ export class AppointmentNotificationsListener {
       await this.dispatchPayment(payload);
     } catch (err: any) {
       this.logger.error(`Payment notification failed (${payload?.paymentId}): ${err?.message || err}`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reminders: two per appointment (about 24h before, and 2h before on the day), each sent
+  // exactly once thanks to the persistent dispatch flag. Times are absolute durations, so
+  // they are correct in Europe/Athens including DST; texts are formatted in Athens time.
+  // ---------------------------------------------------------------------------
+
+  @Cron('*/10 * * * *', { name: 'appointment-reminders' })
+  async sendAppointmentReminders() {
+    const now = Date.now();
+    const HOUR = 60 * 60 * 1000;
+    // Windows are wider than the 10 min cron interval so a missed run is caught up.
+    await this.sendReminderWindow('reminder_24h', NotificationTrigger.APPOINTMENT_REMINDER, new Date(now + 22 * HOUR), new Date(now + 24 * HOUR + 10 * 60 * 1000));
+    await this.sendReminderWindow('reminder_2h', NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY, new Date(now + 60 * 60 * 1000), new Date(now + 2 * HOUR + 10 * 60 * 1000));
+  }
+
+  private async sendReminderWindow(kind: string, trigger: NotificationTrigger, from: Date, to: Date) {
+    let appointments: Appointment[] = [];
+    try {
+      appointments = await this.appointmentsRepository.find({
+        where: { startTime: Between(from, to) },
+        relations: ['clinic', 'service', 'service.treatment', 'client'],
+      });
+    } catch (err: any) {
+      this.logger.error(`Reminder query failed (${kind}): ${err?.message || err}`);
+      return;
+    }
+
+    const active = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] as string[];
+    for (const apt of appointments) {
+      if (!active.includes(String(apt.status).toUpperCase())) continue;
+      if (!this.hasRealClient(apt)) continue;
+      // An appointment booked inside the window gets only the reminders still ahead of it:
+      // e.g. booked 20h before -> no "tomorrow" reminder, only the 2h one.
+      const createdLead = new Date(apt.startTime).getTime() - new Date(apt.createdAt).getTime();
+      if (kind === 'reminder_24h' && createdLead < 24 * 60 * 60 * 1000) continue;
+      if (kind === 'reminder_2h' && createdLead < 3 * 60 * 60 * 1000) continue;
+
+      const key = `${kind}:${apt.id}:${new Date(apt.startTime).toISOString()}`;
+      if (!(await this.notificationsService.claimDispatch(key, kind, apt.id))) continue;
+      try {
+        await this.notificationsService.sendTriggeredNotification(trigger, apt.clientId, this.clientContext(apt, await this.treatmentNames(apt)));
+      } catch (err: any) {
+        this.logger.error(`Reminder ${kind} failed for ${apt.id}: ${err?.message || err}`);
+        await this.notificationsService.releaseDispatch(key);
+      }
     }
   }
 
