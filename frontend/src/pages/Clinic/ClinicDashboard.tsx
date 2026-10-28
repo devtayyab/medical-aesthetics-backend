@@ -29,6 +29,7 @@ import {
 import { motion, AnimatePresence } from"framer-motion";
 import AppointmentExecutionModal from"../../components/clinic/AppointmentExecutionModal";
 import ClinicBookingModal from"../../components/clinic/ClinicBookingModal";
+import { formatTime } from "@/utils/formatters";
 
 
 
@@ -487,7 +488,7 @@ const AppointmentPremiumRow = React.forwardRef(({ appointment, index, onClick }:
  <div className="flex items-center gap-4">
  <div className="shrink-0">
  <div className="size-12 rounded-xl bg-gray-900 flex flex-col items-center justify-center text-[#CBFF38]">
- <span className="text-[10px] font-black">{new Date(appointment.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+ <span className="text-[10px] font-black">{formatTime(appointment.startTime)}</span>
  </div>
  </div>
 

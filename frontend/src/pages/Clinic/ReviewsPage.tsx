@@ -5,6 +5,7 @@ import { fetchReviews, fetchReviewStatistics } from '../../store/slices/clinicSl
 import clinicApi from '../../services/api/clinicApi';
 import { Star, MessageSquare, Eye, EyeOff, X, ArrowUpRight, TrendingUp, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDate } from "@/utils/formatters";
 
 const ReviewsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -162,7 +163,7 @@ const ReviewsPage: React.FC = () => {
  {review.client.firstName} {review.client.lastName}
  </h3>
  <div className="size-1.5 rounded-full bg-gray-200" />
- <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(review.createdAt).toLocaleDateString()}</span>
+ <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{formatDate(review.createdAt)}</span>
  </div>
  {renderStars(review.rating, 16)}
  </div>
@@ -200,7 +201,7 @@ const ReviewsPage: React.FC = () => {
  <div>
  <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-2">Official Clinic Response</p>
  <p className="text-sm font-medium leading-relaxed mb-4 text-gray-300">{review.response}</p>
- <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Signal logged on {new Date(review.respondedAt!).toLocaleDateString()}</p>
+ <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Signal logged on {formatDate(review.respondedAt!)}</p>
  </div>
  </div>
  </motion.div>
