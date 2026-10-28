@@ -15,12 +15,15 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
+import { Lead } from '../crm/entities/lead.entity';
+import { CustomerRecord } from '../crm/entities/customer-record.entity';
+import { ClinicPatientsService } from './clinic-patients.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Clinic, Service, Treatment, TreatmentCategory, Review, User, Appointment, AgentClinicAccess, ClinicOwnership]),
+    TypeOrmModule.forFeature([Clinic, Service, Treatment, TreatmentCategory, Review, User, Appointment, AgentClinicAccess, ClinicOwnership, Lead, CustomerRecord]),
     forwardRef(() => BookingsModule),
     forwardRef(() => LoyaltyModule),
     forwardRef(() => PaymentsModule),
@@ -28,7 +31,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [ClinicsController, ClinicManagementController],
-  providers: [ClinicsService],
-  exports: [ClinicsService],
+  providers: [ClinicsService, ClinicPatientsService],
+  exports: [ClinicsService, ClinicPatientsService],
 })
 export class ClinicsModule { }

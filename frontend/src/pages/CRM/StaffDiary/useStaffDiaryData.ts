@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-f
 import { AppDispatch, RootState } from '@/store';
 import { fetchClinicAppointments } from '@/store/slices/bookingSlice';
 import { crmAPI, adminAPI, clinicsAPI } from '@/services/api';
+import clinicApi from '@/services/api/clinicApi';
 import type { CalendarView, StaffCalendarFilters, ProviderResource } from './types';
 
 const sanitizeTz = (tz?: string | null): string => {
@@ -95,8 +96,13 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
     const fetchClinics = async () => {
       setIsLoadingMeta(true);
       try {
-        const clinicRes = await crmAPI.getAccessibleClinics();
-        setClinics(clinicRes.data || []);
+        // Clinic accounts use the clinic-scoped endpoint; /crm is BeautyDoctors staff only
+        const role = String(user?.role || '').toLowerCase();
+        const isClinicAccount = ['clinic_owner', 'doctor', 'secretariat'].includes(role);
+        const clinicList = isClinicAccount
+          ? await clinicApi.patients.accessibleClinics()
+          : (await crmAPI.getAccessibleClinics()).data;
+        setClinics(clinicList || []);
       } catch (err) {
         console.error('Failed to fetch clinics metadata', err);
       } finally {

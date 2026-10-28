@@ -46,6 +46,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { User } from '../users/entities/user.entity';
+import { ClinicPatientsService, PatientInput } from './clinic-patients.service';
+
+const CLINIC_PORTAL_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR];
+const isClinicAccount = (role: string) =>
+  [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR].some((r) => r === String(role || '').toLowerCase());
 
 @ApiTags('Clinic Management')
 @Controller('clinic')
@@ -63,7 +68,56 @@ export class ClinicManagementController {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Clinic)
     private readonly clinicsRepository: Repository<Clinic>,
+    private readonly clinicPatientsService: ClinicPatientsService,
   ) { }
+
+  // Clinics the logged-in clinic account works for (replaces /crm/accessible-clinics
+  // for the clinic portal; a clinic account without a clinic gets an empty list)
+  @Get('accessible-clinics')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Clinics accessible to the current clinic account' })
+  async getAccessibleClinics(@Request() req) {
+    return this.clinicPatientsService.getAccessibleClinics(req.user.id, req.user.role);
+  }
+
+  // Clinic patients (own clinic only)
+  @Get('patients')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Patients of the clinic: appointments at this clinic + clients the clinic added' })
+  async listPatients(
+    @Query() query: { search?: string; clinicId?: string; limit?: number; offset?: number },
+    @Request() req,
+  ) {
+    return this.clinicPatientsService.listPatients(req.user.id, req.user.role, query);
+  }
+
+  @Get('patients/search')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Find a patient: own patients by name/phone/email, BeautyDoctors clients only by exact full phone' })
+  async searchPatients(@Query('q') q: string, @Query('clinicId') clinicId: string, @Request() req) {
+    return this.clinicPatientsService.searchPatients(req.user.id, req.user.role, q, clinicId);
+  }
+
+  @Post('patients')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Add patient (phone rule: known phone links to the existing contact, new phone = clinic own client)' })
+  async createPatient(@Body() body: PatientInput, @Request() req) {
+    return this.clinicPatientsService.createPatient(req.user.id, req.user.role, body);
+  }
+
+  @Patch('patients/:id')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Update an own patient (details reach the account, appointments and CRM card)' })
+  async updatePatient(@Param('id') id: string, @Body() body: Partial<PatientInput>, @Request() req) {
+    return this.clinicPatientsService.updatePatient(req.user.id, req.user.role, id, body);
+  }
+
+  @Get('patients/:id/medical-record')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Medical record (own clinic appointments + clinic notes) for the PDF export' })
+  async getMedicalRecord(@Param('id') id: string, @Request() req) {
+    return this.clinicPatientsService.getMedicalRecord(req.user.id, req.user.role, id);
+  }
 
   // Clinic Profile Management
   // Clinic self-registration is disabled (item 57): only admins create clinics.
@@ -86,6 +140,13 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
   async getClinicProfile(@Request() req, @Query('clinicId') clinicId?: string) {
+    if (clinicId && isClinicAccount(req.user.role)) {
+      // A clinic account only reads its own clinic(s); none assigned = no access
+      const allowed = await this.clinicPatientsService.resolveClinicIds(req.user.id, req.user.role);
+      if (allowed && !allowed.includes(clinicId)) {
+        throw new NotFoundException('Clinic not found');
+      }
+    }
     if (clinicId) {
       return this.clinicsService.findById(clinicId);
     }
@@ -496,6 +557,9 @@ export class ClinicManagementController {
     @Query() query: { search?: string; limit?: number; offset?: number },
     @Request() req,
   ) {
+    if (isClinicAccount(req.user.role)) {
+      return this.clinicPatientsService.listPatients(req.user.id, req.user.role, query);
+    }
     return this.bookingsService.getClinicClients(req.user.id, req.user.role, query);
   }
 
@@ -504,6 +568,10 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get client details and history' })
   @ApiResponse({ status: 200, description: 'Client details retrieved successfully' })
   async getClientDetails(@Param('id') id: string, @Request() req) {
+    if (isClinicAccount(req.user.role)) {
+      // Throws unless this is a patient of the account's own clinic
+      await this.clinicPatientsService.getMedicalRecord(req.user.id, req.user.role, id);
+    }
     return this.bookingsService.getClientDetails(id, req.user.id, req.user.role);
   }
 

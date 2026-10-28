@@ -63,6 +63,25 @@ import type { Lead } from '@/types/crm.types';
 import { crmAPI, bookingAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
 
+const LEAD_SOURCE_OPTIONS = [
+  { value: 'manual', label: 'Manual Entry', labelGr: 'Χειροκίνητη καταχώριση' },
+  { value: 'facebook_ads', label: 'Facebook Ads', labelGr: 'Διαφημίσεις Facebook' },
+  { value: 'website', label: 'Website', labelGr: 'Ιστοσελίδα' },
+  { value: 'referral', label: 'Referral', labelGr: 'Σύσταση' },
+  { value: 'phone', label: 'Phone call', labelGr: 'Τηλεφωνική κλήση' },
+  { value: 'walk_in', label: 'Walk-in', labelGr: 'Επίσκεψη' },
+  { value: 'csv_import', label: 'CSV import', labelGr: 'Εισαγωγή CSV' },
+];
+
+/** Source options; a lead's current (e.g. HubSpot) source is always kept so editing never changes it. */
+const leadSourceOptions = (isGreek: boolean, current?: string) => {
+  const opts = LEAD_SOURCE_OPTIONS.map((o) => ({ value: o.value, label: isGreek ? o.labelGr : o.label }));
+  if (current && !opts.some((o) => o.value === current)) opts.push({ value: current, label: current });
+  return opts;
+};
+
+const isAdminRole = (role?: string) => role === 'admin' || role === 'SUPER_ADMIN';
+
 
 interface LeadsPageProps {
  onViewLead?: (lead: Lead) => void;
@@ -257,6 +276,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const dispatch = useDispatch<AppDispatch>();
  const { leads, leadFilters, duplicateCheck, isLoading, salespersons, stats } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
+ // Export and permanent delete are admin-only (also enforced on the server)
+ const isAdmin = isAdminRole(user?.role);
+ const [treatmentOptions, setTreatmentOptions] = useState<{ value: string; label: string }[]>([]);
+
+ useEffect(() => {
+ crmAPI.getTreatmentCatalog()
+ .then((res: any) => setTreatmentOptions((res.data || []).map((t: any) => ({ value: t.name, label: t.name }))))
+ .catch(() => setTreatmentOptions([]));
+ }, []);
 
  const [isGreek, setIsGreek] = useState<boolean>(
    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
@@ -348,7 +376,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
  // Initial form state
  const initialFormState = {
- source:"facebook_ads",
+ source:"manual",
+ treatmentInterest:"",
  firstName:"",
  lastName:"",
  email:"",
@@ -557,6 +586,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  if (!payload.email || payload.email.trim() ==="") {
  delete (payload as any).email;
  }
+ if (!payload.treatmentInterest) {
+ delete (payload as any).treatmentInterest;
+ }
  const result = await dispatch(createLead(payload)).unwrap();
  const leadId = result.id;
 
@@ -617,6 +649,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
  try {
  if (action === 'delete') {
+ if (!isAdmin) {
+ toast.error('Only administrators can delete leads', { id: toastId });
+ return;
+ }
+ if (!window.confirm(`Delete ${count} lead${count === 1 ? '' : 's'} permanently?`)) {
+ toast.dismiss(toastId);
+ return;
+ }
  for (const leadId of selectedLeads) await dispatch(deleteLead(leadId)).unwrap();
  } else if (action === 'mark_contacted') {
  for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } })).unwrap();
@@ -918,6 +958,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <span>Import</span>
  </Button>
 
+ {isAdmin && (
  <Button
  variant="ghost"
  onClick={handleExportLeads}
@@ -928,6 +969,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Download size={14} className={isExporting ? 'animate-bounce text-emerald-600' : 'text-slate-400'} />
  <span>{isExporting ? '...' : 'Export'}</span>
  </Button>
+ )}
  </div>
 
  <Button
@@ -1246,7 +1288,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Select
  placeholder="Assign Owner"
  options={(salespersons || [])
- .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+ .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
  .map((sp: any) => ({
  value: sp.id,
  label: `${sp.firstName} ${sp.lastName}`
@@ -1276,7 +1318,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  Contacted
  </Button>
 
- {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ {isAdmin && (
  <Button
  variant="outline"
  onClick={() => handleBulkAction('delete')}
@@ -1555,10 +1597,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg shrink-0" onClick={() => handleEditLead(lead)} title="Edit Lead">
                     <Edit className="h-3.5 w-3.5" />
                   </Button>
-                  {user?.role !== 'salesperson' && (
+                  {isAdmin && (
                     <>
                       <div className="w-px h-3 bg-gray-100 mx-0.5" />
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0" onClick={() => dispatch(deleteLead(lead.id))} title="Delete Lead">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0" onClick={() => { if (window.confirm('Delete 1 lead permanently?')) dispatch(deleteLead(lead.id)); }} title="Delete Lead">
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
@@ -1698,11 +1740,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  label={isGreek ? 'Πηγή Lead' : 'Lead Source'}
  value={editingLead.source}
  onChange={(value) => setEditingLead({ ...editingLead, source: value as any })}
- options={[
-                      { value: 'facebook_ads', label: isGreek ? 'Διαφημίσεις Facebook' : 'Facebook Ads' },
-                      { value: 'website', label: isGreek ? 'Άμεση καταχώριση' : 'Direct Entry' },
-                      { value: 'referral', label: isGreek ? 'Συστάσεις / Δίκτυο επαφών' : 'Referral / Network' }
-                    ]}
+ options={leadSourceOptions(isGreek, editingLead.source)}
  className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
  />
  <Select
@@ -1843,14 +1881,17 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  value={formData.source}
  onChange={(value) => setFormData({ ...formData, source: value })}
  leftIcon={<Globe className="w-4 h-4" />}
- options={[
- { value: 'facebook_ads', label: 'Facebook Ads' },
- { value: 'website', label: 'Website' },
- { value: 'manual', label: 'Manual Entry' },
- { value: 'referral', label: 'Referral' }
- ]}
+ options={leadSourceOptions(isGreek, formData.source)}
  />
  </div>
+
+ <Select
+ label={isGreek ? 'Θεραπεία' : 'Treatment'}
+ value={formData.treatmentInterest}
+ onChange={(value) => setFormData({ ...formData, treatmentInterest: value })}
+ placeholder={isGreek ? 'Επιλέξτε θεραπεία' : 'Select treatment'}
+ options={treatmentOptions}
+ />
 
  <div className="col-span-2">
  <Input
@@ -2350,7 +2391,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  onChange={(val) => setBulkTaskData({ ...bulkTaskData, salespersonId: val })}
  placeholder="Select Lead Strategist..."
  options={(salespersons || [])
- .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+ .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
  .map((sp: any) => ({
  value: sp.id,
  label: `${sp.firstName} ${sp.lastName}`

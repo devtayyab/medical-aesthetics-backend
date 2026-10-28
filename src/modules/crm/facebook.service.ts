@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EntityManager } from 'typeorm';
 import axios, { AxiosInstance } from 'axios';
 import * as crypto from 'crypto';
+import { extractLeadIdentity } from './facebook-lead-fields';
 
 export interface FacebookLeadData {
   id: string;
@@ -39,6 +40,10 @@ export class FacebookService {
   private readonly axiosInstance: AxiosInstance;
   private readonly apiVersion: string = 'v18.0';
   private readonly logger = new Logger(FacebookService.name);
+  /** form id -> human form name, filled by every forms listing */
+  private readonly formNameCache = new Map<string, string>();
+  /** Graph API failures seen since the last clearApiErrors() (sync health) */
+  private lastApiErrors: Array<{ at: Date; context: string; message: string; tokenInvalid: boolean }> = [];
 
   constructor(
     private configService: ConfigService,
@@ -153,6 +158,7 @@ export class FacebookService {
 
       return response.data;
     } catch (error) {
+      this.recordApiError(`lead ${leadId}`, error);
       if (axios.isAxiosError(error)) {
         throw new BadRequestException(
           `Facebook API error: ${error.response?.data?.error?.message || error.message}`,
@@ -205,6 +211,7 @@ export class FacebookService {
 
       return allLeads;
     } catch (error) {
+      this.recordApiError(`leads of form ${formId}`, error);
       if (axios.isAxiosError(error)) {
         throw new BadRequestException(
           `Facebook API error: ${error.response?.data?.error?.message || error.message}`,
@@ -214,87 +221,31 @@ export class FacebookService {
     }
   }
 
-  parseLeadData(leadData: FacebookLeadData): ParsedFacebookLead {
-    const fieldMap = new Map<string, string>();
-    const extraFields: string[] = [];
-
-    // Map Facebook field names to our field names
+  parseLeadData(leadData: FacebookLeadData, formNameOverride?: string): ParsedFacebookLead {
     const fields = Array.isArray(leadData?.field_data) ? leadData.field_data : [];
-    fields.forEach((field) => {
-      if (!field || !field.name) return;
+    const identity = extractLeadIdentity(fields);
 
-      let strVal = '';
-      if (Array.isArray(field.values) && field.values.length > 0) {
-        strVal = field.values
-          .filter((v) => v !== null && v !== undefined)
-          .map((v) => String(v).trim())
-          .filter(Boolean)
-          .join(', ');
-      } else if (field.values !== null && field.values !== undefined) {
-        strVal = String(field.values).trim();
-      }
-
-      fieldMap.set(field.name, strVal);
-
-      const nameLower = field.name.toLowerCase();
-      if (
-        !nameLower.includes('first_name') &&
-        !nameLower.includes('last_name') &&
-        !nameLower.includes('full_name') &&
-        !nameLower.includes('email') &&
-        !nameLower.includes('phone') &&
-        !nameLower.includes('ad_name') &&
-        !nameLower.includes('campaign')
-      ) {
-        if (strVal) {
-          extraFields.push(`${field.name}: ${strVal}`);
-        }
-      }
-    });
-
-    const notes = extraFields.length > 0 ? extraFields.join('\n') : undefined;
-
-    // Tolerant field lookup: forms use custom/localized keys (VORNAME, e-mail,
-    // work_email, Telefonnummer, …) — match case-insensitively by substring so
-    // those leads don't land with empty name/email/phone and become unsearchable
-    // Keys that contain the needle but are never about the person themselves
-    const EXCLUDED_KEY_PARTS = ['ad_name', 'adset', 'campaign', 'company', 'business', 'clinic', 'page_name', 'form_name'];
-    const findField = (...needles: string[]): string | undefined => {
-      for (const needle of needles) {
-        for (const [key, value] of fieldMap) {
-          const k = key.toLowerCase();
-          if (k.includes(needle) && !EXCLUDED_KEY_PARTS.some((ex) => k.includes(ex))) {
-            if (value && value.trim()) {
-              return value.trim();
-            }
-          }
-        }
-      }
-      return undefined;
-    };
-
-    const rawFullName = fieldMap.get('full_name') || findField('full_name', 'name');
-    const rawFirstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
-    const rawLastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
-
-    const fullName = rawFullName?.trim() || undefined;
-    const firstName = rawFirstName?.trim() || undefined;
-    const lastName = rawLastName?.trim() || undefined;
-
-    const email = fieldMap.get('email') || findField('email', 'e-mail', 'mail');
-    const phone = fieldMap.get('phone_number') || fieldMap.get('phone') || findField('phone', 'telefon', 'mobil', 'handy');
+    // Every answer that is not the person's name/email/phone goes into the notes
+    const notes = identity.otherAnswers.length > 0
+      ? identity.otherAnswers.map((a) => `${a.question}: ${a.answer}`).join('\n')
+      : undefined;
 
     const submittedAt = leadData?.created_time ? new Date(leadData.created_time) : new Date();
-    const formName = (leadData as any)?.form_name || (leadData?.form_id ? `Facebook Form ${leadData.form_id}` : undefined);
+    const formId = leadData?.form_id;
+    const formName =
+      formNameOverride ||
+      (leadData as any)?.form_name ||
+      (formId ? this.formNameCache.get(String(formId)) : undefined) ||
+      (formId ? `Facebook Form ${formId}` : undefined);
     const adName = (leadData as any)?.ad_name || undefined;
 
     return {
-      firstName: firstName || (fullName ? fullName.split(/\s+/)[0] : undefined),
-      lastName: lastName || (fullName && fullName.split(/\s+/).length > 1 ? fullName.split(/\s+/).slice(1).join(' ') : undefined),
-      email: email?.trim() || undefined,
-      phone: phone?.trim() || undefined,
+      firstName: identity.firstName,
+      lastName: identity.lastName,
+      email: identity.email,
+      phone: identity.phone,
       facebookLeadId: leadData?.id || '',
-      facebookFormId: leadData?.form_id,
+      facebookFormId: formId,
       facebookCampaignId: leadData?.campaign_id,
       facebookAdSetId: leadData?.adset_id,
       facebookAdId: leadData?.ad_id,
@@ -304,6 +255,81 @@ export class FacebookService {
       facebookLeadData: leadData,
       notes: notes,
     };
+  }
+
+  /**
+   * Human form name ("Botox Athens - October") for a form id. Cached from the
+   * forms listing; fetched once from the Graph API otherwise. Falls back to
+   * undefined (callers then show "Facebook Form <id>").
+   */
+  async getFormName(formId?: string, accessTokenOverride?: string): Promise<string | undefined> {
+    if (!formId) return undefined;
+    const cached = this.formNameCache.get(String(formId));
+    if (cached) return cached;
+    try {
+      const creds = await this.getFacebookCredentials();
+      const res = await this.axiosInstance.get(`/${formId}`, {
+        params: { access_token: accessTokenOverride || creds.accessToken, fields: 'name' },
+      });
+      const name = res.data?.name;
+      if (name) this.formNameCache.set(String(formId), name);
+      return name || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Errors from the last Graph API calls of the forms sweep (empty when healthy). */
+  getLastApiErrors(): Array<{ at: Date; context: string; message: string; tokenInvalid: boolean }> {
+    return [...this.lastApiErrors];
+  }
+
+  clearApiErrors(): void {
+    this.lastApiErrors = [];
+  }
+
+  private recordApiError(context: string, error: any): void {
+    const fbError = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
+    const message = fbError?.message || error?.message || 'Unknown Facebook API error';
+    // Graph API code 190 = invalid/expired access token, 102 = session expired
+    const tokenInvalid = fbError?.code === 190 || fbError?.code === 102 || /access token|session has expired/i.test(message);
+    this.lastApiErrors.push({ at: new Date(), context, message, tokenInvalid });
+    if (this.lastApiErrors.length > 20) this.lastApiErrors.shift();
+  }
+
+  /**
+   * Checks that the configured access token still works (expired tokens are
+   * the usual reason Facebook leads stop arriving).
+   */
+  async checkTokenValidity(): Promise<{ valid: boolean; message: string; expiresAt?: Date | null }> {
+    const creds = await this.getFacebookCredentials();
+    if (!creds.accessToken || creds.accessToken === 'your-facebook-access-token') {
+      return { valid: false, message: 'No Facebook access token configured' };
+    }
+    if (creds.accessToken === 'MOCK_TOKEN') {
+      return { valid: true, message: 'Mock token' };
+    }
+    try {
+      // debug_token reports expiry and validity; it needs an app token, so fall back to /me
+      if (creds.appId && creds.appSecret) {
+        const res = await this.axiosInstance.get('/debug_token', {
+          params: { input_token: creds.accessToken, access_token: `${creds.appId}|${creds.appSecret}` },
+        });
+        const data = res.data?.data || {};
+        const expiresAt = data.expires_at ? new Date(Number(data.expires_at) * 1000) : null;
+        if (!data.is_valid) {
+          return { valid: false, message: data.error?.message || 'Access token is invalid or expired', expiresAt };
+        }
+        return { valid: true, message: 'Access token is valid', expiresAt };
+      }
+      await this.axiosInstance.get('/me', { params: { access_token: creds.accessToken, fields: 'id' } });
+      return { valid: true, message: 'Access token is valid' };
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error?.message || error.message
+        : error.message;
+      return { valid: false, message };
+    }
   }
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string; pageId?: string }> {
@@ -595,8 +621,14 @@ export class FacebookService {
         }
       }
 
+      for (const f of allForms) {
+        if (f?.id && f?.name) this.formNameCache.set(String(f.id), f.name);
+      }
       return allForms;
     } catch (error) {
+      // Recorded (not only logged) so a broken token shows up as an error
+      // instead of an empty, "healthy looking" forms list
+      this.recordApiError(`forms of page ${targetPageId}`, error);
       this.logger.error(`Failed to fetch Facebook forms: ${error.message}`);
       if (axios.isAxiosError(error)) {
         this.logger.error(`FB API error detail: ${JSON.stringify(error.response?.data)}`);

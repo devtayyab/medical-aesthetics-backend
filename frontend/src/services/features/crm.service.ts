@@ -37,6 +37,8 @@ export const crmService = {
   getFacebookStats: (pageId?: string) => api.get('/crm/facebook/stats', { params: pageId ? { pageId } : undefined }),
   getWebhookLeads: (params?: { days?: number; page?: number; limit?: number }) => api.get('/crm/facebook/webhook-leads', { params }),
   testFacebookConnection: () => api.get('/crm/facebook/test'),
+  getFacebookHealth: (live?: boolean) => api.get('/crm/facebook/health', { params: live ? { live: 'true' } : undefined }),
+  getTreatmentCatalog: () => api.get('/crm/treatments'),
   assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
   bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
 

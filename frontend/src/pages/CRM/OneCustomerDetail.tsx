@@ -296,6 +296,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const [hubspotError, setHubspotError] = useState<string | null>(null);
 
  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
+
+ // After "Lost": open tasks are NOT closed automatically, the user is warned instead
+ const warnOpenTasks = (lostLead: any) => {
+ const open = Number(lostLead?.openTasksCount || 0);
+ if (open > 0) {
+ toast(`This contact has ${open} open task${open === 1 ? '' : 's'}. Close or reassign them if they are no longer needed.`, { icon: '⚠️', duration: 6000 });
+ }
+ };
  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
  useEffect(() => {
@@ -729,6 +737,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  toast('Η επαφή έχει ανοιχτές εργασίες. Κλείστε τις χειροκίνητα αν δεν χρειάζονται.', { icon: '⚠️' });
  }
 
+ // If appointment booked tagging, ensure logic
+ if (interactionOutcome === 'appointment_booked' && !isConverted) {
+ try {
+ // Booking => "Appointment booked"; Converted only after a completed visit
+ await dispatch(updateLead({ id: customer.id, updates: { status: 'appointment_scheduled' as any } })).unwrap();
+ } catch (updateErr) {
+ console.warn("Lead update skipped (maybe already converted):", updateErr);
+ }
+ }
+
  resetWorkflow();
 
  dispatch(fetchCustomerRecord({
@@ -992,7 +1010,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <Button
  onClick={async () => {
  if (!wrongNumberRemakes) return alert("Reason required.");
- await dispatch(updateLead({ id: customer.id, updates: { status: 'lost' } }));
+ // Lost with the reason saved; open tasks stay open (warning only)
+ const lostRes: any = await dispatch(updateLead({ id: customer.id, updates: { status: 'lost', lostReason: wrongNumberRemakes } as any })).unwrap().catch(() => null);
+ warnOpenTasks(lostRes);
  handleCompleteWorkflow();
  }}
  className="w-full bg-slate-900 hover:bg-black text-white h-11 rounded-lg font-bold text-sm shadow-sm transition-all"
@@ -1222,6 +1242,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div>
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lead Status</span>
  <Badge className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shadow-sm ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{derivedStatus}</Badge>
+ {derivedStatus === 'lost' && ((customer as any)?.metadata?.lostReason || (customerRecord?.record as any)?.metadata?.lostReason) && (
+ <span className="block text-[10px] font-semibold text-red-500 mt-1">Reason: {(customer as any)?.metadata?.lostReason || (customerRecord?.record as any)?.metadata?.lostReason}</span>
+ )}
  </div>
  <div className="group relative">
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Source</span>
@@ -1946,7 +1969,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  onSuccess={async () => {
  if (!isConverted) {
  try {
- await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' as any } })).unwrap();
+ await dispatch(updateLead({ id: customer.id, updates: { status: 'appointment_scheduled' as any } })).unwrap();
  } catch (e) {
  console.error("Lead conversion failed on success", e);
  }

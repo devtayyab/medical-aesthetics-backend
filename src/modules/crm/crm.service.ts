@@ -44,6 +44,14 @@ import { Service } from '../clinics/entities/service.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { BookingsService } from '../bookings/bookings.service';
 import { HubspotService } from '../hubspot/hubspot.service';
+import { PlatformSettings } from '../admin/entities/platform-settings.entity';
+import { phoneMatchKey, phoneKeySql } from '../../common/utils/phone.util';
+
+/** Roles a lead, customer or CRM task may be assigned to. */
+export const CRM_ASSIGNEE_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
+
+/** Business timezone for every human-readable date in CRM history entries. */
+const ATHENS_TZ = 'Europe/Athens';
 
 @Injectable()
 export class CrmService implements OnModuleInit {
@@ -245,18 +253,34 @@ export class CrmService implements OnModuleInit {
     );
 
     if (duplicateCheck.isDuplicate) {
+      // The existing lead IS the CRM card: a repeat submission goes into its
+      // history instead of creating the contact again
+      if (duplicateCheck.existingLead) {
+        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
+      }
+
       if (duplicateCheck.existingCustomer) {
         // Update existing customer record instead of creating duplicate lead
         return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
       }
-
-      if (duplicateCheck.existingLead) {
-        // Update existing lead instead of creating duplicate
-        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
-      }
     }
 
-    const { multiOwnerIds, clinicAffiliations, ...baseDto } = createLeadDto;
+    if (createLeadDto.assignedSalesId) {
+      await this.assertAssignableUser(createLeadDto.assignedSalesId);
+    }
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseDto } = createLeadDto;
+    // "Converted" is reached only through a completed visit, never on creation
+    if (baseDto.status === LeadStatus.CONVERTED) {
+      baseDto.status = LeadStatus.NEW;
+    }
+    if (treatmentInterest || lostReason) {
+      baseDto.metadata = {
+        ...(baseDto.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
+        ...(lostReason ? { lostReason, lostAt: new Date() } : {}),
+      };
+    }
     const lead = this.leadsRepository.create(baseDto);
     const savedLead = await this.leadsRepository.save(lead);
 
@@ -298,30 +322,225 @@ export class CrmService implements OnModuleInit {
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
 
+    if ((updateLeadDto as any).assignedSalesId === '') {
+      (updateLeadDto as any).assignedSalesId = null;
+    }
+    if (updateLeadDto.assignedSalesId && updateLeadDto.assignedSalesId !== lead.assignedSalesId) {
+      await this.assertAssignableUser(updateLeadDto.assignedSalesId);
+    }
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseUpdates } = updateLeadDto;
+
+    // "Converted" only after a completed visit. Booking an appointment makes the
+    // lead "Appointment booked" (APPOINTMENT_SCHEDULED) instead.
+    if (baseUpdates.status === LeadStatus.CONVERTED && lead.status !== LeadStatus.CONVERTED) {
+      const linkedUser = await this.findLinkedClientUser(lead);
+      const visits = linkedUser ? await this.countClientAppointments(linkedUser.id) : { completed: 0, active: 0 };
+      if (visits.completed === 0) {
+        if (visits.active > 0) {
+          baseUpdates.status = LeadStatus.APPOINTMENT_SCHEDULED;
+        } else {
+          throw new BadRequestException('A lead becomes Converted only after a completed visit. Book an appointment first.');
+        }
+      }
+    }
+
+    // Lost/treatment details live in metadata; merge so form history is never dropped
+    if (lostReason !== undefined || treatmentInterest !== undefined || baseUpdates.metadata) {
+      baseUpdates.metadata = {
+        ...(lead.metadata || {}),
+        ...(baseUpdates.metadata || {}),
+        ...(treatmentInterest !== undefined ? { treatmentInterest } : {}),
+        ...(lostReason !== undefined ? { lostReason, lostAt: new Date() } : {}),
+      };
+    }
+
     // Check for status changes
-    if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
-      if (updateLeadDto.status === LeadStatus.CONVERTED) {
-        updateLeadDto['convertedAt'] = new Date();
+    if (baseUpdates.status && baseUpdates.status !== lead.status) {
+      if (baseUpdates.status === LeadStatus.CONVERTED) {
+        baseUpdates['convertedAt'] = new Date();
       }
 
       this.eventEmitter.emit('lead.status.changed', {
         lead,
         oldStatus: lead.status,
-        newStatus: updateLeadDto.status,
+        newStatus: baseUpdates.status,
       });
     }
 
-    const { multiOwnerIds, clinicAffiliations, ...baseUpdates } = updateLeadDto;
-
     // Apply base updates
-    await this.leadsRepository.update(id, baseUpdates);
+    await this.leadsRepository.update(id, baseUpdates as any);
+    this.leadStatsCache = null;
+
+    // Name/phone/email edits must reach the client account and appointments too
+    const contactChanged = (['firstName', 'lastName', 'email', 'phone'] as const).some(
+      (k) => baseUpdates[k] !== undefined && baseUpdates[k] !== lead[k],
+    );
+    if (contactChanged) {
+      await this.propagateLeadContactDetails(lead, baseUpdates as Partial<Lead>).catch((err) =>
+        this.logger.warn(`[update] Could not sync contact details of lead ${id}: ${err.message}`),
+      );
+    }
 
     // Sync complex relations if provided
     if (multiOwnerIds !== undefined || clinicAffiliations !== undefined) {
       await this.syncLeadRelations(id, { multiOwnerIds, clinicAffiliations });
     }
 
-    return this.findById(id);
+    const updated = await this.findById(id);
+    if (baseUpdates.status === LeadStatus.LOST) {
+      // Open tasks are NOT closed automatically; the UI warns about them instead
+      (updated as any).openTasksCount = await this.countOpenTasksForLead(updated);
+    }
+    return updated;
+  }
+
+  /** Throws when the user may not own leads/tasks (only sales staff and admins). */
+  private async assertAssignableUser(userId: string): Promise<void> {
+    if (!isUuid(userId)) {
+      throw new BadRequestException('Invalid salesperson id');
+    }
+    const assignee = await this.usersRepository.findOne({ where: { id: userId }, select: ['id', 'role', 'isActive'] });
+    if (!assignee || !CRM_ASSIGNEE_ROLES.includes(assignee.role as UserRole)) {
+      throw new BadRequestException('Leads can only be assigned to salespeople or admins');
+    }
+  }
+
+  /**
+   * The client account (users row, role CLIENT) behind a lead: an explicit link
+   * stored at conversion/merge time first, then an exact email or phone match.
+   */
+  async findLinkedClientUser(lead: Lead): Promise<User | null> {
+    const meta: any = lead.metadata || {};
+    const linkedId = meta.convertedToUserId || meta.convertedToCustomerId || meta.existingCustomerId;
+    if (linkedId && isUuid(linkedId)) {
+      const linked = await this.usersRepository.findOne({ where: { id: linkedId } });
+      if (linked) return linked;
+    }
+    return this.findClientUserByContact(lead.email, lead.phone);
+  }
+
+  /** Client account matching an email (case-insensitive) or a full phone number. */
+  async findClientUserByContact(email?: string | null, phone?: string | null): Promise<User | null> {
+    const phoneKey = phoneMatchKey(phone);
+    const cleanEmail = email && email.trim() && !/@example\.com$/i.test(email.trim()) ? email.trim() : '';
+    if (!cleanEmail && !phoneKey) return null;
+
+    const conditions: string[] = [];
+    if (cleanEmail) conditions.push('LOWER(u.email) = LOWER(:email)');
+    if (phoneKey) conditions.push(`${phoneKeySql('u.phone')} = :phoneKey`);
+    const qb = this.usersRepository
+      .createQueryBuilder('u')
+      .where('u.role = :role', { role: UserRole.CLIENT })
+      .andWhere(`(${conditions.join(' OR ')})`, { email: cleanEmail, phoneKey });
+    // Prefer the email match, then the oldest account
+    if (cleanEmail) {
+      qb.orderBy('CASE WHEN LOWER(u.email) = LOWER(:email) THEN 0 ELSE 1 END', 'ASC').addOrderBy('u.createdAt', 'ASC');
+    } else {
+      qb.orderBy('u.createdAt', 'ASC');
+    }
+    return qb.getOne();
+  }
+
+  /** The CRM card (lead) for an email or full phone number, newest submission first. */
+  async findLeadByContact(email?: string | null, phone?: string | null, excludeLeadId?: string): Promise<Lead | null> {
+    const phoneKey = phoneMatchKey(phone);
+    const cleanEmail = email && email.trim() ? email.trim() : '';
+    if (!cleanEmail && !phoneKey) return null;
+
+    const conditions: string[] = [];
+    if (cleanEmail) conditions.push('LOWER(l.email) = LOWER(:email)');
+    if (phoneKey) conditions.push(`${phoneKeySql('l.phone')} = :phoneKey`);
+    const qb = this.leadsRepository
+      .createQueryBuilder('l')
+      .where(`(${conditions.join(' OR ')})`, { email: cleanEmail, phoneKey })
+      .andWhere('l.status != :merged', { merged: LeadStatus.Merged });
+    if (excludeLeadId) qb.andWhere('l.id != :excludeLeadId', { excludeLeadId });
+    return qb.orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC').getOne();
+  }
+
+  private async countClientAppointments(clientId: string): Promise<{ completed: number; active: number }> {
+    const row = await this.appointmentsRepository
+      .createQueryBuilder('a')
+      .select("SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
+      .addSelect(
+        "SUM(CASE WHEN UPPER(a.status) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
+        'active',
+      )
+      .where('a.clientId = :clientId', { clientId })
+      .getRawOne();
+    return { completed: Number(row?.completed || 0), active: Number(row?.active || 0) };
+  }
+
+  private async countOpenTasksForLead(lead: Lead): Promise<number> {
+    const ids = [lead.id];
+    const linkedUser = await this.findLinkedClientUser(lead).catch(() => null);
+    if (linkedUser) ids.push(linkedUser.id);
+    const record = linkedUser
+      ? await this.customerRecordsRepository.findOne({ where: { customerId: linkedUser.id }, select: ['id'] })
+      : null;
+    if (record) ids.push(record.id);
+    return this.crmActionsRepository.count({
+      where: { customerId: In(ids), status: In(['pending', 'in_progress']) as any },
+    });
+  }
+
+  /**
+   * Push the lead's current name/phone/email to the client account and the
+   * contact snapshot on that client's appointments, so every screen (CRM card,
+   * client account, calendar, clinic) shows the same details. Form history
+   * entries keep the details that were submitted at the time.
+   */
+  private async propagateLeadContactDetails(lead: Lead, updates: Partial<Lead>): Promise<void> {
+    const user = await this.findLinkedClientUser(lead);
+    if (!user) return;
+
+    await this.syncClientContactDetails(user, {
+      firstName: updates.firstName ?? lead.firstName,
+      lastName: updates.lastName ?? lead.lastName,
+      email: updates.email ?? lead.email,
+      phone: updates.phone ?? lead.phone,
+    });
+  }
+
+  /** Update a client account and the contact snapshot on its appointments. */
+  async syncClientContactDetails(
+    user: User,
+    next: { firstName?: string; lastName?: string; email?: string; phone?: string },
+  ): Promise<void> {
+    const userPatch: Partial<User> = {};
+    if (next.firstName && next.firstName !== user.firstName) userPatch.firstName = next.firstName;
+    if (next.lastName !== undefined && next.lastName !== null && next.lastName !== user.lastName) userPatch.lastName = next.lastName;
+    if (next.phone && next.phone !== user.phone) userPatch.phone = next.phone;
+    if (next.email && next.email.trim() && next.email.trim().toLowerCase() !== (user.email || '').toLowerCase()) {
+      // Email is unique: never take over another account's address
+      const taken = await this.usersRepository
+        .createQueryBuilder('u')
+        .where('LOWER(u.email) = LOWER(:email)', { email: next.email.trim() })
+        .andWhere('u.id != :id', { id: user.id })
+        .getCount();
+      if (!taken) userPatch.email = next.email.trim();
+    }
+    if (Object.keys(userPatch).length > 0) {
+      await this.usersRepository.update(user.id, userPatch);
+    }
+
+    const fullName = `${userPatch.firstName ?? user.firstName ?? ''} ${userPatch.lastName ?? user.lastName ?? ''}`.trim();
+    const appointments = await this.appointmentsRepository.find({
+      where: { clientId: user.id },
+      select: ['id', 'clientDetails'],
+    });
+    for (const apt of appointments) {
+      if (!apt.clientDetails) continue;
+      await this.appointmentsRepository.update(apt.id, {
+        clientDetails: {
+          ...apt.clientDetails,
+          fullName: fullName || apt.clientDetails.fullName,
+          email: userPatch.email ?? apt.clientDetails.email,
+          phone: userPatch.phone ?? apt.clientDetails.phone,
+        },
+      });
+    }
   }
 
   private async syncLeadRelations(
@@ -503,31 +722,15 @@ export class CrmService implements OnModuleInit {
         if (!leadgenId) continue;
 
         try {
-          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync)
-          const alreadyImported = await this.leadsRepository.findOne({
-            where: { facebookLeadId: leadgenId },
-            select: ['id'],
-          });
-          if (alreadyImported) continue;
+          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync),
+          // including submissions that were merged into an existing card's history
+          const processed = await this.findProcessedFacebookLeadIds([leadgenId]);
+          if (processed.has(leadgenId)) continue;
           // Get full lead data from Facebook using the lead ID from the webhook
           const leadData = await this.facebookService.getLead(leadgenId);
-          const parsedLead = this.facebookService.parseLeadData(leadData);
-
-          // Use enhanced duplicate detection
-          const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-            parsedLead.email,
-            parsedLead.phone,
-            parsedLead.firstName,
-            parsedLead.lastName,
-          );
-
-          if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-            await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, true);
-          } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
-            await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
-          } else {
-            await this.createLeadFromFacebook(parsedLead, leadData, true);
-          }
+          const formName = await this.facebookService.getFormName(leadData.form_id || change.value?.form_id);
+          const parsedLead = this.facebookService.parseLeadData(leadData, formName);
+          await this.ingestParsedFacebookLead(parsedLead, leadData, true);
         } catch (error) {
           this.logger.error(`Error processing Facebook lead ${leadgenId}: ${error.message}`);
           this.eventEmitter.emit('audit.log', {
@@ -572,6 +775,53 @@ export class CrmService implements OnModuleInit {
     }
   }
 
+  /**
+   * Facebook lead ids that are already in the CRM: as a card's current lead id,
+   * an archived earlier submission, or an entry of a card's form history.
+   * Soft-deleted cards count too, so leads an admin removed are not re-imported.
+   */
+  async findProcessedFacebookLeadIds(fbIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set((fbIds || []).filter(Boolean).map(String))];
+    if (ids.length === 0) return new Set();
+    const rows: Array<{ fb_id: string }> = await this.leadsRepository.query(
+      `SELECT "facebookLeadId" AS fb_id FROM leads WHERE "facebookLeadId" = ANY($1)
+       UNION
+       SELECT prev.fb_id FROM leads l,
+         LATERAL jsonb_array_elements_text(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'previousFacebookLeadIds') = 'array'
+                THEN l.metadata::jsonb -> 'previousFacebookLeadIds' ELSE '[]'::jsonb END
+         ) AS prev(fb_id)
+       WHERE prev.fb_id = ANY($1)
+       UNION
+       SELECT hist.entry ->> 'facebookLeadId' FROM leads l,
+         LATERAL jsonb_array_elements(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'formHistory') = 'array'
+                THEN l.metadata::jsonb -> 'formHistory' ELSE '[]'::jsonb END
+         ) AS hist(entry)
+       WHERE hist.entry ->> 'facebookLeadId' = ANY($1)`,
+      [ids],
+    );
+    return new Set(rows.map((r) => r.fb_id).filter(Boolean));
+  }
+
+  /** One parsed Facebook submission into the CRM: new card, or history entry of the existing card. */
+  private async ingestParsedFacebookLead(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean): Promise<Lead | null> {
+    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+      parsedLead.email,
+      parsedLead.phone,
+      parsedLead.firstName,
+      parsedLead.lastName,
+    );
+
+    if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
+      return this.updateExistingLead(duplicateCheck.existingLead, this.facebookLeadToDto(parsedLead, leadData, isWebhook));
+    }
+    if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+      return this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, isWebhook);
+    }
+    return this.createLeadFromFacebook(parsedLead, leadData, isWebhook);
+  }
+
   async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string, skipTokenResolution: boolean = false): Promise<Lead[]> {
     // Manual imports don't know which page the form belongs to — resolve the
     // page token so forms on secondary pages import correctly too
@@ -584,18 +834,19 @@ export class CrmService implements OnModuleInit {
       }
     }
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit, pageAccessToken);
+    const formName = await this.facebookService.getFormName(formId, pageAccessToken);
     const createdLeads: Lead[] = [];
 
-    // Dedup on the Facebook lead ID (not name/email heuristics) with one batched
-    // query instead of a findOne per lead
+    // Dedup on the Facebook lead ID (not name/email heuristics), including
+    // submissions already merged into another card's history
     const fbIds = leadsData.map((l) => l.id).filter(Boolean);
+    const alreadyImportedIds = await this.findProcessedFacebookLeadIds(fbIds);
     const existingRows = fbIds.length
       ? await this.leadsRepository.find({
           where: { facebookLeadId: In(fbIds) },
           select: ['id', 'facebookLeadId', 'metadata'],
         })
       : [];
-    const alreadyImportedIds = new Set(existingRows.map((r) => r.facebookLeadId));
     // Stubs persisted after a failed webhook fetch get healed with real data
     const stubsByFbId = new Map(
       existingRows
@@ -605,7 +856,7 @@ export class CrmService implements OnModuleInit {
 
     for (const leadData of leadsData) {
       try {
-        const parsedLead = this.facebookService.parseLeadData(leadData);
+        const parsedLead = this.facebookService.parseLeadData(leadData, formName);
 
         const stubId = stubsByFbId.get(parsedLead.facebookLeadId);
         if (stubId) {
@@ -620,7 +871,14 @@ export class CrmService implements OnModuleInit {
             facebookAdId: parsedLead.facebookAdId,
             facebookLeadData: parsedLead.facebookLeadData,
             notes: parsedLead.notes,
-            metadata: { importedFromFacebook: true, fromWebhook: true, fetchFailed: false, healedBySync: true } as any,
+            metadata: {
+              importedFromFacebook: true,
+              fromWebhook: true,
+              fetchFailed: false,
+              healedBySync: true,
+              formHistory: [this.buildFormHistoryEntry(parsedLead)],
+            } as any,
+            lastMetaFormName: parsedLead.lastMetaFormName,
             lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
           });
           // Count the healed stub as an import so logs/toasts reflect the recovery
@@ -630,26 +888,12 @@ export class CrmService implements OnModuleInit {
         }
         if (alreadyImportedIds.has(parsedLead.facebookLeadId)) continue;
 
-        // Use enhanced duplicate detection
-        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-          parsedLead.email,
-          parsedLead.phone,
-          parsedLead.firstName,
-          parsedLead.lastName,
-        );
-
-        if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          const mergedLead = await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
-          if (mergedLead) createdLeads.push(mergedLead);
-        } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
-          const updatedLead = await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
-          createdLeads.push(updatedLead);
-        } else {
-          const lead = await this.createLeadFromFacebook(parsedLead, leadData, false);
-          createdLeads.push(lead);
-        }
+        const lead = await this.ingestParsedFacebookLead(parsedLead, leadData, false);
+        if (lead) createdLeads.push(lead);
+        // Same id twice in one Graph API page must not be processed twice
+        alreadyImportedIds.add(parsedLead.facebookLeadId);
       } catch (error) {
-        console.error(`Error processing Facebook lead ${leadData.id}:`, error);
+        this.logger.error(`Error processing Facebook lead ${leadData.id}: ${error.message}`);
       }
     }
 
@@ -657,19 +901,62 @@ export class CrmService implements OnModuleInit {
   }
 
   private async findExistingCustomer(email?: string, phone?: string): Promise<User | null> {
-    if (!email && !phone) return null;
+    return this.findClientUserByContact(email, phone);
+  }
 
-    const query = this.usersRepository.createQueryBuilder('user');
+  /**
+   * One form submission as it appears in the card's history: the details the
+   * person entered THAT time (later edits of the card never change it).
+   */
+  private buildFormHistoryEntry(source: {
+    facebookFormId?: string;
+    lastMetaFormName?: string;
+    facebookAdName?: string;
+    facebookLeadId?: string;
+    lastMetaFormSubmittedAt?: Date | string;
+    facebookLeadData?: any;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+    source?: string;
+  }): any {
+    return {
+      formId: source.facebookFormId,
+      formName: source.lastMetaFormName || (source.facebookFormId ? `Facebook Form ${source.facebookFormId}` : 'Form submission'),
+      adName: source.facebookAdName,
+      facebookLeadId: source.facebookLeadId,
+      submittedAt: source.lastMetaFormSubmittedAt || new Date(),
+      firstName: source.firstName,
+      lastName: source.lastName,
+      email: source.email,
+      phone: source.phone,
+      answers: source.notes,
+      source: source.source,
+      leadData: source.facebookLeadData,
+    };
+  }
 
-    if (email) {
-      query.orWhere('user.email = :email', { email });
-    }
-
-    if (phone) {
-      query.orWhere('user.phone = :phone', { phone });
-    }
-
-    return query.getOne();
+  private facebookLeadToDto(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean): CreateLeadDto {
+    return {
+      source: 'facebook_ads',
+      firstName: parsedLead.firstName || '',
+      lastName: parsedLead.lastName || '',
+      email: parsedLead.email || undefined,
+      phone: parsedLead.phone,
+      facebookLeadId: parsedLead.facebookLeadId,
+      facebookFormId: parsedLead.facebookFormId,
+      facebookCampaignId: parsedLead.facebookCampaignId,
+      facebookAdSetId: parsedLead.facebookAdSetId,
+      facebookAdId: parsedLead.facebookAdId,
+      facebookLeadData: parsedLead.facebookLeadData,
+      facebookAdName: parsedLead.facebookAdName,
+      notes: parsedLead.notes,
+      lastMetaFormSubmittedAt: leadData?.created_time ? new Date(leadData.created_time) : new Date(),
+      lastMetaFormName: parsedLead.lastMetaFormName,
+      metadata: { importedFromFacebook: true, fromWebhook: isWebhook },
+    } as CreateLeadDto;
   }
 
   private async updateExistingCustomerWithNewLead(existingCustomer: User, leadDto: CreateLeadDto): Promise<Lead> {
@@ -678,18 +965,22 @@ export class CrmService implements OnModuleInit {
       where: { customerId: existingCustomer.id },
     });
 
-    // Create a new lead but link it to the existing customer
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseDto } = leadDto;
+
+    // Create the CRM card for this existing customer (no card existed yet)
     const lead = this.leadsRepository.create({
-      ...leadDto,
-      status: LeadStatus.CONTACTED, // Mark as contacted since they already exist
-      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt,
+      ...baseDto,
+      status: LeadStatus.NEW, // a new inquiry, shown at the top of the list
+      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
       lastMetaFormName: leadDto.lastMetaFormName,
       metadata: {
-        ...leadDto.metadata,
+        ...(leadDto.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
         existingCustomerId: existingCustomer.id,
         mergedLead: true,
+        formHistory: [this.buildFormHistoryEntry({ ...leadDto, lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date() } as any)],
       },
-    });
+    } as any) as unknown as Lead;
 
     const savedLead = await this.leadsRepository.save(lead);
 
@@ -722,65 +1013,92 @@ export class CrmService implements OnModuleInit {
     return savedLead;
   }
 
+  /**
+   * A repeat submission (new form, ad or manual entry) for an existing card:
+   * - the submission becomes its own entry in the card's form history,
+   * - the card takes the NEW email and phone (history keeps the old ones),
+   * - the card moves to the top as a new inquiry; Lost/Converted cards become active again,
+   * - the contact itself is never created again.
+   */
   private async updateExistingLead(existingLead: Lead, leadDto: CreateLeadDto): Promise<Lead> {
-    const submittedAt = leadDto.lastMetaFormSubmittedAt || new Date();
+    const submittedAt = leadDto.lastMetaFormSubmittedAt ? new Date(leadDto.lastMetaFormSubmittedAt) : new Date();
 
-    // Preserve previous form submission history so both old and new form data can be viewed
     const existingMeta = (existingLead.metadata || {}) as any;
-    const previousForms = Array.isArray(existingMeta.formHistory) ? [...existingMeta.formHistory] : [];
+    const previousForms: any[] = Array.isArray(existingMeta.formHistory) ? [...existingMeta.formHistory] : [];
 
-    // Capture initial/previous form if not already logged
-    if (existingLead.lastMetaFormName || existingLead.facebookFormId) {
-      const alreadyLogged = previousForms.some(
-        (f: any) => f.facebookLeadId === existingLead.facebookLeadId && f.formId === existingLead.facebookFormId
-      );
-      if (!alreadyLogged) {
-        previousForms.push({
-          formId: existingLead.facebookFormId,
-          formName: existingLead.lastMetaFormName || 'Initial Form',
-          adName: existingLead.facebookAdName,
-          facebookLeadId: existingLead.facebookLeadId,
-          submittedAt: existingLead.lastMetaFormSubmittedAt || existingLead.createdAt,
-          leadData: existingLead.facebookLeadData,
-        });
-      }
+    // Idempotent: the same Facebook submission is never added twice
+    if (leadDto.facebookLeadId && previousForms.some((f: any) => f?.facebookLeadId === leadDto.facebookLeadId)) {
+      return existingLead;
     }
 
-    // Append new form submission into history
-    previousForms.push({
-      formId: leadDto.facebookFormId,
-      formName: leadDto.lastMetaFormName || 'New Form Submission',
-      adName: leadDto.facebookAdName,
-      facebookLeadId: leadDto.facebookLeadId,
-      submittedAt: submittedAt,
-      leadData: (leadDto as any).facebookLeadData,
-    });
+    // Capture the card's first submission (with the details entered back then) if not logged yet
+    if (previousForms.length === 0) {
+      previousForms.push(
+        this.buildFormHistoryEntry({
+          ...existingLead,
+          lastMetaFormName: existingLead.lastMetaFormName || (existingLead.facebookFormId ? undefined : 'Initial entry'),
+          lastMetaFormSubmittedAt: existingLead.lastMetaFormSubmittedAt || existingLead.createdAt,
+          source: existingLead.source,
+        } as any),
+      );
+    }
+
+    // Append the new submission
+    previousForms.push(this.buildFormHistoryEntry({ ...leadDto, lastMetaFormSubmittedAt: submittedAt } as any));
 
     const initialFormName = existingMeta.initialFormName || existingLead.lastMetaFormName || leadDto.lastMetaFormName;
     const initialSubmittedAt = existingMeta.initialSubmittedAt || existingLead.lastMetaFormSubmittedAt || existingLead.createdAt;
 
-    // Update existing lead safely without overwriting core fields like createdAt, preserving existing status
+    // The card takes the newest email/phone. Leads.email is unique in the
+    // database, so an address already used by another card is kept in history only.
+    let nextEmail = existingLead.email;
+    if (leadDto.email && leadDto.email.trim() && leadDto.email.trim().toLowerCase() !== (existingLead.email || '').toLowerCase()) {
+      const taken = await this.leadsRepository
+        .createQueryBuilder('l')
+        .withDeleted()
+        .where('LOWER(l.email) = LOWER(:email)', { email: leadDto.email.trim() })
+        .andWhere('l.id != :id', { id: existingLead.id })
+        .getCount();
+      if (!taken) nextEmail = leadDto.email.trim();
+    }
+    const nextPhone = leadDto.phone && leadDto.phone.trim() ? leadDto.phone.trim() : existingLead.phone;
+
+    // Re-inquiry reactivates closed cards
+    const reactivate = [LeadStatus.LOST, LeadStatus.CONVERTED].includes(existingLead.status as LeadStatus);
+    const nextStatus = reactivate ? LeadStatus.NEW : existingLead.status;
+
+    const reInquiryStamp = formatDateTimeInTz(submittedAt, ATHENS_TZ);
+    const formLabel = leadDto.lastMetaFormName || 'another form';
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...incoming } = leadDto;
+
     const updatedLead = await this.leadsRepository.save({
       ...existingLead, // Keep all existing data as base
       id: existingLead.id, // Ensure we are updating the correct record
-      status: existingLead.status, // Keep old status unchanged as requested
+      status: nextStatus,
+      firstName: existingLead.firstName && existingLead.firstName !== 'Facebook' ? existingLead.firstName : (incoming.firstName || existingLead.firstName),
+      lastName: existingLead.lastName || incoming.lastName || existingLead.lastName,
+      email: nextEmail,
+      phone: nextPhone,
       // Update tracking fields from new form submission
-      facebookLeadId: leadDto.facebookLeadId || existingLead.facebookLeadId,
-      facebookFormId: leadDto.facebookFormId || existingLead.facebookFormId,
-      facebookCampaignId: leadDto.facebookCampaignId || existingLead.facebookCampaignId,
-      facebookAdSetId: leadDto.facebookAdSetId || existingLead.facebookAdSetId,
-      facebookAdId: leadDto.facebookAdId || existingLead.facebookAdId,
-      facebookAdName: leadDto.facebookAdName || existingLead.facebookAdName,
-      facebookLeadData: (leadDto as any).facebookLeadData || existingLead.facebookLeadData,
+      facebookLeadId: incoming.facebookLeadId || existingLead.facebookLeadId,
+      facebookFormId: incoming.facebookFormId || existingLead.facebookFormId,
+      facebookCampaignId: incoming.facebookCampaignId || existingLead.facebookCampaignId,
+      facebookAdSetId: incoming.facebookAdSetId || existingLead.facebookAdSetId,
+      facebookAdId: incoming.facebookAdId || existingLead.facebookAdId,
+      facebookAdName: incoming.facebookAdName || existingLead.facebookAdName,
+      facebookLeadData: (incoming as any).facebookLeadData || existingLead.facebookLeadData,
       lastMetaFormSubmittedAt: submittedAt,
-      lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
-      source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (leadDto.source || existingLead.source),
+      lastMetaFormName: incoming.lastMetaFormName || existingLead.lastMetaFormName,
+      // Source never changes by itself
+      source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (incoming.source || existingLead.source),
       notes: existingLead.notes
-        ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'Filled another form'}`
-        : leadDto.notes,
+        ? `${existingLead.notes}\n\n[Re-inquiry ${reInquiryStamp} - ${formLabel}]: ${incoming.notes || 'Filled another form'}`
+        : incoming.notes,
       metadata: {
         ...existingMeta,
-        ...(leadDto.metadata || {}),
+        ...(incoming.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
         isRepeat: true,
         reInquiry: true,
         initialFormName,
@@ -788,15 +1106,32 @@ export class CrmService implements OnModuleInit {
         formHistory: previousForms,
         reInquiryCount: (existingMeta.reInquiryCount || 0) + 1,
         lastReInquiryDate: submittedAt,
+        ...(reactivate ? { reactivatedAt: new Date(), reactivatedFrom: existingLead.status } : {}),
         previousFacebookLeadIds: [
           ...(existingMeta.previousFacebookLeadIds || []),
           existingLead.facebookLeadId,
-        ].filter((id) => id && id !== leadDto.facebookLeadId),
+        ].filter((id) => id && id !== incoming.facebookLeadId),
       },
     });
 
+    // The newest contact details reach the client account and appointments too
+    if (nextEmail !== existingLead.email || nextPhone !== existingLead.phone) {
+      await this.propagateLeadContactDetails(existingLead, { email: nextEmail, phone: nextPhone }).catch((err) =>
+        this.logger.warn(`Could not sync contact details of lead ${existingLead.id}: ${err.message}`),
+      );
+    }
+
+    if (reactivate) {
+      this.eventEmitter.emit('lead.status.changed', {
+        lead: updatedLead,
+        oldStatus: existingLead.status,
+        newStatus: nextStatus,
+      });
+    }
+
     // Emit event for updates
     this.eventEmitter.emit('lead.updated', updatedLead);
+    this.leadStatsCache = null;
 
     return updatedLead;
   }
@@ -817,69 +1152,31 @@ export class CrmService implements OnModuleInit {
       lastContactDate: new Date(),
     });
 
-    // We must also update the Lead entity if there's an existing one to update the meta form details,
-    // or just rely on the new lead logic. Ah, wait. Over here we are merging with a User (Existing Customer).
-    // The Lead table needs to be updated. Since it's a Customer, maybe there is a Lead associated?
-    // Let's find an existing lead for this customer.
+    // The customer has no CRM card yet (an existing card would have been matched
+    // before reaching here): create one so the submission is visible in Leads,
+    // with this submission as the first entry of its history.
     let createdLeadRow: Lead | null = null;
-
-    // Guard against an undefined email: TypeORM drops undefined where-values,
-    // which would turn this into an unfiltered findOne returning an arbitrary lead
-    const existingLead = existingCustomer.email
-      ? await this.leadsRepository.findOne({ where: { email: existingCustomer.email } })
-      : null;
-    if (existingLead) {
-      // Always store the NEWEST facebookLeadId (older ones are archived in
-      // metadata). The sync's dedup keys on facebookLeadId — if the new id is
-      // never persisted, this submission is re-ingested on every cron run,
-      // creating a duplicate follow-up task and comm log every 30 minutes.
-      await this.leadsRepository.update(existingLead.id, {
-        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
-        facebookLeadId: parsedLead.facebookLeadId,
-        metadata: {
-          ...(existingLead.metadata || {}),
-          previousFacebookLeadIds: [
-            ...(((existingLead.metadata as any)?.previousFacebookLeadIds) || []),
-            existingLead.facebookLeadId,
-          ].filter((id) => id && id !== parsedLead.facebookLeadId),
-        } as any,
-      });
-      createdLeadRow = null;
-    } else {
-      // No Lead row exists for this customer — create one so the submission is
-      // visible in the Leads list instead of only in the communication log.
-      // Non-fatal: a unique-email collision (duplicate matched on phone while the
-      // email belongs to another lead) must not abort the comm log/action below.
-      try {
+    try {
+      const dto = this.facebookLeadToDto(parsedLead, leadData, isWebhook);
       const mergedLead: Lead = this.leadsRepository.create({
-        source: 'facebook_ads',
+        ...dto,
         firstName: parsedLead.firstName || existingCustomer.firstName || '',
         lastName: parsedLead.lastName || existingCustomer.lastName || '',
         // undefined, never '': email has a unique index and a second '' would collide
         email: parsedLead.email || existingCustomer.email || undefined,
         phone: parsedLead.phone || existingCustomer.phone,
-        facebookLeadId: parsedLead.facebookLeadId,
-        facebookFormId: parsedLead.facebookFormId,
-        facebookCampaignId: parsedLead.facebookCampaignId,
-        facebookAdSetId: parsedLead.facebookAdSetId,
-        facebookAdId: parsedLead.facebookAdId,
-        facebookLeadData: parsedLead.facebookLeadData,
-        notes: parsedLead.notes,
-        status: LeadStatus.CONTACTED,
-        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
+        status: LeadStatus.NEW,
         metadata: {
           importedFromFacebook: true,
           fromWebhook: isWebhook,
           existingCustomerId: existingCustomer.id,
           mergedLead: true,
+          formHistory: [this.buildFormHistoryEntry({ ...dto, source: 'facebook_ads' } as any)],
         },
-      });
+      } as any) as unknown as Lead;
       createdLeadRow = await this.leadsRepository.save(mergedLead);
-      } catch (err) {
-        this.logger.warn(`Could not create merged lead row for FB lead ${parsedLead.facebookLeadId}: ${err.message}`);
-      }
+    } catch (err) {
+      this.logger.warn(`Could not create merged lead row for FB lead ${parsedLead.facebookLeadId}: ${err.message}`);
     }
 
     // Create a communication log entry for the Facebook form submission
@@ -891,7 +1188,7 @@ export class CrmService implements OnModuleInit {
         direction: 'incoming',
         status: 'completed',
         subject: 'Facebook Lead Form Submission',
-        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.\n\nForm Answers:\n${parsedLead.notes || 'None'}`,
+        notes: `Form submitted via Facebook: ${parsedLead.lastMetaFormName || parsedLead.facebookFormId || 'Unknown form'}.\n\nForm Answers:\n${parsedLead.notes || 'None'}`,
         metadata: {
           facebookLeadId: parsedLead.facebookLeadId,
           facebookFormId: parsedLead.facebookFormId,
@@ -901,84 +1198,47 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    // Create an action for the salesperson to follow up
-    const action = this.crmActionsRepository.create({
-      customerId: customerRecord.id,
-      salespersonId: customerRecord?.assignedSalespersonId || null,
-      actionType: 'follow_up',
-      title: 'Facebook Form Submission - Follow Up',
-      description: `Customer submitted form via Facebook. Please contact them.`,
-      status: 'pending',
-      priority: 'high',
-      metadata: {
-        source: 'facebook',
-        facebookLeadId: parsedLead.facebookLeadId,
-        originalSubmission: true, // This is the original submission, not a duplicate
-      },
-    });
-
-    await this.crmActionsRepository.save(action);
+    // No "Facebook Form Submission - Follow Up" task here any more: the sync
+    // re-ran every 30 minutes and created one per run (~24,000 junk tasks).
+    // The new card shows at the top of Leads as a new inquiry instead.
 
     // Emit event for notifications
     this.eventEmitter.emit('facebook.lead.merged', {
       customer: existingCustomer,
       facebookLead: parsedLead,
-      action,
     });
 
+    this.leadStatsCache = null;
     return createdLeadRow;
   }
 
   private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean = false): Promise<Lead> {
-    // Extract Facebook Ad Name from form fields if available
+    // Ad name from the answers when the form carries it, otherwise the form name
     const facebookAdNameField = parsedLead.facebookLeadData?.field_data?.find(
       (f: any) => f && f.name && (f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign'))
     );
+    const facebookAdName =
+      (facebookAdNameField && Array.isArray(facebookAdNameField.values) && facebookAdNameField.values.length > 0
+        ? facebookAdNameField.values[0]
+        : facebookAdNameField?.values
+          ? String(facebookAdNameField.values)
+          : null) ||
+      parsedLead.facebookAdName ||
+      parsedLead.lastMetaFormName ||
+      'Facebook Ad';
 
-    // Try to get form name from Facebook API as fallback (better than "Unknown Ad")
-    let facebookAdName = (facebookAdNameField && Array.isArray(facebookAdNameField.values) && facebookAdNameField.values.length > 0)
-      ? facebookAdNameField.values[0]
-      : (facebookAdNameField?.values ? String(facebookAdNameField.values) : null);
-    if (!facebookAdName && parsedLead.facebookFormId) {
-      try {
-        const creds = await this.facebookService.getFacebookCredentials();
-        const { default: axios } = await import('axios');
-        const formRes = await axios.get(
-          `https://graph.facebook.com/v18.0/${parsedLead.facebookFormId}`,
-          { params: { access_token: creds.accessToken, fields: 'name' } }
-        );
-        facebookAdName = formRes.data?.name || null;
-      } catch (e) {
-        // ignore
-      }
-    }
-    facebookAdName = facebookAdName || 'Facebook Ad';
-
+    const dto = this.facebookLeadToDto({ ...parsedLead, facebookAdName }, leadData, isWebhook);
     const leadDto: CreateLeadDto = {
-      source: 'facebook_ads',
-      firstName: parsedLead.firstName || '',
-      lastName: parsedLead.lastName || '',
-      email: parsedLead.email || '',
-      phone: parsedLead.phone,
-      facebookLeadId: parsedLead.facebookLeadId,
-      facebookFormId: parsedLead.facebookFormId,
-      facebookCampaignId: parsedLead.facebookCampaignId,
-      facebookAdSetId: parsedLead.facebookAdSetId,
-      facebookAdId: parsedLead.facebookAdId,
-      facebookLeadData: parsedLead.facebookLeadData,
-      facebookAdName: facebookAdName, // Direct column
-      notes: parsedLead.notes,
+      ...dto,
       status: LeadStatus.NEW,
       metadata: {
         importedFromFacebook: true,
         importDate: new Date(),
         facebookAdName: facebookAdName, // Sourced from form submission as requested
         fromWebhook: isWebhook,
+        formHistory: [this.buildFormHistoryEntry({ ...dto, source: 'facebook_ads' } as any)],
       },
-      lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-      lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
     };
-
 
     return this.create(leadDto);
   }
@@ -1345,9 +1605,11 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('Customer or Lead not found');
       }
 
-      const linkedCustomerId = (lead.metadata as any)?.convertedToCustomerId;
+      const linkMeta = (lead.metadata as any) || {};
+      const linkedCustomerIds = [linkMeta.convertedToCustomerId, linkMeta.convertedToUserId, linkMeta.existingCustomerId]
+        .filter((v, i, arr) => v && isUuid(v) && arr.indexOf(v) === i);
       const idMatchList = [lead.id];
-      if (linkedCustomerId) {
+      for (const linkedCustomerId of linkedCustomerIds) {
         idMatchList.push(linkedCustomerId);
         // Also add the CustomerRecord ID if it exists to catch post-conversion actions
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: linkedCustomerId } });
@@ -1363,19 +1625,10 @@ export class CrmService implements OnModuleInit {
         salespersonId,
       ).catch(e => this.logger.warn(`[HubSpot BG Sync] ${e.message}`));
 
-      const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
-        .leftJoinAndSelect('apt.service', 'service')
-        .leftJoinAndSelect('service.treatment', 'treatment')
-        .leftJoinAndSelect('apt.clinic', 'clinic')
-        .where('apt.clientId IN (:...ids)', { ids: idMatchList })
-        .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: lead.email })
-        .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: lead.phone })
-        .orderBy('apt.startTime', 'DESC')
-        .getMany();
-
-      const compApts = leadAppointments.filter(a => a.status === AppointmentStatus.COMPLETED);
-      const ltv = compApts.reduce((sum, apt) => sum + Number(apt.totalAmount || 0), 0);
-      const isRepeat = compApts.length > 1;
+      const leadAppointments = await this.findCardAppointments(idMatchList, lead.email, lead.phone);
+      const stats = this.computeCardStats(leadAppointments);
+      const ltv = stats.lifetimeValue;
+      const isRepeat = stats.completedAppointments > 1;
 
       // Return synthetic record for Lead
       return {
@@ -1394,8 +1647,11 @@ export class CrmService implements OnModuleInit {
           assignedSalespersonId: lead.assignedSalesId,
           assignedSalesperson: lead.assignedSales,
           lifetimeValue: ltv,
-          totalAppointments: leadAppointments.length,
-          completedAppointments: compApts.length,
+          totalAppointments: stats.totalAppointments,
+          completedAppointments: stats.completedAppointments,
+          cancelledAppointments: stats.cancelledAppointments,
+          lastAppointmentDate: stats.lastAppointment,
+          nextAppointmentDate: stats.nextAppointment,
           isRepeatCustomer: isRepeat,
           notes: lead.notes,
           source: lead.source,
@@ -1411,6 +1667,7 @@ export class CrmService implements OnModuleInit {
           startTime: apt.startTime,
           status: apt.status,
           totalAmount: apt.totalAmount,
+          amountPaid: apt.amountPaid,
           treatmentDetails: apt.treatmentDetails,
         })),
         communications: [
@@ -1448,10 +1705,8 @@ export class CrmService implements OnModuleInit {
         summary: {
           type: 'lead', // Frontend can use this to show specific badges
           status: lead.status,
-          totalAppointments: leadAppointments.length,
-          completedAppointments: compApts.length,
-          lifetimeValue: ltv,
-          repeatCount: isRepeat ? compApts.length : 0,
+          ...stats,
+          repeatCount: isRepeat ? stats.completedAppointments : 0,
         }
       };
     }
@@ -1486,21 +1741,17 @@ export class CrmService implements OnModuleInit {
 
     // Get appointments - include any booked while they were a lead
     const originalLead = await this.leadsRepository.createQueryBuilder('lead')
-      .where("lead.metadata->>'convertedToCustomerId' = :resolvedUserId", { resolvedUserId })
+      .where(
+        "(lead.metadata->>'convertedToCustomerId' = :resolvedUserId OR lead.metadata->>'convertedToUserId' = :resolvedUserId OR lead.metadata->>'existingCustomerId' = :resolvedUserId)",
+        { resolvedUserId },
+      )
       .getOne();
 
     const idMatchList = [resolvedUserId, record.id];
     if (originalLead) idMatchList.push(originalLead.id);
 
-    const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
-      .leftJoinAndSelect('apt.service', 'service')
-      .leftJoinAndSelect('service.treatment', 'treatment')
-      .leftJoinAndSelect('apt.clinic', 'clinic')
-      .where('apt.clientId IN (:...ids)', { ids: idMatchList })
-      .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: record.customer?.email })
-      .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: record.customer?.phone })
-      .orderBy('apt.startTime', 'DESC')
-      .getMany();
+    const appointments = await this.findCardAppointments(idMatchList, record.customer?.email, record.customer?.phone);
+    const stats = this.computeCardStats(appointments);
 
     // Get communication history - merge database logs and legacy metadata logs
     const dbLogs = await this.communicationLogsRepository.find({
@@ -1543,6 +1794,18 @@ export class CrmService implements OnModuleInit {
     const preferredClinic = await this.customerAffiliationService.getPreferredClinic(resolvedUserId);
     const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(resolvedUserId);
 
+    // Card numbers come from the appointments themselves, not from counters
+    // that drift (paid value, counts, next = the next ACTIVE appointment)
+    Object.assign(record, {
+      totalAppointments: stats.totalAppointments,
+      completedAppointments: stats.completedAppointments,
+      cancelledAppointments: stats.cancelledAppointments,
+      lifetimeValue: stats.lifetimeValue,
+      lastAppointmentDate: stats.lastAppointment,
+      nextAppointmentDate: stats.nextAppointment,
+      isRepeatCustomer: stats.completedAppointments > 1,
+    });
+
     return {
       record,
       appointments: appointments.map(apt => ({
@@ -1552,6 +1815,7 @@ export class CrmService implements OnModuleInit {
         startTime: apt.startTime,
         status: apt.status,
         totalAmount: apt.totalAmount,
+        amountPaid: apt.amountPaid,
         treatmentDetails: apt.treatmentDetails,
       })),
       communications,
@@ -1570,16 +1834,72 @@ export class CrmService implements OnModuleInit {
         preferredDoctor,
       },
       summary: {
-        totalAppointments: record.totalAppointments,
-        completedAppointments: record.completedAppointments,
-        lifetimeValue: record.lifetimeValue,
-        lastAppointment: record.lastAppointmentDate,
-        nextAppointment: record.nextAppointmentDate,
+        ...stats,
         isRepeatCustomer: record.isRepeatCustomer,
         repeatCount: record.repeatCount,
         preferredClinic: preferredClinic?.clinicName,
         preferredDoctor: preferredDoctor?.doctorName,
       },
+    };
+  }
+
+  /** Appointments that belong to a CRM card: by linked ids, email or full phone number. */
+  private async findCardAppointments(ids: string[], email?: string | null, phone?: string | null): Promise<Appointment[]> {
+    const qb = this.appointmentsRepository.createQueryBuilder('apt')
+      .leftJoinAndSelect('apt.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('apt.clinic', 'clinic')
+      .where('apt.clientId IN (:...ids)', { ids });
+    if (email && email.trim()) {
+      qb.orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: email.trim() });
+    }
+    const phoneKey = phoneMatchKey(phone);
+    if (phoneKey) {
+      qb.orWhere(`${phoneKeySql("apt.\"clientDetails\"->>'phone'")} = :phoneKey`, { phoneKey });
+    }
+    const rows = await qb.orderBy('apt.startTime', 'DESC').getMany();
+    return rows.filter((a) => String(a.status || '').toUpperCase() !== AppointmentStatus.DELETED);
+  }
+
+  /**
+   * Card statistics computed from the appointments:
+   * - lifetimeValue = money actually paid (amountPaid); a completed visit without
+   *   a recorded payment counts its price,
+   * - counts per outcome; cancelled/no-show appointments keep their amount,
+   * - nextAppointment = the next appointment that is still going to happen.
+   */
+  private computeCardStats(appointments: Appointment[]) {
+    const now = Date.now();
+    const status = (a: Appointment) => String(a.status || '').toUpperCase();
+    const isCompleted = (a: Appointment) => ['COMPLETED', 'EXECUTED'].includes(status(a));
+    const isActive = (a: Appointment) => ['PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status(a));
+
+    let lifetimeValue = 0;
+    let totalPaid = 0;
+    for (const a of appointments) {
+      const paid = Number(a.amountPaid || 0);
+      totalPaid += paid;
+      if (paid > 0) lifetimeValue += paid;
+      else if (isCompleted(a)) lifetimeValue += Number(a.totalAmount || 0);
+    }
+
+    const upcoming = appointments
+      .filter((a) => isActive(a) && new Date(a.startTime).getTime() >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const past = appointments
+      .filter((a) => isCompleted(a) || (new Date(a.startTime).getTime() < now && !['CANCELLED', 'NO_SHOW'].includes(status(a))))
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+    return {
+      totalAppointments: appointments.length,
+      completedAppointments: appointments.filter(isCompleted).length,
+      upcomingAppointments: upcoming.length,
+      cancelledAppointments: appointments.filter((a) => status(a) === 'CANCELLED').length,
+      noShowAppointments: appointments.filter((a) => status(a) === 'NO_SHOW').length,
+      lifetimeValue: Math.round(lifetimeValue * 100) / 100,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      lastAppointment: past[0]?.startTime || null,
+      nextAppointment: upcoming[0]?.startTime || null,
     };
   }
 
@@ -1643,6 +1963,40 @@ export class CrmService implements OnModuleInit {
     }
 
     return { user: savedUser };
+  }
+
+  /**
+   * Phone rule (item 25): a client the clinic brings in with a phone that is
+   * not known to BeautyDoctors is the doctor's OWN client. It gets a plain
+   * client account (no CRM customer record, so it is not a BD lead/customer
+   * and not in BD revenue), tagged with the clinic that owns it.
+   */
+  async createClinicOwnClient(
+    data: { firstName: string; lastName?: string; phone?: string; email?: string },
+    clinicId?: string,
+  ): Promise<{ user: User; password: string }> {
+    const existing = await this.findClientUserByContact(data.email, data.phone);
+    if (existing) {
+      throw new BadRequestException('A client with this email or phone already exists');
+    }
+    const password = Math.random().toString(36).slice(-10);
+    const newUser = this.usersRepository.create({
+      firstName: data.firstName,
+      lastName: data.lastName || '',
+      phone: data.phone || '',
+      // No placeholder addresses: the real email or none
+      email: data.email && data.email.trim() ? data.email.trim() : null,
+      role: UserRole.CLIENT,
+      isActive: true,
+      passwordHash: password,
+      profile: {
+        clinicOwnClient: true,
+        ownerClinicIds: clinicId ? [clinicId] : [],
+        createdAsClinicClientAt: new Date().toISOString(),
+      },
+    } as Partial<User>);
+    const savedUser = await this.usersRepository.save(newUser);
+    return { user: savedUser, password };
   }
 
   async getCustomers(filters: any): Promise<any[]> {
@@ -4514,9 +4868,11 @@ export class CrmService implements OnModuleInit {
   }
 
   async getSalespersons(): Promise<any[]> {
+    // Assignment lists (Assign Owner, Quick Assign, Lead Owner) must only offer
+    // BeautyDoctors sales staff and admins, never clinic/doctor accounts.
     const users = await this.usersRepository.find({
       where: {
-        role: In([UserRole.SALESPERSON, UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER]),
+        role: In(CRM_ASSIGNEE_ROLES),
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
@@ -4635,47 +4991,65 @@ export class CrmService implements OnModuleInit {
   async handleAppointmentCreated(appointment: Appointment) {
     if (!appointment || !appointment.clientId) return;
 
-    // 1. Handle Lead Conversion Visibility
-    let lead = await this.leadsRepository.findOne({
-      where: { id: appointment.clientId },
-    });
+    const clientEmail = appointment.client?.email || appointment.clientDetails?.email;
+    const clientPhone = appointment.client?.phone || appointment.clientDetails?.phone;
 
-    if (!lead && (appointment.client?.email || appointment.clientDetails?.email)) {
-      const email = appointment.client?.email || appointment.clientDetails?.email;
-      lead = await this.leadsRepository.findOne({
-        where: { email },
-      });
+    // 1. Find the existing CRM card (lead) of this client: by id, by an explicit
+    //    link to the client account, then by email or full phone number
+    let lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+    if (!lead) {
+      lead = await this.leadsRepository
+        .createQueryBuilder('l')
+        .where(
+          `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+          { uid: appointment.clientId },
+        )
+        .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
+        .getOne();
+    }
+    if (!lead) {
+      lead = await this.findLeadByContact(clientEmail, clientPhone);
     }
 
-    if (lead && lead.status !== LeadStatus.CONVERTED) {
+    // 2. Booking => "Appointment booked". "Converted" only after a completed visit.
+    if (lead) {
       const oldStatus = lead.status;
-      lead.status = LeadStatus.CONVERTED;
-      lead.convertedAt = new Date();
-      await this.leadsRepository.save(lead);
-
-      this.eventEmitter.emit('lead.status.changed', {
-        lead: lead,
-        oldStatus: oldStatus,
-        newStatus: LeadStatus.CONVERTED,
-      });
-
-      this.logger.log(`Changed lead status for ${lead.id} from ${oldStatus} to ${LeadStatus.CONVERTED} due to appointment created`);
+      const keepStatus = [LeadStatus.CONVERTED, LeadStatus.APPOINTMENT_SCHEDULED].includes(lead.status as LeadStatus);
+      const meta: any = lead.metadata || {};
+      const needsLink = !meta.convertedToUserId && lead.id !== appointment.clientId;
+      if (!keepStatus || needsLink) {
+        if (!keepStatus) lead.status = LeadStatus.APPOINTMENT_SCHEDULED;
+        if (needsLink) lead.metadata = { ...meta, convertedToUserId: appointment.clientId };
+        await this.leadsRepository.save(lead);
+        this.leadStatsCache = null;
+      }
+      if (!keepStatus) {
+        this.eventEmitter.emit('lead.status.changed', { lead, oldStatus, newStatus: LeadStatus.APPOINTMENT_SCHEDULED });
+        this.logger.log(`Lead ${lead.id}: ${oldStatus} -> ${LeadStatus.APPOINTMENT_SCHEDULED} (appointment booked)`);
+      }
     }
 
-    // 2. Update Customer Record Summary
+    // 2b. Online booking by the client: link it to the existing card (never a new
+    //     contact, no automatic salesperson), log it in the card history and tell
+    //     admin + the salesperson who had the lead
+    const isOnlineBooking =
+      appointment.appointmentSource !== 'clinic_own' &&
+      (!appointment.bookedById || appointment.bookedById === appointment.clientId);
+    const existingRecord = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
+    if (isOnlineBooking && (lead || existingRecord)) {
+      await this.recordOnlineBookingOfExistingContact(appointment, lead, existingRecord).catch((err) =>
+        this.logger.warn(`Could not record online booking ${appointment.id} on the CRM card: ${err.message}`),
+      );
+    }
+
+    // 3. Update Customer Record Summary
     // Note: Booked appointments should be "supposed" / credited to the client record immediately
     const customerId = appointment.clientId;
-    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+    let record = existingRecord;
 
     // If no record found (likely a new guest), search by phone/email to avoid duplicates
-    if (!record && (appointment.client?.phone || appointment.clientDetails?.phone)) {
-      const email = appointment.client?.email || appointment.clientDetails?.email;
-      const phone = appointment.client?.phone || appointment.clientDetails?.phone;
-
-      const existingUser = await this.usersRepository.findOne({
-        where: [{ email }, { phone }]
-      });
-
+    if (!record && (clientEmail || clientPhone)) {
+      const existingUser = await this.findClientUserByContact(clientEmail, clientPhone);
       if (existingUser) {
         record = await this.customerRecordsRepository.findOne({ where: { customerId: existingUser.id } });
       }
@@ -4708,6 +5082,72 @@ export class CrmService implements OnModuleInit {
     }
   }
 
+  private async recordOnlineBookingOfExistingContact(
+    appointment: Appointment,
+    lead: Lead | null,
+    record: CustomerRecord | null,
+  ): Promise<void> {
+    const salespersonId = lead?.assignedSalesId || record?.assignedSalespersonId || null;
+    const clientName =
+      `${appointment.client?.firstName || lead?.firstName || ''} ${appointment.client?.lastName || lead?.lastName || ''}`.trim() ||
+      appointment.clientDetails?.fullName ||
+      'Client';
+    const treatment = appointment.service?.treatment?.name || (appointment.service as any)?.name || 'Treatment';
+    const clinicName = appointment.clinic?.name || 'Clinic';
+    const when = formatDateTimeInTz(new Date(appointment.startTime), ATHENS_TZ);
+    const line = `Online booking - ${when}, ${treatment}, ${clinicName}`;
+
+    // History entry on the card (communication timeline)
+    const admins = await this.usersRepository.find({
+      where: { role: In([UserRole.ADMIN, UserRole.SUPER_ADMIN]), isActive: true },
+      select: ['id'],
+    });
+    const logOwnerId = salespersonId || admins[0]?.id;
+    if (logOwnerId) {
+      await this.communicationLogsRepository.save(
+        this.communicationLogsRepository.create({
+          customerId: appointment.clientId,
+          relatedLeadId: lead?.id || null,
+          salespersonId: logOwnerId,
+          type: 'note',
+          direction: 'incoming',
+          status: 'completed',
+          subject: 'Online booking',
+          notes: line,
+          metadata: { appointmentId: appointment.id, onlineBooking: true },
+        } as Partial<CommunicationLog>),
+      );
+    }
+    if (lead) {
+      const meta: any = lead.metadata || {};
+      const bookingHistory = Array.isArray(meta.bookingHistory) ? meta.bookingHistory : [];
+      if (!bookingHistory.some((b: any) => b?.appointmentId === appointment.id)) {
+        await this.leadsRepository.update(lead.id, {
+          metadata: {
+            ...meta,
+            bookingHistory: [
+              ...bookingHistory,
+              { appointmentId: appointment.id, channel: 'online', startTime: appointment.startTime, treatment, clinic: clinicName, recordedAt: new Date() },
+            ],
+          },
+        } as any);
+      }
+    }
+
+    // Notify admin + the salesperson who had the lead (no automatic assignment)
+    const recipients = new Set<string>(admins.map((a) => a.id));
+    if (salespersonId) recipients.add(salespersonId);
+    if (recipients.size > 0) {
+      await this.notificationsService.sendBulk(
+        [...recipients],
+        NotificationType.PUSH,
+        'Existing client booked online',
+        `Existing client ${clientName} booked online: ${when}, ${treatment}, ${clinicName}.`,
+        { appointmentId: appointment.id, leadId: lead?.id, customerId: appointment.clientId, type: 'existing_client_online_booking' },
+      );
+    }
+  }
+
   @OnEvent('appointment.status.changed')
   async handleAppointmentStatusChanged(eventData: any) {
     const { appointment, newStatus, oldStatus } = eventData;
@@ -4717,12 +5157,25 @@ export class CrmService implements OnModuleInit {
     if (newStatus === oldStatus) return;
 
     if (newStatus === AppointmentStatus.COMPLETED && oldStatus !== AppointmentStatus.COMPLETED) {
-      // 1. Conversion check (redundant but safe)
-      const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+      // 1. Completed visit => the lead becomes Converted
+      let lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+      if (!lead) {
+        lead = await this.leadsRepository
+          .createQueryBuilder('l')
+          .where(
+            `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+            { uid: appointment.clientId },
+          )
+          .getOne();
+      }
+      if (!lead) {
+        lead = await this.findLeadByContact(appointment.client?.email || appointment.clientDetails?.email, appointment.client?.phone || appointment.clientDetails?.phone);
+      }
       if (lead && lead.status !== LeadStatus.CONVERTED) {
         lead.status = LeadStatus.CONVERTED;
         lead.convertedAt = new Date();
         await this.leadsRepository.save(lead);
+        this.leadStatsCache = null;
       }
 
       // 2. Update Customer Record execution stats
@@ -5259,6 +5712,233 @@ export class CrmService implements OnModuleInit {
       webhookLeads: webhookLeadsCount,
       manualLeads: totalCrmLeads - webhookLeadsCount
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Facebook lead sync: one entry point for the 30-min cron and "Import all",
+  // with a persisted health status and admin alerts when leads stop arriving.
+  // ---------------------------------------------------------------------------
+
+  private static readonly FB_STATUS_KEY = 'facebook_sync_status';
+
+  /**
+   * Import every live form. Already-known Facebook lead ids are skipped, so
+   * running it after an outage re-imports the missed leads without duplicates.
+   */
+  async runFacebookSync(trigger: 'cron' | 'manual' | 'startup' = 'cron'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
+    this.facebookService.clearApiErrors();
+    const errors: string[] = [];
+    let formsChecked = 0;
+    let imported = 0;
+
+    let liveForms: any[] = [];
+    try {
+      const forms = await this.facebookService.getAllForms();
+      // DB-only pseudo forms (id: 'db_<name>') have no Facebook form to fetch from
+      liveForms = (forms || []).filter((f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED');
+    } catch (err) {
+      errors.push(`Could not list Facebook forms: ${err.message}`);
+    }
+
+    for (const form of liveForms) {
+      formsChecked++;
+      try {
+        const leads = await this.importFacebookLeads(form.id, 10000, form.page_access_token, true);
+        imported += leads.length;
+      } catch (err) {
+        // One failing form must not abort the sync of the remaining forms
+        errors.push(`Form ${form.name || form.id}: ${err.message}`);
+      }
+    }
+
+    // getForms() swallows API errors and returns []: surface them here
+    for (const apiErr of this.facebookService.getLastApiErrors()) {
+      const line = `${apiErr.context}: ${apiErr.message}`;
+      if (!errors.includes(line)) errors.push(line);
+    }
+    if (liveForms.length === 0 && errors.length === 0) {
+      errors.push('Facebook returned no lead forms. Check the access token, its permissions and the page ID.');
+    }
+
+    // An expired token is the usual reason leads stop: check it explicitly
+    let token: { valid: boolean; message: string; expiresAt?: Date | null } | null = null;
+    try {
+      token = await this.facebookService.checkTokenValidity();
+    } catch (err) {
+      token = { valid: false, message: err.message };
+    }
+    if (token && !token.valid) {
+      errors.unshift(`Access token invalid: ${token.message}`);
+    }
+
+    await this.recordFacebookSyncResult({ trigger, formsChecked, imported, errors, token }).catch((err) =>
+      this.logger.error(`Could not record Facebook sync status: ${err.message}`),
+    );
+
+    this.logger.log(`Facebook sync (${trigger}): forms ${formsChecked}, imported ${imported}, errors ${errors.length}`);
+    return { formsChecked, imported, errors };
+  }
+
+  private async readFacebookSyncStatus(): Promise<any> {
+    const repo = this.dataSource.getRepository(PlatformSettings);
+    const row = await repo.findOne({ where: { key: CrmService.FB_STATUS_KEY } });
+    if (!row?.value) return null;
+    if (typeof row.value === 'string') {
+      try { return JSON.parse(row.value); } catch { return null; }
+    }
+    return row.value;
+  }
+
+  private async writeFacebookSyncStatus(value: any): Promise<void> {
+    const repo = this.dataSource.getRepository(PlatformSettings);
+    const row = await repo.findOne({ where: { key: CrmService.FB_STATUS_KEY } });
+    if (row) {
+      row.value = value;
+      await repo.save(row);
+    } else {
+      await repo.save(
+        repo.create({
+          key: CrmService.FB_STATUS_KEY,
+          value,
+          category: 'integrations',
+          description: 'Facebook lead sync health (written by the sync job, read-only)',
+        }),
+      );
+    }
+  }
+
+  private async recordFacebookSyncResult(result: {
+    trigger: string;
+    formsChecked: number;
+    imported: number;
+    errors: string[];
+    token: { valid: boolean; message: string; expiresAt?: Date | null } | null;
+  }): Promise<void> {
+    const now = new Date();
+    const previous = (await this.readFacebookSyncStatus()) || {};
+    const ok = result.errors.length === 0;
+
+    const lastLeadRow = await this.leadsRepository
+      .createQueryBuilder('lead')
+      .select('MAX(COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt))', 'last')
+      .where("lead.source = 'facebook_ads'")
+      .getRawOne();
+    const lastLeadAt = lastLeadRow?.last ? new Date(lastLeadRow.last) : null;
+
+    const staleHours = Number(this.configService.get('FACEBOOK_LEADS_STALE_HOURS') || 48);
+    const leadsStale = !!lastLeadAt && now.getTime() - lastLeadAt.getTime() > staleHours * 3600 * 1000;
+
+    const status = {
+      status: ok ? (leadsStale ? 'warning' : 'ok') : 'error',
+      trigger: result.trigger,
+      lastRunAt: now,
+      lastSuccessAt: ok ? now : previous.lastSuccessAt || null,
+      lastErrorAt: ok ? previous.lastErrorAt || null : now,
+      lastError: ok ? null : result.errors.slice(0, 5).join(' | '),
+      formsChecked: result.formsChecked,
+      imported: result.imported,
+      tokenValid: result.token ? result.token.valid : null,
+      tokenMessage: result.token?.message || null,
+      tokenExpiresAt: result.token?.expiresAt || null,
+      lastLeadAt,
+      leadsStale,
+      staleHours,
+      lastAlertAt: previous.lastAlertAt || null,
+      lastStaleAlertAt: previous.lastStaleAlertAt || null,
+    };
+
+    // Alert admins: on the first failure, then at most every 6 hours while it stays broken
+    const alertEveryMs = 6 * 3600 * 1000;
+    const lastAlert = previous.lastAlertAt ? new Date(previous.lastAlertAt).getTime() : 0;
+    if (!ok && (previous.status !== 'error' || now.getTime() - lastAlert > alertEveryMs)) {
+      const tokenProblem = result.token && !result.token.valid;
+      await this.alertAdmins(
+        tokenProblem ? 'Facebook leads stopped: access token invalid' : 'Facebook lead sync failed',
+        `New Facebook leads are not being imported. ${status.lastError}. Renew the token under Integrations; missed leads are re-imported automatically on the next successful sync.`,
+        { type: 'facebook_sync_error' },
+      );
+      status.lastAlertAt = now;
+      this.eventEmitter.emit('audit.log', {
+        action: 'META_SYNC_ERROR',
+        resource: 'integrations',
+        resourceId: 'facebook',
+        data: { errors: result.errors.slice(0, 10), tokenValid: status.tokenValid },
+      });
+    }
+
+    // Recovered after an outage
+    if (ok && previous.status === 'error') {
+      await this.alertAdmins(
+        'Facebook lead sync working again',
+        `The Facebook lead sync is working again. Leads imported in this run: ${result.imported}.`,
+        { type: 'facebook_sync_recovered' },
+      );
+      this.eventEmitter.emit('audit.log', {
+        action: 'META_SYNC_RECOVERED',
+        resource: 'integrations',
+        resourceId: 'facebook',
+        data: { imported: result.imported },
+      });
+    }
+
+    // Token fine but no leads for a long time: warn once a day
+    const lastStale = previous.lastStaleAlertAt ? new Date(previous.lastStaleAlertAt).getTime() : 0;
+    if (ok && leadsStale && now.getTime() - lastStale > 24 * 3600 * 1000) {
+      await this.alertAdmins(
+        'No new Facebook leads',
+        `No Facebook lead has arrived since ${formatDateTimeInTz(lastLeadAt as Date, ATHENS_TZ)} (more than ${staleHours} hours). Check that the ads are running and the forms are connected.`,
+        { type: 'facebook_leads_stale' },
+      );
+      status.lastStaleAlertAt = now;
+    }
+
+    await this.writeFacebookSyncStatus(status);
+  }
+
+  private async alertAdmins(title: string, message: string, data?: any): Promise<void> {
+    try {
+      const admins = await this.usersRepository.find({
+        where: { role: In([UserRole.ADMIN, UserRole.SUPER_ADMIN]), isActive: true },
+        select: ['id'],
+      });
+      if (admins.length === 0) return;
+      await this.notificationsService.sendBulk(admins.map((a) => a.id), NotificationType.PUSH, title, message, data);
+    } catch (err) {
+      this.logger.error(`Could not alert admins (${title}): ${err.message}`);
+    }
+  }
+
+  /** Real Facebook status for the Integrations page (not just "enabled"). */
+  async getFacebookHealth(live: boolean = false): Promise<any> {
+    const stored = (await this.readFacebookSyncStatus()) || null;
+    let token: { valid: boolean; message: string; expiresAt?: Date | null } | null = null;
+    if (live) {
+      token = await this.facebookService.checkTokenValidity().catch((err) => ({ valid: false, message: err.message }));
+    }
+    let status: string = stored?.status || 'unknown';
+    if (token && !token.valid) status = 'error';
+    return {
+      status,
+      lastRunAt: stored?.lastRunAt || null,
+      lastSuccessAt: stored?.lastSuccessAt || null,
+      lastErrorAt: stored?.lastErrorAt || null,
+      lastError: token && !token.valid ? `Access token invalid: ${token.message}` : stored?.lastError || null,
+      tokenValid: token ? token.valid : stored?.tokenValid ?? null,
+      tokenMessage: token ? token.message : stored?.tokenMessage || null,
+      tokenExpiresAt: token?.expiresAt || stored?.tokenExpiresAt || null,
+      formsChecked: stored?.formsChecked ?? null,
+      imported: stored?.imported ?? null,
+      lastLeadAt: stored?.lastLeadAt || null,
+      leadsStale: stored?.leadsStale ?? null,
+    };
+  }
+
+  /** Therapy catalog for the "Treatment" field of lead forms. */
+  async getTreatmentCatalog(): Promise<Array<{ id: string; name: string }>> {
+    const rows = await this.dataSource.query(
+      `SELECT id, name FROM treatments WHERE "isActive" IS DISTINCT FROM false AND (status IS NULL OR LOWER(status::text) = 'approved') ORDER BY name ASC`,
+    );
+    return rows.map((r: any) => ({ id: r.id, name: r.name }));
   }
 
   async getWebhookLeads({ days = 30, page = 1, limit = 50 }: { days?: number; page?: number; limit?: number }) {
