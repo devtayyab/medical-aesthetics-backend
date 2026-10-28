@@ -15,9 +15,52 @@ import {
 } from '@/store/slices/crmSlice';
 import type { AppDispatch, RootState } from '@/store';
 import type { CrmAction } from '@/types';
-import { userAPI, crmAPI } from '@/services/api';
+import { userAPI, crmAPI, clinicsAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { cn } from"@/lib/utils";
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** Local (browser = Europe/Athens) "YYYY-MM-DDTHH:mm" for date/time inputs. Never UTC. */
+const toLocalInput = (value?: string | Date | null): string => {
+ if (!value) return '';
+ // Already a bare local wall-clock value produced by the inputs below
+ if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
+ const d = new Date(value);
+ if (isNaN(d.getTime())) return '';
+ return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
+/** Local wall-clock input value -> UTC ISO string for the API. */
+const localInputToISO = (value?: string): string | undefined => {
+ if (!value) return undefined;
+ const d = new Date(value);
+ return isNaN(d.getTime()) ? undefined : d.toISOString();
+};
+
+/** Default due time for a new task: next working day (Mon-Fri) at 08:00 local. */
+const nextWorkingDayAt0800 = (): string => {
+ const d = new Date();
+ d.setDate(d.getDate() + 1);
+ while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+ d.setHours(8, 0, 0, 0);
+ return toLocalInput(d);
+};
+
+const todayLocalDate = (): string => toLocalInput(new Date()).split('T')[0];
+
+/** Flatten the public category tree (with treatments) into unique treatment names. */
+const collectTreatmentNames = (categories: any[]): string[] => {
+ const names = new Set<string>();
+ const walk = (cats: any[]) => {
+ (cats || []).forEach((c: any) => {
+ (c?.treatments || []).forEach((t: any) => t?.name && names.add(t.name));
+ if (c?.children?.length) walk(c.children);
+ });
+ };
+ walk(categories);
+ return Array.from(names).sort((a, b) => a.localeCompare(b));
+};
 
 interface ActionFormProps {
  customerId: string;
@@ -40,18 +83,26 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const { user } = useSelector((state: RootState) => state.auth);
+ const isEdit = Boolean(prefilledData?.id);
  const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
- const [formData, setFormData] = useState<Partial<CrmAction>>({
+ // Editing keeps the task's owner: only default to the current user for NEW tasks.
+ const [salespersonTouched, setSalespersonTouched] = useState(false);
+ const [treatmentOptions, setTreatmentOptions] = useState<{ value: string; label: string }[]>([]);
+ const [formData, setFormData] = useState<Partial<CrmAction>>(() => {
+ const defaultDue = isEdit ? '' : nextWorkingDayAt0800();
+ return {
  customerId: propCustomerId || prefilledData?.customerId || undefined,
- salespersonId: prefilledData?.salespersonId || user?.id || '',
+ salespersonId: prefilledData?.salespersonId || (isEdit ? '' : user?.id || ''),
  relatedLeadId: prefilledData?.relatedLeadId || undefined,
  actionType: prefilledData?.actionType || 'call',
+ therapy: prefilledData?.therapy || (prefilledData as any)?.metadata?.proposedTreatment || '',
+ clinic: prefilledData?.clinic || (prefilledData as any)?.metadata?.clinic || '',
  title: prefilledData?.title || '',
  description: prefilledData?.description || '',
  status: prefilledData?.status || 'pending',
  priority: prefilledData?.priority || 'medium',
- dueDate: prefilledData?.dueDate || '',
- reminderDate: prefilledData?.reminderDate || '',
+ dueDate: toLocalInput(prefilledData?.dueDate) || defaultDue,
+ reminderDate: toLocalInput(prefilledData?.reminderDate) || defaultDue,
  metadata: {
  ...(prefilledData?.metadata || {}),
  ...((prefilledData as any)?.metadata?.clinic && { clinic: (prefilledData as any).metadata.clinic }),
@@ -59,6 +110,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  ...((prefilledData as any)?.metadata?.callOutcome && { callOutcome: (prefilledData as any).metadata.callOutcome }),
  ...((prefilledData as any)?.metadata?.cost && { cost: (prefilledData as any).metadata.cost })
  }
+ };
  });
  const [validationErrors, setValidationErrors] = useState<string[]>([]);
  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
@@ -93,24 +145,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  });
  }, []);
 
+ // Always split in LOCAL time (a UTC ISO string would otherwise show 2-3h off in Athens)
  const getSplitDateTime = (dateTimeStr?: string) => {
- if (!dateTimeStr) return { date: '', time: '12:00' };
- const tIndex = dateTimeStr.indexOf('T');
- if (tIndex !== -1) {
- const datePart = dateTimeStr.substring(0, tIndex);
- const timePart = dateTimeStr.substring(tIndex + 1, tIndex + 6);
- return { date: datePart, time: timePart };
- }
- const dateObj = new Date(dateTimeStr);
- if (isNaN(dateObj.getTime())) {
- return { date: '', time: '12:00' };
- }
- const year = dateObj.getFullYear();
- const month = String(dateObj.getMonth() + 1).padStart(2, '0');
- const day = String(dateObj.getDate()).padStart(2, '0');
- const hours = String(dateObj.getHours()).padStart(2, '0');
- const minutes = String(dateObj.getMinutes()).padStart(2, '0');
- return { date: `${year}-${month}-${day}`, time: `${hours}:${minutes}` };
+ const local = toLocalInput(dateTimeStr);
+ if (!local) return { date: '', time: '08:00' };
+ const [date, time] = local.split('T');
+ return { date, time };
  };
 
  const handleDatePartChange = (field: 'dueDate' | 'reminderDate', newDate: string, currentTime: string) => {
@@ -118,12 +158,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  handleInputChange(field, '');
  return;
  }
- const combined = `${newDate}T${currentTime || '12:00'}`;
+ const combined = `${newDate}T${currentTime || '08:00'}`;
  handleInputChange(field, combined);
  };
 
  const handleTimePartChange = (field: 'dueDate' | 'reminderDate', currentDate: string, newTime: string) => {
- const combined = `${currentDate || new Date().toISOString().split('T')[0]}T${newTime || '12:00'}`;
+ const combined = `${currentDate || todayLocalDate()}T${newTime || '08:00'}`;
  handleInputChange(field, combined);
  };
 
@@ -177,17 +217,25 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  try {
  const targetId = propCustomerId || prefilledData?.relatedLeadId;
  
- const [clinicRes, salesRes, custRes, leadRes] = await Promise.all([
+ const [clinicRes, salesRes, custRes, leadRes, catalogRes] = await Promise.all([
  crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
  crmAPI.getSalespersons().catch(() => ({ data: [] })),
  userAPI.getAllUsers({ role: 'client', limit: 50 }).catch(() => ({ data: { users: [] } })),
- crmAPI.getLeads({ status: 'new' }).catch(() => ({ data: [] }))
+ crmAPI.getLeads({ status: 'new' }).catch(() => ({ data: [] })),
+ // Our treatment catalog (approved, active treatments of the public category tree)
+ clinicsAPI.getCategoryTree(true).catch(() => ({ data: [] }))
  ]);
 
  if (!isMounted) return;
 
- const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
+ // Clinic is stored by name on the task (task.clinic), same as the call workflow
+ const clinicOptions = (Array.isArray(clinicRes.data) ? clinicRes.data : [])
+ .filter((c: any) => c?.name)
+ .map((c: any) => ({ value: c.name, label: c.name }));
  setClinics(clinicOptions);
+
+ const treatmentNames = collectTreatmentNames(Array.isArray(catalogRes.data) ? catalogRes.data : []);
+ setTreatmentOptions(treatmentNames.map((n) => ({ value: n, label: n })));
 
  const salesData = Array.isArray(salesRes.data) ? salesRes.data : [];
  const salesOptions = salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}`, role: s.role }));
@@ -304,6 +352,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
 
+ // A task must always belong to a client (customer or lead)
+ if (!formData.customerId && !formData.relatedLeadId) {
+ toast.error(isGreek ? 'Επιλέξτε πελάτη για το task.' : 'Please select a client for this task.');
+ return;
+ }
+
  if (formData.reminderDate) {
  const reminderDateObj = new Date(formData.reminderDate);
  const maxDate = new Date();
@@ -316,7 +370,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
  const now = new Date();
  // Only check if it's in the past if it's a new task, or if the user changed the date
- if (reminderDateObj < new Date(now.getTime() - 60000) && formData.reminderDate !== prefilledData?.reminderDate) {
+ if (reminderDateObj < new Date(now.getTime() - 60000) && formData.reminderDate !== toLocalInput(prefilledData?.reminderDate)) {
  toast.error("Task validation failed: Reminder cannot be set in the past.");
  return;
  }
@@ -335,19 +389,29 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  const payload: Partial<CrmAction> = {
  customerId: formData.customerId || undefined,
  relatedLeadId: formData.relatedLeadId || undefined,
- salespersonId: formData.salespersonId || user?.id || '',
+ // New task: owner defaults to the creator. Edit: the task keeps its owner unless
+ // someone explicitly picked a new one (never silently moves to the editor).
+ salespersonId: isEdit
+ ? (salespersonTouched ? formData.salespersonId : undefined)
+ : (formData.salespersonId || user?.id || ''),
  actionType: formData.actionType,
- therapy: (formData as any).therapy,
+ therapy: formData.therapy,
+ clinic: formData.clinic,
  title: formData.title,
  description: formData.description,
  status: formData.status || 'pending',
  priority: formData.priority || 'medium',
- dueDate: formData.dueDate,
- reminderDate: formData.reminderDate,
+ // Inputs hold local (Athens) wall-clock time; send real UTC instants
+ dueDate: localInputToISO(formData.dueDate),
+ reminderDate: localInputToISO(formData.reminderDate),
  isRecurring: formData.isRecurring || false,
  recurrenceType: formData.recurrenceType,
  recurrenceInterval: formData.recurrenceInterval,
- metadata: formData.metadata || {}
+ metadata: {
+ ...(formData.metadata || {}),
+ ...(formData.clinic ? { clinic: formData.clinic } : {}),
+ ...(formData.therapy ? { proposedTreatment: formData.therapy } : {}),
+ }
  };
 
  Object.keys(payload).forEach(key => {
@@ -367,12 +431,13 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  customerId: propCustomerId || undefined,
  relatedLeadId: undefined,
  therapy: '',
+ clinic: '',
  title: '',
  description: '',
  status: 'pending',
  priority: 'medium',
- dueDate: '',
- reminderDate: '',
+ dueDate: nextWorkingDayAt0800(),
+ reminderDate: nextWorkingDayAt0800(),
  isRecurring: false,
  salespersonId: prefilledData?.salespersonId || '',
  metadata: {}
@@ -412,7 +477,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  <span className="text-sm font-bold text-slate-700">Create Task/Action</span>
  </div>
  <div className="relative" ref={searchRef}>
- <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Associated Contact</label>
+ <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">
+ {isGreek ? 'Πελάτης (Υποχρεωτικό)' : 'Client (Required)'}
+ </label>
  <div className="relative group">
  <Input
  value={(formData.customerId || formData.relatedLeadId) ? (selectedCustomerLabel || searchTerm) : searchTerm}
@@ -484,6 +551,43 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  )}
  </div>
  )}
+ {!formData.customerId && !formData.relatedLeadId && (
+ <p className="mt-1.5 text-[11px] font-bold text-red-600 flex items-center gap-1">
+ <AlertCircle className="h-3 w-3" />
+ {isGreek ? 'Το task πρέπει να συνδέεται με πελάτη.' : 'A task must be linked to a client.'}
+ </p>
+ )}
+ </div>
+
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+ <Select
+ label={isGreek ? 'Θεραπεία' : 'Treatment'}
+ value={formData.therapy || ''}
+ onChange={(value) => {
+ handleInputChange('therapy', value);
+ handleInputChange('metadata.proposedTreatment', value);
+ }}
+ options={
+ formData.therapy && !treatmentOptions.some((o) => o.value === formData.therapy)
+ ? [{ value: formData.therapy, label: formData.therapy }, ...treatmentOptions]
+ : treatmentOptions
+ }
+ placeholder={isGreek ? 'Επιλέξτε θεραπεία...' : 'Select treatment...'}
+ />
+ <Select
+ label={isGreek ? 'Κλινική' : 'Clinic'}
+ value={formData.clinic || ''}
+ onChange={(value) => {
+ handleInputChange('clinic', value);
+ handleInputChange('metadata.clinic', value);
+ }}
+ options={
+ formData.clinic && !clinics.some((o) => o.value === formData.clinic)
+ ? [{ value: formData.clinic, label: formData.clinic }, ...clinics]
+ : clinics
+ }
+ placeholder={isGreek ? 'Επιλέξτε κλινική...' : 'Select clinic...'}
+ />
  </div>
 
  <div className="grid grid-cols-3 gap-4">
@@ -534,8 +638,11 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  {(user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager' || user?.role === 'clinic_owner') ? (
  <Select
  label="Salesperson (Required)"
- value={formData.salespersonId || user?.id || ''}
- onChange={(value) => handleInputChange('salespersonId', value)}
+ value={formData.salespersonId || (isEdit ? '' : user?.id || '')}
+ onChange={(value) => {
+ setSalespersonTouched(true);
+ handleInputChange('salespersonId', value);
+ }}
  options={salespersons}
  required
  />
@@ -701,21 +808,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  {(formData.actionType === 'call' || formData.actionType === 'follow_up_call' || formData.actionType === 'confirmation_call_reminder') && (
  <>
  <h4 className="font-medium text-sm text-gray-700 mt-2">Call Details</h4>
- <div className="grid grid-cols-2 gap-4">
- <Select
- label="Proposed Treatment Category"
- value={formData.metadata?.proposedTreatment || ''}
- onChange={(value) => handleInputChange('metadata.proposedTreatment', value)}
- options={[
- { value: 'botox', label: 'Botox' },
- { value: 'fillers', label: 'Dermal Fillers' },
- { value: 'laser', label: 'Laser Treatment' },
- { value: 'peels', label: 'Chemical Peels' },
- { value: 'consultation', label: 'Consultation' }
- ]}
- />
- </div>
-
  <div className="grid grid-cols-2 gap-4">
  <Input
  label="Cost"
