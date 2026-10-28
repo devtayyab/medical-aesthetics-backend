@@ -4052,39 +4052,55 @@ export class CrmService implements OnModuleInit {
 
   // No-Show Management Methods
   async getNoShowAlerts(query: { daysAgo?: number; status?: 'pending' | 'resolved' }) {
-    const daysAgo = query.daysAgo || 7;
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() - daysAgo);
+    const daysAgo = Number(query.daysAgo) || 7;
+    const now = new Date();
+    const thresholdDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+    const salesRoles = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
-    let qb = this.appointmentsRepository
+    // Past no-shows only. The agent is the CLIENT's salesperson (customer record owner), else
+    // the appointment's sales representative; never the doctor / clinic account.
+    const qb = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.representative', 'rep')
-      .leftJoin('apt.bookedBy', 'agent')
       .leftJoin('apt.clinic', 'clinic')
       .leftJoin('apt.client', 'client')
+      .leftJoin(
+        'customer_records',
+        'cr',
+        `cr.id = (SELECT r.id FROM customer_records r WHERE r."customerId" = apt."clientId" AND r."assignedSalespersonId" IS NOT NULL ORDER BY r."createdAt" DESC LIMIT 1)`,
+      )
+      .leftJoin('users', 'sp', 'sp.id = cr.assignedSalespersonId AND sp.role IN (:...salesRoles)', { salesRoles })
+      .leftJoin('users', 'rep', 'rep.id = apt.representativeId AND rep.role IN (:...salesRoles)', { salesRoles })
       .select('apt.id', 'appointmentId')
       .addSelect('apt.clientId', 'patientId')
-      .addSelect("COALESCE(CONCAT(rep.firstName, ' ', rep.lastName), CONCAT(agent.firstName, ' ', agent.lastName))", 'agentName')
+      .addSelect(
+        `COALESCE(NULLIF(TRIM(CONCAT(sp.firstName, ' ', sp.lastName)), ''), NULLIF(TRIM(CONCAT(rep.firstName, ' ', rep.lastName)), ''))`,
+        'agentName',
+      )
+      .addSelect('COALESCE(sp.id, rep.id)', 'agentId')
       .addSelect('clinic.name', 'clinicName')
       .addSelect('apt.startTime', 'date')
-      .addSelect('EXTRACT(DAY FROM CURRENT_DATE - apt.startTime)', 'daysAgo')
       .addSelect("CONCAT(COALESCE(client.firstName, ''), ' ', COALESCE(client.lastName, ''))", 'patientName')
       .where('apt.status = :status', { status: AppointmentStatus.NO_SHOW })
-      .andWhere('apt.startTime >= :thresholdDate', { thresholdDate });
+      .andWhere('apt.startTime >= :thresholdDate', { thresholdDate })
+      .andWhere('apt.startTime <= :now', { now })
+      .orderBy('apt.startTime', 'DESC');
 
-    // Note: Since Appointment doesn't have metadata field, we'll return all no-shows
-    // In a real implementation, you might add a separate table for tracking no-show resolutions
     const results = await qb.getRawMany();
-    return results.map(row => ({
-      appointmentId: row.appointmentId,
-      patientId: row.patientId,
-      patientName: row.patientName?.trim() || 'Unknown',
-      agentName: row.agentName || 'Unassigned',
-      clinicName: row.clinicName,
-      date: row.date.toISOString().split('T')[0],
-      daysAgo: parseInt(row.daysAgo) || 0,
-      actionRecommended: 'Call patient to reschedule'
-    }));
+    return results.map(row => {
+      const start = new Date(row.date);
+      return {
+        appointmentId: row.appointmentId ?? row.appointmentid,
+        patientId: row.patientId ?? row.patientid,
+        patientName: (row.patientName ?? row.patientname)?.trim() || 'Unknown',
+        agentName: row.agentName ?? row.agentname ?? 'Unassigned',
+        agentId: row.agentId ?? row.agentid ?? null,
+        clinicName: row.clinicName ?? row.clinicname,
+        // Athens calendar date of the visit
+        date: formatInTimeZone(start, 'Europe/Athens', 'yyyy-MM-dd'),
+        daysAgo: Math.max(0, Math.floor((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))),
+        actionRecommended: 'Call patient to reschedule',
+      };
+    });
   }
 
   async resolveNoShowAlert(appointmentId: string, resolutionNote: string, salespersonId?: string) {
