@@ -519,7 +519,7 @@ const mainCategories = [
  </>
  ) : !isAuthenticated ? (
  <span 
- onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+ onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
  className="text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-widest flex items-center gap-1 cursor-pointer transition-colors"
  title={isGreek ? "Σύνδεση για εμφάνιση τιμής" : "Login to view price"}
  >

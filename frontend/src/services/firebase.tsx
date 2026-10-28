@@ -5,6 +5,7 @@ import { openDialer } from "@/store/slices/dialerSlice";
 import { Phone, Bell } from "lucide-react";
 import { firebaseApp as app } from "@/config/firebase";
 import { ENV } from "@/config/env";
+import { getAccessToken } from "@/services/client";
 
 export const initializeFirebase = async (
  dispatch: AppDispatch
@@ -36,10 +37,13 @@ export const initializeFirebase = async (
 
  // Send token to backend
  const apiUrl = ENV.API_BASE_URL;
+ const accessToken = getAccessToken();
  await fetch(`${apiUrl}/notifications/register`, {
  method:"POST",
+ // Session cookie + in-memory token (tokens are no longer in localStorage)
+ credentials:"include",
  headers: {"Content-Type":"application/json",
- Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+ ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
  },
  body: JSON.stringify({ token }),
  });

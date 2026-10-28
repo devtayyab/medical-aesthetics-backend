@@ -5,8 +5,9 @@ import { css } from "@emotion/css";
 import { 
   CalendarDays, Clock, MapPin, Shield, X, Edit3, 
   MessageSquare, Star, CreditCard, 
-  CheckCircle2, AlertCircle, Plus, ChevronRight, Sparkles
+  CheckCircle2, AlertCircle, Plus, ChevronRight, Sparkles, CalendarPlus
 } from "lucide-react";
+import { downloadIcs, googleCalendarUrl, formatClinicLocation, type CalendarEventInput } from "@/utils/calendarExport";
 import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
 import { bookingAPI } from "@/services/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -202,6 +203,24 @@ export const Appointments: React.FC = () => {
         dispatch(fetchUserAppointments());
       }
     }
+  };
+
+  const toCalendarEvent = (apt: Appointment): CalendarEventInput => {
+    const a = apt as any;
+    const names = (Array.isArray(a.services) ? a.services : [])
+      .map((s: any) => s?.treatment?.name || s?.name)
+      .filter(Boolean) as string[];
+    const treatments = names.length > 0
+      ? names.join(" + ")
+      : a.serviceName || apt.service?.treatment?.name || "Treatment";
+    return {
+      id: apt.id,
+      title: `${treatments} - ${apt.clinic?.name || "BeautyDoctors"}`,
+      start: apt.startTime,
+      end: a.endTime,
+      location: formatClinicLocation(apt.clinic as any),
+      description: `BeautyDoctors appointment\nTreatment: ${treatments}`,
+    };
   };
 
   const handleRescheduleClick = (apt: Appointment) => {
@@ -419,6 +438,22 @@ export const Appointments: React.FC = () => {
                             >
                               <Edit3 size={17} />
                             </button>
+                            <button
+                              onClick={() => downloadIcs(toCalendarEvent(apt))}
+                              className="size-10 sm:size-11 rounded-xl bg-white/70 backdrop-blur-sm text-gray-600 border border-white/80 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all min-h-[44px] min-w-[44px]"
+                              title={isGreek ? "Προσθήκη στο ημερολόγιο (.ics)" : "Add to calendar (.ics)"}
+                            >
+                              <CalendarPlus size={17} />
+                            </button>
+                            <a
+                              href={googleCalendarUrl(toCalendarEvent(apt))}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-10 sm:h-11 px-3 rounded-xl bg-white/70 backdrop-blur-sm text-gray-600 border border-white/80 flex items-center justify-center text-[9px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all min-h-[44px]"
+                              title={isGreek ? "Προσθήκη στο Google Calendar" : "Add to Google Calendar"}
+                            >
+                              Google
+                            </a>
                             <button 
                               onClick={() => handleCancelClick(apt)} 
                               className="size-10 sm:size-11 rounded-xl bg-white/70 backdrop-blur-sm text-gray-400 border border-white/80 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all min-h-[44px] min-w-[44px]" 

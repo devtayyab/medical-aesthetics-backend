@@ -272,7 +272,7 @@ export const TreatmentDetails: React.FC = () => {
                 To access verified aesthetic clinics, expert practitioners, and real-time treatment prices, please log in.
               </p>
               <button
-                onClick={() => navigate(`/login?redirect=/treatment/${id}`)}
+                onClick={() => navigate(`/login?redirect=${encodeURIComponent(`/treatment/${id}`)}`)}
                 className="px-8 py-3.5 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-white transition-all shadow-lg inline-flex items-center gap-2"
               >
                 Log In / Register <ChevronRight size={14} />

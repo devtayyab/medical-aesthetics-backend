@@ -66,8 +66,9 @@ export class ClinicManagementController {
   ) { }
 
   // Clinic Profile Management
+  // Clinic self-registration is disabled (item 57): only admins create clinics.
   @Post('profile')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create clinic profile' })
   @ApiResponse({ status: 201, description: 'Clinic profile created successfully' })
   async createClinicProfile(

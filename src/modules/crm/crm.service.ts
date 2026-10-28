@@ -8,6 +8,8 @@ import { BUSINESS_TIMEZONE, formatDateTimeInTz, parseWallClockInTz } from '../..
 import { TASK_OWNER_ROLES } from './task-automation.service';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { randomBytes } from 'crypto';
+import { USER_CREATED_BY_STAFF_EVENT } from '../users/account-setup.listener';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
@@ -1595,11 +1597,17 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password: string }> {
+  async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password?: string }> {
+    // Keep the client's REAL email (lowercase); no placeholder addresses (item 18).
+    const realEmail = typeof data.email === 'string' && data.email.trim() !== '' && !/@example\.com$/i.test(data.email.trim())
+      ? data.email.trim().toLowerCase()
+      : null;
+    data = { ...data, email: realEmail };
+
     // Check if user already exists
     const whereConditions: any[] = [];
-    if (data.email && data.email.trim() !== '') {
-      whereConditions.push({ email: data.email });
+    if (realEmail) {
+      whereConditions.push({ email: realEmail });
     }
     if (data.phone) {
       whereConditions.push({ phone: data.phone });
@@ -1613,12 +1621,15 @@ export class CrmService implements OnModuleInit {
       throw new BadRequestException('Customer with this email or phone already exists');
     }
 
-    const password = Math.random().toString(36).slice(-10); // Random temporary password
+    // Unusable random password: the client sets their own through ONE emailed link
+    // (sent by AccountSetupListener). No plain-text password is mailed or returned.
     const newUser = this.usersRepository.create({
       ...data,
       role: UserRole.CLIENT,
       isActive: true,
-      passwordHash: password,
+      isEmailVerified: false,
+      accountSetupPending: true,
+      passwordHash: randomBytes(24).toString('hex'),
     } as Partial<User>);
 
     const savedUser = await this.usersRepository.save(newUser);
@@ -1626,7 +1637,11 @@ export class CrmService implements OnModuleInit {
     // Create customer record
     await this.createCustomerRecord(savedUser.id, salespersonId);
 
-    return { user: savedUser, password };
+    if (savedUser.email) {
+      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: savedUser.id });
+    }
+
+    return { user: savedUser };
   }
 
   async getCustomers(filters: any): Promise<any[]> {

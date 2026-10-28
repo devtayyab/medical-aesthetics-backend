@@ -237,7 +237,8 @@ export class BookingsService {
               }
 
               const { user: savedUser } = await this.crmService.createCustomer({
-                email: lead.email || `temp-${lead.id}@example.com`,
+                // Real email only; no placeholder addresses (item 18)
+                email: lead.email || undefined,
                 firstName: lead.firstName || 'Unknown',
                 lastName: lead.lastName || 'Client',
                 phone: lead.phone || undefined,
@@ -278,7 +279,8 @@ export class BookingsService {
               const lastName = nameParts.slice(1).join(' ') || 'Client';
               console.log('🔍 [BookingsService] Attempting to create new customer in CRM...');
               const { user: savedUser } = await this.crmService.createCustomer({
-                email: createAppointmentDto.clientDetails.email || `guest-${Date.now()}@example.com`,
+                // Real email only; no placeholder addresses (item 18)
+                email: createAppointmentDto.clientDetails.email || undefined,
                 firstName,
                 lastName,
                 phone: createAppointmentDto.clientDetails.phone || undefined,

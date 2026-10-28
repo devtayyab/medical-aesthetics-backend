@@ -2,14 +2,43 @@ import { createSlice, createAsyncThunk, PayloadAction, Reducer } from "@reduxjs/
 import { authAPI, userAPI } from "@/services/api";
 import type { User } from "@/types";
 
+/**
+ * Session model:
+ * - access + refresh tokens are httpOnly cookies set by the API (scripts cannot read them)
+ * - the short-lived access token is also kept IN MEMORY for socket connections
+ * - only the non-secret user profile is cached in localStorage for the first paint
+ */
 export interface AuthState {
   user: User | null;
   accessToken: string | null;
+  /** Kept for type compatibility; refresh tokens are no longer stored client-side. */
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 }
+
+// Cross-tab sync key (login/logout in another tab).
+export const AUTH_EVENT_KEY = "bd_auth_event";
+
+const LEGACY_TOKEN_KEYS = ["accessToken", "refreshToken"];
+
+const readLegacyRefreshToken = (): string | null => {
+  try {
+    return localStorage.getItem("refreshToken") || sessionStorage.getItem("refreshToken") || null;
+  } catch {
+    return null;
+  }
+};
+
+const clearLegacyTokens = () => {
+  try {
+    LEGACY_TOKEN_KEYS.forEach((k) => localStorage.removeItem(k));
+    sessionStorage.removeItem("refreshToken");
+  } catch {
+    // storage unavailable
+  }
+};
 
 const getStoredUser = (): User | null => {
   try {
@@ -20,23 +49,53 @@ const getStoredUser = (): User | null => {
   }
 };
 
-const getStoredRefreshToken = (): string | null => {
-  return localStorage.getItem("refreshToken") || sessionStorage.getItem("refreshToken") || null;
+const storeUser = (user?: User | null) => {
+  try {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+      if (user.role) localStorage.setItem("userRole", user.role);
+    } else {
+      localStorage.removeItem("user");
+      localStorage.removeItem("userRole");
+    }
+  } catch {
+    // storage unavailable
+  }
 };
 
-const getStoredAccessToken = (): string | null => {
-  return localStorage.getItem("accessToken") || null;
+const broadcastAuthEvent = (type: "login" | "logout") => {
+  try {
+    localStorage.setItem(AUTH_EVENT_KEY, `${type}:${Date.now()}`);
+  } catch {
+    // storage unavailable
+  }
 };
+
+const isClientOnlyApp = () =>
+  import.meta.env.VITE_APP_TYPE === 'client' ||
+  (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
+  (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
+  (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
+  (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
 
 const initialState: AuthState = {
   user: getStoredUser(),
-  accessToken: getStoredAccessToken(),
-  refreshToken: getStoredRefreshToken(),
-  isAuthenticated: !!getStoredRefreshToken() || !!getStoredAccessToken(),
+  accessToken: null,
+  refreshToken: null,
+  // Optimistic until restoreSession confirms the cookie session on load.
+  isAuthenticated: !!getStoredUser(),
   isLoading: false,
   error: null,
 };
 
+const errorMessage = (error: any, fallback: string) => {
+  const data = error?.response?.data;
+  const msg = data?.message;
+  if (Array.isArray(msg)) return msg.join(" ");
+  return msg || fallback;
+};
+
+/** Step 1: email + password. On success the API emails a 6-digit code. */
 export const login = createAsyncThunk(
   "auth/login",
   async (
@@ -45,93 +104,87 @@ export const login = createAsyncThunk(
   ) => {
     try {
       const response = await authAPI.login(email, password);
-      if (response.data.refreshToken) {
-        localStorage.setItem("refreshToken", response.data.refreshToken);
-      }
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-      }
-      if (response.data.user) {
-        const isClientOnlyApp =
-          import.meta.env.VITE_APP_TYPE === 'client' ||
-          (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
-          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
-          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
-          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
-
-        if (isClientOnlyApp && response.data.user.role && response.data.user.role.toLowerCase() !== 'client') {
-          await authAPI.logout().catch(() => {});
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("user");
-          localStorage.removeItem("userRole");
-          return rejectWithValue("Access Denied: This mobile app is exclusively for Clients. Staff & Admins must use the web portal.");
-        }
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        if (response.data.user.role) {
-          localStorage.setItem("userRole", response.data.user.role);
-        }
-      }
-      return response.data;
+      return response.data as { requiresCode: boolean; challengeToken: string; email: string; codeExpiresInSeconds: number };
     } catch (error: any) {
-      console.error("Login failed:", error.response?.data?.message || error.message);
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      return rejectWithValue({
+        message: errorMessage(error, "Login failed"),
+        code: error?.response?.data?.code,
+      });
     }
   }
 );
 
+/** Step 2: the emailed code. Starts the cookie session. */
+export const verifyLoginCode = createAsyncThunk(
+  "auth/verifyLoginCode",
+  async (
+    { challengeToken, code }: { challengeToken: string; code: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authAPI.verifyLoginCode(challengeToken, code);
+      const user = response.data.user;
+      if (isClientOnlyApp() && user?.role && user.role.toLowerCase() !== 'client') {
+        await authAPI.logout().catch(() => {});
+        return rejectWithValue({
+          message: "Access Denied: This mobile app is exclusively for Clients. Staff & Admins must use the web portal.",
+          code: "CLIENT_APP_ONLY",
+        });
+      }
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue({
+        message: errorMessage(error, "Invalid code"),
+        code: error?.response?.data?.code,
+      });
+    }
+  }
+);
+
+/** Registration never logs in: the user first confirms the email link. */
 export const register = createAsyncThunk(
   "auth/register",
   async (
-    userData: {
+    { redirect, ...userData }: {
       email: string;
       password: string;
       firstName: string;
       lastName: string;
       phone?: string;
+      redirect?: string;
     },
     { rejectWithValue }
   ) => {
     try {
-      const response = await authAPI.register(userData);
-      if (response.data.refreshToken) {
-        localStorage.setItem("refreshToken", response.data.refreshToken);
-      }
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-      }
-      if (response.data.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        if (response.data.user.role) {
-          localStorage.setItem("userRole", response.data.user.role);
-        }
-      }
+      const response = await authAPI.register(userData, redirect);
       return response.data;
     } catch (error: any) {
-      console.error("Register failed:", error.response?.data?.message || error.message);
-      return rejectWithValue(
-        error.response?.data?.message || "Registration failed"
-      );
+      return rejectWithValue(errorMessage(error, "Registration failed"));
     }
   }
 );
 
 export const logout = createAsyncThunk(
   "auth/logout",
-  async (_, { rejectWithValue }) => {
+  async () => {
     try {
       await authAPI.logout();
     } catch {
       // Logout API failure is non-critical — state is cleared regardless
     }
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userRole");
-    sessionStorage.removeItem("refreshToken");
+    clearLegacyTokens();
+    storeUser(null);
+    broadcastAuthEvent("logout");
     return {};
   }
 );
+
+/** Clears local state only (used when another tab logged out). */
+export const clearSessionLocally = createAsyncThunk("auth/clearSessionLocally", async () => {
+  clearLegacyTokens();
+  storeUser(null);
+  return {};
+});
 
 export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
@@ -143,8 +196,7 @@ export const forgotPassword = createAsyncThunk(
       const response = await authAPI.forgotPassword(email);
       return response.data;
     } catch (error: any) {
-      console.error("Forgot password failed:", error.response?.data?.message || error.message);
-      return rejectWithValue(error.response?.data?.message || "Forgot password failed");
+      return rejectWithValue(errorMessage(error, "Forgot password failed"));
     }
   }
 );
@@ -159,8 +211,7 @@ export const resetPassword = createAsyncThunk(
       const response = await authAPI.resetPassword(password, resetToken);
       return response.data;
     } catch (error: any) {
-      console.error("Reset password failed:", error.response?.data?.message || error.message);
-      return rejectWithValue(error.response?.data?.message || "Reset password failed");
+      return rejectWithValue(errorMessage(error, "Reset password failed"));
     }
   }
 );
@@ -171,69 +222,47 @@ export const updateProfile = createAsyncThunk(
     try {
       const response = await userAPI.updateProfile(userData);
       if (response.data) {
-        localStorage.setItem("user", JSON.stringify(response.data));
+        storeUser(response.data);
       }
       return response.data;
     } catch (error: any) {
-      console.error("Update profile failed:", error.response?.data?.message || error.message);
-      return rejectWithValue(error.response?.data?.message || "Update profile failed");
+      return rejectWithValue(errorMessage(error, "Update profile failed"));
     }
   }
 );
 
+/**
+ * Restores the session on page load from the httpOnly refresh cookie. Sessions started
+ * before the cookie change still have a refresh token in localStorage: it is sent once,
+ * the API answers with cookies, and the stored copy is deleted.
+ */
 export const restoreSession = createAsyncThunk(
   "auth/restoreSession",
-  async (_, { getState, dispatch, rejectWithValue }) => {
-    const state = getState() as { auth: AuthState };
-    const refreshToken =
-      state.auth.refreshToken || localStorage.getItem("refreshToken") || sessionStorage.getItem("refreshToken");
-
-    if (!refreshToken) {
-      return rejectWithValue(null); // Silent rejection - no error in state
-    }
-
+  async (_, { dispatch, rejectWithValue }) => {
+    const legacyRefreshToken = readLegacyRefreshToken();
     try {
-      const response = await authAPI.refreshToken(refreshToken);
-      if (response.data.refreshToken) {
-        localStorage.setItem("refreshToken", response.data.refreshToken);
+      let response;
+      try {
+        response = await authAPI.refreshToken();
+      } catch (cookieError: any) {
+        if (!legacyRefreshToken) throw cookieError;
+        response = await authAPI.refreshToken(legacyRefreshToken);
       }
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-      }
-      if (response.data.user) {
-        const isClientOnlyApp =
-          import.meta.env.VITE_APP_TYPE === 'client' ||
-          (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
-          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
-          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
-          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
+      clearLegacyTokens();
 
-        if (isClientOnlyApp && response.data.user.role && response.data.user.role.toLowerCase() !== "client") {
-          dispatch(logout());
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("user");
-          localStorage.removeItem("userRole");
-          return rejectWithValue("Access Denied: This mobile app is exclusively for Clients.");
-        }
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        if (response.data.user.role) {
-          localStorage.setItem("userRole", response.data.user.role);
-        }
+      const user = response.data.user;
+      if (isClientOnlyApp() && user?.role && user.role.toLowerCase() !== "client") {
+        dispatch(logout());
+        return rejectWithValue("Access Denied: This mobile app is exclusively for Clients.");
       }
       return response.data;
     } catch (error: any) {
+      clearLegacyTokens();
       if (error.response?.status === 401) {
-        dispatch(logout());
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("userRole");
-        sessionStorage.removeItem("refreshToken");
+        storeUser(null);
+        return rejectWithValue("401");
       }
-      return rejectWithValue(
-        error.response?.data?.message || "Session restoration failed"
-      );
+      return rejectWithValue(errorMessage(error, "Session restoration failed"));
     }
   }
 );
@@ -249,95 +278,74 @@ const authSlice = createSlice({
       state,
       action: PayloadAction<{ accessToken: string; refreshToken?: string; user?: User }>
     ) => {
-      state.accessToken = action.payload.accessToken;
-      localStorage.setItem("accessToken", action.payload.accessToken);
-      if (action.payload.refreshToken) {
-        state.refreshToken = action.payload.refreshToken;
-        localStorage.setItem("refreshToken", action.payload.refreshToken);
-      }
+      state.accessToken = action.payload.accessToken || null;
       if (action.payload.user) {
         state.user = action.payload.user;
-        localStorage.setItem("user", JSON.stringify(action.payload.user));
-        if (action.payload.user.role) {
-          localStorage.setItem("userRole", action.payload.user.role);
-        }
+        storeUser(action.payload.user);
       }
       state.isAuthenticated = true;
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
-      localStorage.setItem("accessToken", action.payload);
     },
   },
   extraReducers: (builder) => {
+    const clearState = (state: AuthState) => {
+      state.user = null;
+      state.accessToken = null;
+      state.refreshToken = null;
+      state.isAuthenticated = false;
+    };
+
     builder
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(login.fulfilled, (state, action) => {
+      .addCase(login.fulfilled, (state) => {
+        // Not authenticated yet: waiting for the emailed code.
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(login.rejected, (state) => {
+        // Login page shows the message inline.
+        state.isLoading = false;
+      })
+      .addCase(verifyLoginCode.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyLoginCode.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
+        state.accessToken = action.payload.accessToken || null;
         state.isAuthenticated = true;
         state.error = null;
-        if (action.payload.accessToken) {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
-        if (action.payload.refreshToken) {
-          localStorage.setItem("refreshToken", action.payload.refreshToken);
-        }
-        if (action.payload.user) {
-          localStorage.setItem("user", JSON.stringify(action.payload.user));
-          if (action.payload.user.role) {
-            localStorage.setItem("userRole", action.payload.user.role);
-          }
-        }
+        clearLegacyTokens();
+        storeUser(action.payload.user);
+        broadcastAuthEvent("login");
       })
-      .addCase(login.rejected, (state, action) => {
+      .addCase(verifyLoginCode.rejected, (state) => {
         state.isLoading = false;
-        state.error = action.payload as string;
       })
       .addCase(register.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action) => {
+      .addCase(register.fulfilled, (state) => {
         state.isLoading = false;
-        state.user = action.payload.user || null;
-        state.accessToken = action.payload.accessToken || null;
-        state.refreshToken = action.payload.refreshToken || null;
-        state.isAuthenticated = !action.payload.requiresVerification;
         state.error = null;
-        if (action.payload.accessToken) {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
-        if (action.payload.refreshToken) {
-          localStorage.setItem("refreshToken", action.payload.refreshToken);
-        }
-        if (action.payload.user) {
-          localStorage.setItem("user", JSON.stringify(action.payload.user));
-          if (action.payload.user.role) {
-            localStorage.setItem("userRole", action.payload.user.role);
-          }
-        }
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })
       .addCase(logout.fulfilled, (state) => {
-        state.user = null;
-        state.accessToken = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
+        clearState(state);
         state.error = null;
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("userRole");
-        sessionStorage.removeItem("refreshToken");
+      })
+      .addCase(clearSessionLocally.fulfilled, (state) => {
+        clearState(state);
       })
       .addCase(restoreSession.pending, (state) => {
         state.isLoading = true;
@@ -346,39 +354,20 @@ const authSlice = createSlice({
       .addCase(restoreSession.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken || state.refreshToken;
+        state.accessToken = action.payload.accessToken || null;
         state.isAuthenticated = true;
         state.error = null;
-        if (action.payload.accessToken) {
-          localStorage.setItem("accessToken", action.payload.accessToken);
-        }
-        if (action.payload.refreshToken) {
-          localStorage.setItem("refreshToken", action.payload.refreshToken);
-        }
-        if (action.payload.user) {
-          localStorage.setItem("user", JSON.stringify(action.payload.user));
-          if (action.payload.user.role) {
-            localStorage.setItem("userRole", action.payload.user.role);
-          }
-        }
+        storeUser(action.payload.user);
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.isLoading = false;
-        if (action.payload) {
-          state.error = action.payload as string;
-          // Only clear session on 401 or invalid token errors
-          if (state.error.includes("401") || state.error.includes("Invalid")) {
-            state.user = null;
-            state.accessToken = null;
-            state.refreshToken = null;
-            state.isAuthenticated = false;
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("user");
-            localStorage.removeItem("userRole");
-            sessionStorage.removeItem("refreshToken");
-          }
+        const reason = action.payload as string | undefined;
+        // No valid cookie session: treat as logged out (no error banner).
+        if (reason === "401" || !state.user) {
+          clearState(state);
+          storeUser(null);
+        } else if (reason) {
+          state.error = reason;
         }
       })
       .addCase(updateProfile.pending, (state) => {
@@ -387,11 +376,8 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload; // Assuming payload returns the updated user object
+        state.user = action.payload;
         state.error = null;
-        if (action.payload) {
-          localStorage.setItem("user", JSON.stringify(action.payload));
-        }
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;

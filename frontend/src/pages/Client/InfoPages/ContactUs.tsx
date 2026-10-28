@@ -19,7 +19,6 @@ const SUBJECTS = [
  "Booking & appointments",
  "Treatments & services",
  "Payments & refunds",
- "Partner with us (clinics)",
  "Feedback & complaints",
  "Other",
 ];
@@ -266,6 +265,10 @@ export const ContactUs: React.FC = () => {
  <option key={s} value={s}>{s}</option>
  ))}
  </select>
+ <p className="text-[11px] font-semibold text-gray-500 mt-1 pl-1">
+ {isGreek ? "Κλινικές για συνεργασία: " : "Clinics interested in partnering: "}
+ <a href="mailto:info@beautydoctors.gr" className="underline">info@beautydoctors.gr</a>
+ </p>
  </div>
  </div>
  <div className="mt-4">

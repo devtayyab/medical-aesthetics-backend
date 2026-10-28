@@ -10,7 +10,7 @@ import {
 } from"react-router-dom";
 import { Provider, useDispatch, useSelector } from"react-redux";
 import { store, AppDispatch } from"@/store";
-import { restoreSession, logout } from "@/store/slices/authSlice";
+import { restoreSession, clearSessionLocally, AUTH_EVENT_KEY } from "@/store/slices/authSlice";
 import { Header } from"@/components/organisms/Header/Header";
 import { Footer } from"@/components/organisms/Footer/Footer";
 import { HomePage } from"@/pages/HomePage/HomePage";
@@ -41,6 +41,7 @@ import ClientsPage from"@/pages/Clinic/ClientsPage";
 import ReviewsPage from"@/pages/Clinic/ReviewsPage";
 import NotificationsPage from"@/pages/Clinic/NotificationsPage";
 import SettingsPage from"@/pages/Clinic/SettingsPage";
+import GoogleCalendarPage from"@/pages/Clinic/GoogleCalendarPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
 import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
@@ -120,10 +121,12 @@ import { MessagesPage } from"@/pages/Messages/MessagesPage";
 import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from"@/services/firebase";
+import { isSafeRedirect } from "@/services/client";
 import { GlobalDialer } from"./components/crm/GlobalDialer";
 
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail/VerifyEmail'));
 
 const AuthHeader: React.FC = () => {
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
@@ -183,6 +186,12 @@ function getRoleHomePath(role?: string): string {
  return"/";
 }
 
+/** After login: go back to the page she came from (e.g. the booking), else the role home. */
+function postLoginTarget(search: string, role?: string): string {
+ const redirect = new URLSearchParams(search).get("redirect");
+ return isSafeRedirect(redirect) ? redirect : getRoleHomePath(role);
+}
+
 const ClinicIndexRedirect: React.FC = () => {
  const user = useSelector((state: RootState) => state.auth.user);
  if (user?.role ==="doctor" || user?.role ==="secretariat") {
@@ -222,10 +231,11 @@ function AppContent() {
  // Sync auth state across multiple browser tabs
  useEffect(() => {
    const handleStorageChange = (e: StorageEvent) => {
-     if (e.key === "refreshToken") {
-       if (!e.newValue) {
-         dispatch(logout());
-       } else if (e.newValue !== e.oldValue && !isAuthenticated) {
+     // Sessions are httpOnly cookies shared by all tabs; tabs only signal login/logout.
+     if (e.key === AUTH_EVENT_KEY && e.newValue) {
+       if (e.newValue.startsWith("logout")) {
+         dispatch(clearSessionLocally());
+       } else if (e.newValue.startsWith("login") && !isAuthenticated) {
          dispatch(restoreSession());
        }
      }
@@ -293,7 +303,8 @@ function AppContent() {
  location.pathname ==="/login" ||
  location.pathname ==="/register" ||
  location.pathname ==="/forgot-password" ||
- location.pathname ==="/reset-password";
+ location.pathname ==="/reset-password" ||
+ location.pathname ==="/verify-email";
 
  return (
  <div className="App">
@@ -313,8 +324,16 @@ function AppContent() {
  !isAuthenticated ? (
  <Login />
  ) : (
- <Navigate to={getRoleHomePath(user?.role)} replace />
+ <Navigate to={postLoginTarget(location.search, user?.role)} replace />
  )
+ }
+ />
+ <Route
+ path="/verify-email"
+ element={
+ <Suspense fallback={<div>Loading...</div>}>
+ <VerifyEmail />
+ </Suspense>
  }
  />
  <Route
@@ -622,6 +641,14 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["clinic_owner"]}>
  <SettingsPage />
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="google-calendar"
+ element={
+ <ProtectedLayout allowedRoles={["clinic_owner","doctor","secretariat"]}>
+ <GoogleCalendarPage />
  </ProtectedLayout>
  }
  />

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import axios from "axios";
-import { ENV } from "@/config/env";
 import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
-import { setTokens } from "@/store/slices/authSlice";
+import { updateProfile } from "@/store/slices/authSlice";
 import { motion } from "framer-motion";
 import { User, Mail, Phone, Lock, ChevronRight, Edit3, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
@@ -147,7 +145,7 @@ export const PersonalDetails: React.FC = () => {
   }, []);
 
   const dispatch = useDispatch<AppDispatch>();
-  const { user, accessToken, refreshToken } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || "");
@@ -186,25 +184,13 @@ export const PersonalDetails: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let currentToken = accessToken;
-      const tRefresh = refreshToken || localStorage.getItem("refreshToken");
-
-      if (tRefresh) {
-        const refreshRes = await axios.post(`${ENV.API_BASE_URL}/auth/refresh`, { refreshToken: tRefresh });
-        currentToken = refreshRes.data.accessToken;
-        dispatch(setTokens({ accessToken: currentToken, refreshToken: refreshRes.data.refreshToken }));
-      }
-
-      await axios.patch(
-        `${ENV.API_BASE_URL}/users/me/profile`,
-        { firstName, lastName, phone },
-        { headers: { Authorization: `Bearer ${currentToken}` } }
-      );
+      // The shared API client sends the session cookie and refreshes it when needed.
+      await dispatch(updateProfile({ firstName, lastName, phone })).unwrap();
 
       toast.success("Profile updated successfully");
       setIsEditing(false);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update profile");
+      toast.error(err?.response?.data?.message || (typeof err === "string" ? err : "Failed to update profile"));
     } finally {
       setIsLoading(false);
     }

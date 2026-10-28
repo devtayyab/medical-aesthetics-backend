@@ -25,6 +25,7 @@ interface StaffMember {
  role: string;
  phone?: string;
  isActive: boolean;
+ profile?: { staffRequest?: { status?: string } } | null;
 }
 
 const StaffPage: React.FC = () => {
@@ -55,14 +56,10 @@ const StaffPage: React.FC = () => {
 
 
  // New Staff State
- const [newStaff, setNewStaff] = useState({
- firstName:"",
- lastName:"",
- email:"",
- password:"",
- role:"doctor",
- phone:""
- });
+ // "Add staff" is a request the admin approves (item 26); no password here: the new
+ // person sets their own through the email they get after approval.
+ const emptyStaff = { firstName:"", lastName:"", email:"", role:"doctor", phone:"" };
+ const [newStaff, setNewStaff] = useState(emptyStaff);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -91,9 +88,9 @@ const StaffPage: React.FC = () => {
    ...newStaff,
    clinicId: effectiveClinicId,
  });
- setMsg({ type: 'success', text: isGreek ? "Το μέλος προσωπικού δημιουργήθηκε επιτυχώς!" : "Staff member created successfully!" });
+ setMsg({ type: 'success', text: isGreek ? "Το αίτημα στάλθηκε. Ο διαχειριστής θα το εγκρίνει και το νέο μέλος θα λάβει email για να ορίσει κωδικό." : "Request sent. The admin will approve it and the new member gets an email to set a password." });
  setShowAddModal(false);
- setNewStaff({ firstName:"", lastName:"", email:"", password:"", role:"doctor", phone:"" });
+ setNewStaff(emptyStaff);
  fetchStaff();
  } catch (error: any) {
  setMsg({ type: 'error', text: error.response?.data?.message || "Failed to create staff member" });
@@ -239,7 +236,7 @@ const StaffPage: React.FC = () => {
  </button>
  </div>
 
- <form onSubmit={handleAddStaff} className="p-6 md:p-8 space-y-4 overflow-y-auto max-h-[calc(85vh-120px)]">
+ <form onSubmit={handleAddStaff} autoComplete="off" className="p-6 md:p-8 space-y-4 overflow-y-auto max-h-[calc(85vh-120px)]">
  <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px]">
  <span className="font-bold text-slate-500 uppercase tracking-wide">
  {isGreek ? 'Κλινική Ανάθεσης' : 'Assigned Clinic'}:
@@ -285,6 +282,8 @@ const StaffPage: React.FC = () => {
  <input
  required
  type="email"
+ name="new-staff-email"
+ autoComplete="off"
  placeholder="specialist@clinic.com"
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.email}
@@ -292,23 +291,9 @@ const StaffPage: React.FC = () => {
  />
  </div>
 
- <div className="space-y-1.5">
- <label className="text-[11px] font-black text-gray-700 uppercase tracking-wide">
- {isGreek ? 'Κωδικός πρόσβασης *' : 'Password *'}
- </label>
- <input
- required
- type="password"
- placeholder="••••••••"
- minLength={8}
- className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold tracking-wider transition-all"
- value={newStaff.password}
- onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
- />
- <p className="text-[10px] text-gray-400 font-medium pl-1">
- {isGreek ? 'Τουλάχιστον 8 χαρακτήρες' : 'Minimum 8 characters'}
+ <p className="text-[11px] text-gray-500 font-medium">
+ {isGreek ? 'Το αίτημα πηγαίνει στον διαχειριστή για έγκριση. Μετά την έγκριση, το νέο μέλος λαμβάνει email για να ορίσει τον δικό του κωδικό.' : 'The request goes to the admin for approval. Once approved, the new member gets an email to set their own password.'}
  </p>
- </div>
 
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div className="space-y-1.5">
@@ -322,7 +307,6 @@ const StaffPage: React.FC = () => {
  >
  <option value="doctor">{isGreek ? 'Ιατρός (Doctor)' : 'Medical Doctor'}</option>
  <option value="secretariat">{isGreek ? 'Γραμματεία (Front Office)' : 'Front Office / Secretary'}</option>
- <option value="salesperson">{isGreek ? 'Πωλητής (Salesperson)' : 'Salesperson / Revenue'}</option>
  </select>
  </div>
  <div className="space-y-1.5">
@@ -348,7 +332,7 @@ const StaffPage: React.FC = () => {
  {isSubmitting ? (
  <span>{isGreek ? 'Προσθήκη...' : 'Enrolling...'}</span>
  ) : (
- <span>{isGreek ? 'Προσθήκη Μέλους Προσωπικού' : 'Add Staff Member'}</span>
+ <span>{isGreek ? 'Αποστολή αιτήματος' : 'Send request'}</span>
  )}
  </button>
  </div>
@@ -392,6 +376,11 @@ const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
  </span>
  {member.isActive && (
  <div className="size-1.5 bg-green-500 rounded-full" />
+ )}
+ {member.profile?.staffRequest?.status === 'pending' && (
+ <span className="text-[8px] font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded tracking-widest uppercase">
+ {localStorage.getItem('preferredLang') === 'el' ? 'Σε αναμονή έγκρισης' : 'Pending approval'}
+ </span>
  )}
  </div>
  <h3 className="text-xl font-black tracking-tighter text-gray-900 leading-none truncate">

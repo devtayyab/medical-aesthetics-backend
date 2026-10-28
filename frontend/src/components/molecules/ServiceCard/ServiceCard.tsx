@@ -88,7 +88,7 @@ export const ServiceCard: React.FC<{
     </>
   ) : (
     <button
-      onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+      onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50 text-[10px] font-black uppercase text-lime-700 hover:bg-lime-100 transition-colors border border-lime-200"
       title="Login required to view prices"
     >

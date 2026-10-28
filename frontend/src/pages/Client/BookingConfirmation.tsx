@@ -4,6 +4,7 @@ import { Button } from"@/components/atoms/Button/Button";
 import { FaCheckCircle, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaChevronLeft, FaStar, FaShareAlt, FaCalendarPlus } from"react-icons/fa";
 import { css } from"@emotion/css";
 import { formatWeekdayDate, formatTime } from"@/utils/formatters";
+import { downloadIcs, googleCalendarUrl, formatClinicLocation, type CalendarEventInput } from"@/utils/calendarExport";
 
 const containerStyle = css`
  max-width: 650px;
@@ -57,7 +58,9 @@ interface Appointment {
  serviceName?: string;
  clinic?: {
  name: string;
+ address?: any;
  };
+ services?: Array<{ name?: string; treatment?: { name?: string } }>;
  service?: {
  name: string;
  };
@@ -92,6 +95,23 @@ const BookingConfirmation: React.FC = () => {
  }
  setIsLoading(false);
  }, [location.state, navigate]);
+
+ const buildCalendarEvent = (appt: Appointment): CalendarEventInput => {
+ const treatmentNames = (appt.services || [])
+ .map((s) => s?.treatment?.name || s?.name)
+ .filter(Boolean) as string[];
+ const treatments = treatmentNames.length > 0
+ ? treatmentNames.join(" + ")
+ : appt.service?.name || appt.serviceName || "Treatment";
+ return {
+ id: appt.id,
+ title: `${treatments} - ${appt.clinic?.name || "BeautyDoctors"}`,
+ start: appt.startTime,
+ end: appt.endTime,
+ location: formatClinicLocation(appt.clinic),
+ description: `BeautyDoctors appointment\nTreatment: ${treatments}\nRef: #${appt.id.slice(-8).toUpperCase()}`,
+ };
+ };
 
  if (isLoading || !appointment) {
  return (
@@ -215,9 +235,24 @@ const BookingConfirmation: React.FC = () => {
  <Button variant="outline" className="flex-1 h-12 rounded-xl border-gray-200 hover:border-black hover:text-black transition-all">
  <FaShareAlt size={14}/>
  </Button>
- <Button variant="outline" className="flex-1 h-12 rounded-xl border-gray-200 hover:border-black hover:text-black transition-all">
+ <Button
+ variant="outline"
+ title="Add to calendar (.ics: Apple, Outlook)"
+ aria-label="Add to calendar"
+ onClick={() => downloadIcs(buildCalendarEvent(appointment))}
+ className="flex-1 h-12 rounded-xl border-gray-200 hover:border-black hover:text-black transition-all"
+ >
  <FaCalendarPlus size={14}/>
  </Button>
+ <a
+ href={googleCalendarUrl(buildCalendarEvent(appointment))}
+ target="_blank"
+ rel="noopener noreferrer"
+ title="Add to Google Calendar"
+ className="flex-1 h-12 rounded-xl border border-gray-200 hover:border-black text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all"
+ >
+ Google
+ </a>
  </div>
  </div>
  </div>

@@ -48,6 +48,7 @@
     "firebase-admin": "^13.4.0",
     "google-auth-library": "9.15.1",
     "googleapis": "^144.0.0",
+    "helmet": "^7.2.0",
     "moment-timezone": "^0.6.0",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.7",

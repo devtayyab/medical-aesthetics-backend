@@ -1,7 +1,9 @@
 import React, { useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
-import { useNavigate, Link } from"react-router-dom";
-import { login, forgotPassword, resetPassword, logout } from"@/store/slices/authSlice";
+import { useNavigate, Link, useSearchParams } from"react-router-dom";
+import { login, verifyLoginCode } from"@/store/slices/authSlice";
+import { authAPI } from"@/services/api";
+import { isSafeRedirect } from"@/services/client";
 import { Button } from"@/components/atoms/Button/Button";
 import { Input } from"@/components/atoms/Input/Input";
 import { Card } from"@/components/atoms/Card/Card";
@@ -63,38 +65,60 @@ const formStyle = css`
  gap: var(--spacing-md);
 `;
 
+const isGreekUi = () => {
+ try {
+ return localStorage.getItem("preferredLang") ==="el";
+ } catch {
+ return false;
+ }
+};
+
+const roleHome = (role?: string) => {
+ const clinicRoles = ["clinic_owner","doctor","secretariat"];
+ if (role && clinicRoles.includes(role)) return"/clinic/dashboard";
+ if (role ==="admin") return"/admin/dashboard";
+ if (role ==="SUPER_ADMIN" || role ==="manager") return"/admin/manager-dashboard";
+ if (role ==="salesperson") return"/crm";
+ return"/";
+};
+
 export const Login: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
- const { isLoading, error, isAuthenticated } = useSelector(
- (state: RootState) => state.auth
- );
+ const [searchParams] = useSearchParams();
+ const { isLoading } = useSelector((state: RootState) => state.auth);
+ const el = isGreekUi();
+ const t = (gr: string, en: string) => (el ? gr : en);
 
+ // Where to go after login (e.g. the booking she started) and why we are here.
+ const redirectParam = searchParams.get("redirect");
+ const redirect = isSafeRedirect(redirectParam) ? redirectParam : null;
+ const sessionExpired = searchParams.get("reason") ==="session_expired";
+
+ const [step, setStep] = useState<"password" |"code">("password");
  const [email, setEmail] = useState("");
  const [password, setPassword] = useState("");
- const [confirmPassword, setConfirmPassword] = useState("");
+ const [code, setCode] = useState("");
+ const [challengeToken, setChallengeToken] = useState("");
+ const [maskedEmail, setMaskedEmail] = useState("");
  const [emailError, setEmailError] = useState("");
  const [passwordError, setPasswordError] = useState("");
+ const [codeError, setCodeError] = useState("");
  const [message, setMessage] = useState("");
- const [isForgotPassword, setIsForgotPassword] = useState(false);
- const [resetToken, setResetToken] = useState(""); // store reset token
-
- if (isAuthenticated) {
- navigate("/", { replace: true });
- return null;
- }
+ const [needsVerification, setNeedsVerification] = useState(false);
 
  const validateForm = () => {
  let isValid = true;
  setEmailError("");
  setPasswordError("");
 
- if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
- setEmailError("Please enter a valid email address");
+ if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+ setEmailError(t("Εισάγετε ένα έγκυρο email","Please enter a valid email address"));
  isValid = false;
  }
- if (!password || password.length < 8) {
- setPasswordError("Password must be at least 8 characters");
+ // No length rule here: existing passwords keep working; the rule applies when a password is set.
+ if (!password) {
+ setPasswordError(t("Εισάγετε τον κωδικό σας","Please enter your password"));
  isValid = false;
  }
  return isValid;
@@ -102,150 +126,135 @@ export const Login: React.FC = () => {
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
+ setMessage("");
+ setNeedsVerification(false);
  if (!validateForm()) return;
 
  try {
- const result = await dispatch(login({ email, password })).unwrap();
-
- const isClientOnlyApp =
-  import.meta.env.VITE_APP_TYPE === 'client' ||
-  (typeof window !== 'undefined' && (
-    !!(window as any).isClientMobileApp ||
-    localStorage.getItem('is_client_mobile_app') === 'true' ||
-    (typeof navigator !== 'undefined' && navigator.userAgent?.includes('ClientMobileApp')) ||
-    !!(window as any).Capacitor?.isNativePlatform?.()
-  ));
-
- if (isClientOnlyApp && result.user?.role && result.user.role !== 'client') {
- await dispatch(logout());
- setEmailError("Access Denied: This mobile app is exclusively for Clients. Staff, Clinic & Admin users must use the web portal.");
- return;
- }
-
- // Redirect based on role
- const clinicRoles = ["clinic_owner","doctor","secretariat"];
-
- if (clinicRoles.includes(result.user.role)) {
- navigate("/clinic/dashboard", { replace: true });
- } else if (result.user.role ==="admin") {
- navigate("/admin/dashboard", { replace: true });
- } else if (result.user.role ==="SUPER_ADMIN") {
- navigate("/admin/manager-dashboard", { replace: true });
- } else if (result.user.role ==="client") {
- navigate("/", { replace: true });
- } else if (result.user.role ==="salesperson") {
- navigate("/crm", { replace: true });
- } else if (result.user.role ==="manager") {
- navigate("/admin/manager-dashboard", { replace: true });
- } else {
- navigate("/", { replace: true });
- }
+ const result = await dispatch(login({ email: email.trim(), password })).unwrap();
+ setChallengeToken(result.challengeToken);
+ setMaskedEmail(result.email || email);
+ setCode("");
+ setCodeError("");
+ setStep("code");
  } catch (err: any) {
- console.log("Login error:", err);
- const errorMessage = typeof err === 'string' ? err : (err?.message || "Invalid email or password");
- setEmailError(errorMessage);
+ if (err?.code ==="EMAIL_NOT_VERIFIED") setNeedsVerification(true);
+ setEmailError(err?.message || t("Λάθος email ή κωδικός","Invalid email or password"));
  }
  };
 
- const handleForgotPassword = async () => {
- if (!email) {
- setMessage("Please enter your email first");
+ const handleVerifyCode = async (e: React.FormEvent) => {
+ e.preventDefault();
+ setCodeError("");
+ const cleaned = code.replace(/\D/g,"");
+ if (cleaned.length !== 6) {
+ setCodeError(t("Ο κωδικός έχει 6 ψηφία","The code has 6 digits"));
  return;
  }
  try {
- const res = await dispatch(forgotPassword({ email })).unwrap();
- setResetToken(res.resetToken); // store token from API
- setIsForgotPassword(true);
- setMessage("Check your email for the reset token");
+ const result = await dispatch(verifyLoginCode({ challengeToken, code: cleaned })).unwrap();
+ navigate(redirect || roleHome(result.user?.role), { replace: true });
  } catch (err: any) {
- console.log("Forgot password error:", err);
- setMessage(err ||"Something went wrong");
- }
- };
-
- const handleResetPassword = async () => {
- if (!password || !confirmPassword) {
- setPasswordError("Please fill both password fields");
- return;
- }
- if (password.length < 8) {
- setPasswordError("Password must be at least 8 characters");
- return;
- }
- if (password !== confirmPassword) {
- setPasswordError("Passwords do not match");
- return;
- }
-
- try {
- const result = await dispatch(resetPassword({ password, resetToken })).unwrap();
- console.log("Reset password success:", result);
- setMessage("Password reset successful. Please login.");
- setIsForgotPassword(false);
+ if (err?.code ==="CODE_EXPIRED" || err?.code ==="ACCOUNT_LOCKED" || err?.code ==="CLIENT_APP_ONLY") {
+ setStep("password");
  setPassword("");
- setConfirmPassword("");
- } catch (err: any) {
- console.log("Reset password error:", err);
- setPasswordError(err ||"Something went wrong");
+ setEmailError(err?.message ||"");
+ return;
+ }
+ setCodeError(err?.message || t("Λάθος κωδικός","Wrong code"));
  }
  };
+
+ const handleResendCode = async () => {
+ setCodeError("");
+ try {
+ await authAPI.resendLoginCode(challengeToken);
+ setMessage(t("Στείλαμε νέο κωδικό στο email σας.","A new code was sent to your email."));
+ } catch (err: any) {
+ setCodeError(err?.response?.data?.message || t("Δοκιμάστε ξανά σε λίγο.","Please try again in a moment."));
+ }
+ };
+
+ const handleResendVerification = async () => {
+ try {
+ await authAPI.resendVerification(email.trim(), redirect || undefined);
+ setNeedsVerification(false);
+ setEmailError("");
+ setMessage(t("Στείλαμε νέο σύνδεσμο επιβεβαίωσης στο email σας.","We sent a new verification link to your email."));
+ } catch {
+ setMessage(t("Δοκιμάστε ξανά σε λίγο.","Please try again in a moment."));
+ }
+ };
+
+ const registerHref = redirect ? `/register?redirect=${encodeURIComponent(redirect)}` :"/register";
 
  return (
  <div className={loginContainerStyle}>
  <Card className={loginCardStyle}>
  <h2 className={loginHeaderStyle}>
- {isForgotPassword ?"Reset Your Password" :"Login to Your Account"}
+ {step ==="code" ? t("Κωδικός σύνδεσης","Enter your login code") : t("Σύνδεση στον λογαριασμό σας","Login to Your Account")}
  </h2>
 
- {message && <p className={errorStyle}>{message}</p>}
- {error && <p className={errorStyle}>{error}</p>}
+ {sessionExpired && step ==="password" && (
+ <p className={errorStyle} role="alert">
+ {t("Η σύνδεσή σας έληξε. Παρακαλώ συνδεθείτε ξανά.","Your session has expired. Please log in again.")}
+ </p>
+ )}
+ {message && <p className={errorStyle} style={{ color:"#15803d" }}>{message}</p>}
 
- {isForgotPassword ? (
- <div className={formStyle}>
- <Input
- type="password"
- placeholder="New Password"
- value={password}
- onChange={(e) => setPassword(e.target.value)}
- fullWidth
- className="bg-white text-[15px] mt-1"
- passwordToggle
- minLength={8}
- autoComplete="new-password"
+ {step ==="code" ? (
+ <form onSubmit={handleVerifyCode} className={formStyle}>
+ <p style={{ textAlign:"center", color:"#6b7280", fontSize: 14 }}>
+ {t("Στείλαμε έναν 6ψήφιο κωδικό στο","We sent a 6-digit code to")} <strong>{maskedEmail}</strong>
+ </p>
+ <input
+ type="text"
+ inputMode="numeric"
+ autoComplete="one-time-code"
+ maxLength={6}
+ value={code}
+ onChange={(e) => {
+ setCode(e.target.value.replace(/\D/g,""));
+ setCodeError("");
+ }}
+ placeholder="000000"
+ autoFocus
+ style={{
+ width:"100%",
+ textAlign:"center",
+ fontSize: 28,
+ fontWeight: 800,
+ letterSpacing:"0.4em",
+ padding:"14px 12px",
+ border:"2px solid #e5e7eb",
+ borderRadius: 12,
+ fontFamily:"monospace",
+ }}
  />
- <Input
- type="password"
- placeholder="Confirm Password"
- value={confirmPassword}
- onChange={(e) => setConfirmPassword(e.target.value)}
+ {codeError && <p className={errorStyle}>{codeError}</p>}
+ <Button
+ type="submit"
  fullWidth
- className="bg-white text-[15px] mt-3"
- passwordToggle
- minLength={8}
- autoComplete="new-password"
- />
- {passwordError && <p className={errorStyle}>{passwordError}</p>}
-
- <div className="flex justify-between mt-4">
- <Button
- style={{ backgroundColor:"#ccc", color:"#333" }}
- onClick={() => setIsForgotPassword(false)}
+ disabled={isLoading}
+ style={{ color:"#33373F", backgroundColor:"#CBFF38", paddingTop:"12px", paddingBottom:"12px" }}
  >
- Cancel
+ {isLoading ? t("Έλεγχος...","Checking...") : t("Σύνδεση","Log in")}
  </Button>
- <Button
- style={{ backgroundColor:"#CBFF38", color:"#33373F" }}
- onClick={handleResetPassword}
- >
- Save
- </Button>
+ <div className="flex justify-between" style={{ fontSize: 14 }}>
+ <button type="button" className={linkStyle} style={{ color:"cornflowerblue" }} onClick={() => { setStep("password"); setPassword(""); setMessage(""); }}>
+ {t("Πίσω","Back")}
+ </button>
+ <button type="button" className={linkStyle} style={{ color:"cornflowerblue" }} onClick={handleResendCode}>
+ {t("Αποστολή νέου κωδικού","Send a new code")}
+ </button>
  </div>
- </div>
+ </form>
  ) : (
  <form onSubmit={handleSubmit} className={formStyle}>
  <div>
  <label htmlFor="email">Email</label>
  <Input
+ id="email"
  type="email"
  placeholder="abc@gmail.com"
  value={email}
@@ -258,21 +267,29 @@ export const Login: React.FC = () => {
  autoComplete="email"
  />
  {emailError && <p className={errorStyle}>{emailError}</p>}
+ {needsVerification && (
+ <p style={{ textAlign:"center", fontSize: 14 }}>
+ <button type="button" className={linkStyle} style={{ color:"cornflowerblue" }} onClick={handleResendVerification}>
+ {t("Αποστολή νέου συνδέσμου επιβεβαίωσης","Send a new verification link")}
+ </button>
+ </p>
+ )}
  </div>
  <div>
  <div className="flex justify-between">
- <label htmlFor="password">Password</label>
+ <label htmlFor="password">{t("Κωδικός","Password")}</label>
  <Link
  to="/forgot-password"
  className={linkStyle}
  style={{ color:"cornflowerblue", fontSize:"14px" }}
  >
- Forgot?
+ {t("Ξεχάσατε;","Forgot?")}
  </Link>
  </div>
  <Input
+ id="password"
  type="password"
- placeholder="Enter Your Password"
+ placeholder={t("Ο κωδικός σας","Enter Your Password")}
  value={password}
  onChange={(e) => {
  setPassword(e.target.value);
@@ -282,7 +299,6 @@ export const Login: React.FC = () => {
  fullWidth
  className="bg-white text-[15px] mt-1"
  passwordToggle
- minLength={8}
  autoComplete="current-password"
  />
  {passwordError && <p className={errorStyle}>{passwordError}</p>}
@@ -299,20 +315,20 @@ export const Login: React.FC = () => {
  }}
  className="mt-5"
  >
- {isLoading ?"Logging in..." :"Login"}
+ {isLoading ? t("Σύνδεση...","Logging in...") : t("Σύνδεση","Login")}
  </Button>
  </form>
  )}
 
- {!isForgotPassword && (
+ {step ==="password" && (
  <p style={{ textAlign:"center", marginTop:"var(--spacing-md)" }}>
- Don't have an account?{""}
+ {t("Δεν έχετε λογαριασμό;","Don't have an account?")}{""}
  <Link
- to="/register"
+ to={registerHref}
  className={linkStyle}
  style={{ color:"cornflowerblue" }}
  >
- Sign Up
+ {t("Εγγραφή","Sign Up")}
  </Link>
  </p>
  )}

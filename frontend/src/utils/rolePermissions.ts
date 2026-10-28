@@ -233,6 +233,17 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // Google Calendar connection - clinic owner, doctor, secretariat
+  if (hasPermission(userRole, 'canEditProfile')) {
+    menuItems.push({
+      id: 'google-calendar',
+      label: 'Google Calendar',
+      labelGr: 'Google Calendar',
+      path: '/clinic/google-calendar',
+      icon: 'Calendar',
+    });
+  }
+
   // Final fallback
   if (userRole === UserRole.CLINIC_OWNER || userRole === UserRole.DOCTOR || userRole === UserRole.SECRETARIAT || userRole === 'clinic_owner' || userRole === 'doctor' || userRole === 'secretariat') {
     if (!menuItems.find(m => m.id === 'messages')) {

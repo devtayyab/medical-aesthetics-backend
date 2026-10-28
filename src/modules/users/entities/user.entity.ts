@@ -22,12 +22,22 @@ import { Notification } from '../../notifications/entities/notification.entity';
 import { CustomerRecord } from '../../crm/entities/customer-record.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 
+export const normalizeEmail = (value: any) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : value;
+
+const emailTransformer = {
+  to: (value: any) => normalizeEmail(value),
+  from: (value: any) => value,
+};
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, nullable: true })
+  // Emails are always stored lowercase (and compared lowercase) so the same address
+  // can never exist twice with different casing.
+  @Column({ unique: true, nullable: true, transformer: emailTransformer })
   email: string;
 
   @Column()
@@ -85,6 +95,38 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
+  // Brute-force protection: consecutive failed logins and the lock that follows.
+  @Column({ type: 'int', default: 0 })
+  @Exclude()
+  failedLoginAttempts: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  @Exclude()
+  lockedUntil: Date | null;
+
+  // 2-step login: hashed 6-digit email code for the pending login.
+  @Column({ type: 'varchar', nullable: true })
+  @Exclude()
+  loginCodeHash: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  @Exclude()
+  loginCodeExpiresAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  @Exclude()
+  loginCodeSentAt: Date | null;
+
+  @Column({ type: 'int', default: 0 })
+  @Exclude()
+  loginCodeAttempts: number;
+
+  // True for accounts created by staff (salesperson, doctor, admin) until the owner of the
+  // email sets a password through the emailed link. Self-registration with the same email
+  // claims this account instead of creating a second one.
+  @Column({ default: false })
+  accountSetupPending: boolean;
+
   @Column({ default: false })
   marketingEmailConsent: boolean;
 
@@ -138,7 +180,9 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {
-    if (this.passwordHash && !this.passwordHash.startsWith('$2b$')) {
+    // Accept every bcrypt variant ($2a$, $2b$, $2y$): re-hashing an existing hash would make
+    // the password unusable (seeded or imported users carry $2a$ hashes).
+    if (this.passwordHash && !/^\$2[aby]\$\d{2}\$/.test(this.passwordHash)) {
       this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
     }
   }

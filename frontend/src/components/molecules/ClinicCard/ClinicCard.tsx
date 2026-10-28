@@ -167,7 +167,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
     </>
   ) : (
     <button
-      onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+      onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
       className="flex items-center gap-1 text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-wider transition-colors"
       title="Login required to view prices"
     >

@@ -82,7 +82,7 @@ export const ClinicDetails: React.FC = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      navigate(`/login?redirect=${encodeURIComponent(`/clinic/${id}`)}`);
       return;
     }
     if (id) {
@@ -110,11 +110,13 @@ export const ClinicDetails: React.FC = () => {
   if (!clinicData) return <div className="p-12 sm:p-20 text-center text-red-500 font-bold text-sm">Vector not found.</div>;
 
   const handleBookService = (service: Service) => {
+    const bookingPath = `/appointment/booking?clinicId=${clinicData.id}&serviceIds=${service.id}`;
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      // Return to the booking she started after login
+      navigate(`/login?redirect=${encodeURIComponent(bookingPath)}`);
       return;
     }
-    navigate(`/appointment/booking?clinicId=${clinicData.id}&serviceIds=${service.id}`);
+    navigate(bookingPath);
   };
 
   const toggleServiceSelection = (service: Service) => {
@@ -126,12 +128,13 @@ export const ClinicDetails: React.FC = () => {
   };
 
   const handleBulkBooking = () => {
+    const serviceIds = selectedServices.map(s => s.id).join(',');
+    const bookingPath = `/appointment/booking?clinicId=${clinicData.id}&serviceIds=${serviceIds}`;
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      navigate(`/login?redirect=${encodeURIComponent(bookingPath)}`);
       return;
     }
-    const serviceIds = selectedServices.map(s => s.id).join(',');
-    navigate(`/appointment/booking?clinicId=${clinicData.id}&serviceIds=${serviceIds}`);
+    navigate(bookingPath);
   };
 
   return (

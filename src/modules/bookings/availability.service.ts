@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan, In, Not } from 'typeorm';
+import { Repository, Between, MoreThan, LessThan, In, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
@@ -192,11 +192,14 @@ export class AvailabilityService {
         },
       });
 
-      // Get blocked time slots (clinic-wide and provider-specific)
+      // Get blocked time slots (clinic-wide and provider-specific).
+      // Overlap test (not just "starts today") so a block that began earlier, e.g. a
+      // Google Calendar busy event imported as a clinic-wide block, still blocks slots.
       const blockedSlots = await this.blockedTimeSlotsRepository.find({
         where: {
           clinicId,
-          startTime: Between(startOfDay, endOfDay),
+          startTime: LessThan(endOfDay),
+          endTime: MoreThan(startOfDay),
         },
       });
 
