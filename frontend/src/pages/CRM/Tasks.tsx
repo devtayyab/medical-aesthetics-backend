@@ -8,14 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules
 import { Link } from 'react-router-dom';
 import { Textarea } from '@/components/atoms/Textarea';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
-import { bookingAPI } from '@/services/api';
+import { bookingAPI, crmAPI } from '@/services/api';
+import { TaskCallNotes } from '@/components/crm/TaskCallNotes';
+import {
+  CALL_OUTCOMES,
+  KEEP_TASK_OPEN_OUTCOMES,
+  formatAthens,
+  nextWorkingDay0800,
+  toLocalInputValue,
+} from '@/constants/callOutcomes';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
-  createAction,
   updateAction,
   deleteAction,
-  fetchActions,
   fetchTaskKpis,
   fetchClinics,
   logCommunication,
@@ -184,7 +190,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     };
   }, []);
 
-  const { actions: tasks, isLoading, taskKpis, salespersons, clinics } = useSelector((state: RootState) => state.crm);
+  const { taskKpis, salespersons, clinics } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -254,11 +260,124 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     dispatch(fetchClinics());
   }, [dispatch]);
 
+  // Server-side paged task list (50 per page), filters applied by the API in Athens time
+  const PAGE_SIZE = 50;
+  const [tasks, setTasks] = useState<CrmAction[]>([]);
+  const [totalTasks, setTotalTasks] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const csvInputRef = React.useRef<HTMLInputElement>(null);
+  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
+
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterStatus, filterType, filterDateRange, selectedSalespersonId]);
+
+  const refreshTasks = React.useCallback(async () => {
     const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-    dispatch(fetchActions({ salespersonId: sid }));
     dispatch(fetchTaskKpis(sid));
-  }, [dispatch, selectedSalespersonId]);
+    setIsLoading(true);
+    try {
+      const res = await crmAPI.getActions(sid, {
+        page,
+        limit: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        status: filterStatus,
+        actionType: filterType,
+        dateRange: filterDateRange,
+      });
+      const body: any = res.data;
+      if (Array.isArray(body)) {
+        setTasks(body);
+        setTotalTasks(body.length);
+      } else {
+        setTasks(body?.data || []);
+        setTotalTasks(body?.total || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load tasks', err);
+      toast.error(isGreek ? 'Αποτυχία φόρτωσης εργασιών' : 'Failed to load tasks');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dispatch, selectedSalespersonId, page, debouncedSearch, filterStatus, filterType, filterDateRange, isGreek]);
+
+  useEffect(() => {
+    refreshTasks();
+  }, [refreshTasks]);
+
+  const totalPages = Math.max(1, Math.ceil(totalTasks / PAGE_SIZE));
+
+  // Admin: import open HubSpot tasks from CSV (client, due date, time, salesperson, title, notes)
+  const splitCsvRecords = (text: string): string[] => {
+    const records: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"') inQuotes = !inQuotes;
+      if ((ch === '\n' || ch === '\r') && !inQuotes) {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        if (current.trim()) records.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    if (current.trim()) records.push(current);
+    return records;
+  };
+
+  const runCsvImport = async (records: string[], dryRun: boolean) => {
+    const [header, ...rows] = records;
+    const CHUNK = 300;
+    const total = { created: 0, skipped: 0, errors: [] as { row: number; reason: string }[] };
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const res = await crmAPI.importTasksCsv([header, ...chunk].join('\n'), dryRun);
+      total.created += res.data?.created || 0;
+      total.skipped += res.data?.skipped || 0;
+      (res.data?.errors || []).forEach((e: any) => total.errors.push({ row: e.row + i, reason: e.reason }));
+    }
+    return total;
+  };
+
+  const handleCsvSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const records = splitCsvRecords(await file.text());
+      if (records.length < 2) {
+        toast.error('Το αρχείο CSV δεν έχει γραμμές.');
+        return;
+      }
+      const check = await runCsvImport(records, true);
+      const errorLines = check.errors.slice(0, 10).map(er => `Γραμμή ${er.row}: ${er.reason}`).join('\n');
+      const proceed = window.confirm(
+        `Εισαγωγή εργασιών HubSpot\n\nΝέες εργασίες: ${check.created}\nΥπάρχουν ήδη: ${check.skipped}\nΣφάλματα: ${check.errors.length}` +
+        (errorLines ? `\n\n${errorLines}${check.errors.length > 10 ? '\n...' : ''}` : '') +
+        (check.created > 0 ? `\n\nΝα δημιουργηθούν ${check.created} εργασίες;` : '')
+      );
+      if (!proceed || check.created === 0) return;
+      const result = await runCsvImport(records, false);
+      toast.success(`Δημιουργήθηκαν ${result.created} εργασίες (${result.errors.length} σφάλματα).`);
+      refreshTasks();
+    } catch (err: any) {
+      console.error('CSV import failed', err);
+      toast.error(err?.response?.data?.message || 'Η εισαγωγή απέτυχε.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   useEffect(() => {
     if (showInteractionModal && interactionTask) {
@@ -309,9 +428,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       try {
         await dispatch(deleteAction(id)).unwrap();
         toast.success("Task deleted successfully");
-        const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-        dispatch(fetchActions({ salespersonId: sid }));
-        dispatch(fetchTaskKpis(sid));
+        refreshTasks();
       } catch (err) {
         toast.error("Failed to delete task");
         console.error(err);
@@ -320,103 +437,65 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   };
 
 
-  const formatDate = (date?: string) =>
-    date
-      ? new Date(date).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
-      : '-';
+  const formatDate = (date?: string) => formatAthens(date);
 
   const isOverdue = (task: CrmAction) => {
     if (task.status !== 'pending' && task.status !== 'in_progress') return false;
     return task.dueDate && new Date(task.dueDate) < new Date();
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    // 1. Search term
-    const matchesSearch = (
-      task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.actionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.customer?.customer && `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (task.relatedLead && `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+  // Filtering, search and paging happen on the server
+  const filteredTasks = tasks;
 
-    if (!matchesSearch) return false;
 
-    // 2. Status filter
-    if (filterStatus === 'overdue') {
-      if (!isOverdue(task)) return false;
-    } else if (filterStatus === 'pending') {
-      if (task.status !== 'pending' || isOverdue(task)) return false;
-    } else if (filterStatus !== 'all' && task.status !== filterStatus) {
-      return false;
-    }
-
-    // 3. Type filter
-    if (filterType !== 'all' && task.actionType !== filterType) return false;
-
-    // 4. Date range filter
-    if (filterDateRange !== 'all') {
-      const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-      if (!dueDate) return false;
-
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-
-      const taskDate = new Date(dueDate);
-      taskDate.setHours(0, 0, 0, 0);
-
-      const diffTime = taskDate.getTime() - now.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (filterDateRange === 'today' && diffDays !== 0) return false;
-      if (filterDateRange === 'tomorrow' && diffDays !== 1) return false;
-      if (filterDateRange === 'next_7_days' && (diffDays < 1 || diffDays > 7)) return false;
-      if (filterDateRange === 'next_15_days' && (diffDays < 1 || diffDays > 15)) return false;
-      if (filterDateRange === 'next_month') {
-        if (taskDate.getMonth() !== (now.getMonth() + 1) % 12 || taskDate.getFullYear() !== (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear())) return false;
-      }
-      if (filterDateRange === 'yesterday' && diffDays !== -1) return false;
-      if (filterDateRange === 'previous_7_days' && (diffDays < -7 || diffDays > -1)) return false;
-      if (filterDateRange === 'previous_month') {
-        if (taskDate.getMonth() !== (now.getMonth() === 0 ? 11 : now.getMonth() - 1) || taskDate.getFullYear() !== (now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear())) return false;
-      }
-      if (filterDateRange === 'overdue' && !isOverdue(task)) return false;
-    }
-
-    return true;
-  }).sort((a, b) => {
-    // Default Sorting Logic
-    // 1. Overdue first (oldest overdue)
-    // 2. Upcoming nearest first
-    // Simply sorting by dueDate ascending automatically handles this correctly!
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-  });
-
+  const resetInteractionState = () => {
+    setShowInteractionModal(false);
+    setInteractionNotes("");
+    setInteractionOutcome("");
+    setInteractionClinic("");
+    setInteractionTask(null);
+    setWorkflowStep(1);
+    setCallMade(false);
+    setCallDuration(0);
+    setSelectedTags([]);
+    setCallbackDate("");
+    setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
+    setShowInterestedRemarks(false);
+    setInterestedRemarks('');
+  };
 
   const handleSaveInteraction = async (outcomeArg?: any) => {
     // Ensure we only use the outcome if it's a string (to ignore React events from onClick)
     const overrideOutcome = typeof outcomeArg === 'string' ? outcomeArg : undefined;
-    const effectiveOutcome = overrideOutcome || interactionOutcome || 'none';
-    const defaultNote = effectiveOutcome === 'interested' ? 'Customer expressed serious interest.' : 'Interaction logged';
-    const effectiveNotes = interactionNotes.trim() || defaultNote;
+    const effectiveOutcome = overrideOutcome || interactionOutcome;
+    if (!effectiveOutcome) {
+      toast.error('Επιλέξτε το αποτέλεσμα της κλήσης.');
+      return;
+    }
 
-    // Follow-up logic
-    const hasFollowUpInfo = followUpData.title || followUpData.dueDate || followUpData.therapy;
-    const isFollowUpComplete = followUpData.title && followUpData.dueDate && followUpData.therapy;
+    const noteText = (effectiveOutcome === 'interested' && interestedRemarks.trim())
+      ? interestedRemarks.trim()
+      : interactionNotes.trim();
+    // "Skip to result" (no call made): the note is mandatory
+    if (!callMade && !noteText) {
+      toast.error('Η σημείωση είναι υποχρεωτική όταν καταγράφετε αποτέλεσμα χωρίς κλήση.');
+      return;
+    }
 
-    // Compile final notes based on outcome sub-data
-    let finalNotes = interactionNotes;
-    if (interactionOutcome === 'interested' && callbackDate) {
-      finalNotes = `[Callback Scheduled: ${new Date(callbackDate).toLocaleString()}]\n\n${finalNotes}`;
+    // Interested / Call back / No answer: the same task stays open and moves to the next call
+    const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(effectiveOutcome);
+    let nextCall: Date | null = null;
+    if (keepOpen) {
+      nextCall = new Date(callbackDate || nextWorkingDay0800());
+      if (isNaN(nextCall.getTime())) {
+        toast.error('Ορίστε έγκυρη ημερομηνία και ώρα επόμενης κλήσης.');
+        return;
+      }
+    }
+
+    let finalNotes = noteText;
+    if (nextCall) {
+      finalNotes = `[Επόμενη κλήση: ${formatAthens(nextCall)}]\n${finalNotes}`;
     }
     if (selectedTags.length > 0) {
       finalNotes = `[Tags: ${selectedTags.join(', ')}]\n${finalNotes}`;
@@ -431,7 +510,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           (interactionTask?.actionType === 'email' ? 'email' : 'call')) as any,
         direction: 'outgoing',
         status: 'completed',
-        subject: `[${effectiveOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
+        subject: `[${effectiveOutcome.toUpperCase()}] ${interactionTask?.title || 'Interaction'}`,
         notes: finalNotes,
         createdAt: new Date().toISOString(),
         durationSeconds: callDuration || 0,
@@ -445,92 +524,32 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         }
       })).unwrap();
 
-      // 2. Create follow-up task
-      // We do NOT create a new task for 'call_later' or 'no_answer' because the current task stays pending.
-      const shouldCreateTask = (effectiveOutcome === 'not_interested') || (followUpData.title && followUpData.dueDate && followUpData.therapy);
-
-      if (shouldCreateTask && effectiveOutcome !== 'wrong_number') {
-        const safeISO = (d: string) => {
-          if (!d) return undefined;
-          const date = new Date(d);
-          return isNaN(date.getTime()) ? undefined : date.toISOString();
-        };
-        const defaultDateStr = new Date(Date.now() + 86400000 * 7).toISOString();
-
-        await dispatch(createAction({
-          customerId: interactionTask?.customerId || undefined,
-          relatedLeadId: interactionTask?.relatedLeadId || undefined,
-          salespersonId: currentUserId || undefined,
-          title: followUpData.title || `Follow-up: ${effectiveOutcome.replace('_', ' ')}`,
-          description: `Interaction Notes: ${effectiveNotes.slice(0, 100)}`,
-          actionType: 'follow_up_call',
-          therapy: followUpData.therapy || interactionTask?.therapy || 'General',
-          status: 'pending',
-          priority: followUpData.priority || 'medium',
-          dueDate: (effectiveOutcome === 'call_later' && callbackDate) ? new Date(callbackDate).toISOString() : (safeISO(followUpData.dueDate) || defaultDateStr),
-          reminderDate: (effectiveOutcome === 'call_later' && callbackDate) ? new Date(callbackDate).toISOString() : (safeISO(followUpData.reminderDate) || safeISO(followUpData.dueDate) || defaultDateStr),
+      if (interactionTask?.id) {
+        const updates: any = {
+          status: keepOpen ? 'pending' : 'completed',
           metadata: {
-            sourceTaskId: interactionTask?.id,
-            outcome: effectiveOutcome
+            ...(interactionTask.metadata || {}),
+            callOutcome: effectiveOutcome,
           },
-          clinic: interactionClinic || interactionTask?.clinic || interactionTask?.metadata?.clinic || undefined
-        } as any)).unwrap();
-        toast.success(effectiveOutcome === 'not_interested' ? "Re-engagement task created." : "Follow-up task scheduled!");
+          // Appended to the task description + call history on the server (never overwritten)
+          callNote: {
+            note: noteText,
+            outcome: effectiveOutcome,
+            nextGoal: followUpData.title?.trim() || undefined,
+          },
+        };
+        if (nextCall) {
+          updates.dueDate = nextCall.toISOString();
+          updates.reminderDate = nextCall.toISOString();
+        }
+        await dispatch(updateAction({ id: interactionTask.id, updates })).unwrap();
       }
 
-        // 3. Complete or update the current task (Reschedule if needed)
-        if (interactionTask?.id) {
-          const nextStatus = (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') ? 'pending' : 'completed';
-
-          const updates: any = {
-            status: nextStatus,
-            metadata: {
-              ...(interactionTask.metadata || {}),
-              callOutcome: effectiveOutcome,
-              ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
-            }
-          };
-
-          // Determine effective reminder/due date chosen by user
-          const chosenDateStr = callbackDate || followUpData.reminderDate || followUpData.dueDate;
-          let newDate: string;
-          if (chosenDateStr) {
-            const d = new Date(chosenDateStr);
-            newDate = !isNaN(d.getTime()) ? d.toISOString() : new Date(Date.now() + 86400000).toISOString();
-          } else {
-            // Default 24 hours later if no date selected
-            newDate = new Date(Date.now() + 86400000).toISOString();
-          }
-
-          // If rescheduling (No Answer, Call Later) or task stays pending, update the dates to set reminder & clear OVERDUE
-          if (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later' || nextStatus === 'pending') {
-            updates.dueDate = newDate;
-            updates.reminderDate = newDate;
-          }
-
-          await dispatch(updateAction({
-            id: interactionTask.id,
-            updates
-          })).unwrap();
-        }
-
-      setShowInteractionModal(false);
-      setInteractionNotes("");
-      setInteractionOutcome("");
-      setInteractionClinic("");
-      setInteractionTask(null);
-      setWorkflowStep(1);
-      setCallMade(false);
-      setSelectedTags([]);
-      setCallbackDate("");
-      setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
-      setShowInterestedRemarks(false);
-      setInterestedRemarks('');
-
-      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-      dispatch(fetchActions({ salespersonId: sid }));
-      dispatch(fetchTaskKpis(sid));
-      toast.success("Interaction logged successfully!");
+      resetInteractionState();
+      refreshTasks();
+      toast.success(nextCall
+        ? `Η εργασία μεταφέρθηκε στις ${formatAthens(nextCall)}`
+        : 'Η εργασία ολοκληρώθηκε');
     } catch (error) {
       console.error("Failed to save interaction:", error);
       toast.error("Failed to process task. Please verify your data.");
@@ -563,10 +582,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         }
       })).unwrap();
 
-      // 2. Complete the task
+      // 2. Complete the task (the booking creates its own confirmation-call task)
       await dispatch(updateAction({
         id: interactionTask.id,
-        updates: { status: 'completed' }
+        updates: {
+          status: 'completed',
+          metadata: { ...(interactionTask.metadata || {}), callOutcome: 'appointment_booked' },
+          callNote: { note: interactionNotes.trim() || 'Appointment booked', outcome: 'appointment_booked' },
+        } as any
       })).unwrap();
 
       setShowInteractionModal(false);
@@ -578,9 +601,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setSelectedTags([]);
       setCallbackDate("");
 
-      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-      dispatch(fetchActions({ salespersonId: sid }));
-      dispatch(fetchTaskKpis(sid));
+      refreshTasks();
     } catch (error) {
       console.error("Failed to complete task after booking:", error);
       toast.error("Failed to complete task after booking.");
@@ -610,9 +631,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           id: interactionTask.id,
           updates: { status: 'pending' }
         })).unwrap();
-        const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-        dispatch(fetchActions({ salespersonId: sid }));
-        dispatch(fetchTaskKpis(sid));
+        refreshTasks();
       } catch (err) {
         console.error("Failed to revert task status:", err);
         toast.error("Failed to revert task status.");
@@ -636,9 +655,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setShowAssignModal(false);
       setAssigningTask(null);
       setNewOwnerId("");
-      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-      dispatch(fetchActions({ salespersonId: sid }));
-      dispatch(fetchTaskKpis(sid));
+      refreshTasks();
     } catch (err) {
       console.error("Failed to reassign task:", err);
       toast.error("Failed to reassign task.");
@@ -653,9 +670,25 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           <h2 className="text-lg font-bold leading-tight text-slate-800">Task Management</h2>
           <p className="text-gray-500 text-[11px] mt-0.5">Manage your tasks and follow-ups</p>
         </div>
-        <Button variant="primary" onClick={() => setShowCreateForm(true)} className="h-7 text-xs px-2.5 py-0 rounded-md">
-          <Plus className="h-3.5 w-3.5 mr-1" /> {isGreek ? 'Νέο Task' : 'New Task'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <>
+              <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvSelected} />
+              <Button
+                variant="outline"
+                onClick={() => csvInputRef.current?.click()}
+                disabled={isImporting}
+                className="h-7 text-xs px-2.5 py-0 rounded-md"
+                title="CSV: client, phone, email, due date (dd/mm/yyyy), time (HH:mm), salesperson, title, notes"
+              >
+                {isImporting ? 'Εισαγωγή...' : 'Εισαγωγή HubSpot (CSV)'}
+              </Button>
+            </>
+          )}
+          <Button variant="primary" onClick={() => setShowCreateForm(true)} className="h-7 text-xs px-2.5 py-0 rounded-md">
+            <Plus className="h-3.5 w-3.5 mr-1" /> {isGreek ? 'Νέο Task' : 'New Task'}
+          </Button>
+        </div>
       </div>
 
       {/* KPI Summary */}
@@ -721,7 +754,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               options={[
                 { value: 'all', label: 'Global Team' },
                 ...(salespersons || [])
-                  .filter(sp => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+                  .filter(sp => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
                   .map(sp => ({
                     value: sp.id,
                     label: `${sp.firstName} ${sp.lastName}`
@@ -749,7 +782,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               { value: 'all', label: 'All Action Types' },
               { value: 'call', label: isGreek ? 'Κλήσεις' : 'Calls' },
               { value: 'mobile_message', label: isGreek ? 'SMS' : 'SMS / Mobile' },
-              { value: 'appointment', label: isGreek ? 'Ραντεβού' : 'Appointments' }
+              { value: 'appointment', label: isGreek ? 'Ραντεβού' : 'Appointments' },
+              { value: 'confirmation_call_reminder', label: isGreek ? 'Επιβεβαίωση ραντεβού' : 'Confirmation Calls' }
             ]}
             value={filterType}
             onChange={(val) => setFilterType(val)}
@@ -790,7 +824,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           </div>
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl text-xs font-black">
-              {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+              {totalTasks} {totalTasks === 1 ? 'Task' : 'Tasks'}
             </span>
             {isLoading && tasks.length > 0 && (
               <span className="px-2.5 py-0.5 rounded-full bg-lime-100 text-lime-800 text-[10px] font-bold animate-pulse">
@@ -994,8 +1028,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                   description: task.description || '',
                                   actionType: task.actionType,
                                   status: task.status as any,
-                                  dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
-                                  reminderDate: task.reminderDate ? new Date(task.reminderDate).toISOString().slice(0, 16) : '',
+                                  dueDate: task.dueDate || '',
+                                  reminderDate: task.reminderDate || '',
+                                  salespersonId: task.salespersonId,
+                                  therapy: task.therapy || '',
+                                  clinic: task.clinic || task.metadata?.clinic || '',
                                   priority: task.priority as any,
                                   isRecurring: task.isRecurring || false,
                                   recurrenceType: task.recurrenceType as any || 'weekly',
@@ -1036,17 +1073,18 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                   })).unwrap();
 
                                   setInteractionTask({ ...task, status: 'in_progress' });
-                                  setInteractionNotes(task.description || "");
+                                  setInteractionNotes("");
+                                  setInterestedRemarks('');
+                                  setCallbackDate('');
+                                  setCallDuration(0);
+                                  setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
                                   setWorkflowStep(1);
                                   setCallMade(false);
                                   setInteractionOutcome("");
                                   setSelectedTags([]);
                                   setShowInteractionModal(true);
 
-                                  if (true) {
-                                    const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                                    dispatch(fetchActions({ salespersonId: sid }));
-                                  }
+                                  refreshTasks();
                                 } catch (err) {
                                   console.error("Failed to start interaction:", err);
                                 }
@@ -1093,6 +1131,22 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
             </div>
           )}
         </div>
+        {totalTasks > PAGE_SIZE && (
+          <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-600">
+            <span>
+              {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalTasks)} / {totalTasks}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button size="xs" variant="white" disabled={page <= 1 || isLoading} onClick={() => setPage(p => Math.max(1, p - 1))} className="h-8 px-3 rounded-xl border border-slate-200">
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span>{page} / {totalPages}</span>
+              <Button size="xs" variant="white" disabled={page >= totalPages || isLoading} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="h-8 px-3 rounded-xl border border-slate-200">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Task Creation/Edit Modal */}
@@ -1128,9 +1182,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   onCancel={resetForm}
                   onSuccess={() => {
                     resetForm();
-                    const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                    dispatch(fetchActions({ salespersonId: sid }));
-                    dispatch(fetchTaskKpis(sid));
+                    refreshTasks();
                   }}
                 />
               </div>
@@ -1198,6 +1250,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   <p className="text-slate-700 whitespace-pre-wrap text-xs leading-relaxed">{viewingTask.description}</p>
                 </div>
               )}
+
+              <TaskCallNotes task={viewingTask} />
 
               {/* Type & Therapy */}
               <div className="grid grid-cols-2 gap-3">
@@ -1358,9 +1412,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               onSuccess={() => {
                 setIsEditing(false);
                 setSelectedTask(null);
-                const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                dispatch(fetchActions({ salespersonId: sid }));
-                dispatch(fetchTaskKpis(sid));
+                refreshTasks();
               }}
               onCancel={() => {
                 setIsEditing(false);
@@ -1423,6 +1475,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+
+              <TaskCallNotes task={interactionTask} />
 
               {/* Step 1: Outreach */}
               {workflowStep === 1 && (
@@ -1492,29 +1546,31 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: 'interested', label: 'Interested', icon: <Star className="w-5 h-5 fill-amber-400 text-amber-400" />, color: 'hover:border-amber-400 hover:bg-amber-50' },
-                      { value: 'call_later', label: 'Call Later', icon: <Clock className="w-5 h-5 text-blue-500" />, color: 'hover:border-blue-400 hover:bg-blue-50' },
-                      { value: 'no_answer', label: 'No Answer', icon: <PhoneOff className="w-5 h-5 text-slate-400" />, color: 'hover:border-gray-400 hover:bg-gray-50' },
-                      { value: 'not_interested', label: 'Not Interested', icon: <XCircle className="w-5 h-5 text-red-500" />, color: 'hover:border-red-400 hover:bg-red-50' },
-                      { value: 'appointment_booked', label: 'Booked', icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, color: 'hover:border-emerald-400 hover:bg-emerald-50' },
-                      { value: 'wrong_number', label: 'Wrong Num', icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />, color: 'hover:border-yellow-400 hover:bg-yellow-50' }
-                    ].map((opt) => (
+                    {CALL_OUTCOMES.map((o) => ({
+                      ...o,
+                      label: isGreek ? o.labelEl : o.label,
+                      ...({
+                        interested: { icon: <Star className="w-5 h-5 fill-amber-400 text-amber-400" />, color: 'hover:border-amber-400 hover:bg-amber-50' },
+                        call_later: { icon: <Clock className="w-5 h-5 text-blue-500" />, color: 'hover:border-blue-400 hover:bg-blue-50' },
+                        no_answer: { icon: <PhoneOff className="w-5 h-5 text-slate-400" />, color: 'hover:border-gray-400 hover:bg-gray-50' },
+                        not_interested: { icon: <XCircle className="w-5 h-5 text-red-500" />, color: 'hover:border-red-400 hover:bg-red-50' },
+                        appointment_booked: { icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, color: 'hover:border-emerald-400 hover:bg-emerald-50' },
+                        wrong_number: { icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />, color: 'hover:border-yellow-400 hover:bg-yellow-50' },
+                      } as Record<string, { icon: React.ReactNode; color: string }>)[o.value],
+                    })).map((opt) => (
                       <div
                         key={opt.value}
                         onClick={async () => {
                           setInteractionOutcome(opt.value);
                           if (opt.value === 'interested') {
-                            // Show remarks step before completing
+                            // Remarks + next call date: the task stays open
                             setShowInterestedRemarks(true);
+                            if (!callbackDate) setCallbackDate(nextWorkingDay0800());
                           } else if (opt.value === 'appointment_booked') {
                             setShowBookingModal(true);
                           } else if (opt.value === 'call_later' || opt.value === 'no_answer') {
-                            if (!callbackDate) {
-                              const tomorrow = new Date(Date.now() + 86400000);
-                              const dateStr = tomorrow.toISOString().split('T')[0];
-                              setCallbackDate(`${dateStr}T10:00`);
-                            }
+                            // Default next call: next working day 08:00
+                            if (!callbackDate) setCallbackDate(nextWorkingDay0800());
                           } else {
                             setWorkflowStep(3);
                           }
@@ -1534,8 +1590,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   {['call_later', 'no_answer'].includes(interactionOutcome) && (
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest">Recall Schedule & Reminder Date</p>
-                        <span className="text-[9px] text-blue-600 font-bold">Set Reminder</span>
+                        <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest">Επόμενη κλήση (ημερομηνία & ώρα)</p>
+                        <span className="text-[9px] text-blue-600 font-bold">Η ίδια εργασία μεταφέρεται</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Input
@@ -1543,7 +1599,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           value={callbackDate ? callbackDate.split('T')[0] : ''}
                           onChange={(e) => {
                             const date = e.target.value;
-                            const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '10:00';
+                            const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '08:00';
                             const fullStr = date ? `${date}T${time}` : '';
                             setCallbackDate(fullStr);
                             setFollowUpData({ ...followUpData, dueDate: fullStr, reminderDate: fullStr });
@@ -1551,9 +1607,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           className="h-10 flex-1 text-[11px] font-black rounded-lg border-blue-200 bg-white"
                         />
                         <Select
-                          value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '10:00'}
+                          value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '08:00'}
                           onChange={(time) => {
-                            const date = callbackDate ? callbackDate.split('T')[0] : new Date().toISOString().split('T')[0];
+                            const date = callbackDate ? callbackDate.split('T')[0] : toLocalInputValue(new Date()).split('T')[0];
                             const fullStr = `${date}T${time}`;
                             setCallbackDate(fullStr);
                             setFollowUpData({ ...followUpData, dueDate: fullStr, reminderDate: fullStr });
@@ -1575,34 +1631,64 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     </div>
                   )}
 
-                  {/* Interested Remarks Step */}
+                  {/* Interested: remarks + next call; the same task stays open */}
                   {showInterestedRemarks && interactionOutcome === 'interested' && (
                     <div className="bg-amber-50 p-5 rounded-xl border border-amber-200 animate-in slide-in-from-top-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                        <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest">Interested — Add Remarks</p>
+                        <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest">Ενδιαφέρεται: σημειώσεις & επόμενη κλήση</p>
                       </div>
-                      <p className="text-[10px] text-amber-700 font-medium">Yeh remarks task detail mein save ho jayenge — kyun customer interested tha.</p>
+                      <p className="text-[10px] text-amber-700 font-medium">Οι σημειώσεις αποθηκεύονται στην εργασία: γιατί ενδιαφέρεται ο πελάτης. Η εργασία μένει ανοιχτή και μεταφέρεται στην επόμενη κλήση.</p>
                       <textarea
                         value={interestedRemarks}
                         onChange={(e) => setInterestedRemarks(e.target.value)}
-                        placeholder="e.g. Customer ne Botox mein serious interest dikhaya, budget confirm tha, next week call karna hai..."
+                        placeholder="π.χ. Ενδιαφέρεται σοβαρά για Botox, συμφωνεί με την τιμή, να τον καλέσουμε την επόμενη εβδομάδα..."
                         rows={3}
                         className="w-full text-xs font-medium rounded-lg border border-amber-200 bg-white px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 placeholder:text-amber-300"
                       />
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest">Επόμενη κλήση</p>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="date"
+                            value={callbackDate ? callbackDate.split('T')[0] : ''}
+                            onChange={(e) => {
+                              const date = e.target.value;
+                              const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '08:00';
+                              setCallbackDate(date ? `${date}T${time}` : '');
+                            }}
+                            className="h-9 flex-1 text-[11px] font-black rounded-lg border-amber-200 bg-white"
+                          />
+                          <Select
+                            value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '08:00'}
+                            onChange={(time) => {
+                              const date = callbackDate ? callbackDate.split('T')[0] : nextWorkingDay0800().split('T')[0];
+                              setCallbackDate(`${date}T${time}`);
+                            }}
+                            options={Array.from({ length: 48 }, (_, i) => {
+                              const hour = String(Math.floor(i / 2)).padStart(2, '0');
+                              const min = i % 2 === 0 ? '00' : '30';
+                              return { value: `${hour}:${min}`, label: `${hour}:${min}` };
+                            })}
+                            className="h-9 w-28 text-[11px] font-black rounded-lg border-amber-200 bg-white"
+                          />
+                        </div>
+                        <p className="text-[10px] text-amber-700">Για επιπλέον εργασία, χρησιμοποιήστε «Νέο Task».</p>
+                      </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => { setShowInterestedRemarks(false); setInterestedRemarks(''); }}
                           className="flex-1 h-9 rounded-lg border border-amber-200 text-[10px] font-black uppercase tracking-widest text-amber-700 hover:bg-amber-100 transition-all"
                         >
-                          Cancel
+                          Ακύρωση
                         </button>
                         <button
                           onClick={() => handleSaveInteraction('interested')}
-                          className="flex-1 h-9 rounded-lg bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-widest hover:bg-gray-900 transition-all flex items-center justify-center gap-1.5"
+                          disabled={!callbackDate}
+                          className="flex-1 h-9 rounded-lg bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-widest hover:bg-gray-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Confirm & Complete
+                          Αποθήκευση & επόμενη κλήση
                         </button>
                       </div>
                     </div>
@@ -1686,7 +1772,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     </div>
 
                     <Textarea
-                      placeholder="Enter internal interaction remarks..."
+                      placeholder={callMade ? 'Σημειώσεις κλήσης...' : 'Σημείωση (υποχρεωτική όταν δεν έγινε κλήση)...'}
                       value={interactionNotes}
                       onChange={(e) => setInteractionNotes(e.target.value)}
                       className="min-h-[120px] rounded-xl border-white/10 bg-white/5 text-white text-[11px] font-medium p-4 focus:bg-white/10"
@@ -1702,14 +1788,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     )}
                   </div>
 
-                  {interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (
+                  {KEEP_TASK_OPEN_OUTCOMES.includes(interactionOutcome) && (
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 space-y-4">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="text-[10px] font-black text-slate-900 uppercase">Follow-up Goal</span>
+                        <span className="text-[10px] font-black text-slate-900 uppercase">Επόμενη κλήση (η ίδια εργασία)</span>
                       </div>
                       <Input
-                        placeholder="Next contact goal..."
+                        placeholder="Στόχος επόμενης επαφής (προαιρετικό)..."
                         value={followUpData.title}
                         onChange={(e) => setFollowUpData({ ...followUpData, title: e.target.value })}
                         className="h-10 text-[11px] font-bold rounded-lg border-amber-200"
@@ -1717,19 +1803,19 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       <div className="flex items-center gap-2">
                         <Input
                           type="date"
-                          value={followUpData.dueDate ? followUpData.dueDate.split('T')[0] : ''}
+                          value={(callbackDate || nextWorkingDay0800()).split('T')[0]}
                           onChange={(e) => {
                             const date = e.target.value;
-                            const time = followUpData.dueDate && followUpData.dueDate.includes('T') ? followUpData.dueDate.split('T')[1].substring(0, 5) : '12:00';
-                            setFollowUpData({ ...followUpData, dueDate: date ? `${date}T${time}` : '' });
+                            const base = callbackDate || nextWorkingDay0800();
+                            setCallbackDate(date ? `${date}T${base.split('T')[1].substring(0, 5)}` : '');
                           }}
                           className="h-10 flex-1 text-[10px] font-bold rounded-lg border-amber-200 bg-white"
                         />
                         <Select
-                          value={followUpData.dueDate && followUpData.dueDate.includes('T') ? followUpData.dueDate.split('T')[1].substring(0, 5) : '12:00'}
+                          value={(callbackDate || nextWorkingDay0800()).split('T')[1].substring(0, 5)}
                           onChange={(time) => {
-                            const date = followUpData.dueDate ? followUpData.dueDate.split('T')[0] : new Date().toISOString().split('T')[0];
-                            setFollowUpData({ ...followUpData, dueDate: `${date}T${time}` });
+                            const base = callbackDate || nextWorkingDay0800();
+                            setCallbackDate(`${base.split('T')[0]}T${time}`);
                           }}
                           options={Array.from({ length: 48 }, (_, i) => {
                             const hour = String(Math.floor(i / 2)).padStart(2, '0');
@@ -1741,8 +1827,6 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       </div>
                     </div>
                   )}
-
-
 
                   <Button
                     onClick={handleSaveInteraction}
@@ -1835,7 +1919,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 <Select
                   placeholder="Choose Salesperson..."
                   options={(salespersons || [])
-                    .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+                    .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
                     .map(sp => ({
                       value: sp.id,
                       label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`

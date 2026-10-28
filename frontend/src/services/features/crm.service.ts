@@ -83,7 +83,14 @@ export const crmService = {
     status?: string;
     priority?: string;
     customerId?: string;
+    // Server-side paging (Tasks page): response is { data, total, page, limit, totalPages }
+    page?: number;
+    limit?: number;
+    search?: string;
+    actionType?: string;
+    dateRange?: string;
   }) => api.get('/crm/actions', { params: { ...filters, salespersonId } }),
+  importTasksCsv: (csv: string, dryRun = false) => api.post('/crm/actions/import-csv', { csv, dryRun }),
   getPendingActions: (salespersonId?: string) => api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) => api.get('/crm/tasks/overdue', { params: { salespersonId } }),
   getTaskKpis: (salespersonId?: string) => api.get('/crm/tasks/kpis', { params: { salespersonId } }),
