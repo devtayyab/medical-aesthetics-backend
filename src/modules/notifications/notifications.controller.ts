@@ -83,36 +83,30 @@ export class NotificationsController {
     const windowMs = 10 * 60 * 1000;
     const recent = (this.contactSubmissions.get(ip) || []).filter((t) => now - t < windowMs);
     if (recent.length >= 5) {
-      throw new BadRequestException('Too many messages — please try again later.');
+      throw new BadRequestException('Πάρα πολλά μηνύματα. Δοκιμάστε ξανά αργότερα.');
     }
     recent.push(now);
     this.contactSubmissions.set(ip, recent);
+
+    // Store the message first so it is never lost, then alert admins in-app.
+    const saved = await this.notificationsService.saveContactMessage(body);
 
     const supportEmail =
       this.configService.get<string>('SUPPORT_EMAIL') ||
       this.configService.get<string>('MAIL_FROM');
 
-    if (!supportEmail) {
-      this.logger.error('Contact form received but SUPPORT_EMAIL/MAIL_FROM is not configured');
-      throw new BadRequestException('Contact form is temporarily unavailable. Please email us directly.');
-    }
-
-    const text =
-      `New contact form submission\n\n` +
-      `Name: ${body.name}\n` +
-      `Email: ${body.email}\n` +
-      `Phone: ${body.phone || '—'}\n` +
-      `Subject: ${body.subject}\n\n` +
-      `Message:\n${body.message}`;
-
-    const sent = await this.mailService.sendMail(
-      supportEmail,
-      `[Contact Form] ${body.subject}`,
-      text,
-    );
-    if (!sent) {
-      // Mail transport not configured or failed — log the full message so it is not lost
-      this.logger.warn(`Contact form email could not be sent. Payload: ${JSON.stringify({ ...body, message: body.message.slice(0, 500) })}`);
+    if (supportEmail) {
+      const text =
+        `Νέο μήνυμα από τη φόρμα επικοινωνίας\n\n` +
+        `Όνομα: ${body.name}\n` +
+        `Email: ${body.email}\n` +
+        `Τηλέφωνο: ${body.phone || '-'}\n` +
+        `Θέμα: ${body.subject}\n\n` +
+        `Μήνυμα:\n${body.message}`;
+      const sent = await this.mailService.sendMail(supportEmail, `[Φόρμα επικοινωνίας] ${body.subject}`, text);
+      if (!sent) {
+        this.logger.warn(`Contact form email could not be sent; message stored as ${saved.id}`);
+      }
     }
 
     return { success: true };
@@ -135,10 +129,54 @@ export class NotificationsController {
   @Get()
   @ApiOperation({ summary: 'Get notifications for logged-in user' })
   getUserNotifications(@Request() req, @Query('limit') limit?: number) {
-    if (req.user.role === UserRole.SUPER_ADMIN || req.user.role === UserRole.ADMIN) {
-      return this.notificationsService.findAllGlobal(limit);
-    }
+    // Everyone, admins included, sees only their own notifications. Returning every user's
+    // rows to admins showed each event many times and leaked client message copies.
     return this.notificationsService.findByRecipient(req.user.id, limit);
+  }
+
+  @Post('register')
+  @ApiOperation({ summary: 'Register this browser/device for web push (FCM token)' })
+  registerDevice(@Request() req, @Body() body: { token: string }) {
+    return this.notificationsService.registerDeviceToken(req.user.id, body?.token);
+  }
+
+  // Broadcast to clients with marketing consent
+  @Get('broadcast/audience')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Number of clients who accepted marketing communication' })
+  async getBroadcastAudience() {
+    return { count: await this.notificationsService.getBroadcastAudienceCount() };
+  }
+
+  @Post('broadcast')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Send push and/or email to all clients with marketing consent' })
+  broadcast(@Request() req, @Body() body: { title: string; message: string; push?: boolean; email?: boolean }) {
+    return this.notificationsService.broadcastToMarketingClients(
+      body?.title,
+      body?.message,
+      { push: !!body?.push, email: !!body?.email },
+      req.user.id,
+    );
+  }
+
+  // Contact form inbox (admin)
+  @Get('contact-messages')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'List contact form messages' })
+  listContactMessages(@Query() query: { limit?: number; offset?: number; unreadOnly?: string }) {
+    return this.notificationsService.listContactMessages(query);
+  }
+
+  @Patch('contact-messages/:id/read')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Mark a contact message read or unread' })
+  setContactMessageRead(@Param('id') id: string, @Body() body: { isRead?: boolean }, @Request() req) {
+    return this.notificationsService.setContactMessageRead(id, body?.isRead !== false, req.user.id);
   }
 
   @Get('unread-count')
@@ -156,9 +194,8 @@ export class NotificationsController {
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark notification as read' })
   markAsRead(@Param('id') id: string, @Request() req) {
-    // Admins may mark any notification; everyone else is scoped to their own (prevents IDOR).
-    const isPrivileged = req.user.role === UserRole.SUPER_ADMIN || req.user.role === UserRole.ADMIN;
-    return this.notificationsService.markAsRead(id, isPrivileged ? undefined : req.user.id);
+    // Always scoped to the caller's own notifications (prevents IDOR).
+    return this.notificationsService.markAsRead(id, req.user.id);
   }
 
   // Template Management

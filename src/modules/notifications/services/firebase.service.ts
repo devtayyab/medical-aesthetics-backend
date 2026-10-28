@@ -26,6 +26,16 @@ export class FirebaseService {
     }
   }
 
+  static toStringMap(data?: any): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (!data || typeof data !== 'object') return out;
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined || value === null) continue;
+      out[key] = typeof value === 'string' ? value : JSON.stringify(value);
+    }
+    return out;
+  }
+
   async sendPushNotification(
     token: string,
     title: string,
@@ -43,7 +53,12 @@ export class FirebaseService {
           title,
           body: message,
         },
-        data: data ? data : {},  // Ensure data is an object
+        // FCM only accepts a flat map of string values; nested objects or numbers make
+        // the whole send fail, so the push never arrived.
+        data: FirebaseService.toStringMap(data),
+        webpush: {
+          notification: { icon: '/logo.png' },
+        },
         token,
       };
 
@@ -73,7 +88,7 @@ export class FirebaseService {
           title,
           body: message,
         },
-        data: data ? JSON.stringify(data) : {},
+        data: FirebaseService.toStringMap(data),
         tokens,
       };
 

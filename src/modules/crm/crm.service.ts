@@ -26,6 +26,7 @@ import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { athensDateTime } from '../notifications/utils/notification-format.util';
 import { TaskAutomationService } from './task-automation.service';
 import { FacebookService, ParsedFacebookLead } from './facebook.service';
 import { QueueService } from '../queue/queue.service';
@@ -2145,7 +2146,7 @@ export class CrmService implements OnModuleInit {
         data.salespersonId,
         NotificationType.PUSH,
         isCallAction ? `📞 Call Back: ${customerName}` : 'New Task Created',
-        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate}`,
+        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Λήξη: ${athensDateTime(data.dueDate)}`,
         {
           actionId: savedAction.id,
           trigger: isCallAction ? 'DIALER_CALLBACK' : 'TASK_OPEN',

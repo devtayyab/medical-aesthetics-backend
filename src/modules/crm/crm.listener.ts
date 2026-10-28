@@ -104,21 +104,7 @@ export class CrmListener {
                   reminderDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2) // 2 days after execution
                 });
 
-                // Notify the specific salesperson
-                await this.notificationsService.create(
-                    representativeId,
-                    NotificationType.PUSH,
-                    'Appointment Executed',
-                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
-                    { appointmentId: appointment.id, type: 'execution' }
-                );
-
-                // Notify Platform Admins (Logic in service now restricts to Admins only)
-                await this.notificationsService.sendToPlatformAdmins(
-                    'Appointment Executed',
-                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
-                    { appointmentId: appointment.id, type: 'execution' }
-                );
+                // Completion notifications are sent once by AppointmentNotificationsListener.
 
                 this.logger.log(`Follow-up task created and platform staff notified for salesperson ${representativeId}`);
             }

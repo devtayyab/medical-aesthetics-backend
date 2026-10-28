@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { DataSource } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TasksService } from '../tasks/tasks.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { QueueService } from '../queue/queue.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { TaskType } from '../../common/enums/task-type.enum';
+import { athensDate, athensTime, athensDateTime } from '../notifications/utils/notification-format.util';
 
 @Injectable()
 export class EventHandlersService {
@@ -16,6 +18,7 @@ export class EventHandlersService {
     private tasksService: TasksService,
     private loyaltyService: LoyaltyService,
     private queueService: QueueService,
+    private dataSource: DataSource,
   ) { }
 
   @OnEvent('lead.created')
@@ -39,8 +42,8 @@ export class EventHandlersService {
       await this.notificationsService.create(
         lead.assignedSalesId,
         NotificationType.PUSH,
-        'New Lead Assigned',
-        `You have a new lead: ${lead.fullName} from ${lead.source}`,
+        'Νέος lead',
+        `${lead.fullName} · Πηγή: ${lead.source}`,
         { leadId: lead.id },
       );
     }
@@ -56,80 +59,11 @@ export class EventHandlersService {
       for (const clinic of lead.clinics) {
         await this.notificationsService.notifyClinicStaff(
           clinic.id,
-          'New Lead Interest',
-          `A new lead ${lead.fullName} is interested in your clinic (Source: ${lead.source}).`,
+          'Νέο ενδιαφέρον για την κλινική',
+          `${lead.fullName} ενδιαφέρεται για την κλινική σας.`,
           { leadId: lead.id }
         );
       }
-    }
-  }
-
-  @OnEvent('appointment.created')
-  async handleAppointmentCreated(appointment: any) {
-    this.logger.log(`Handling appointment created event for appointment ${appointment.id}`);
-
-    // Send confirmation to client
-    const serviceName = appointment.service?.treatment?.name || 'Appointment';
-    const providerName = appointment.provider
-      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
-      : 'Professional';
-
-    await this.notificationsService.sendAppointmentConfirmation(
-      appointment.clientId,
-      {
-        id: appointment.id,
-        date: appointment.startTime,
-        time: appointment.startTime,
-        serviceName,
-        providerName,
-      },
-    );
-
-    // Send notification to provider (doctor/aesthetician) if assigned
-    if (appointment.providerId) {
-      const appointmentDate = new Date(appointment.startTime);
-      const formattedDate = appointmentDate.toLocaleDateString();
-      const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      await this.notificationsService.create(
-        appointment.providerId,
-        NotificationType.PUSH,
-        'New Appointment Booked',
-        `${serviceName} with ${appointment.client?.firstName || 'Client'} on ${formattedDate} at ${formattedTime}`,
-        {
-          appointmentId: appointment.id,
-          type: 'appointment_created',
-          serviceName,
-          clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Client',
-          startTime: appointment.startTime,
-        },
-      );
-    }
-
-    // Also notify clinic owner and secretariat
-    if (appointment.clinic?.ownerId) {
-      const appointmentDate = new Date(appointment.startTime);
-      const formattedDate = appointmentDate.toLocaleDateString();
-      const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      await this.notificationsService.create(
-        appointment.clinic.ownerId,
-        NotificationType.PUSH,
-        'New Appointment Booking',
-        `${serviceName}${appointment.provider ? ` with ${providerName}` : ''} on ${formattedDate} at ${formattedTime}`,
-        {
-          appointmentId: appointment.id,
-          type: 'appointment_created',
-          clinicId: appointment.clinicId,
-        },
-      );
-    }
-
-    // Schedule reminder 24 hours before
-    const startTime = appointment.startTime instanceof Date ? appointment.startTime : new Date(appointment.startTime);
-    const reminderTime = new Date(startTime.getTime() - 24 * 60 * 60 * 1000);
-    if (reminderTime > new Date()) {
-      await this.queueService.scheduleAppointmentReminder(appointment.id, reminderTime);
     }
   }
 
@@ -138,15 +72,9 @@ export class EventHandlersService {
     const { appointment, oldStatus, newStatus } = eventData;
 
     this.logger.log(`Appointment ${appointment.id} status changed from ${oldStatus} to ${newStatus}`);
+    if (oldStatus === newStatus) return;
 
     const serviceName = appointment.service?.treatment?.name || 'Appointment';
-    const providerName = appointment.provider
-      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
-      : 'Professional';
-    const clientName = appointment.client
-      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
-      : 'Client';
-    const clinicName = appointment.clinic?.name || 'Clinic';
 
     if (newStatus === 'completed') {
       // Award loyalty points
@@ -176,78 +104,8 @@ export class EventHandlersService {
         });
       }
 
-      // Notify Sales and Admin on every completion
-      await this.notificationsService.sendToPlatformAdmins(
-        'Appointment Executed',
-        `${serviceName} executed at ${clinicName} for ${clientName}`,
-        { appointmentId: appointment.id, clinicId: appointment.clinicId }
-      );
     }
-
-    // Notify admins/Elena on cancellation
-    if (newStatus === 'cancelled' || newStatus === 'CANCELLED') {
-      await this.notificationsService.notifyAllStaff(
-        '❌ Appointment Cancelled',
-        `Appointment for ${clientName} (${serviceName}) at ${clinicName} has been cancelled.`,
-        { appointmentId: appointment.id, clinicId: appointment.clinicId, type: 'appointment_cancelled' }
-      );
-    }
-
-    // Notify admins/Elena on confirmation
-    if (newStatus === 'confirmed' || newStatus === 'CONFIRMED') {
-      await this.notificationsService.notifyAllStaff(
-        '✅ Appointment Confirmed',
-        `Appointment for ${clientName} (${serviceName}) at ${clinicName} has been confirmed.`,
-        { appointmentId: appointment.id, clinicId: appointment.clinicId, type: 'appointment_confirmed' }
-      );
-    }
-
-    // Send status update notification to client
-    await this.notificationsService.create(
-      appointment.clientId,
-      NotificationType.PUSH,
-      'Appointment Update',
-      `Your ${serviceName}${providerName ? ` with ${providerName}` : ''} status: ${newStatus}`,
-      {
-        appointmentId: appointment.id,
-        status: newStatus,
-        serviceName,
-        providerName,
-      },
-    );
-
-    // Also notify provider if status changed
-    if (appointment.providerId) {
-      await this.notificationsService.create(
-        appointment.providerId,
-        NotificationType.PUSH,
-        'Appointment Status Changed',
-        `${serviceName} appointment status changed to: ${newStatus}`,
-        {
-          appointmentId: appointment.id,
-          status: newStatus,
-          clientName,
-        },
-      );
-    }
-  }
-
-  @OnEvent('appointment.paid')
-  async handleAppointmentPaid(eventData: any) {
-    const { appointment, amountPaid, paymentMethod, markedById } = eventData;
-    const serviceName = appointment.service?.treatment?.name || 'Appointment';
-    const clientName = appointment.client
-      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
-      : 'Client';
-    const clinicName = appointment.clinic?.name || 'Clinic';
-
-    this.logger.log(`Appointment ${appointment.id} marked as paid: €${amountPaid} via ${paymentMethod}`);
-
-    await this.notificationsService.notifyAllStaff(
-      '💳 Appointment Marked as Paid',
-      `${clientName}'s ${serviceName} at ${clinicName} — €${amountPaid} paid via ${paymentMethod || 'cash'}.`,
-      { appointmentId: appointment.id, clinicId: appointment.clinicId, amountPaid, paymentMethod, type: 'appointment_paid' }
-    );
+    // Notifications for status changes are sent once by AppointmentNotificationsListener.
   }
 
   @OnEvent('appointment.rescheduled')
@@ -261,16 +119,12 @@ export class EventHandlersService {
   async handleBlockedSlotCreated(slot: any) {
     this.logger.log(`Blocked slot created for clinic ${slot.clinicId}`);
 
-    const startDate = new Date(slot.startTime);
-    const endDate = new Date(slot.endTime);
-    const formattedStart = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const formattedStartTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formattedEndTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+    const clinicName = await this.clinicName(slot.clinicId);
     await this.notificationsService.notifyAllStaff(
-      '🔒 Calendar Day/Slot Blocked',
-      `A slot was blocked on ${formattedStart} (${formattedStartTime}–${formattedEndTime}). Reason: ${slot.reason || 'Not specified'}.`,
-      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_blocked' }
+      'Κλείσιμο ώρας στο ημερολόγιο',
+      `${clinicName} · ${athensDate(slot.startTime)} ${athensTime(slot.startTime)}-${athensTime(slot.endTime)} · Αιτία: ${slot.reason || '-'}`,
+      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_blocked' },
+      slot.blockedById ? [slot.blockedById] : [],
     );
   }
 
@@ -278,13 +132,11 @@ export class EventHandlersService {
   async handleBlockedSlotDeleted(slot: any) {
     this.logger.log(`Blocked slot removed for clinic ${slot.clinicId}`);
 
-    const startDate = new Date(slot.startTime);
-    const formattedStart = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
+    const clinicName = await this.clinicName(slot.clinicId);
     await this.notificationsService.notifyAllStaff(
-      '🔓 Blocked Slot Removed',
-      `A previously blocked slot on ${formattedStart} has been unblocked.`,
-      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_unblocked' }
+      'Άνοιγμα ώρας στο ημερολόγιο',
+      `${clinicName} · ${athensDate(slot.startTime)} ${athensTime(slot.startTime)}-${athensTime(slot.endTime)} είναι ξανά διαθέσιμο.`,
+      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_unblocked' },
     );
   }
 
@@ -294,10 +146,10 @@ export class EventHandlersService {
     this.logger.log(`New treatment added: ${treatment?.name}`);
 
     // Only notify platform admins — not all staff (avoids duplicate/spam notifications)
-    await this.notificationsService.sendToPlatformAdmins(
-      '💉 New Treatment Added',
-      `"${treatment?.name}" has been added by ${clinicName || 'a clinic'} and is pending approval.`,
-      { treatmentId: treatment?.id, type: 'treatment_added' }
+    await this.notificationsService.notifyAdmins(
+      'Νέα θεραπεία προς έγκριση',
+      `"${treatment?.name}" από ${clinicName || 'κλινική'}. Εγκρίνετε ή απορρίψτε στις Εγκρίσεις υπηρεσιών.`,
+      { treatmentId: treatment?.id, type: 'treatment_added', link: '/admin/treatments' }
     );
   }
 
@@ -307,14 +159,13 @@ export class EventHandlersService {
     this.logger.log(`Treatment edited: ${treatment?.name}`);
 
     const changeDesc = changes?.priceChanged
-      ? ` Price changed to €${changes.newPrice}.`
+      ? ` Νέα τιμή: €${changes.newPrice}.`
       : '';
 
-    // Only notify platform admins — not all staff (avoids duplicate/spam notifications)
-    await this.notificationsService.sendToPlatformAdmins(
-      '✏️ Treatment Edited — Pending Re-approval',
-      `"${treatment?.name}" at ${clinicName || 'a clinic'} has been edited.${changeDesc}`,
-      { treatmentId: treatment?.id, type: 'treatment_edited' }
+    await this.notificationsService.notifyAdmins(
+      'Αλλαγή θεραπείας προς έγκριση',
+      `"${treatment?.name}" στο ${clinicName || 'κλινική'} άλλαξε.${changeDesc}`,
+      { treatmentId: treatment?.id, type: 'treatment_edited', link: '/admin/treatments' }
     );
   }
 
@@ -352,8 +203,8 @@ export class EventHandlersService {
       await this.notificationsService.create(
         task.assigneeId,
         NotificationType.PUSH,
-        'New Task Assigned',
-        `You have a new task: ${task.title}. Due on ${new Date(task.dueDate).toLocaleDateString()}`,
+        'Νέα εργασία',
+        `${task.title}${task.dueDate ? ` · Λήξη ${athensDateTime(task.dueDate)}` : ''}`,
         { taskId: task.id }
       );
     }
@@ -369,11 +220,17 @@ export class EventHandlersService {
         await this.notificationsService.create(
             task.creatorId,
             NotificationType.PUSH,
-            'Task Completed',
-            `The task "${task.title}" you assigned has been marked as completed.`,
+            'Η εργασία ολοκληρώθηκε',
+            `Η εργασία "${task.title}" που αναθέσατε ολοκληρώθηκε.`,
             { taskId: task.id }
         );
     }
+  }
+
+  private async clinicName(clinicId?: string): Promise<string> {
+    if (!clinicId) return 'Κλινική';
+    const rows = await this.dataSource.query('SELECT name FROM clinics WHERE id = $1', [clinicId]).catch(() => []);
+    return rows?.[0]?.name || 'Κλινική';
   }
 
   private calculatePreviousTier(points: number): string {

@@ -10,12 +10,16 @@ import { NotificationsGateway } from './gateways/notifications.gateway';
 import { Notification } from './entities/notification.entity';
 import { NotificationTemplate } from './entities/notification-template.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { User } from '../users/entities/user.entity';
+import { NotificationDispatch } from './entities/notification-dispatch.entity';
+import { ContactMessage } from './entities/contact-message.entity';
+import { NotificationDeliveryService } from './services/notification-delivery.service';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, NotificationTemplate, Clinic]),
+    TypeOrmModule.forFeature([Notification, NotificationTemplate, Clinic, User, NotificationDispatch, ContactMessage]),
     BullModule.registerQueue({
       name: 'notifications',
     }),
@@ -28,6 +32,7 @@ import { JwtModule } from '@nestjs/jwt';
     NotificationsGateway,
     FirebaseService,
     MailService,
+    NotificationDeliveryService,
     NotificationProcessor,
   ],
   exports: [NotificationsService, NotificationsGateway, MailService],
