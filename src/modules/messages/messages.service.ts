@@ -171,4 +171,54 @@ export class MessagesService {
             .andWhere('(u."firstName" ILIKE :q OR u."lastName" ILIKE :q OR u."email" ILIKE :q OR c.title ILIKE :q)', { q: `%${query}%` })
             .getMany();
     }
+
+    /**
+     * Read-only inbox: messages other people sent to this user in their conversations, plus
+     * announcements (broadcasts / clinic messages) stored as notifications. Newest first.
+     */
+    async getInbox(userId: string, limit = 100) {
+        const messages = await this.messageRepo
+            .createQueryBuilder('m')
+            .leftJoinAndSelect('m.sender', 'sender')
+            .where('m."conversationId" IN (SELECT "conversationId" FROM conversation_participants WHERE "userId" = :userId)', { userId })
+            .andWhere('m."senderId" <> :userId', { userId })
+            .orderBy('m.createdAt', 'DESC')
+            .take(limit)
+            .getMany();
+
+        let announcements: any[] = [];
+        try {
+            announcements = await this.messageRepo.manager.query(
+                `SELECT id, title, message, "createdAt", "isRead" FROM notifications
+                 WHERE "recipientId" = $1 AND type = 'push' AND (data::jsonb ->> 'category') = 'message'
+                 ORDER BY "createdAt" DESC LIMIT $2`,
+                [userId, limit],
+            );
+        } catch {
+            announcements = [];
+        }
+
+        const items = [
+            ...messages.map((m) => ({
+                id: m.id,
+                source: 'conversation' as const,
+                conversationId: m.conversationId,
+                from: `${m.sender?.firstName || ''} ${m.sender?.lastName || ''}`.trim() || 'Beauty Doctors',
+                title: null as string | null,
+                content: m.content,
+                createdAt: m.createdAt,
+            })),
+            ...announcements.map((n) => ({
+                id: n.id,
+                source: 'announcement' as const,
+                conversationId: null as string | null,
+                from: 'Beauty Doctors',
+                title: n.title,
+                content: n.message,
+                createdAt: n.createdAt,
+            })),
+        ];
+        items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return items.slice(0, limit);
+    }
 }

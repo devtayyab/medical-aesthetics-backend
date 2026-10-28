@@ -87,8 +87,8 @@ export const MyAccount: React.FC = () => {
       link: "/blog"
     },
     {
-      title: isGreek ? "ΜΗΝΥΜΑΤΑ" : "MESSAGES",
-      desc: isGreek ? "ΟΙ ΣΥΝΟΜΙΛΙΕΣ ΣΑΣ" : "YOUR CONVERSATIONS",
+      title: isGreek ? "ΤΑ ΜΗΝΥΜΑΤΑ ΣΑΣ" : "YOUR INBOX",
+      desc: isGreek ? "ΜΗΝΥΜΑΤΑ ΑΠΟ ΕΜΑΣ ΚΑΙ ΤΗΝ ΚΛΙΝΙΚΗ" : "MESSAGES FROM US AND YOUR CLINIC",
       icon: <Mail className="size-5" />,
       link: "/messages"
     }

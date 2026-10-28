@@ -11,6 +11,7 @@ import {
 import { ConversationList } from './ConversationList';
 import { ChatWindow } from './ChatWindow';
 import { NewChatModal } from './NewChatModal';
+import { ClientInbox } from './ClientInbox';
 import { socketService } from '../../services/socket';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -56,6 +57,11 @@ export const MessagesPage: React.FC = () => {
       socketService.disconnect();
     };
   }, [dispatch, accessToken]);
+
+  // Clients get a read-only inbox (messages from BeautyDoctors and the clinic).
+  if (user?.role === 'client') {
+    return <ClientInbox />;
+  }
 
   const tabs: Array<{ key: 'All' | 'Primary' | 'Clinical'; label: string }> = [
     { key: 'All', label: isGreek ? 'ΟΛΑ' : 'ALL' },
@@ -120,7 +126,7 @@ export const MessagesPage: React.FC = () => {
             </motion.p>
           </div>
 
-          {user && user.role !== 'client' && (
+          {user && (
             <motion.button 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

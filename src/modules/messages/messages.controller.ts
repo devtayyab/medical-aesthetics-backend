@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MessagesService } from './messages.service';
@@ -14,7 +14,17 @@ export class MessagesController {
     @Post('conversations')
     @ApiOperation({ summary: 'Create or get a conversation' })
     createConversation(@Req() req, @Body() dto: CreateConversationDto) {
+        // Clients only receive messages (their inbox); they do not start conversations.
+        if (String(req.user?.role || '').toLowerCase() === 'client') {
+            throw new ForbiddenException('Clients cannot start new conversations');
+        }
         return this.messagesService.createConversation(req.user.id, dto);
+    }
+
+    @Get('inbox')
+    @ApiOperation({ summary: 'Messages received by the current user (from BeautyDoctors and clinics)' })
+    getInbox(@Req() req) {
+        return this.messagesService.getInbox(req.user.id);
     }
 
     @Get('conversations')

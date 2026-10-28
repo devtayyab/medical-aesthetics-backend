@@ -116,13 +116,13 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Send notification' })
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
-  sendNotification(@Body() body: any) {
+  sendNotification(@Body() body: any, @Request() req) {
     return this.notificationsService.create(
       body.recipientId,
       body.type,
       body.title,
       body.message,
-      body.data,
+      { ...(body.data || {}), category: 'message', senderId: req.user.id },
     );
   }
 

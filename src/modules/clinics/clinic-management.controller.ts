@@ -594,7 +594,8 @@ export class ClinicManagementController {
       notificationDto.type as any,
       notificationDto.title,
       notificationDto.message,
-      notificationDto.data,
+      // Tagged as a message so it appears in the client's inbox
+      { ...(notificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
   }
 
@@ -611,7 +612,7 @@ export class ClinicManagementController {
       bulkNotificationDto.type as any,
       bulkNotificationDto.title,
       bulkNotificationDto.message,
-      bulkNotificationDto.data,
+      { ...(bulkNotificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
     return { message: 'Bulk notifications sent successfully' };
   }
