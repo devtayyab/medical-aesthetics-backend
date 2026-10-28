@@ -106,12 +106,6 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
  
- {/* Floating Badges */}
- <div className="absolute top-6 left-6 flex flex-col gap-2">
- <div className="bg-[#CBFF38] text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">
- ELITE_PARTNER
- </div>
- </div>
 
  <button className="absolute top-6 right-6 size-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black transition-all">
  <Heart size={20} />

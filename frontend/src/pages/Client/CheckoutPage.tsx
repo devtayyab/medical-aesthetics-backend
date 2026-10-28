@@ -300,7 +300,6 @@ export const CheckoutPage: React.FC = () => {
  </div>
  <span className="font-black uppercase text-sm tracking-tight">Pay at Venue</span>
  </div>
- <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Earn Points</span>
  </button>
 
  </div>
@@ -364,7 +363,7 @@ export const CheckoutPage: React.FC = () => {
  <p className="text-xs text-gray-500 leading-relaxed">Free cancellation up to 24 hours before your start time. Within 24 hours, the clinic might charge a late fee.</p>
  </div>
  <div className="flex items-center gap-2 text-[10px] font-black text-lime-600 uppercase tracking-widest bg-lime-50 rounded-full px-4 py-1 self-start">
- <FaLock size={10} /> Secure Booking via TreatAesthetics
+ <FaLock size={10} /> Secure Booking via <span className="notranslate">BeautyDoctors</span>
  </div>
  </div>
  </div>

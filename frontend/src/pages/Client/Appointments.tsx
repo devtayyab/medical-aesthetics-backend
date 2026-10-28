@@ -154,7 +154,9 @@ const getAppointmentMeta = (apt: Appointment, isGreek: boolean) => {
   }
   return {
     isPast,
-    badgeText: isGreek ? (rawStatus === 'PENDING' ? 'ΣΕ ΑΝΑΜΟΝΗ' : rawStatus) : rawStatus,
+    badgeText: rawStatus === 'PENDING'
+      ? (isGreek ? 'ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ' : 'PENDING CONFIRMATION')
+      : rawStatus.replace(/_/g, ' '),
     badgeClass: 'bg-gray-100/80 text-gray-600 border-gray-200',
     icon: null,
   };
@@ -218,7 +220,9 @@ export const Appointments: React.FC = () => {
 
   const allAppointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
   const filteredAppointments = allAppointments.filter(apt => {
-    const status = apt.status.toLowerCase();
+    const status = (apt.status || '').toLowerCase();
+    // "All" really shows every appointment: past, cancelled and no-show included
+    if (activeFilter === 'all') return true;
     if (status === 'cancelled' || status === 'no_show') return false;
     
     const isPast = new Date(apt.startTime).getTime() < new Date().getTime();
@@ -230,7 +234,6 @@ export const Appointments: React.FC = () => {
       return ['confirmed', 'pending', 'pending_payment'].includes(status);
     }
 
-    if (activeFilter === 'all') return true;
     return status === activeFilter;
   }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
