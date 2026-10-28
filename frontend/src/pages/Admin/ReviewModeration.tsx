@@ -24,10 +24,12 @@ export const ReviewModeration: React.FC = () => {
   }, []);
   const isEl = currentLang === 'el';
 
+ const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+
  const fetchPendingReviews = async () => {
  try {
  setIsLoading(true);
- const response = await clinicsAPI.getPendingReviews();
+ const response = await clinicsAPI.getPendingReviews({ status: filter });
  setReviews(response.data.reviews || []);
  } catch (err: any) {
  setError(err.response?.data?.message ||"Failed to fetch pending reviews");
@@ -38,7 +40,17 @@ export const ReviewModeration: React.FC = () => {
 
  useEffect(() => {
  fetchPendingReviews();
- }, []);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [filter]);
+
+ const handleReplyVisibility = async (reviewId: string, hidden: boolean) => {
+ try {
+ await clinicsAPI.setReviewResponseVisibility(reviewId, hidden);
+ setReviews(reviews.map(r => (r.id === reviewId ? { ...r, responseHidden: hidden } : r)));
+ } catch (err: any) {
+ alert(err.response?.data?.message || (isEl ? 'Η ενέργεια απέτυχε' : 'Action failed'));
+ }
+ };
 
  const handleModerate = async (reviewId: string, status: 'APPROVED' | 'REJECTED') => {
  try {
@@ -68,6 +80,23 @@ export const ReviewModeration: React.FC = () => {
  </p>
  </div>
 
+ <div className="flex flex-wrap gap-2 mb-6">
+ {([
+ { key: 'PENDING', label: isEl ? 'Σε έλεγχο' : 'Pending' },
+ { key: 'APPROVED', label: isEl ? 'Δημοσιευμένες' : 'Published' },
+ { key: 'REJECTED', label: isEl ? 'Κρυφές' : 'Hidden' },
+ ] as const).map(tab => (
+ <button
+ key={tab.key}
+ type="button"
+ onClick={() => setFilter(tab.key)}
+ className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest border transition-all ${filter === tab.key ? 'bg-black text-[#CBFF38] border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-black'}`}
+ >
+ {tab.label}
+ </button>
+ ))}
+ </div>
+
  {error && (
  <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-bold uppercase">
  {error}
@@ -77,8 +106,8 @@ export const ReviewModeration: React.FC = () => {
  {reviews.length === 0 ? (
  <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm">
  <Check className="mx-auto h-12 w-12 text-lime-500 mb-4" />
- <h3 className="text-xl font-black text-gray-900 uppercase">{isEl ? 'Δεν υπάρχουν αξιολογήσεις σε εκκρεμότητα.' : 'All caught up!'}</h3>
- <p className="text-gray-500 mt-2 uppercase text-xs font-bold tracking-widest">{isEl ? 'Καμία εκκρεμής αξιολόγηση προς έλεγχο.' : 'No pending reviews to moderate.'}</p>
+ <h3 className="text-xl font-black text-gray-900 uppercase">{isEl ? 'Δεν υπάρχουν αξιολογήσεις εδώ.' : 'Nothing here.'}</h3>
+ <p className="text-gray-500 mt-2 uppercase text-xs font-bold tracking-widest">{isEl ? 'Δεν βρέθηκαν αξιολογήσεις σε αυτή την κατηγορία.' : 'No reviews in this list.'}</p>
  </div>
  ) : (
  <div className="grid gap-6">
@@ -116,7 +145,7 @@ export const ReviewModeration: React.FC = () => {
  <div className="min-w-0">
  <p className="text-[10px] font-black uppercase text-gray-400">{isEl ? 'Ραντεβού' : 'Appointment'}</p>
  <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">
- {format(new Date(review.appointment.startTime),"MMM d, yyyy")}
+ {format(new Date(review.appointment.startTime),"dd/MM/yyyy")}
  </p>
  </div>
  </div>
@@ -140,27 +169,51 @@ export const ReviewModeration: React.FC = () => {
  </span>
  </div>
 
- <p className="text-gray-600 leading-relaxed border-l-4 border-lime-500 pl-4 py-1">"{review.comment ||"No comment provided."}"
+ <p className="text-gray-600 leading-relaxed border-l-4 border-lime-500 pl-4 py-1">"{review.comment || (isEl ? 'Χωρίς σχόλιο.' : 'No comment provided.')}"
  </p>
  </div>
 
+ {review.response && (
+ <div className={`mt-6 p-4 rounded-2xl border ${review.responseHidden ? 'bg-gray-50 border-dashed border-gray-200 opacity-60' : 'bg-black text-white border-black'}`}>
+ <div className="flex items-start justify-between gap-4">
+ <div className="min-w-0">
+ <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${review.responseHidden ? 'text-gray-400' : 'text-[#CBFF38]'}`}>
+ {isEl ? 'Απάντηση κλινικής' : 'Clinic reply'}{review.responseHidden ? (isEl ? ' (κρυφή)' : ' (hidden)') : ''}
+ </p>
+ <p className="text-sm leading-relaxed break-words">{review.response}</p>
+ </div>
+ <button
+ type="button"
+ onClick={() => handleReplyVisibility(review.id, !review.responseHidden)}
+ className="shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white text-black border border-gray-200 hover:border-black"
+ >
+ {review.responseHidden ? (isEl ? 'Εμφάνιση' : 'Show') : (isEl ? 'Απόκρυψη' : 'Hide')}
+ </button>
+ </div>
+ </div>
+ )}
+
  <div className="mt-8 flex flex-wrap items-center gap-3 md:gap-4">
+ {filter !== 'APPROVED' && (
  <Button
  onClick={() => handleModerate(review.id, 'APPROVED')}
  variant="primary"
  className="flex-1 max-w-[200px] h-12 rounded-xl bg-[#CBFF38] text-black hover:bg-lime-400 font-black uppercase text-xs tracking-widest shadow-lg shadow-lime-100"
  >
  <Check className="mr-2" size={16} />
- Approve
+ {isEl ? 'Δημοσίευση' : 'Publish'}
  </Button>
+ )}
+ {filter !== 'REJECTED' && (
  <Button
  onClick={() => handleModerate(review.id, 'REJECTED')}
  variant="outline"
  className="flex-1 max-w-[200px] h-12 rounded-xl border-2 border-red-50 text-red-100 hover:bg-red-50 hover:text-red-600 transition-all font-black uppercase text-xs tracking-widest"
  >
  <X className="mr-2" size={16} />
- Reject
+ {isEl ? 'Απόκρυψη' : 'Hide'}
  </Button>
+ )}
  </div>
  </div>
  </div>

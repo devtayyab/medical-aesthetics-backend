@@ -169,6 +169,29 @@ export class EventHandlersService {
     );
   }
 
+  @OnEvent('review.created')
+  async handleReviewCreated(eventData: any) {
+    const { review, clinicName } = eventData || {};
+    if (!review) return;
+    await this.notificationsService.notifyAdmins(
+      'Νέα αξιολόγηση προς έλεγχο',
+      `${clinicName || 'Κλινική'} · ${review.rating}/5${review.comment ? ` · "${String(review.comment).slice(0, 120)}"` : ''}`,
+      { reviewId: review.id, clinicId: review.clinicId, type: 'review_created', link: '/admin/reviews' },
+    );
+  }
+
+  @OnEvent('review.responded')
+  async handleReviewResponded(eventData: any) {
+    const { review, clinicName, responderId } = eventData || {};
+    if (!review) return;
+    await this.notificationsService.notifyAdmins(
+      'Απάντηση κλινικής σε αξιολόγηση',
+      `${clinicName || 'Κλινική'} απάντησε: "${String(review.response || '').slice(0, 160)}"`,
+      { reviewId: review.id, clinicId: review.clinicId, type: 'review_responded', link: '/admin/reviews' },
+      responderId ? [responderId] : [],
+    );
+  }
+
   @OnEvent('loyalty.points.awarded')
   async handleLoyaltyPointsAwarded(eventData: any) {
     const { clientId, points, balance } = eventData;

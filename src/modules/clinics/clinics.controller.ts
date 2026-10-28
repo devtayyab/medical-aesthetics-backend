@@ -169,6 +169,17 @@ export class ClinicsController {
     return this.clinicsService.getPendingReviews(query);
   }
 
+  @Patch('reviews/:id/response-visibility')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Hide or show the clinic reply to a review (admin)' })
+  async setReviewResponseVisibility(
+    @Param('id') id: string,
+    @Body() body: { hidden: boolean },
+  ) {
+    return this.clinicsService.setReviewResponseVisibility(id, !!body?.hidden);
+  }
+
   @Patch('reviews/:id/moderate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

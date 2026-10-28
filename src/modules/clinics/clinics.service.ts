@@ -1411,7 +1411,7 @@ export class ClinicsService {
     const [reviews, total] = await queryBuilder.getManyAndCount();
 
     return {
-      reviews,
+      reviews: reviews.map((r) => (r.responseHidden ? { ...r, response: null, respondedAt: null } : r)),
       total,
       limit: query?.limit,
       offset: query?.offset || 0,
@@ -1473,8 +1473,24 @@ export class ClinicsService {
       throw new NotFoundException('Review not found');
     }
 
-    review.response = response;
+    if (!response || !response.trim()) {
+      throw new BadRequestException('Response text is required');
+    }
+    review.response = response.trim();
     review.respondedAt = new Date();
+    review.responseHidden = false;
+    const saved = await this.reviewsRepository.save(review);
+
+    // Replies are published without approval; admins are told so they can hide one if needed.
+    this.eventEmitter.emit('review.responded', { review: saved, clinicName: clinic.name, responderId: ownerId });
+    return saved;
+  }
+
+  /** Admin: hide or show the clinic's reply to a review. */
+  async setReviewResponseVisibility(reviewId: string, hidden: boolean): Promise<Review> {
+    const review = await this.reviewsRepository.findOne({ where: { id: reviewId } });
+    if (!review) throw new NotFoundException('Review not found');
+    review.responseHidden = !!hidden;
     return this.reviewsRepository.save(review);
   }
 
@@ -1512,55 +1528,19 @@ export class ClinicsService {
     return savedReview;
   }
 
-  async toggleReviewVisibility(ownerId: string, reviewId: string): Promise<Review> {
-    // 1. Find the clinic managed by this user (owner or agent)
-    const clinic = await this.findByOwnerId(ownerId);
-    if (!clinic) {
-      throw new NotFoundException('Clinic not found for this user');
-    }
-
-    // 2. Find the review and ensure it belongs to this clinic
-    const review = await this.reviewsRepository.findOne({
-      where: { id: reviewId },
-      relations: ['clinic'],
-    });
-
-    if (!review) {
-      throw new NotFoundException('Review not found');
-    }
-
-    if (review.clinicId !== clinic.id) {
-      throw new BadRequestException('Review does not belong to your clinic');
-    }
-
-    // 3. Toggle status
-    if (review.status === ReviewStatus.APPROVED) {
-      review.status = ReviewStatus.REJECTED;
-      review.approvedById = null;
-      review.approvedAt = null;
-    } else {
-      review.status = ReviewStatus.APPROVED;
-      review.approvedById = ownerId;
-      review.approvedAt = new Date();
-      review.rejectReason = null;
-    }
-
-    const savedReview = await this.reviewsRepository.save(review);
-
-    // 4. Recalculate clinic rating immediately
-    await this.recalculateClinicRating(clinic.id);
-
-    return savedReview;
-  }
-
-
-  async getPendingReviews(query?: { limit?: number; offset?: number }): Promise<any> {
+  async getPendingReviews(query?: { limit?: number; offset?: number; status?: string }): Promise<any> {
+    // Admin moderation list. Defaults to PENDING; `status=APPROVED|REJECTED|ALL` lets the admin
+    // find published reviews to hide (REJECTED = hidden) or replies to hide.
+    const requested = String(query?.status || ReviewStatus.PENDING).toUpperCase();
     const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
       .leftJoinAndSelect('review.client', 'client')
       .leftJoinAndSelect('review.clinic', 'clinic')
       .leftJoinAndSelect('review.appointment', 'appointment')
-      .where('review.status = :status', { status: ReviewStatus.PENDING })
       .orderBy('review.createdAt', 'DESC');
+    if (requested !== 'ALL') {
+      const status = (Object.values(ReviewStatus) as string[]).includes(requested) ? requested : ReviewStatus.PENDING;
+      queryBuilder.where('review.status = :status', { status });
+    }
 
     if (query?.limit) queryBuilder.limit(query.limit);
     if (query?.offset) queryBuilder.offset(query.offset);
@@ -1679,7 +1659,9 @@ export class ClinicsService {
         status: ReviewStatus.PENDING,
       });
 
-      return await this.reviewsRepository.save(review);
+      const savedReview = await this.reviewsRepository.save(review);
+      this.eventEmitter.emit('review.created', { review: savedReview, clinicName: clinic.name });
+      return savedReview;
     } catch (error) {
       console.error('Error creating review:', error);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {

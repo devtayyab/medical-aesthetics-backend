@@ -51,15 +51,6 @@ const ReviewsPage: React.FC = () => {
  }
  };
 
- const handleToggleVisibility = async (reviewId: string) => {
- try {
- await clinicApi.reviews.toggleVisibility(reviewId);
- dispatch(fetchReviews(undefined));
- } catch (error) {
- console.error('Failed to toggle visibility:', error);
- }
- };
-
  const renderStars = (rating: number, size = 14) => {
  return (
  <div className="flex gap-0.5">
@@ -87,7 +78,7 @@ const ReviewsPage: React.FC = () => {
  </div>
  <div className="space-y-1">
  <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Αξιολογήσεις ασθενών" : "Patient Reviews"}</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Monitor and curate patient signal protocols and clinical standards.</p>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? 'Διαβάστε τις αξιολογήσεις και απαντήστε. Τη δημοσίευση τη διαχειρίζεται η ομάδα BeautyDoctors.' : 'Read reviews and reply. Publishing is handled by the BeautyDoctors team.'}</p>
  </div>
  </div>
  
@@ -162,18 +153,23 @@ const ReviewsPage: React.FC = () => {
  {review.client.firstName} {review.client.lastName}
  </h3>
  <div className="size-1.5 rounded-full bg-gray-200" />
- <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(review.createdAt).toLocaleDateString()}</span>
+ <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(review.createdAt).toLocaleDateString('el-GR', { timeZone: 'Europe/Athens', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
  </div>
  {renderStars(review.rating, 16)}
  </div>
 
+ {/* Visibility is decided by the BeautyDoctors admin; the clinic can only reply. */}
  <div className="flex items-center gap-2">
- <button
- onClick={() => handleToggleVisibility(review.id)}
- className="size-11 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all shadow-sm"
- >
- {review.isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
- </button>
+ <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+ (review as any).status === 'APPROVED' ? 'bg-lime-50 text-lime-700' : (review as any).status === 'REJECTED' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-700'
+ }`}>
+ {(review as any).status === 'APPROVED' ? <Eye size={12} /> : <EyeOff size={12} />}
+ {(review as any).status === 'APPROVED'
+ ? (isGreek ? 'Δημοσιευμένη' : 'Published')
+ : (review as any).status === 'REJECTED'
+ ? (isGreek ? 'Κρυφή' : 'Hidden')
+ : (isGreek ? 'Σε έλεγχο' : 'In review')}
+ </span>
  </div>
  </div>
 
@@ -198,9 +194,9 @@ const ReviewsPage: React.FC = () => {
  <MessageSquare size={16} />
  </div>
  <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-2">Official Clinic Response</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-2">{isGreek ? 'Απάντηση κλινικής' : 'Clinic reply'}</p>
  <p className="text-sm font-medium leading-relaxed mb-4 text-gray-300">{review.response}</p>
- <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Signal logged on {new Date(review.respondedAt!).toLocaleDateString()}</p>
+ <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">{new Date(review.respondedAt!).toLocaleDateString('el-GR', { timeZone: 'Europe/Athens', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
  </div>
  </div>
  </motion.div>
@@ -213,7 +209,7 @@ const ReviewsPage: React.FC = () => {
  <textarea
  value={responseText}
  onChange={(e) => setResponseText(e.target.value)}
- placeholder="Draft your clinical response..."
+ placeholder={isGreek ? 'Γράψτε την απάντησή σας...' : 'Write your reply...'}
  rows={4}
  className="w-full p-6 bg-white border-2 border-black rounded-3xl font-medium text-gray-900 focus:ring-0 outline-none transition-all resize-none shadow-xl"
  />
@@ -225,13 +221,13 @@ const ReviewsPage: React.FC = () => {
  }}
  className="px-6 py-3 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all"
  >
- Abort
+ {isGreek ? 'Ακύρωση' : 'Cancel'}
  </button>
  <button
  onClick={() => handleRespond(review.id)}
  className="px-8 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-lime-500/10 hover:bg-black hover:text-[#CBFF38] transition-all"
  >
- Transmit Signal
+ {isGreek ? 'Δημοσίευση απάντησης' : 'Post reply'}
  </button>
  </div>
  </motion.div>
@@ -241,7 +237,7 @@ const ReviewsPage: React.FC = () => {
  className="group h-12 px-6 bg-white border-2 border-black text-black rounded-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-black hover:text-[#CBFF38] transition-all"
  >
  <MessageSquare size={14} className="group-hover:rotate-12 transition-transform" />
- Initialize Response Protocol
+ {isGreek ? 'Απάντηση' : 'Reply'}
  </button>
  )}
  </AnimatePresence>
