@@ -16,6 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { PaymentsModule } from '../payments/payments.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PaymentsModule } from '../payments/payments.module';
     forwardRef(() => LoyaltyModule),
     forwardRef(() => PaymentsModule),
     NotificationsModule,
+    UsersModule,
   ],
   controllers: [ClinicsController, ClinicManagementController],
   providers: [ClinicsService],

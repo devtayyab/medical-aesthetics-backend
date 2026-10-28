@@ -25,6 +25,13 @@ export const adminService = {
     api.patch('/admin/loyalty', data),
   getLogs: () => api.get('/admin/monitor'),
   toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
+  getUserOpenWork: (id: string) => api.get(`/admin/users/${id}/open-work`),
+  deactivateUser: (id: string, reassignToUserId?: string) =>
+    api.post(`/admin/users/${id}/deactivate`, { reassignToUserId }),
+  reactivateUser: (id: string) => api.post(`/admin/users/${id}/reactivate`),
+  getStaffRequests: () => api.get('/admin/staff-requests'),
+  approveStaffRequest: (id: string) => api.post(`/admin/staff-requests/${id}/approve`),
+  rejectStaffRequest: (id: string) => api.post(`/admin/staff-requests/${id}/reject`),
   getWalletSummary: () => api.get('/admin/wallet/summary'),
   getRecentTransactions: () => api.get('/admin/wallet/transactions'),
   getPaymentsLedger: (params?: {

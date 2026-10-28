@@ -71,8 +71,9 @@ export const AccessControl: React.FC<AccessControlProps> = ({
       toast.error("Passwords do not match!");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    // Same rule as registration and password reset (item 69).
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
       return;
     }
     try {
@@ -114,6 +115,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  setIsSubmitting(true);
  try {
  const submitData: any = { ...createForm };
+ if (!submitData.password) delete submitData.password;
  // For clinic_owner: send assignedClinicIds instead of clinicId
  if (['clinic_owner', 'doctor', 'secretariat', 'manager'].includes(createForm.role)) {
         if (createForm.assignedClinicIds.length > 0) submitData.clinicId = createForm.assignedClinicIds[0];
@@ -286,7 +288,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  onClick={() => onToggleStatus(user.id)}
  className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive ?"bg-green-100 text-green-800" :"bg-red-100 text-red-800"}`}
  >
- {user.isActive ?"Active" :"Inactive"}
+ {user.isActive ? (isGreek ?"Ενεργός · Απενεργοποίηση" :"Active · Deactivate") : (isGreek ?"Ανενεργός · Ενεργοποίηση" :"Inactive · Reactivate")}
  </button>
  </td>
  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -431,7 +433,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  </button>
  </div>
 
- <form onSubmit={handleCreateSubmit} className="space-y-4">
+ <form onSubmit={handleCreateSubmit} className="space-y-4" autoComplete="off">
  <div className="grid grid-cols-2 gap-4">
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -460,6 +462,8 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  <input
  type="email"
  required
+ name="new-user-email"
+ autoComplete="off"
  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#CBFF38]"
  value={createForm.email}
  onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
@@ -467,10 +471,13 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  </div>
 
  <div>
- <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">Password (optional)</label>
  <input
  type="password"
- required
+ name="new-user-password"
+ autoComplete="new-password"
+ minLength={8}
+ placeholder="Leave empty to email a set-password link"
  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#CBFF38]"
  value={createForm.password}
  onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}

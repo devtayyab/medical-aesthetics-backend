@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CreateClinicProfileDto,
@@ -24,6 +25,8 @@ import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AccountLinksService } from '../users/account-links.service';
+import { assertPasswordPolicy } from '../../common/utils/password-policy.util';
 
 @Injectable()
 export class ClinicsService {
@@ -48,6 +51,7 @@ export class ClinicsService {
     private agentAccessRepository: Repository<AgentClinicAccess>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
+    private accountLinks: AccountLinksService,
   ) { }
 
   private isClinicManagerOrAdmin(user: any, clinicId?: string): boolean {
@@ -863,61 +867,95 @@ export class ClinicsService {
       throw new BadRequestException('Could not determine clinic to assign staff to. Please select or specify a clinic.');
     }
 
-    // Check if user already exists
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: staffData.email },
-    });
+    const email = typeof staffData.email === 'string' ? staffData.email.trim().toLowerCase() : '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('A valid email address is required.');
+    }
 
+    // Never touch an existing account (item 26): earlier this changed a doctor's own
+    // account into a salesperson. The admin handles existing accounts from Users.
+    const existingUser = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email })
+      .getOne();
     if (existingUser) {
-      // If user exists, we update their assignment to this clinic
-      existingUser.assignedClinicId = clinic.id;
-      if (staffData.role) {
-        existingUser.role = staffData.role;
-      }
-      const updated = await this.usersRepository.save(existingUser);
+      throw new ConflictException('An account with this email already exists. Its role was not changed. Please contact the BeautyDoctors admin.');
+    }
 
-      if (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner') {
-        const existingOwnership = await this.clinicOwnershipRepository.findOne({
-          where: { clinicId: clinic.id, ownerUserId: updated.id },
-        });
-        if (!existingOwnership) {
-          await this.clinicOwnershipRepository.save(
-            this.clinicOwnershipRepository.create({
-              clinicId: clinic.id,
-              ownerUserId: updated.id,
-            }),
-          );
-        }
+    const isAdminRequest = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    const requestedRole = staffData.role || UserRole.DOCTOR;
+
+    if (!isAdminRequest) {
+      // Clinics can only ask for clinic staff; anything else needs the admin.
+      const clinicRoles = [UserRole.DOCTOR, UserRole.SECRETARIAT];
+      if (!clinicRoles.includes(requestedRole)) {
+        throw new ForbiddenException('Clinics can request doctor or secretariat accounts only.');
       }
-      return updated;
+    } else if (requestedRole === UserRole.SUPER_ADMIN && role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You are not allowed to assign the SUPER_ADMIN role.');
+    }
+
+    const requester = await this.usersRepository.findOne({ where: { id: ownerId } });
+    // Unusable random password: the person sets their own through the emailed link.
+    const randomPassword = randomBytes(24).toString('hex');
+    const adminPassword = isAdminRequest && typeof staffData.password === 'string' && staffData.password.length > 0
+      ? staffData.password
+      : null;
+    if (adminPassword) {
+      assertPasswordPolicy(adminPassword);
     }
 
     const newUser = this.usersRepository.create({
-      ...staffData,
-      role: staffData.role || UserRole.DOCTOR,
+      email,
+      firstName: staffData.firstName,
+      lastName: staffData.lastName,
+      phone: staffData.phone || '',
+      role: requestedRole,
       assignedClinicId: clinic.id,
-      passwordHash: staffData.password || 'TemporaryPassword123!',
-      isActive: true,
+      passwordHash: adminPassword || randomPassword,
+      // Clinic "Add staff" is only a REQUEST until an admin approves it.
+      isActive: isAdminRequest,
+      isEmailVerified: isAdminRequest,
+      accountSetupPending: !adminPassword,
+      profile: isAdminRequest
+        ? undefined
+        : {
+            staffRequest: {
+              status: 'pending',
+              requestedById: ownerId,
+              requestedByName: requester ? `${requester.firstName || ''} ${requester.lastName || ''}`.trim() : null,
+              clinicId: clinic.id,
+              requestedAt: new Date().toISOString(),
+            },
+          },
     } as any);
 
-    const savedUser = await this.usersRepository.save(newUser);
+    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
-    // If role is clinic_owner, also ensure mapping in clinicOwnership
-    if (clinic && (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner')) {
+    // If role is clinic_owner (admin only), also ensure mapping in clinicOwnership
+    if (isAdminRequest && (requestedRole === UserRole.CLINIC_OWNER || requestedRole === 'clinic_owner')) {
       const existingOwnership = await this.clinicOwnershipRepository.findOne({
-        where: { clinicId: clinic.id, ownerUserId: (savedUser as any).id },
+        where: { clinicId: clinic.id, ownerUserId: savedUser.id },
       });
       if (!existingOwnership) {
         await this.clinicOwnershipRepository.save(
           this.clinicOwnershipRepository.create({
             clinicId: clinic.id,
-            ownerUserId: (savedUser as any).id,
+            ownerUserId: savedUser.id,
           }),
         );
       }
     }
 
-    return savedUser as unknown as User;
+    if (isAdminRequest && !adminPassword) {
+      await this.accountLinks.sendSetPasswordLink(savedUser, 'staff');
+    }
+
+    if (!isAdminRequest) {
+      (savedUser as any).pendingApproval = true;
+      (savedUser as any).message = 'Request sent. The BeautyDoctors admin will review it; the new staff member gets an email to set a password once approved.';
+    }
+    return savedUser;
   }
 
   async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
@@ -949,10 +987,11 @@ export class ClinicsService {
 
     // 1. Get all staff assigned to this clinic (Doctor, Clinic Owner, Secretariat)
     const assignedStaff = await this.usersRepository.find({
+      // Deactivated staff and pending staff requests are never offered for assignment.
       where: [
-        { assignedClinicId: clinicId, role: UserRole.DOCTOR },
-        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
-        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT },
+        { assignedClinicId: clinicId, role: UserRole.DOCTOR, isActive: true },
+        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER, isActive: true },
+        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT, isActive: true },
       ],
       order: { firstName: 'ASC' },
     });
@@ -980,6 +1019,7 @@ export class ClinicsService {
       const owner = clinic.owner;
       if (
         (owner.role === UserRole.DOCTOR || owner.role === UserRole.CLINIC_OWNER) &&
+        owner.isActive !== false &&
         !uniqueProviders.has(owner.id)
       ) {
         uniqueProviders.set(owner.id, {
@@ -1006,6 +1046,7 @@ export class ClinicsService {
     if (missingOwnerUserIds.length > 0) {
       const coOwners = await this.usersRepository.findBy({
         id: In(missingOwnerUserIds),
+        isActive: true,
       });
       for (const owner of coOwners) {
         if (!uniqueProviders.has(owner.id)) {
