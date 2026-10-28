@@ -2227,6 +2227,12 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // Metadata updates are merged: a partial update must not wipe the call history or the
+    // appointment link of the confirmation task
+    if (updateData.metadata) {
+      updateData.metadata = { ...(action.metadata || {}), ...updateData.metadata };
+    }
+
     // A moved task needs a fresh reminder
     const dueChanged = updateData.dueDate && new Date(updateData.dueDate).getTime() !== new Date(action.dueDate || 0).getTime();
     const reminderChanged = updateData.reminderDate && new Date(updateData.reminderDate).getTime() !== new Date(action.reminderDate || 0).getTime();
@@ -2234,11 +2240,6 @@ export class CrmService implements OnModuleInit {
       const baseMeta = { ...(updateData.metadata || action.metadata || {}) };
       delete baseMeta.reminderSent;
       updateData.metadata = baseMeta;
-    }
-
-    // Partial metadata updates must not wipe the call history
-    if (updateData.metadata && Array.isArray(action.metadata?.callNotes) && !updateData.metadata.callNotes) {
-      updateData.metadata = { ...updateData.metadata, callNotes: action.metadata.callNotes };
     }
 
     if (callNote && (callNote.note || callNote.outcome || callNote.nextGoal)) {
@@ -2272,7 +2273,10 @@ export class CrmService implements OnModuleInit {
       updateData.completedAt = new Date();
 
       // AUTO-CONFIRMATION FLOW: If this task was for an appointment confirmation, confirm the appointment
-      if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation') {
+      // (not when the call ended negatively, e.g. not interested / wrong number)
+      const finalOutcome = updateData.metadata?.callOutcome ?? action.metadata?.callOutcome;
+      const negativeOutcome = ['not_interested', 'wrong_number', 'no_answer', 'call_later'].includes(finalOutcome);
+      if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation' && !negativeOutcome) {
         try {
           const appointmentId = action.metadata.appointmentId;
           const apt = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
