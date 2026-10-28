@@ -9,6 +9,7 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import * as crypto from 'crypto';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { getPaidRevenueTotal } from './revenue.util';
 
 @Injectable()
 export class FinancialService {
@@ -202,7 +203,19 @@ export class FinancialService {
             .skip(isNaN(parsedOffset) ? 0 : parsedOffset)
             .getManyAndCount();
 
-        return { items, total };
+        // Net paid revenue for the same filters: the shared definition used by every revenue page.
+        const end = filters.endDate && filters.endDate.trim() !== '' ? new Date(filters.endDate) : null;
+        if (end && !isNaN(end.getTime())) end.setHours(23, 59, 59, 999);
+        const netRevenue = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, {
+            clinicId: filters.clinicId,
+            providerId: filters.providerId,
+            salespersonId: filters.salespersonId,
+            clientId: filters.clientId,
+            startDate: filters.startDate && filters.startDate.trim() !== '' ? new Date(filters.startDate) : null,
+            endDate: end && !isNaN(end.getTime()) ? end : null,
+        });
+
+        return { items, total, netRevenue, currency: 'EUR' };
     }
 
     /** Look up a payment by its transaction reference (used for webhook idempotency). */

@@ -36,8 +36,8 @@ export const Dashboard: React.FC = () => {
  noShow: 10,
  done: 80,
  },
- turnoverMtd: 45000,
- turnoverTarget: 50000,
+ // Turnover MTD comes from the payments ledger (shared revenue definition, EUR, paid only).
+ turnoverMtd: Number((_metrics as any)?.revenue || 0),
  cancellationRate:"10%",
  noShowRate:"6%",
  tasksDueToday: 5,
@@ -85,7 +85,7 @@ export const Dashboard: React.FC = () => {
  <div>
  <p className="text-sm font-medium text-gray-500 mb-1">Turnover MTD</p>
  <p className="text-2xl font-bold text-gray-900">€{expandedMetrics.turnoverMtd.toLocaleString()}</p>
- <p className="text-xs text-gray-400 mt-1">Target: €{expandedMetrics.turnoverTarget.toLocaleString()}</p>
+ <p className="text-xs text-gray-400 mt-1">Paid, EUR, this month</p>
  </div>
  <div className="p-3 bg-green-50 text-green-600 rounded-lg">
  <Euro className="w-6 h-6" />

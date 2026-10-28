@@ -35,6 +35,7 @@ import { FinancialService } from '../payments/financial.service';
 import { formatDateInTz, formatTimeInTz, formatDateTimeInTz } from '../../common/utils/timezone.util';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { RevenueFilters, buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -2643,8 +2644,10 @@ export class BookingsService {
     const completedAppointments = appointments.filter(a => a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.EXECUTED).length;
     const cancelledAppointments = appointments.filter(a => a.status === AppointmentStatus.CANCELLED || a.status === AppointmentStatus.DELETED).length;
     const noShows = appointments.filter(a => a.status === AppointmentStatus.NO_SHOW).length;
-    const totalRevenue = appointments.reduce((sum, a) => sum + (Number(a.amountPaid) || 0), 0);
-    const averageAppointmentValue = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+    // Revenue: ONE shared definition (payments received, EUR, net of refunds, by payment date).
+    const revenueFilters = await this.resolveRevenueScope(userId, userRole, query);
+    const totalRevenue = await getPaidRevenueTotal(this.appointmentsRepository.manager, revenueFilters);
+    const averageAppointmentValue = completedAppointments > 0 ? totalRevenue / completedAppointments : 0;
 
     return {
       totalAppointments,
@@ -2652,9 +2655,51 @@ export class BookingsService {
       cancelledAppointments,
       noShows,
       totalRevenue,
+      currency: 'EUR',
       averageAppointmentValue,
-      period: { startDate: query.startDate, endDate: query.endDate }
+      period: { startDate: query.startDate, endDate: query.endDate },
+      clinicId: query.clinicId || null,
     };
+  }
+
+  /**
+   * Revenue scope for clinic-side analytics: admins see everything (or one clinic), clinic
+   * staff only their own clinic(s), a doctor without a clinic only payments where they are
+   * the provider. Period = payment date.
+   */
+  private async resolveRevenueScope(
+    userId: string,
+    userRole: string,
+    query: { startDate?: string; endDate?: string; clinicId?: string },
+  ): Promise<RevenueFilters> {
+    const filters: RevenueFilters = {};
+    if (query.startDate) filters.startDate = new Date(query.startDate);
+    if (query.endDate) {
+      const end = new Date(query.endDate);
+      // A date-only end (yyyy-MM-dd) includes the whole day.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(query.endDate))) end.setUTCHours(23, 59, 59, 999);
+      filters.endDate = end;
+    }
+
+    const role = String(userRole || '').toLowerCase();
+    if (this.isAdminRole(role)) {
+      if (query.clinicId) filters.clinicId = query.clinicId;
+    } else if (role === 'clinic_owner' || role === 'secretariat' || role === 'doctor') {
+      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+      if (!user) throw new NotFoundException('User not found');
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+      if (clinicIds.length > 0) {
+        filters.clinicIds = query.clinicId ? clinicIds.filter(id => id === query.clinicId) : clinicIds;
+      } else {
+        filters.providerId = userId;
+      }
+    } else if (role === 'manager' && query.clinicId) {
+      filters.clinicId = query.clinicId;
+    } else {
+      filters.providerId = userId;
+    }
+    return filters;
   }
 
   async getClinicRevenueAnalytics(
@@ -2662,60 +2707,40 @@ export class BookingsService {
     userRole: string,
     query: { startDate?: string; endDate?: string; serviceId?: string; clinicId?: string },
   ): Promise<any> {
-    const qb = this.appointmentsRepository.createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.service', 'service')
-      .leftJoinAndSelect('service.treatment', 'treatment');
+    // ONE figure for every revenue page: payments received (EUR), net of refunds/voids,
+    // by payment date, scoped to the caller's clinic(s). Unpaid / future visits never count.
+    const filters = await this.resolveRevenueScope(userId, userRole, query);
+    const manager = this.appointmentsRepository.manager;
+    const totalRevenue = await getPaidRevenueTotal(manager, filters);
 
-    // Handle Auth
-    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      qb.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-      if (!user) throw new NotFoundException('User not found');
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-      if (clinicIds.length > 0) {
-        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
-      } else {
-        qb.andWhere('appointment.providerId = :userId', { userId });
-      }
-    } else if (userRole === 'manager' && query.clinicId) {
-      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
-    } else {
-      qb.where('appointment.providerId = :userId', { userId });
-    }
+    // Revenue by treatment (same rules, grouped by the appointment's primary treatment).
+    const rows = await buildPaidRevenueQuery(manager, filters, 'p')
+      .leftJoin('p_apt.service', 'svc')
+      .leftJoin('svc.treatment', 'tr')
+      .select(`COALESCE(tr.name, 'Other')`, 'serviceName')
+      .addSelect(netPaidExpression('p'), 'revenue')
+      .addSelect('COUNT(DISTINCT p.appointmentId)', 'count')
+      .groupBy('tr.name')
+      .getRawMany();
+    const revenueByService = rows
+      .map((r: any) => ({
+        serviceName: r.serviceName ?? r.servicename ?? 'Other',
+        revenue: Number(r.revenue || 0),
+        count: Number(r.count || 0),
+      }))
+      .filter(r => r.revenue !== 0)
+      .sort((a, b) => b.revenue - a.revenue);
 
-    if (query.startDate && query.endDate) {
-      qb.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      });
-    }
-
-    const appointments = await qb.getMany();
-
-    // Filter to ones with financial impact
-    const paidAppts = appointments.filter(a => (Number(a.amountPaid) || 0) > 0);
-    const totalRevenue = paidAppts.reduce((sum, a) => sum + Number(a.amountPaid), 0);
-    const averageAppointmentValue = paidAppts.length > 0 ? totalRevenue / paidAppts.length : 0;
-
-    // Revenue by service
-    const serviceMap = new Map<string, { serviceName: string, revenue: number, count: number }>();
-    paidAppts.forEach(a => {
-      const sName = a.service?.treatment?.name || 'Unknown';
-      const current = serviceMap.get(sName) || { serviceName: sName, revenue: 0, count: 0 };
-      current.revenue += Number(a.amountPaid);
-      current.count += 1;
-      serviceMap.set(sName, current);
-    });
-
-    const revenueByService = Array.from(serviceMap.values()).sort((a, b) => b.revenue - a.revenue);
+    const paidVisits = revenueByService.reduce((sum, r) => sum + r.count, 0);
+    const averageAppointmentValue = paidVisits > 0 ? totalRevenue / paidVisits : 0;
 
     return {
       totalRevenue,
+      currency: 'EUR',
       averageAppointmentValue,
       revenueByService,
-      period: { startDate: query.startDate, endDate: query.endDate }
+      period: { startDate: query.startDate, endDate: query.endDate },
+      clinicId: query.clinicId || null,
     };
   }
 

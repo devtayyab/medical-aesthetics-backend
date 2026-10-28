@@ -16,6 +16,7 @@ import { Review } from './entities/review.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
 import { Repository, DeepPartial, In, IsNull } from 'typeorm';
+import { getPaidRevenueTotal } from '../payments/revenue.util';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -1120,14 +1121,32 @@ export class ClinicsService {
   async getClinicAnalytics(clinicId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
     const clinic = await this.findById(clinicId);
 
-    // This would typically aggregate data from appointments, payments, etc.
-    // For now, return basic clinic stats
+    const manager = this.clinicsRepository.manager;
+    const aptQb = this.appointmentsRepository.createQueryBuilder('a')
+      .where('a.clinicId = :clinicId', { clinicId })
+      .andWhere('a.status != :deleted', { deleted: AppointmentStatus.DELETED });
+    if (dateRange?.startDate && dateRange?.endDate) {
+      aptQb.andWhere('a.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+    const counts = await aptQb
+      .select('COUNT(a.id)', 'total')
+      .addSelect('COUNT(DISTINCT a.clientId)', 'clients')
+      .getRawOne();
+
+    // Revenue: shared definition (payments received, EUR, net of refunds, by payment date).
+    const totalRevenue = await getPaidRevenueTotal(manager, {
+      clinicId,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
+
     return {
       clinicId: clinic.id,
       clinicName: clinic.name,
-      totalAppointments: 0, // Would be calculated from appointments table
-      totalRevenue: 0, // Would be calculated from payments
-      activeClients: 0, // Would be calculated from unique clients
+      totalAppointments: Number(counts?.total || 0),
+      totalRevenue,
+      currency: 'EUR',
+      activeClients: Number(counts?.clients || 0),
       period: dateRange || { startDate: new Date(), endDate: new Date() },
     };
   }

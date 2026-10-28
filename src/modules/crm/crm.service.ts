@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal } from '../payments/revenue.util';
+import { formatInTimeZone } from 'date-fns-tz';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
@@ -3188,7 +3190,6 @@ export class CrmService implements OnModuleInit {
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completedAppointments')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShows')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancellations')
-      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .where('rec.assignedSalespersonId IS NOT NULL')
       .groupBy('rec.assignedSalespersonId, agent.firstName, agent.lastName');
 
@@ -3197,6 +3198,12 @@ export class CrmService implements OnModuleInit {
     }
 
     const aptStats = await aptQ.getRawMany();
+
+    // Revenue per salesperson: shared definition (payments received, EUR, net of refunds).
+    const agentRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'salespersonId', {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
 
     // Merge with appointment stats
     for (const apt of aptStats) {
@@ -3214,7 +3221,7 @@ export class CrmService implements OnModuleInit {
 
       const completedAppointments = parseInt(apt.completedAppointments, 10) || 0;
       const totalAppointments = parseInt(apt.totalAppointments, 10) || 0;
-      const totalRevenue = parseFloat(apt.totalRevenue) || 0;
+      const totalRevenue = agentRevenue.get(String(apt.agentId)) || 0;
 
       agentMap.set(apt.agentId, {
         ...existing,
@@ -3307,7 +3314,6 @@ export class CrmService implements OnModuleInit {
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completed')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancelled')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShow')
-      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .groupBy('apt.clinicId');
 
     if (dateRange) {
@@ -3319,6 +3325,13 @@ export class CrmService implements OnModuleInit {
     }
 
     const stats = await qb.getRawMany();
+
+    // Revenue per clinic: shared definition (payments received, EUR, net of refunds).
+    const clinicRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'clinicId', {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+      clinicId,
+    });
 
     // 3. Merge stats with clinics
     return clinics.map((clinic) => {
@@ -3334,7 +3347,8 @@ export class CrmService implements OnModuleInit {
         completed: parseInt(clinicStats.completed) || 0,
         cancelled: parseInt(clinicStats.cancelled) || 0,
         noShow: parseInt(clinicStats.noShow || clinicStats.noshow) || 0,
-        totalRevenue: parseFloat(clinicStats.totalRevenue || clinicStats.totalrevenue) || 0,
+        totalRevenue: clinicRevenue.get(clinic.id) || 0,
+        currency: 'EUR',
       };
     });
   }
@@ -3459,7 +3473,8 @@ export class CrmService implements OnModuleInit {
       .addSelect('apt.startTime', 'date')
       .addSelect('treatment.name', 'eventType')
       .addSelect('apt.status', 'status')
-      .addSelect('apt.totalAmount', 'revenue')
+      // Row revenue = money actually paid for the visit (ledger-derived), never the price.
+      .addSelect('COALESCE(apt.amountPaid, 0)', 'revenue')
       .addSelect('apt.notes', 'notes')
       .addSelect("CONCAT(client.firstName, ' ', client.lastName)", 'clientName')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
@@ -3605,6 +3620,21 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // Revenue per salesperson / per day / total: shared definition (payments received, EUR).
+    const revenueManager = this.appointmentsRepository.manager;
+    const revenueRange = { startDate: defaultDateRange.startDate, endDate: defaultDateRange.endDate };
+    const revenueBySalesperson = await getPaidRevenueBy(revenueManager, 'salespersonId', { ...revenueRange, salespersonId, clinicId });
+    for (const sp of salesPersonsMap.values()) {
+      sp.revenue = revenueBySalesperson.get(sp.id) || 0;
+    }
+    const revenueByDay = await getPaidRevenueByDay(revenueManager, { ...revenueRange, salespersonId, clinicId });
+    for (const [day, m] of dateMap.entries()) {
+      m.revenue = revenueByDay.get(day) || 0;
+      dateMap.set(day, m);
+    }
+    dailyStats.revenue = revenueByDay.get(formatInTimeZone(new Date(), 'Europe/Athens', 'yyyy-MM-dd')) || 0;
+    const totalPaidRevenue = await getPaidRevenueTotal(revenueManager, { ...revenueRange, salespersonId, clinicId });
+
     const performanceReport = Array.from(salesPersonsMap.values()).map(sp => {
       const conversionRate = sp.leads > 0 ? (sp.confirmedBookings / sp.leads) * 100 : (sp.confirmedBookings > 0 ? 100 : 0);
       const taskCompletionRate = sp.assignedTasks > 0 ? (sp.completedTasks / sp.assignedTasks) * 100 : 100;
@@ -3615,6 +3645,7 @@ export class CrmService implements OnModuleInit {
         leads: sp.leads,
         confirmedBookings: sp.confirmedBookings,
         revenue: sp.revenue,
+        totalRevenue: sp.revenue,
         conversionRate: conversionRate.toFixed(1),
         taskCompletionRate: taskCompletionRate.toFixed(1),
         bookingExecutionRate: bookingExecutionRate.toFixed(1),
@@ -3639,7 +3670,9 @@ export class CrmService implements OnModuleInit {
     const totals = {
       leads: performanceReport.reduce((sum, r) => sum + r.leads, 0),
       confirmedBookings: performanceReport.reduce((sum, r) => sum + r.confirmedBookings, 0),
-      revenue: performanceReport.reduce((sum, r) => sum + r.revenue, 0),
+      revenue: totalPaidRevenue,
+      totalRevenue: totalPaidRevenue,
+      currency: 'EUR',
       assignedTasks: performanceReport.reduce((sum, r) => sum + r.assignedTasks, 0),
       completedTasks: performanceReport.reduce((sum, r) => sum + r.completedTasks, 0),
       totalBookings: performanceReport.reduce((sum, r) => sum + r.totalBookings, 0)
@@ -3697,15 +3730,16 @@ export class CrmService implements OnModuleInit {
       .groupBy('l.source')
       .getRawMany();
 
-    const clinicPerformance = await this.appointmentsRepository.createQueryBuilder('apt')
+    const clinicPerformanceRows = await this.appointmentsRepository.createQueryBuilder('apt')
       .innerJoin('apt.clinic', 'clinic')
       .select('clinic.name', 'name')
       .addSelect('clinic.id', 'id')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
       .addSelect('COUNT(apt.id)', 'appointments')
       .where('apt.startTime BETWEEN :startDate AND :endDate', defaultDateRange)
       .groupBy('clinic.id, clinic.name')
       .getRawMany();
+    const revenueByClinic = await getPaidRevenueBy(revenueManager, 'clinicId', { ...revenueRange, salespersonId, clinicId });
+    const clinicPerformance = clinicPerformanceRows.map((c: any) => ({ ...c, revenue: revenueByClinic.get(String(c.id)) || 0 }));
 
     return {
       reportTable: activities,
@@ -3872,29 +3906,34 @@ export class CrmService implements OnModuleInit {
   }
 
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
-    let query = this.appointmentsRepository
-      .createQueryBuilder('apt')
-      .leftJoin('apt.bookedBy', 'agent')
-      .select('apt.bookedById', 'agentId')
+    // Shared revenue definition (payments received, EUR) grouped by the payment's salesperson.
+    const rows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    }, 'p')
+      .leftJoin('users', 'agent', 'agent.id = p.salespersonId')
+      .andWhere('p.salespersonId IS NOT NULL')
+      .select('p.salespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
-      .addSelect("COALESCE(SUM(CASE WHEN apt.status = 'CANCELLED' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)", 'refunds')
-      .where('apt.bookedById IS NOT NULL');
+      .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('payment', 'deposit') THEN p.amount ELSE 0 END), 0)`, 'revenue')
+      .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('refund', 'void') THEN p.amount ELSE 0 END), 0)`, 'refunds')
+      .groupBy('p.salespersonId')
+      .addGroupBy('agent.firstName')
+      .addGroupBy('agent.lastName')
+      .getRawMany();
 
-    if (dateRange) {
-      query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
-    }
-
-    query = query.groupBy('apt.bookedById, agent.firstName, agent.lastName');
-
-    const results = await query.getRawMany();
-    return results.map(row => ({
-      agentId: row.agentId,
-      agentName: row.agentName || 'Unknown Agent',
-      revenue: parseFloat(row.revenue) || 0,
-      refunds: parseFloat(row.refunds) || 0,
-      net: (parseFloat(row.revenue) || 0) - (parseFloat(row.refunds) || 0)
-    }));
+    return rows.map(row => {
+      const revenue = parseFloat(row.revenue ?? row.Revenue) || 0;
+      const refunds = parseFloat(row.refunds) || 0;
+      return {
+        agentId: row.agentId ?? row.agentid,
+        agentName: row.agentName ?? row.agentname ?? 'Unknown Agent',
+        revenue,
+        refunds,
+        net: revenue - refunds,
+        currency: 'EUR',
+      };
+    });
   }
 
   // Access Control Methods

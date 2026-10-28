@@ -107,10 +107,10 @@ const ClientsPage: React.FC = () => {
  <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
  {/* Stats Grid */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
- <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} trend="+12%" highlight />
- <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} trend="+5.4%" />
- <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} trend="+18%" />
- <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} trend="+2.1%" />
+ <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} highlight />
+ <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} />
+ <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} />
+ <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} />
  </div>
 
  {/* Clients Table/Grid */}
@@ -229,7 +229,7 @@ const StatCard = ({ title, value, icon, trend, highlight }: any) => (
  <div className={`size-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
  {icon}
  </div>
- <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>
+ {trend && <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>}
  </div>
  <div>
  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5">{title}</p>
