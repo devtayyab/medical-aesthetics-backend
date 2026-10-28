@@ -1653,7 +1653,8 @@ export class ClinicsService {
           id: appointmentId,
           clientId,
           clinicId,
-          status: AppointmentStatus.COMPLETED
+          // Completed visits are reviewable as soon as they are completed (COMPLETED or EXECUTED).
+          status: In([AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED])
         }
       });
 

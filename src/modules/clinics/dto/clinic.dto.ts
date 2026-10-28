@@ -190,6 +190,12 @@ export class UpdateAppointmentStatusDto {
   @IsOptional()
   @IsNumber()
   rewardPointsRedeemed?: number;
+
+  // Cancelling a PAID appointment: only an admin may ask to refund it.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  refund?: boolean;
 }
 
 export class RecordPaymentDto {

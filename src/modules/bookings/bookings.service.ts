@@ -33,6 +33,8 @@ import * as path from 'path';
 import { VivaWalletService } from '../payments/viva-wallet.service';
 import { FinancialService } from '../payments/financial.service';
 import { formatDateInTz, formatTimeInTz, formatDateTimeInTz } from '../../common/utils/timezone.util';
+import { formatInTimeZone } from 'date-fns-tz';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -128,8 +130,16 @@ export class BookingsService {
    * 2. Walk-in details fuzzy match by email/phone.
    * 3. Robust "God Search" across CRM CustomerRecords and Leads.
    */
-  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
+  async createAppointment(
+    createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string },
+    actor?: { id?: string; role?: string } | null,
+  ): Promise<any> {
     let clientId = createAppointmentDto.clientId;
+
+    // Status input is normalized server-side (e.g. 'completed' -> 'COMPLETED').
+    if ((createAppointmentDto as any).status) {
+      (createAppointmentDto as any).status = this.normalizeStatus((createAppointmentDto as any).status);
+    }
 
     console.log('🚀 [BookingsService] createAppointment process started', {
       clientId,
@@ -377,6 +387,30 @@ export class BookingsService {
       appointmentData.totalAmount = totalPrice;
     }
 
+    // Duration = sum of all treatments (e.g. 60 + 30 = 90 min), never just the first one.
+    const totalDurationMinutes = services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
+    if (totalDurationMinutes > 0) {
+      appointmentData.endTime = new Date(new Date(appointmentData.startTime).getTime() + totalDurationMinutes * 60000);
+      (createAppointmentDto as any).endTime = appointmentData.endTime.toISOString();
+    }
+
+    // Same rules as edit/reschedule: past times (admin only), opening hours, end by closing,
+    // blocked time. Appointment overlaps are checked just below (with the pending-payment rule).
+    await this.assertSlotBookable({
+      clinicId: createAppointmentDto.clinicId,
+      providerId: providerId ?? null,
+      representativeId,
+      startTime: appointmentData.startTime as Date,
+      endTime: appointmentData.endTime as Date,
+      actorRole: actor?.role,
+      skipAppointmentConflicts: true,
+    });
+
+    // Attendance / completion statuses only from the appointment start time.
+    if (appointmentData.status && BookingsService.STARTED_ONLY_STATUSES.includes(appointmentData.status as AppointmentStatus)) {
+      this.assertAppointmentStarted(appointmentData as Appointment, `Status ${appointmentData.status}`);
+    }
+
     // 🔴 GIFT CARDS — BACKEND HARD BLOCK
     if (createAppointmentDto.giftCardCode) {
       const hasIneligibleService = services.some(s => !s.giftCardEligible && !s.treatment?.giftCardEligible);
@@ -408,9 +442,9 @@ export class BookingsService {
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
 
-    // Only restrict to specific provider if one is assigned
+    // Only restrict to specific provider if one is assigned (unassigned appointments occupy the clinic)
     if (providerId) {
-      conflictQuery = conflictQuery.andWhere('apt.providerId = :providerId', { providerId });
+      conflictQuery = conflictQuery.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
     }
 
     const conflictingAppointments = await conflictQuery.getMany();
@@ -449,7 +483,8 @@ export class BookingsService {
             status: apt.status,
             requestedTime: { start: newStart, end: newEnd }
         });
-        throw new ConflictException('Time slot is already booked or pending payment');
+        // GDPR: never reveal who holds the slot.
+        throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
       }
     }
     console.log('✅ [BookingsService] No conflicting appointments found.');
@@ -572,6 +607,7 @@ export class BookingsService {
 
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
+    const bookedTreatmentLabel = await this.getTreatmentLabel(appointmentWithRelations);
 
     // Trigger Notification for Booked (Safe try/catch so notification failures never abort booking completion)
     try {
@@ -579,7 +615,7 @@ export class BookingsService {
       if (appointmentWithRelations.clientId && appointmentWithRelations.clientId !== WALK_IN_DUMMY_ID) {
         await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
           customerName: `${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Customer'}`,
-          serviceName: appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment',
+          serviceName: bookedTreatmentLabel,
           appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
           appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
           clinicName: appointmentWithRelations.clinic?.name,
@@ -589,7 +625,7 @@ export class BookingsService {
       // Notify Staff
       await this.notificationsService.notifyAllStaff(
         'New Appointment Booked',
-        `Client ${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
+        `Client ${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Guest'} booked ${bookedTreatmentLabel} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
         { appointmentId: savedAppointment.id }
       );
 
@@ -791,18 +827,431 @@ export class BookingsService {
     );
   }
 
+  // ─── Shared booking rules (create, edit and reschedule use the SAME checks) ─────────────
+
+  static readonly ACTIVE_STATUSES: AppointmentStatus[] = [
+    AppointmentStatus.CONFIRMED,
+    AppointmentStatus.PENDING,
+    AppointmentStatus.PENDING_PAYMENT,
+    AppointmentStatus.ARRIVED,
+    AppointmentStatus.IN_PROGRESS,
+  ];
+
+  /** Statuses (and payments) that may only be recorded once the appointment has started. */
+  static readonly STARTED_ONLY_STATUSES: AppointmentStatus[] = [
+    AppointmentStatus.ARRIVED,
+    AppointmentStatus.IN_PROGRESS,
+    AppointmentStatus.COMPLETED,
+    AppointmentStatus.EXECUTED,
+    AppointmentStatus.NO_SHOW,
+  ];
+
+  static readonly SLOT_UNAVAILABLE_MESSAGE = 'This time is not available';
+
+  isAdminRole(role?: string | null): boolean {
+    const r = String(role || '').toLowerCase();
+    return r === String(UserRole.ADMIN).toLowerCase() || r === String(UserRole.SUPER_ADMIN).toLowerCase();
+  }
+
+  /**
+   * Normalizes any status input ('completed', 'Completed', ' COMPLETED ') to the canonical
+   * upper-case enum value. Unknown values are rejected so nothing but the enum is ever stored.
+   */
+  normalizeStatus(input: any): AppointmentStatus {
+    const value = String(input ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const match = (Object.values(AppointmentStatus) as string[]).find(v => v === value);
+    if (!match) {
+      throw new BadRequestException(`Invalid appointment status: ${input}`);
+    }
+    return match as AppointmentStatus;
+  }
+
+  /** Arrived / no-show / completed / payments are only possible from the appointment start time. */
+  assertAppointmentStarted(appointment: Pick<Appointment, 'startTime'>, action = 'This action'): void {
+    if (appointment?.startTime && new Date(appointment.startTime).getTime() > Date.now()) {
+      throw new BadRequestException(`${action} is only possible from the appointment start time.`);
+    }
+  }
+
+  /** Sum of the durations (minutes) of the primary + additional services. 0 when unknown. */
+  async computeServicesDuration(serviceIds: string[]): Promise<number> {
+    const ids = Array.from(new Set((serviceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    if (ids.length === 0) return 0;
+    const services = await this.servicesRepository.find({ where: { id: In(ids) } });
+    return services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
+  }
+
+  /** Sum of the prices of the primary + additional services. */
+  async computeServicesPrice(serviceIds: string[]): Promise<number> {
+    const ids = Array.from(new Set((serviceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    if (ids.length === 0) return 0;
+    const services = await this.servicesRepository.find({ where: { id: In(ids) } });
+    return services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  }
+
+  /** All treatment names of an appointment (primary first), e.g. "Mesotherapy + Skin Booster". */
+  async getTreatmentNames(appointment: Appointment): Promise<string[]> {
+    const names: string[] = [];
+    const primary = appointment?.service?.treatment?.name || (appointment?.service as any)?.name;
+    if (primary) names.push(primary);
+    const extraIds = (appointment?.additionalServiceIds || []).filter(id => !!id && UUID_REGEX.test(id) && id !== appointment.serviceId);
+    if (extraIds.length > 0) {
+      try {
+        const extra = await this.servicesRepository.find({ where: { id: In(extraIds) }, relations: ['treatment'] });
+        for (const id of extraIds) {
+          const svc: any = extra.find(e => e.id === id);
+          const name = svc?.treatment?.name || svc?.name;
+          if (name) names.push(name);
+        }
+      } catch {
+        // Display only, never fail the caller.
+      }
+    }
+    return names;
+  }
+
+  async getTreatmentLabel(appointment: Appointment): Promise<string> {
+    const names = await this.getTreatmentNames(appointment);
+    return names.length > 0 ? names.join(' + ') : 'Treatment';
+  }
+
+  /**
+   * Validates a (new) time window for an appointment. Used by create, edit and reschedule:
+   *  - start must be before end;
+   *  - not in the past (only ADMIN / SUPER_ADMIN may enter an appointment at a past time);
+   *  - the clinic must be open that day (clinic time, Europe/Athens by default) and the
+   *    appointment must start at or after opening and END by closing time;
+   *  - no overlap with a blocked slot (clinic-wide, or for the provider / representative);
+   *  - no overlap with another active appointment (same provider, or clinic-wide when no
+   *    provider is assigned).
+   * Conflict errors never reveal another patient's details.
+   */
+  async assertSlotBookable(params: {
+    clinicId: string;
+    providerId?: string | null;
+    representativeId?: string | null;
+    startTime: Date;
+    endTime: Date;
+    excludeAppointmentId?: string | null;
+    actorRole?: string | null;
+    skipAppointmentConflicts?: boolean;
+  }): Promise<void> {
+    const { clinicId, providerId, representativeId, excludeAppointmentId, actorRole } = params;
+    const start = new Date(params.startTime);
+    const end = new Date(params.endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date provided');
+    }
+    if (end.getTime() <= start.getTime()) {
+      throw new BadRequestException('The appointment end time must be after its start time.');
+    }
+
+    // Past times: admins only (1-minute grace for clock drift).
+    if (start.getTime() < Date.now() - 60 * 1000 && !this.isAdminRole(actorRole)) {
+      throw new BadRequestException('Appointments cannot be booked in the past.');
+    }
+
+    const clinic: any = await this.appointmentsRepository.manager.getRepository(Clinic).findOne({ where: { id: clinicId } });
+    if (!clinic) {
+      throw new NotFoundException('Clinic not found');
+    }
+
+    // Business hours in the clinic's timezone (Europe/Athens by default).
+    const tz = clinic.timezone && String(clinic.timezone).trim() ? clinic.timezone : 'Europe/Athens';
+    const hours = clinic.businessHours;
+    if (hours && typeof hours === 'object' && Object.keys(hours).length > 0) {
+      const dayName = formatInTimeZone(start, tz, 'EEEE').toLowerCase();
+      const day = hours[dayName];
+      if (!day || day.isOpen === false || !day.open || !day.close) {
+        throw new BadRequestException('The clinic is closed on the selected day.');
+      }
+      const pad = (v: string) => {
+        const [h, m] = String(v).split(':');
+        return `${String(h || '0').padStart(2, '0')}:${String(m || '0').padStart(2, '0')}`;
+      };
+      const startDay = formatInTimeZone(start, tz, 'yyyy-MM-dd');
+      const endDay = formatInTimeZone(end, tz, 'yyyy-MM-dd');
+      const startHm = formatInTimeZone(start, tz, 'HH:mm');
+      const endHm = formatInTimeZone(end, tz, 'HH:mm');
+      if (startDay !== endDay || startHm < pad(day.open) || endHm > pad(day.close)) {
+        throw new BadRequestException(`The appointment must be within opening hours (${pad(day.open)}-${pad(day.close)}) and end by closing time.`);
+      }
+    }
+
+    // Blocked time (clinic-wide, or for this provider / representative).
+    const blockQb = this.blockedTimeSlotsRepository.createQueryBuilder('b')
+      .where('b.clinicId = :clinicId', { clinicId })
+      .andWhere('b.startTime < :end', { end })
+      .andWhere('b.endTime > :start', { start });
+    const blockOwners = [providerId, representativeId].filter(Boolean) as string[];
+    if (blockOwners.length > 0) {
+      blockQb.andWhere('(b.providerId IS NULL OR b.providerId IN (:...blockOwners))', { blockOwners });
+    } else {
+      blockQb.andWhere('b.providerId IS NULL');
+    }
+    if (await blockQb.getCount() > 0) {
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+
+    if (params.skipAppointmentConflicts) return;
+
+    // Overlapping active appointments.
+    const aptQb = this.appointmentsRepository.createQueryBuilder('apt')
+      .where('apt.clinicId = :clinicId', { clinicId })
+      .andWhere('apt.status IN (:...statuses)', { statuses: BookingsService.ACTIVE_STATUSES })
+      .andWhere('apt.startTime < :end', { end })
+      .andWhere('apt.endTime > :start', { start });
+    if (providerId) {
+      // Same provider, or an unassigned appointment that occupies the clinic.
+      aptQb.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
+    }
+    if (excludeAppointmentId) {
+      aptQb.andWhere('apt.id != :excludeId', { excludeId: excludeAppointmentId });
+    }
+    if (await aptQb.getCount() > 0) {
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+  }
+
+  /** Rejects a payment larger than the open balance (total - paid). Unknown totals are not capped. */
+  async assertWithinBalance(appointmentId: string, amount: number): Promise<void> {
+    if (!(amount > 0)) {
+      throw new BadRequestException('The payment amount must be greater than 0.');
+    }
+    const summary = await this.financialService.getAppointmentPaymentSummary(appointmentId);
+    if (summary.total > 0 && amount - summary.balance > 0.009) {
+      throw new BadRequestException(
+        `Amount exceeds the open balance: Total €${summary.total.toFixed(2)} - Paid €${summary.paid.toFixed(2)} - Balance €${summary.balance.toFixed(2)}.`,
+      );
+    }
+  }
+
+  /** A cancellation less than 24 hours before the appointment start is a late cancellation. */
+  isLateCancellation(appointment: Pick<Appointment, 'startTime'>, at: Date = new Date()): boolean {
+    if (!appointment?.startTime) return false;
+    const msBefore = new Date(appointment.startTime).getTime() - at.getTime();
+    return msBefore < 24 * 60 * 60 * 1000;
+  }
+
+  /** Refunds every completed payment of an appointment (admin decision only). */
+  async refundAppointmentPayments(appointmentId: string, userId?: string, notes?: string): Promise<number> {
+    const summary = await this.financialService.getAppointmentPaymentSummary(appointmentId);
+    let refunded = 0;
+    for (const p of summary.payments) {
+      if (p.type === PaymentType.PAYMENT && p.status === 'completed') {
+        await this.financialService.refundPayment(p.id, notes, userId);
+        refunded += Number(p.amount || 0);
+      }
+    }
+    return refunded;
+  }
+
+  /**
+   * A PAID appointment was cancelled. Payment state is left untouched (unless an admin chose
+   * to refund); admins get a "refund?" alert and a domain event is emitted for the
+   * notification layer.
+   */
+  async handlePaidAppointmentCancelled(
+    appointment: Appointment,
+    info: { amountPaid: number; refunded: boolean; cancelledById?: string; cancelledByRole?: string },
+  ): Promise<void> {
+    const tz = appointment.clinic?.timezone || 'Europe/Athens';
+    const when = formatDateTimeInTz(appointment.startTime, tz);
+    const clientName = appointment.client
+      ? `${appointment.client.firstName || ''} ${appointment.client.lastName || ''}`.trim()
+      : appointment.clientDetails?.fullName || 'Client';
+
+    this.eventEmitter.emit('appointment.paid_cancelled', {
+      appointment,
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      clinicName: appointment.clinic?.name || null,
+      amountPaid: info.amountPaid,
+      currency: 'EUR',
+      refunded: info.refunded,
+      cancelledById: info.cancelledById || null,
+      cancelledByRole: info.cancelledByRole || null,
+      isLateCancellation: !!(appointment as any).isLateCancellation,
+    });
+
+    if (!info.refunded) {
+      await this.notifyAdmins(
+        'Paid appointment cancelled - refund?',
+        `${clientName} - ${appointment.clinic?.name || 'Clinic'} - ${when}. Paid: €${info.amountPaid.toFixed(2)}. Payment unchanged; only an admin decides on a refund.`,
+        { appointmentId: appointment.id, type: 'paid_appointment_cancelled', amountPaid: info.amountPaid },
+      );
+    }
+  }
+
+  /** In-app alert to every active ADMIN / SUPER_ADMIN (only admins decide on refunds). */
+  async notifyAdmins(title: string, message: string, data?: any): Promise<void> {
+    try {
+      const admins = await this.usersRepository.find({
+        where: [
+          { role: UserRole.ADMIN, isActive: true } as any,
+          { role: UserRole.SUPER_ADMIN, isActive: true } as any,
+        ],
+      });
+      const ids = Array.from(new Set(admins.map(a => a.id)));
+      for (const id of ids) {
+        await this.notificationsService.create(id, NotificationType.PUSH, title, message, data);
+      }
+    } catch (err: any) {
+      console.error('[BookingsService] Failed to notify admins:', err?.message || err);
+    }
+  }
+
   // Update whitelisted appointment detail fields (provider/time/service/price). Authorization
   // and field whitelisting are enforced by the controller; this replaces direct private-repo access.
-  async updateAppointmentDetails(id: string, updateData: any): Promise<Appointment> {
+  async updateAppointmentDetails(id: string, updateData: any, actor?: { id?: string; role?: string } | null): Promise<Appointment> {
     const appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
     }
-    await this.appointmentsRepository.update(id, updateData);
-    return this.findById(id);
+
+    const old = {
+      clinicId: appointment.clinicId,
+      clinicName: appointment.clinic?.name || null,
+      providerId: appointment.providerId || null,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      serviceId: appointment.serviceId,
+      additionalServiceIds: appointment.additionalServiceIds || [],
+      totalAmount: Number(appointment.totalAmount || 0),
+      representativeId: appointment.representativeId || null,
+    };
+
+    const next = {
+      clinicId: updateData.clinicId !== undefined ? updateData.clinicId : old.clinicId,
+      providerId: updateData.providerId !== undefined ? updateData.providerId : old.providerId,
+      startTime: updateData.startTime ? new Date(updateData.startTime) : new Date(old.startTime),
+      serviceId: updateData.serviceId !== undefined ? updateData.serviceId : old.serviceId,
+      additionalServiceIds: (updateData.additionalServiceIds !== undefined ? updateData.additionalServiceIds : old.additionalServiceIds) || [],
+      representativeId: updateData.representativeId !== undefined ? updateData.representativeId : old.representativeId,
+    };
+    if (!next.clinicId) throw new BadRequestException('clinicId is required');
+    if (!next.serviceId) throw new BadRequestException('serviceId is required');
+    next.additionalServiceIds = Array.from(new Set((next.additionalServiceIds as string[]).filter(sid => !!sid && sid !== next.serviceId)));
+
+    const serviceIds = [next.serviceId, ...next.additionalServiceIds];
+    const clinicChanged = String(next.clinicId) !== String(old.clinicId);
+    const servicesChanged =
+      String(next.serviceId) !== String(old.serviceId) ||
+      JSON.stringify([...next.additionalServiceIds].sort()) !== JSON.stringify([...old.additionalServiceIds].sort());
+
+    // Treatments must belong to the (new) clinic.
+    if (clinicChanged || servicesChanged) {
+      const services = await this.servicesRepository.find({ where: { id: In(serviceIds) } });
+      const foreign = services.some(s => String((s as any).clinicId) !== String(next.clinicId));
+      if (services.length !== new Set(serviceIds).size || foreign) {
+        throw new BadRequestException('The selected treatments are not offered by this clinic.');
+      }
+    }
+
+    // Duration = sum of treatments; otherwise keep the requested / existing end.
+    const totalDuration = await this.computeServicesDuration(serviceIds);
+    let nextEnd: Date;
+    if (totalDuration > 0) {
+      nextEnd = new Date(next.startTime.getTime() + totalDuration * 60000);
+    } else if (updateData.endTime) {
+      nextEnd = new Date(updateData.endTime);
+    } else {
+      nextEnd = new Date(next.startTime.getTime() + (new Date(old.endTime).getTime() - new Date(old.startTime).getTime()));
+    }
+
+    const timeChanged =
+      next.startTime.getTime() !== new Date(old.startTime).getTime() ||
+      nextEnd.getTime() !== new Date(old.endTime).getTime();
+    const providerChanged = String(next.providerId || '') !== String(old.providerId || '');
+
+    // Same checks as booking whenever the slot changes (time, duration, clinic or provider).
+    if (timeChanged || clinicChanged || providerChanged) {
+      await this.assertSlotBookable({
+        clinicId: next.clinicId,
+        providerId: next.providerId,
+        representativeId: next.representativeId,
+        startTime: next.startTime,
+        endTime: nextEnd,
+        excludeAppointmentId: id,
+        actorRole: actor?.role,
+      });
+    }
+
+    const payload: any = { ...updateData };
+    payload.startTime = next.startTime;
+    payload.endTime = nextEnd;
+    if (updateData.additionalServiceIds !== undefined || servicesChanged) payload.additionalServiceIds = next.additionalServiceIds;
+
+    // Price follows the treatments/clinic: recalculate unless an explicit price was sent.
+    if ((clinicChanged || servicesChanged) && updateData.totalAmount === undefined) {
+      payload.totalAmount = await this.computeServicesPrice(serviceIds);
+    }
+
+    await this.appointmentsRepository.update(id, payload);
+    const updated = await this.findById(id);
+
+    const changes = {
+      appointmentId: id,
+      updatedById: actor?.id || null,
+      updatedByRole: actor?.role || null,
+      oldClinicId: old.clinicId,
+      oldClinicName: old.clinicName,
+      newClinicId: updated.clinicId,
+      newClinicName: updated.clinic?.name || null,
+      oldStartTime: old.startTime,
+      oldEndTime: old.endTime,
+      newStartTime: updated.startTime,
+      newEndTime: updated.endTime,
+      oldServiceIds: [old.serviceId, ...old.additionalServiceIds],
+      newServiceIds: [updated.serviceId, ...(updated.additionalServiceIds || [])],
+      oldProviderId: old.providerId,
+      newProviderId: updated.providerId || null,
+      oldTotalAmount: old.totalAmount,
+      newTotalAmount: Number(updated.totalAmount || 0),
+      oldRepresentativeId: old.representativeId,
+      newRepresentativeId: updated.representativeId || null,
+      clinicChanged,
+      timeChanged,
+      servicesChanged,
+      providerChanged,
+    };
+
+    // Domain events for the notification layer (it decides who gets what):
+    //  - appointment.updated: every edit, with the full before/after diff.
+    //  - appointment.clinic_changed: old clinic gets a plain cancellation, new clinic a new appointment.
+    //  - appointment.rescheduled: time moved (same payload shape as the reschedule endpoints).
+    if (clinicChanged || timeChanged || servicesChanged || providerChanged || changes.oldRepresentativeId !== changes.newRepresentativeId) {
+      this.eventEmitter.emit('appointment.updated', { appointment: updated, changes });
+    }
+    if (clinicChanged) {
+      this.eventEmitter.emit('appointment.clinic_changed', { appointment: updated, changes });
+    }
+    if (timeChanged) {
+      this.eventEmitter.emit('appointment.rescheduled', {
+        appointment: updated,
+        oldStartTime: old.startTime,
+        newStartTime: updated.startTime,
+        oldClinicId: old.clinicId,
+        newClinicId: updated.clinicId,
+        changes,
+      });
+    }
+    if (clinicChanged || timeChanged || providerChanged) {
+      this.eventEmitter.emit('appointment.calendar.dirty', { appointmentId: id, previousClinicId: clinicChanged ? old.clinicId : undefined });
+    }
+
+    return updated;
   }
 
-  async updateStatus(id: string, status: AppointmentStatus, data?: any, userId?: string): Promise<Appointment> {
+  async updateStatus(
+    id: string,
+    rawStatus: AppointmentStatus | string,
+    data?: any,
+    userId?: string,
+    actor?: { role?: string } | null,
+  ): Promise<Appointment> {
+    const status = this.normalizeStatus(rawStatus);
     const appointment = await this.findById(id);
     const oldStatus = appointment.status;
 
@@ -810,7 +1259,13 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
     }
 
+    // Completed / no-show / arrived only from the appointment start time.
+    if (BookingsService.STARTED_ONLY_STATUSES.includes(status)) {
+      this.assertAppointmentStarted(appointment, `Marking the appointment as ${status}`);
+    }
+
     const updateData: any = { status };
+    let paidCancellation: { amountPaid: number; refunded: boolean } | null = null;
 
     if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
       updateData.completedAt = new Date();
@@ -822,21 +1277,14 @@ export class BookingsService {
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
-      const resolvedTotal = data?.totalAmount !== undefined 
-        ? Number(data.totalAmount) 
+      const resolvedTotal = data?.totalAmount !== undefined
+        ? Number(data.totalAmount)
         : Number(appointment.totalAmount || appointment.service?.price || 0);
 
       if (data?.totalAmount !== undefined) {
         updateData.totalAmount = data.totalAmount;
       } else if (!appointment.totalAmount && resolvedTotal > 0) {
         updateData.totalAmount = resolvedTotal;
-      }
-
-      if (data?.amountPaid !== undefined) {
-        updateData.amountPaid = data.amountPaid;
-      } else if (resolvedTotal > 0 && (!appointment.amountPaid || Number(appointment.amountPaid) <= 0)) {
-        // Fallback to assume full amount was paid if amountPaid not explicitly provided but completion is triggered
-        updateData.amountPaid = resolvedTotal;
       }
 
       if (data?.paymentMethod) {
@@ -852,72 +1300,55 @@ export class BookingsService {
           : (appointment.notes || newNote);
       }
 
-      // Record payment in financial ledger if amountPaid > 0
-      const amountToRecord = updateData.amountPaid !== undefined ? Number(updateData.amountPaid) : Number(appointment.amountPaid || 0);
-      if (amountToRecord > 0) {
+      // Payments: `amountPaid` is the total the client has paid for this visit. Only the part
+      // not yet in the ledger is recorded as a NEW payment; earlier (partial) payments are
+      // never overwritten, so every payment keeps its own amount and method.
+      const targetPaid = data?.amountPaid !== undefined ? Number(data.amountPaid) : 0;
+      if (targetPaid > 0) {
         try {
-          const existingPayment = await this.financialService['paymentRecordsRepository']?.findOne({
-            where: { appointmentId: appointment.id, type: PaymentType.PAYMENT }
-          });
-          
-          if (!existingPayment) {
+          const summary = await this.financialService.getAppointmentPaymentSummary(appointment.id);
+          const toRecord = Math.round((targetPaid - summary.paid - summary.giftCardRedeemed) * 100) / 100;
+          if (toRecord > 0) {
             await this.financialService.recordPayment({
               appointmentId: appointment.id,
               clinicId: appointment.clinicId,
               clientId: appointment.clientId,
               providerId: appointment.providerId,
-              amount: amountToRecord,
-              method: (data?.paymentMethod || appointment.paymentMethod || 'cash') as any,
+              amount: toRecord,
+              method: (data?.paymentMethod || appointment.paymentMethod || 'cash').toLowerCase() as any,
               type: PaymentType.PAYMENT,
-              notes: data?.notes || `Payment recorded for completed appointment ${appointment.id}`,
+              notes: data?.notes || `Payment recorded at completion of appointment ${appointment.id}`,
               recordedById: userId,
             });
-          } else {
-            // Update existing payment if amount or method changed
-            await this.financialService['paymentRecordsRepository']?.update(existingPayment.id, {
-              amount: amountToRecord,
-              method: (data?.paymentMethod || existingPayment.method || 'cash') as any,
-              recordedById: userId,
+
+            this.eventEmitter.emit('appointment.paid', {
+              appointment: await this.findById(appointment.id).catch(() => appointment),
+              amountPaid: toRecord,
+              paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
+              markedById: userId,
             });
           }
         } catch (payErr) {
-          console.error('[BookingsService] Failed to auto-record payment on status update to COMPLETED:', payErr.message);
+          console.error('[BookingsService] Failed to record payment on completion:', payErr.message);
         }
-
-        // Emit appointment.paid event for notifications
-        this.eventEmitter.emit('appointment.paid', {
-          appointment: await this.findById(appointment.id).catch(() => appointment),
-          amountPaid: amountToRecord,
-          paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
-          markedById: userId,
-        });
       }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
+      updateData.isLateCancellation = this.isLateCancellation(appointment);
 
-      // Ensure ledger is updated with refund for cancellation
-      if (Number(appointment?.amountPaid || 0) > 0) {
-        try {
-          await this.financialService.recordPayment({
-            appointmentId: appointment.id,
-            clinicId: appointment.clinicId,
-            clientId: appointment.clientId,
-            providerId: appointment.providerId,
-            amount: Number(appointment.amountPaid),
-            method: (appointment.paymentMethod as any) || RecordPaymentMethod.VIVA_WALLET,
-            type: PaymentType.REFUND,
-            notes: `Auto-refund record: Cancelled`,
-            recordedById: userId,
-          });
-        } catch (e) {
-          console.error('[Financial] Refund logging failed', e.message);
+      // Payment state is NOT changed by a cancellation. Only an ADMIN may refund, explicitly.
+      const amountPaid = Number(appointment?.amountPaid || 0);
+      if (amountPaid > 0) {
+        const wantsRefund = data?.refund === true || data?.refund === 'true';
+        if (wantsRefund && !this.isAdminRole(actor?.role)) {
+          throw new ForbiddenException('Only an admin can refund a paid appointment.');
         }
+        if (wantsRefund) {
+          await this.refundAppointmentPayments(appointment.id, userId, 'Refund on cancellation (admin decision)');
+        }
+        paidCancellation = { amountPaid, refunded: wantsRefund };
       }
-
-      // Financial impact: Revenue becomes 0 for canceled appointments
-      updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
 
       // Release any active hold for this time slot immediately
       try {
@@ -939,6 +1370,15 @@ export class BookingsService {
     await this.appointmentsRepository.update(id, updateData);
 
     const updatedAppointment = await this.findById(id);
+
+    if (paidCancellation) {
+      await this.handlePaidAppointmentCancelled(updatedAppointment, {
+        amountPaid: paidCancellation.amountPaid,
+        refunded: paidCancellation.refunded,
+        cancelledById: userId,
+        cancelledByRole: actor?.role,
+      });
+    }
 
     // Trigger Notification if status actually changed
     if (status !== oldStatus) {
@@ -968,8 +1408,8 @@ export class BookingsService {
         await this.notificationsService.notifyClinicStaff(
           updatedAppointment.clinicId,
           `Appointment Status: ${status}`,
-          `Appointment on ${formatDateTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone)} is now ${status.toLowerCase()}.`,
-          { appointmentId: id, status }
+          `Appointment on ${formatDateTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone)} is now ${status.toLowerCase()}${status === AppointmentStatus.CANCELLED && updatedAppointment.isLateCancellation ? ' (late cancellation, less than 24h before)' : ''}.`,
+          { appointmentId: id, status, isLateCancellation: !!updatedAppointment.isLateCancellation }
         );
       }
 
@@ -1008,12 +1448,32 @@ export class BookingsService {
     newEndTime: Date,
     notes?: string,
     isClientReschedule: boolean = false,
+    actor?: { id?: string; role?: string } | null,
   ): Promise<Appointment> {
     let appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
-    
+
+    // Duration = sum of all treatments (a 2-treatment 60 min visit stays 60 min).
+    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+    if (durationMinutes > 0) {
+      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
+    }
+
+    // Same checks as on create.
+    await this.assertSlotBookable({
+      clinicId: appointment.clinicId,
+      providerId: appointment.providerId,
+      representativeId: appointment.representativeId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      excludeAppointmentId: id,
+      actorRole: actor?.role,
+    });
+
+    const oldStartTime = appointment.startTime;
+    const oldEndTime = appointment.endTime;
     const oldStatus = appointment.status;
     const updatePayload: any = {
       startTime: newStartTime,
@@ -1035,7 +1495,7 @@ export class BookingsService {
     const formattedDate = formatDateInTz(appointment.startTime, appointment.clinic?.timezone);
     const formattedTime = formatTimeInTz(appointment.startTime, appointment.clinic?.timezone);
     const formattedDateTime = formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone);
-    const serviceName = appointment.service?.treatment?.name || 'Treatment';
+    const serviceName = await this.getTreatmentLabel(appointment);
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`.trim()
       : '';
@@ -1126,7 +1586,18 @@ export class BookingsService {
       });
     }
 
-    this.eventEmitter.emit('appointment.rescheduled', appointment);
+    this.eventEmitter.emit('appointment.rescheduled', {
+      appointment,
+      oldStartTime,
+      oldEndTime,
+      newStartTime: appointment.startTime,
+      newEndTime: appointment.endTime,
+      oldClinicId: appointment.clinicId,
+      newClinicId: appointment.clinicId,
+      reason: notes,
+      isClientReschedule,
+      rescheduledById: actor?.id || null,
+    });
 
     return appointment;
   }
@@ -1147,10 +1618,29 @@ export class BookingsService {
 
     const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
+    // Multi-treatment appointments: expose every treatment, not only the first.
+    const extraIds = Array.from(new Set(appointments.flatMap(a => a.additionalServiceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    const extraById = new Map<string, any>();
+    if (extraIds.length > 0) {
+      const extra = await this.servicesRepository.find({ where: { id: In(extraIds) }, relations: ['treatment'] });
+      for (const svc of extra) extraById.set(svc.id, svc);
+    }
+
     // Add display name to each appointment and sanitize for client
     return appointments.map(apt => {
+      const additionalServices = (apt.additionalServiceIds || [])
+        .filter(id => id && id !== apt.serviceId && extraById.has(id))
+        .map(id => {
+          const svc = extraById.get(id);
+          return { id, name: svc?.treatment?.name || svc?.name || 'Treatment', price: Number(svc?.price || 0), durationMinutes: Number(svc?.durationMinutes || 0) };
+        });
+      const treatmentNames = [apt.service?.treatment?.name || (apt.service as any)?.name, ...additionalServices.map(s => s.name)].filter(Boolean);
       const item: any = {
         ...apt,
+        additionalServices,
+        treatmentNames,
+        treatmentLabel: treatmentNames.join(' + '),
+        durationMinutes: Math.round((new Date(apt.endTime).getTime() - new Date(apt.startTime).getTime()) / 60000),
         displayName: this.formatAppointmentDisplayName(apt),
         serviceName: apt.service?.treatment?.name,
         providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}`.trim() : null,
@@ -1487,16 +1977,41 @@ export class BookingsService {
 
   async updateAppointmentStatus(
     appointmentId: string,
-    status: AppointmentStatus,
+    rawStatus: AppointmentStatus | string,
     userId: string,
     userRole: string,
     updateData?: any,
   ): Promise<Appointment> {
+    // Normalize status input so only the canonical enum ('COMPLETED', never 'completed') is stored.
+    const status = this.normalizeStatus(rawStatus);
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     const oldStatus = appointment.status;
 
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
+    }
+
+    // Arrived / no-show / completed only from the appointment start time.
+    if (BookingsService.STARTED_ONLY_STATUSES.includes(status)) {
+      this.assertAppointmentStarted(appointment, `Marking the appointment as ${status}`);
+    }
+
+    // Paid appointment cancelled: payment is NOT touched; only an admin may refund explicitly.
+    let paidCancellation: { amountPaid: number; refunded: boolean } | null = null;
+    if (status === AppointmentStatus.CANCELLED && oldStatus !== AppointmentStatus.CANCELLED && Number(appointment.amountPaid || 0) > 0) {
+      const wantsRefund = updateData?.refund === true || updateData?.refund === 'true';
+      if (wantsRefund && !this.isAdminRole(userRole)) {
+        throw new ForbiddenException('Only an admin can refund a paid appointment.');
+      }
+      const paidBefore = Number(appointment.amountPaid || 0);
+      if (wantsRefund) {
+        await this.refundAppointmentPayments(appointment.id, userId, 'Refund on cancellation (admin decision)');
+        // recordPayment(REFUND) already lowered amountPaid in the DB; keep the entity in sync
+        // so the save() below does not write the stale value back.
+        const refreshed = await this.appointmentsRepository.findOne({ where: { id: appointment.id } });
+        if (refreshed) appointment.amountPaid = refreshed.amountPaid;
+      }
+      paidCancellation = { amountPaid: paidBefore, refunded: wantsRefund };
     }
 
     // 1. CONFIRMATION RESTRICTION: Clinique can confirm, sales and admin
@@ -1525,7 +2040,7 @@ export class BookingsService {
       // Update details shared during the execution phase
       if (updateData?.serviceId) appointment.serviceId = updateData.serviceId;
       if (updateData?.totalAmount !== undefined) appointment.totalAmount = Number(updateData.totalAmount);
-      if (updateData?.amountPaid !== undefined) appointment.amountPaid = Number(updateData.amountPaid);
+      // amountPaid is derived from the payment ledger only (recordPayment); never set it from input.
       if (updateData?.rewardPointsRedeemed) appointment.rewardPointsRedeemed = Number(updateData.rewardPointsRedeemed);
 
       // RULE: Persistence of isReturned flag
@@ -1551,6 +2066,7 @@ export class BookingsService {
     if (status === AppointmentStatus.CANCELLED) {
       appointment.cancelledAt = new Date();
       appointment.cancelledById = userId;
+      appointment.isLateCancellation = this.isLateCancellation(appointment);
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
@@ -1569,6 +2085,15 @@ export class BookingsService {
     appointment.status = status;
     const saved = await this.appointmentsRepository.save(appointment);
     const updated = await this.findById(saved.id);
+
+    if (paidCancellation) {
+      await this.handlePaidAppointmentCancelled(updated, {
+        amountPaid: paidCancellation.amountPaid,
+        refunded: paidCancellation.refunded,
+        cancelledById: userId,
+        cancelledByRole: userRole,
+      });
+    }
 
     // 3. TASK INTERACTION: Auto-complete / Cancel / Follow-up linked tasks
     try {
@@ -1670,6 +2195,8 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('This appointment has already been completed and is locked.');
     }
+    // Completion and payments only from the appointment start time.
+    this.assertAppointmentStarted(appointment, 'Completing the appointment');
     const oldStatus = appointment.status;
     const oldTotal = Number(appointment.totalAmount ?? 0);
     const oldAdvance = Number(appointment.advancePaymentAmount ?? 0);
@@ -1691,6 +2218,9 @@ export class BookingsService {
     }
 
     if (paymentData) {
+      // For a normal (non-advance) payment `amount` is the visit total; only the open balance
+      // (total minus earlier partial payments) is recorded as a new payment below.
+      const visitTotal = Number(paymentData.amount || 0);
       appointment.paymentMethod = paymentData.paymentMethod;
       if (paymentData.isAdvancePayment) {
         appointment.advancePaymentAmount = paymentData.amount;
@@ -1747,46 +2277,30 @@ export class BookingsService {
         }
       }
 
-      // If there is still a remaining amount to be paid via other methods, or if we need to update an existing record
-      if (paymentData.amount > 0 || !giftCardCode) {
-        try {
+      // Record what is still open as a NEW payment. Earlier (partial) payments are never
+      // overwritten, so each payment keeps its own amount and method.
+      try {
         const type = paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT;
-        const existing = await this.financialService['paymentRecordsRepository'].findOne({
-          where: { appointmentId: appointment.id, type },
-        });
-
-        if (existing) {
-          console.log('[BookingsService] Updating existing PaymentRecord:', existing.id);
-          await this.financialService['paymentRecordsRepository'].update(existing.id, {
-            amount: paymentData.amount,
-            method: paymentData.paymentMethod as any,
-            notes: (paymentData.notes || '') + ' (Recalculated)',
-            recordedById: userId,
-          });
-
-          // Manually recalculate amountPaid on appointment via logic similar to recordPayment
-          const records = await this.financialService['paymentRecordsRepository'].find({ where: { appointmentId: appointment.id } });
-          const totalPaid = records.reduce((acc, r) => acc + (r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -Number(r.amount) : Number(r.amount)), 0);
-          appointment.amountPaid = totalPaid;
-        } else {
-          console.log('[BookingsService] Creating NEW PaymentRecord for amount:', paymentData.amount);
-          // Record new PaymentRecord
+        let toRecord = Number(paymentData.amount || 0);
+        if (!paymentData.isAdvancePayment) {
+          const summary = await this.financialService.getAppointmentPaymentSummary(appointment.id);
+          toRecord = Math.round((visitTotal - summary.paid - summary.giftCardRedeemed) * 100) / 100;
+        }
+        if (toRecord > 0) {
           await this.financialService.recordPayment({
             appointmentId: appointment.id,
             clinicId: appointment.clinicId,
             clientId: appointment.clientId,
             providerId: appointment.providerId,
-            amount: paymentData.amount,
-            method: paymentData.paymentMethod as any,
+            amount: toRecord,
+            method: String(paymentData.paymentMethod || 'cash').toLowerCase() as any,
             type,
             notes: paymentData.notes,
             recordedById: userId,
           });
-          console.log('[BookingsService] Successfully recorded PaymentRecord');
         }
-        } catch (fErr) {
-          console.error('[BookingsService] Revenue update failed:', fErr.message, fErr.stack);
-        }
+      } catch (fErr) {
+        console.error('[BookingsService] Revenue update failed:', fErr.message, fErr.stack);
       }
 
       // RULE: Always re-sync the in-memory appointment.amountPaid AFTER recording a payment 
@@ -1824,12 +2338,9 @@ export class BookingsService {
         recordedById: userId,
       };
 
-      // Update payment if provided in report
-      if (completionReport.amountPaid) {
+      // Price from the report; amountPaid stays ledger-derived (never set without a payment record).
+      if (completionReport.amountPaid && !paymentData) {
         appointment.totalAmount = completionReport.amountPaid;
-        if (!appointment.amountPaid || Number(appointment.amountPaid) <= 0) {
-          appointment.amountPaid = completionReport.amountPaid;
-        }
       }
     }
 
@@ -1906,6 +2417,8 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
     }
+    this.assertAppointmentStarted(appointment, 'Recording a payment');
+    await this.assertWithinBalance(appointmentId, Number(amount));
 
     // Normalize method to lowercase to match PaymentMethod enum (cash, card, pos, etc.)
     const normalizedMethod = method?.toLowerCase() as any;
@@ -1998,13 +2511,16 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
     }
+    this.assertAppointmentStarted(appointment, 'Recording a payment');
     const beforeAdvance = Number(appointment.advancePaymentAmount ?? 0);
     const beforeTotal = Number(appointment.totalAmount ?? 0);
 
+    // `amount` is the money received now (partial payments allowed); it never replaces the
+    // appointment price. Only the open balance may be collected.
     if (paymentData.isAdvancePayment) {
-      appointment.advancePaymentAmount = paymentData.amount;
+      appointment.advancePaymentAmount = Number(appointment.advancePaymentAmount || 0) + Number(paymentData.amount || 0);
     } else {
-      appointment.totalAmount = paymentData.amount;
+      await this.assertWithinBalance(appointment.id, Number(paymentData.amount));
     }
 
     appointment.paymentMethod = paymentData.paymentMethod;
@@ -2479,20 +2995,25 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
 
-    // Check for conflicts with the new time
-    const conflictingAppointment = await this.appointmentsRepository.findOne({
-      where: {
-        providerId: appointment.providerId,
-        startTime: Between(newStartTime, newEndTime),
-        status: AppointmentStatus.CONFIRMED,
-      },
-    });
-
-    if (conflictingAppointment && conflictingAppointment.id !== appointmentId) {
-      throw new ConflictException('Time slot is already booked');
+    // Duration = sum of all treatments.
+    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+    if (durationMinutes > 0) {
+      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
     }
 
+    // Same checks as on create (opening hours, closing time, blocks, overlaps, past times).
+    await this.assertSlotBookable({
+      clinicId: appointment.clinicId,
+      providerId: appointment.providerId,
+      representativeId: appointment.representativeId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      excludeAppointmentId: appointmentId,
+      actorRole: userRole,
+    });
+
     const oldStartTime = appointment.startTime;
+    const oldEndTime = appointment.endTime;
     appointment.startTime = newStartTime;
     appointment.endTime = newEndTime;
 
@@ -2506,7 +3027,7 @@ export class BookingsService {
     const formattedDate = formatDateInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
     const formattedTime = formatTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
     const formattedDateTime = formatDateTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const serviceName = fullAppointment.service?.treatment?.name || 'Treatment';
+    const serviceName = await this.getTreatmentLabel(fullAppointment);
     const providerName = fullAppointment.provider
       ? `${fullAppointment.provider.firstName} ${fullAppointment.provider.lastName}`.trim()
       : '';
@@ -2592,8 +3113,13 @@ export class BookingsService {
     this.eventEmitter.emit('appointment.rescheduled', {
       appointment: fullAppointment,
       oldStartTime,
-      newStartTime,
+      oldEndTime,
+      newStartTime: fullAppointment.startTime,
+      newEndTime: fullAppointment.endTime,
+      oldClinicId: fullAppointment.clinicId,
+      newClinicId: fullAppointment.clinicId,
       reason,
+      rescheduledById: userId,
     });
 
     return fullAppointment;
