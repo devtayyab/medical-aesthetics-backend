@@ -789,7 +789,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  <Badge variant={getStatusColor(appointment.status)}>
  {appointment.status}
  </Badge>
- {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+ {/* Complete only on active appointments that have started */}
+ {['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(String(appointment.status || '').toUpperCase()) && new Date(appointment.startTime).getTime() <= Date.now() && (
  <Button
  size="xs"
  variant="primary"

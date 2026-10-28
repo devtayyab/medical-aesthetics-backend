@@ -732,8 +732,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  const handleUpdateAppointmentStatus = async (id: string, status: string, aptObj?: any) => {
  if (status === 'COMPLETED' || status === 'completed') {
+ if (aptObj?.startTime && new Date(aptObj.startTime).getTime() > Date.now()) {
+ alert('An appointment can be completed only from its start time.');
+ return;
+ }
  setPendingAptId(id);
  setPendingAptObj(aptObj);
+ // Checkout starts at the treatment price (open balance), never at €0.
+ const price = Number(aptObj?.totalAmount || 0) || Number(aptObj?.service?.price || aptObj?.price || 0);
+ const paid = Number(aptObj?.amountPaid || 0);
+ const due = Math.max(0, price - paid);
+ setPaymentAmt(String(due > 0 ? due : price));
  setIsPaymentPrompt(true);
  return;
  }
@@ -1479,13 +1488,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   <span>at {item.data.clinicName}</span>
   </div>
   <div className="flex gap-2 items-center border-t border-slate-100 pt-3">
-  {item.data.status === 'COMPLETED' || item.data.status === 'EXECUTED' ? (
+  {['COMPLETED', 'EXECUTED'].includes(String(item.data.status || '').toUpperCase()) ? (
   <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
     <Lock className="w-3.5 h-3.5" /> Locked
   </span>
-  ) : (
+  ) : ['CANCELLED', 'NO_SHOW', 'DELETED'].includes(String(item.data.status || '').toUpperCase()) ? null : (
   <>
+  {/* Complete only on active appointments that have started */}
+  {['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(String(item.data.status || '').toUpperCase()) && new Date(item.data.startTime).getTime() <= Date.now() && (
   <Button size="sm" className="h-8 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm" onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}>Complete</Button>
+  )}
   <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-slate-600 border-slate-200 hover:bg-slate-50" onClick={() => { setSelectedAppointmentForEdit(item.data); setShowBookingModal(true); }}>Edit</Button>
   </>
   )}
