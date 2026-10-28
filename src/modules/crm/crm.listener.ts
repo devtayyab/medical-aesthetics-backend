@@ -5,6 +5,7 @@ import { Lead } from './entities/lead.entity';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { TaskAutomationService } from './task-automation.service';
 
 @Injectable()
 export class CrmListener {
@@ -13,7 +14,31 @@ export class CrmListener {
     constructor(
         private readonly crmService: CrmService,
         private readonly notificationsService: NotificationsService,
+        private readonly taskAutomationService: TaskAutomationService,
     ) { }
+
+    // The one automatic task per booking (confirmation call) follows the appointment:
+    // created on booking, moved on reschedule, closed on cancel/no-show/complete/delete.
+    @OnEvent('appointment.created')
+    async syncConfirmationOnCreated(appointment: any) {
+        await this.taskAutomationService.syncConfirmationTask(appointment?.id);
+    }
+
+    @OnEvent('appointment.rescheduled')
+    async syncConfirmationOnRescheduled(payload: any) {
+        // Two emit shapes exist: the bare appointment and { appointment, oldStartTime, ... }
+        await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id ?? payload?.id);
+    }
+
+    @OnEvent('appointment.status.changed')
+    async syncConfirmationOnStatusChanged(payload: any) {
+        await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id);
+    }
+
+    @OnEvent('appointment.calendar.dirty')
+    async syncConfirmationOnCalendarDirty(payload: any) {
+        await this.taskAutomationService.syncConfirmationTask(payload?.appointmentId);
+    }
 
     @OnEvent('lead.status.changed')
     async handleLeadStatusChange(payload: { lead: Lead; oldStatus: string; newStatus: string }) {
@@ -83,26 +108,13 @@ export class CrmListener {
 
     @OnEvent('appointment.executed')
     async handleAppointmentExecuted(appointment: any) {
-        this.logger.log(`Appointment ${appointment.id} executed in clinic. Generating follow-up...`);
+        // No follow-up task here: the only automatic task is the confirmation call (closed by the sync below).
+        await this.taskAutomationService.syncConfirmationTask(appointment?.id);
 
         try {
-            // 1. Find assigned salesperson (representative) or fallback to owner of lead
             const representativeId = appointment.representativeId || appointment.bookedById;
-            
             if (representativeId) {
-                // 2. Create a "Satisfaction Check" follow-up task as per workflow
                 const therapyName = appointment.service?.treatment?.name || 'Treatment';
-                
-                await this.crmService.createAction({
-                  customerId: appointment.clientId,
-                  salespersonId: representativeId,
-                  actionType: 'satisfaction_check',
-                  title: `Satisfaction Check: ${therapyName}`,
-                  description: `Post-Treatment Follow-up: ${therapyName} executed on ${appointment.executedAt || new Date().toISOString()}. Check patient results and upsell potential.`,
-                  priority: 'medium',
-                  dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3), // 3 days after execution
-                  reminderDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2) // 2 days after execution
-                });
 
                 // Notify the specific salesperson
                 await this.notificationsService.create(
@@ -119,11 +131,9 @@ export class CrmListener {
                     `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
                     { appointmentId: appointment.id, type: 'execution' }
                 );
-
-                this.logger.log(`Follow-up task created and platform staff notified for salesperson ${representativeId}`);
             }
         } catch (error) {
-            this.logger.error(`Failed to handle appointment execution follow-up for ${appointment.id}`, error.stack);
+            this.logger.error(`Failed to handle appointment execution notifications for ${appointment?.id}`, error.stack);
         }
     }
 }

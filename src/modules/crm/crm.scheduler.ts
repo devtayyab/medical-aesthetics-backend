@@ -47,8 +47,8 @@ export class CrmScheduler implements OnModuleInit {
     }
   }
 
-  // Every day at 02:00 AM
-  @Cron('0 2 * * *')
+  // Every day at 02:00 Athens
+  @Cron('0 2 * * *', { timeZone: 'Europe/Athens' })
   async runTaskAutomation() {
     try {
       this.logger.log('Starting daily task automation check...');
@@ -61,27 +61,15 @@ export class CrmScheduler implements OnModuleInit {
     }
   }
 
-  // Every day at 04:00 AM
-  @Cron('0 4 * * *')
+  // Every hour: keep the one confirmation-call task per booking in line with the
+  // appointment (also catches booking edits that emit no event). Idempotent.
+  @Cron('10 * * * *', { timeZone: 'Europe/Athens' })
   async injectAppointmentConfirmations() {
     try {
-      this.logger.log('Injecting upcoming appointment confirmation tasks...');
       const result = await this.crmService.scheduledInjectConfirmationTask();
-      this.logger.log(`Confirmation tasks injected: ${result.injected}`);
+      this.logger.log(`Confirmation tasks reconciled for ${result.injected} appointments`);
     } catch (err) {
-      this.logger.error('Failed to inject confirmation tasks', err as any);
-    }
-  }
-
-  // Every day at 05:00 AM
-  @Cron('0 5 * * *')
-  async injectNextDayFollowUps() {
-    try {
-      this.logger.log('Injecting post-treatment follow-up tasks...');
-      const result = await this.crmService.scheduledInjectNextDayFollowUp();
-      this.logger.log(`Follow-up tasks injected: ${result.injected}`);
-    } catch (err) {
-      this.logger.error('Failed to inject follow-up tasks', err as any);
+      this.logger.error('Failed to reconcile confirmation tasks', err as any);
     }
   }
 

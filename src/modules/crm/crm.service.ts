@@ -4634,108 +4634,20 @@ export class CrmService implements OnModuleInit {
   }
 
   /**
-   * CRON: Inject "Confirmation Call Reminder" for upcoming appointments
-   * Runs daily at midnight. Finds appointments happening in 24-48 hours.
+   * CRON / manual trigger: make sure every upcoming booking has its one confirmation-call
+   * task (2 working days before, 08:00 Athens) and that it follows reschedules/cancellations.
    */
   async scheduledInjectConfirmationTask(): Promise<{ injected: number }> {
-    const tomorrowStart = new Date();
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
-
-    const dayAfterTomorrowEnd = new Date();
-    dayAfterTomorrowEnd.setDate(dayAfterTomorrowEnd.getDate() + 2);
-    dayAfterTomorrowEnd.setHours(23, 59, 59, 999);
-
-    const upcomingAppointments = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(tomorrowStart, dayAfterTomorrowEnd),
-        status: In([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
-      },
-      relations: ['service', 'service.treatment']
-    });
-
-    let injected = 0;
-    for (const apt of upcomingAppointments) {
-      // Check if task already exists
-      const existing = await this.crmActionsRepository.findOne({
-        where: {
-          relatedAppointmentId: apt.id,
-          actionType: 'confirmation_call_reminder'
-        }
-      });
-
-      if (!existing) {
-        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-
-        await this.crmActionsRepository.save({
-          title: `Confirm Appointment: ${apt.service?.treatment?.name || 'Treatment'}`,
-          actionType: 'confirmation_call_reminder',
-          status: 'pending',
-          priority: 'high',
-          dueDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000), // 24h before
-          reminderDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000 - 30 * 60 * 1000), // 30m before due
-          customerId: record?.id,
-          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
-          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
-          relatedAppointmentId: apt.id,
-          description: `Call client to confirm appointment at ${apt.startTime.toLocaleString()}`
-        });
-        injected++;
-      }
-    }
-    return { injected };
+    const { synced } = await this.taskAutomationService.reconcileConfirmationTasks();
+    return { injected: synced };
   }
 
   /**
-   * CRON: Inject "Next Day Follow-up" for completed appointments
-   * Runs daily. Finds appointments completed yesterday.
+   * Post-treatment follow-up tasks are no longer created automatically: the only automatic
+   * task is the confirmation call. Kept for the manual endpoint's API compatibility.
    */
   async scheduledInjectNextDayFollowUp(): Promise<{ injected: number }> {
-    const yesterdayStart = new Date();
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    yesterdayStart.setHours(0, 0, 0, 0);
-
-    const yesterdayEnd = new Date();
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-
-    const finishedAppointments = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(yesterdayStart, yesterdayEnd),
-        status: AppointmentStatus.COMPLETED
-      },
-      relations: ['service', 'service.treatment']
-    });
-
-    let injected = 0;
-    for (const apt of finishedAppointments) {
-      const existing = await this.crmActionsRepository.findOne({
-        where: {
-          relatedAppointmentId: apt.id,
-          actionType: 'follow_up_call' as 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder' | 'satisfaction_check' | 'complaint'
-        }
-      });
-
-      if (!existing) {
-        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-
-        await this.crmActionsRepository.save({
-          title: `Post-Treatment Follow-up: ${apt.service?.treatment?.name || 'Treatment'}`,
-          actionType: 'follow_up_call',
-          status: 'pending',
-          priority: 'medium',
-          dueDate: new Date(), // Due today
-          reminderDate: new Date(),
-          customerId: record?.id,
-          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
-          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
-          relatedAppointmentId: apt.id,
-          description: `Follow up after ${apt.service?.treatment?.name} appointment on ${apt.startTime.toDateString()}`
-        });
-        injected++;
-      }
-    }
-    return { injected };
+    return { injected: 0 };
   }
 
   async seedMockCrmData(): Promise<any> {
