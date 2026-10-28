@@ -154,7 +154,8 @@ export const AppointmentCalendar: React.FC = () => {
 
   const handleNewAppointment = useCallback(() => {
     setInitialAptData({
-      clinicId: filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id || '',
+      // Only prefill a clinic the user explicitly filtered on — never guess one.
+      clinicId: filters.clinicId !== 'all' ? filters.clinicId : '',
       salesPersonId: selectedSalesPersonId !== 'all' ? selectedSalesPersonId : user?.id || '',
     });
     setAptModalMode('create');

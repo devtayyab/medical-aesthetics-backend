@@ -278,54 +278,68 @@ export const TreatmentDetails: React.FC = () => {
  <span className="text-[#CBFF38] bg-black px-2.5 py-0.5 rounded-lg">Practitioners</span>
  </h2>
  </div>
+          {!isAuthenticated ? (
+            <div className="bg-gradient-to-r from-gray-900 via-black to-gray-900 rounded-[2rem] p-8 sm:p-12 text-center text-white border border-white/10 shadow-2xl">
+              <div className="size-14 mx-auto mb-4 rounded-2xl bg-[#CBFF38]/10 border border-[#CBFF38]/30 flex items-center justify-center text-[#CBFF38]">
+                <Lock size={24} />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2">
+                Log In to View Practitioners & Prices
+              </h3>
+              <p className="text-sm text-gray-400 max-w-md mx-auto mb-6">
+                To access verified aesthetic clinics, expert practitioners, and real-time treatment prices, please log in.
+              </p>
+              <button
+                onClick={() => navigate(`/login?redirect=/treatment/${id}`)}
+                className="px-8 py-3.5 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-white transition-all shadow-lg inline-flex items-center gap-2"
+              >
+                Log In / Register <ChevronRight size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {treatment.offerings && treatment.offerings.length > 0 ? (
+                treatment.offerings.map((offering: any, idx: number) => (
+                  <motion.div 
+                    key={offering.clinicId}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="bg-white p-5 sm:p-8 rounded-[2rem] border border-gray-100 hover:border-[#CBFF38] transition-all hover:-translate-y-1 group shadow-sm flex flex-col"
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-3 sm:gap-0">
+                      <div className="w-full sm:max-w-[60%]">
+                        <h4 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-tight mb-2">
+                          {offering.clinicName}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                          <MapPin size={10} className="text-[#CBFF38] shrink-0" /> <span className="truncate">{offering.location}</span>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">
+                        <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 leading-none mb-0 sm:mb-1">
+                          <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
+                        </div>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}m</span>
+                      </div>
+                    </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
- {treatment.offerings?.map((offering: any, idx: number) => (
- <motion.div 
- key={offering.clinicId}
- initial={{ opacity: 0, y: 15 }}
- whileInView={{ opacity: 1, y: 0 }}
- viewport={{ once: true }}
- transition={{ delay: idx * 0.1 }}
- className="bg-white p-5 sm:p-8 rounded-[2rem] border border-gray-100 hover:border-[#CBFF38] transition-all hover:-translate-y-1 group shadow-sm flex flex-col"
- >
- <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-3 sm:gap-0">
- <div className="w-full sm:max-w-[60%]">
- <h4 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-tight mb-2">
- {offering.clinicName}
- </h4>
- <div className="flex items-center gap-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
- <MapPin size={10} className="text-[#CBFF38] shrink-0" /> <span className="truncate">{offering.location}</span>
- </div>
- </div>
- <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">
-  {isAuthenticated ? (
-    <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 leading-none mb-0 sm:mb-1">
-      <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
-    </div>
-  ) : (
-    <button
-      onClick={() => navigate('/login')}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lime-50 text-[10px] font-black uppercase text-lime-700 hover:bg-lime-100 transition-colors border border-lime-200 mb-1"
-      title="Login required to view prices"
-    >
-      <Lock size={12} className="text-lime-600 shrink-0" />
-      <span>Login for price</span>
-    </button>
-  )}
- <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}m</span>
- </div>
- </div>
-
- <button 
- onClick={() => navigate(`/appointment/booking?clinicId=${offering.clinicId}&serviceIds=${offering.id}`)}
- className="w-full h-14 bg-[#121212] text-[#CBFF38] rounded-xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
- >
- Initiate Booking <ChevronRight size={14} />
- </button>
- </motion.div>
- ))}
- </div>
+                    <button 
+                      onClick={() => navigate(`/appointment/booking?clinicId=${offering.clinicId}&serviceIds=${offering.id}`)}
+                      className="w-full h-14 bg-[#121212] text-[#CBFF38] rounded-xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      Initiate Booking <ChevronRight size={14} />
+                    </button>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-full py-12 text-center text-gray-400 font-bold uppercase text-xs tracking-widest">
+                  No verified practitioners currently available for this protocol.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Medical Assessment Price Notice */}
           <div className="mt-8 p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3">

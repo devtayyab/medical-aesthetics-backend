@@ -460,12 +460,12 @@ export const Appointments: React.FC = () => {
                         )}
                       </div>
                       
-                      {apt.notes && (
+                      {apt.rescheduleReason && (
                         <div className="group relative">
                           <MessageSquare className="text-gray-400 hover:text-black transition-colors cursor-help" size={20} />
                           <div className="absolute bottom-full right-0 mb-3 w-48 sm:w-56 p-3 sm:p-4 bg-black text-white text-[10px] font-medium rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-30 shadow-2xl border border-white/10 leading-relaxed">
-                            <span className="block text-[#CBFF38] font-black mb-1">CLINICAL_NOTES:</span>
-                            {apt.notes}
+                            <span className="block text-[#CBFF38] font-black mb-1">RESCHEDULE_REASON:</span>
+                            {apt.rescheduleReason}
                           </div>
                         </div>
                       )}

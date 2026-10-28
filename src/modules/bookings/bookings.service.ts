@@ -845,8 +845,11 @@ export class BookingsService {
       if (data?.additionalServiceIds) {
         updateData.additionalServiceIds = data.additionalServiceIds;
       }
-      if (data?.notes) {
-        updateData.notes = data.notes;
+      if (data?.notes && data.notes.trim()) {
+        const newNote = data.notes.trim();
+        updateData.notes = appointment.notes && !appointment.notes.includes(newNote)
+          ? `${appointment.notes}\n${newNote}`
+          : (appointment.notes || newNote);
       }
 
       // Record payment in financial ledger if amountPaid > 0
@@ -1011,19 +1014,15 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
     
-    let updatedNotes = appointment.notes;
-    if (notes) {
-      const timestamp = new Date().toLocaleString();
-      const rescheduleNote = `\n[Reschedule Reason - ${timestamp}]: ${notes}`;
-      updatedNotes = updatedNotes ? `${updatedNotes}${rescheduleNote}` : rescheduleNote;
-    }
-
     const oldStatus = appointment.status;
     const updatePayload: any = {
       startTime: newStartTime,
       endTime: newEndTime,
-      notes: updatedNotes,
     };
+
+    if (notes && notes.trim()) {
+      updatePayload.rescheduleReason = notes.trim();
+    }
 
     if (isClientReschedule) {
       updatePayload.status = AppointmentStatus.PENDING;
@@ -1148,13 +1147,43 @@ export class BookingsService {
 
     const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
-    // Add display name to each appointment
-    return appointments.map(apt => ({
-      ...apt,
-      displayName: this.formatAppointmentDisplayName(apt),
-      serviceName: apt.service?.treatment?.name,
-      providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-    })) as Appointment[];
+    // Add display name to each appointment and sanitize for client
+    return appointments.map(apt => {
+      const item: any = {
+        ...apt,
+        displayName: this.formatAppointmentDisplayName(apt),
+        serviceName: apt.service?.treatment?.name,
+        providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}`.trim() : null,
+      };
+
+      if (role === 'client') {
+        // Internal notes NEVER reach the client
+        delete item.notes;
+        delete item.clinicNotes;
+        delete item.appointmentCompletionReport;
+
+        // Client API returns NO bank details
+        if (item.clinic) {
+          item.clinic = { ...item.clinic };
+          delete item.clinic.bankIban;
+          delete item.clinic.bankBic;
+          delete item.clinic.bankAccountHolder;
+          delete item.clinic.bankName;
+        }
+
+        // Doctor's personal email/phone never go to clients
+        if (item.provider) {
+          item.provider = { ...item.provider };
+          delete item.provider.email;
+          delete item.provider.phone;
+          delete item.provider.lastLoginAt;
+          delete item.provider.password;
+          delete item.provider.refreshToken;
+        }
+      }
+
+      return item;
+    }) as Appointment[];
   }
 
   async cleanupExpiredHolds(): Promise<void> {
@@ -1529,7 +1558,12 @@ export class BookingsService {
       appointment.totalAmount = 0;
     }
 
-    if (updateData?.notes) appointment.notes = updateData.notes;
+    if (updateData?.notes && updateData.notes.trim()) {
+      const newNote = updateData.notes.trim();
+      appointment.notes = appointment.notes && !appointment.notes.includes(newNote)
+        ? `${appointment.notes}\n${newNote}`
+        : (appointment.notes || newNote);
+    }
     if (updateData?.treatmentDetails) appointment.treatmentDetails = updateData.treatmentDetails;
 
     appointment.status = status;
@@ -1663,7 +1697,12 @@ export class BookingsService {
       } else {
         appointment.totalAmount = paymentData.amount;
       }
-      appointment.notes = paymentData.notes || appointment.notes;
+      if (paymentData.notes && paymentData.notes.trim()) {
+        const newNote = paymentData.notes.trim();
+        appointment.notes = appointment.notes && !appointment.notes.includes(newNote)
+          ? `${appointment.notes}\n${newNote}`
+          : (appointment.notes || newNote);
+      }
 
       // Handle Gift Card Redemption
       if (giftCardCode && paymentData.amount > 0) {
@@ -1767,7 +1806,12 @@ export class BookingsService {
     if (completionReport) {
       appointment.showStatus = completionReport.patientCame ? 'showed_up' : 'no_show';
       appointment.serviceExecuted = completionReport.patientCame && !!completionReport.servicePerformed;
-      appointment.clinicNotes = completionReport.notes || appointment.clinicNotes;
+      if (completionReport.notes && completionReport.notes.trim()) {
+        const newNote = completionReport.notes.trim();
+        appointment.clinicNotes = appointment.clinicNotes && !appointment.clinicNotes.includes(newNote)
+          ? `${appointment.clinicNotes}\n${newNote}`
+          : (appointment.clinicNotes || newNote);
+      }
 
       // Store completion report
       appointment.appointmentCompletionReport = {
@@ -1964,7 +2008,12 @@ export class BookingsService {
     }
 
     appointment.paymentMethod = paymentData.paymentMethod;
-    appointment.notes = paymentData.notes || appointment.notes;
+    if (paymentData.notes && paymentData.notes.trim()) {
+      const newNote = paymentData.notes.trim();
+      appointment.notes = appointment.notes && !appointment.notes.includes(newNote)
+        ? `${appointment.notes}\n${newNote}`
+        : (appointment.notes || newNote);
+    }
 
     const savedAppointment = await this.appointmentsRepository.save(appointment);
 
@@ -2447,8 +2496,8 @@ export class BookingsService {
     appointment.startTime = newStartTime;
     appointment.endTime = newEndTime;
 
-    if (reason) {
-      appointment.notes = `${appointment.notes || ''}\nRescheduled: ${reason}`;
+    if (reason && reason.trim()) {
+      appointment.rescheduleReason = reason.trim();
     }
 
     const updatedAppointment = await this.appointmentsRepository.save(appointment);

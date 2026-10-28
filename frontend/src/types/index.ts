@@ -119,6 +119,7 @@ export interface Appointment {
  endTime: string;
  status: 'PENDING' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'EXECUTED';
  notes?: string;
+ rescheduleReason?: string;
  paymentMethod?: string;
  advancePaymentAmount?: number;
  totalAmount?: number;

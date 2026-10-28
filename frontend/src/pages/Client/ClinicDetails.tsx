@@ -81,6 +81,10 @@ export const ClinicDetails: React.FC = () => {
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate(`/login?redirect=/clinic/${id}`);
+      return;
+    }
     if (id) {
       dispatch(fetchClinicById(id));
       dispatch(fetchClinicServices(id));
@@ -88,7 +92,7 @@ export const ClinicDetails: React.FC = () => {
     return () => {
       dispatch(clearSelectedClinic());
     };
-  }, [dispatch, id]);
+  }, [dispatch, id, isAuthenticated, navigate]);
 
   const clinicData = selectedClinic || clinics.find((c) => c.id === id);
   const serviceData = services.length > 0 ? services : clinicData?.services || [];

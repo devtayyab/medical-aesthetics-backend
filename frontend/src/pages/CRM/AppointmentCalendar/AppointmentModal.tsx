@@ -90,8 +90,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     clinicName: '',
     salesPersonId: effectiveUserId,
     date: format(new Date(), 'yyyy-MM-dd'),
-    startTime: '10:00',
-    durationMinutes: 60,
+    startTime: '',
+    durationMinutes: 0,
     status: 'PENDING',
     notes: '',
     paymentMethod: '',
@@ -192,25 +192,34 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         paymentStatus,
       });
     } else {
-      // Create mode
+      // Create mode — ALWAYS start from a clean form. Do NOT spread the previous
+      // state: after viewing an existing appointment it still holds that
+      // appointment's time/duration/clinic, which leaked into the new form.
       const defaultPersonId = initialData?.salesPersonId || effectiveUserId;
-      setForm(prev => ({
-        ...prev,
+      setForm({
         patientId: '',
         patientName: '',
         serviceId: '',
         additionalServiceIds: [],
         serviceName: '',
+        clinicId: '',
+        clinicName: '',
         salesPersonId: defaultPersonId,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        startTime: '',
+        durationMinutes: 0,
         status: 'PENDING',
         notes: '',
         paymentMethod: '',
         amount: 0,
+        tax: TAX_RATE,
         discount: 0,
         paymentStatus: 'UNPAID',
         ...(initialData || {}),
-      }));
+      });
       setSelectedPatient(null);
+      setAvailableSlots([]);
+      setAvailableServices([]);
     }
 
     setConflict(null);
@@ -400,8 +409,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleClinicChange = (clinicId: string) => {
     const clinic = clinics.find(c => c.id === clinicId);
-    setForm(prev => ({ ...prev, clinicId, clinicName: clinic?.name || '', serviceId: '', serviceName: '', amount: 0 }));
+    setForm(prev => ({
+      ...prev,
+      clinicId,
+      clinicName: clinic?.name || '',
+      serviceId: '',
+      additionalServiceIds: [],
+      serviceName: '',
+      amount: 0,
+      // A time picked for another clinic is meaningless here
+      startTime: mode === 'edit' ? prev.startTime : '',
+      durationMinutes: mode === 'edit' ? prev.durationMinutes : 0,
+    }));
     setAvailableServices([]);
+    setAvailableSlots([]);
   };
 
   const selectPatient = (patient: any) => {
@@ -420,7 +441,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (availableSlots.length === 0) return [];
 
     const exists = availableSlots.some(s => s.value === form.startTime);
-    if (exists || !form.startTime) return availableSlots;
+    // Only edit mode may inject its own (off-grid) time. In create mode a time that
+    // isn't in the fetched list must never be shown as a free slot.
+    if (exists || !form.startTime || mode !== 'edit') return availableSlots;
 
     // Edit mode: the existing appointment time may not be in the fetched slots — add it
     const [h, m] = form.startTime.split(':');
@@ -431,7 +454,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     };
 
     return [...availableSlots, missingSlot].sort((a, b) => a.value.localeCompare(b.value));
-  }, [availableSlots, form.startTime]);
+  }, [availableSlots, form.startTime, mode]);
+
+  // Create mode: if the selected time turns out to be busy (or no longer exists)
+  // once slots load, clear it so a busy slot can't stay selected.
+  useEffect(() => {
+    if (mode !== 'create' || !form.startTime || availableSlots.length === 0) return;
+    const slot = availableSlots.find(s => s.value === form.startTime);
+    if (!slot || slot.available === false) {
+      setForm(prev => ({ ...prev, startTime: '' }));
+    }
+  }, [availableSlots, mode, form.startTime]);
 
   const validateAndCheckConflict = useCallback((): boolean => {
     if (!form.isNewPatient && !form.patientId) { toast.error('Please select a patient.'); return false; }
@@ -442,6 +475,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!form.serviceId) { toast.error('Please select a treatment.'); return false; }
     if (!form.clinicId) { toast.error('Please select a clinic.'); return false; }
     if (!form.date || !form.startTime) { toast.error('Please set date and time.'); return false; }
+    if (!form.durationMinutes || form.durationMinutes <= 0) { toast.error('Please set a duration.'); return false; }
 
     const clinic = clinics.find(c => c.id === form.clinicId);
     const tz = clinic?.timezone || 'UTC';
@@ -979,7 +1013,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
                   {displaySlots.map(opt => {
                     const isSelected = form.startTime === opt.value;
-                    const isDisabled = !opt.available && !isSelected;
+                    // Busy slots are always disabled when creating. In edit mode the
+                    // appointment's own current slot stays selectable.
+                    const isDisabled = !opt.available && !(mode === 'edit' && isSelected);
                     return (
                       <button
                         key={opt.value}
@@ -1027,6 +1063,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 onChange={e => setForm(prev => ({ ...prev, durationMinutes: parseInt(e.target.value, 10) }))}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
+                {!form.durationMinutes && (
+                  <option value={0} disabled>Select a treatment...</option>
+                )}
                 {durationOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}

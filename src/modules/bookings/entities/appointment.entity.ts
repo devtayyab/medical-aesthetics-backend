@@ -55,6 +55,9 @@ export class Appointment {
   @Column('text', { nullable: true })
   notes: string;
 
+  @Column('text', { nullable: true })
+  rescheduleReason?: string;
+
   @Column({ nullable: true })
   paymentMethod: string; // 'cash', 'card', 'bank_transfer', etc.
 

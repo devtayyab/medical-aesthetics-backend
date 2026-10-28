@@ -146,6 +146,7 @@ export interface Appointment {
  appointmentSource: 'clinic_own' | 'platform_broker';
  totalAmount: number;
  notes?: string;
+ rescheduleReason?: string;
  reason?: string;
  additionalServiceIds?: string[];
  treatmentDetails?: any;
