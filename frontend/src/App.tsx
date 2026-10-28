@@ -40,6 +40,8 @@ import AnalyticsPage from"@/pages/Clinic/AnalyticsPage";
 import ClientsPage from"@/pages/Clinic/ClientsPage";
 import ReviewsPage from"@/pages/Clinic/ReviewsPage";
 import NotificationsPage from"@/pages/Clinic/NotificationsPage";
+import BroadcastPage from"@/pages/Admin/BroadcastPage";
+import ContactMessages from"@/pages/Admin/ContactMessages";
 import SettingsPage from"@/pages/Clinic/SettingsPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
@@ -1008,7 +1010,17 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
- <NotificationsPage />
+ <BroadcastPage />
+ </AdminLayout>
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="/admin/contact-messages"
+ element={
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin"]}>
+ <AdminLayout>
+ <ContactMessages />
  </AdminLayout>
  </ProtectedLayout>
  }
