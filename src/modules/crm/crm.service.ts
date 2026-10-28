@@ -2,6 +2,10 @@ import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenEx
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
+import { Brackets } from 'typeorm';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import { BUSINESS_TIMEZONE, formatDateTimeInTz, parseWallClockInTz } from '../../common/utils/timezone.util';
+import { TASK_OWNER_ROLES } from './task-automation.service';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
@@ -2145,7 +2149,7 @@ export class CrmService implements OnModuleInit {
         data.salespersonId,
         NotificationType.PUSH,
         isCallAction ? `📞 Call Back: ${customerName}` : 'New Task Created',
-        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate}`,
+        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate ? formatDateTimeInTz(new Date(data.dueDate), BUSINESS_TIMEZONE) : '-'}`,
         {
           actionId: savedAction.id,
           trigger: isCallAction ? 'DIALER_CALLBACK' : 'TASK_OPEN',
@@ -2159,11 +2163,28 @@ export class CrmService implements OnModuleInit {
     return savedAction;
   }
 
-  async updateAction(id: string, updateData: Partial<CrmAction>): Promise<CrmAction> {
+  async updateAction(id: string, updateData: Partial<CrmAction> & { callNote?: any }, actorId?: string): Promise<CrmAction> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
 
     if (!action) {
       throw new NotFoundException('Action not found');
+    }
+
+    // Call note: appended to the task (description + metadata.callNotes history), never overwritten
+    const callNote = updateData.callNote;
+    delete updateData.callNote;
+
+    // Reassignment: only to BD staff (salesperson/manager/admin); notify the new owner afterwards
+    const previousOwnerId = action.salespersonId;
+    const isReassigned = !!updateData.salespersonId && updateData.salespersonId !== previousOwnerId;
+    if (isReassigned) {
+      const newOwner = await this.usersRepository.findOne({ where: { id: updateData.salespersonId } });
+      if (!newOwner || !TASK_OWNER_ROLES.includes(newOwner.role)) {
+        throw new BadRequestException('Tasks can only be assigned to salespeople or admins.');
+      }
+    } else if (updateData.salespersonId === null || updateData.salespersonId === '') {
+      // Never drop the owner by accident (e.g. a form sending an empty owner)
+      delete updateData.salespersonId;
     }
 
     // Reminder validation and auto-fix
@@ -2206,6 +2227,44 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // A moved task needs a fresh reminder
+    const dueChanged = updateData.dueDate && new Date(updateData.dueDate).getTime() !== new Date(action.dueDate || 0).getTime();
+    const reminderChanged = updateData.reminderDate && new Date(updateData.reminderDate).getTime() !== new Date(action.reminderDate || 0).getTime();
+    if (dueChanged || reminderChanged) {
+      const baseMeta = { ...(updateData.metadata || action.metadata || {}) };
+      delete baseMeta.reminderSent;
+      updateData.metadata = baseMeta;
+    }
+
+    // Partial metadata updates must not wipe the call history
+    if (updateData.metadata && Array.isArray(action.metadata?.callNotes) && !updateData.metadata.callNotes) {
+      updateData.metadata = { ...updateData.metadata, callNotes: action.metadata.callNotes };
+    }
+
+    if (callNote && (callNote.note || callNote.outcome || callNote.nextGoal)) {
+      const at = new Date();
+      const entry = {
+        at: at.toISOString(),
+        by: actorId || null,
+        outcome: callNote.outcome || null,
+        note: String(callNote.note || '').trim(),
+        nextGoal: callNote.nextGoal ? String(callNote.nextGoal).trim() : undefined,
+        nextCallAt: updateData.dueDate ? new Date(updateData.dueDate).toISOString() : undefined,
+      };
+      const meta = { ...(updateData.metadata || action.metadata || {}) };
+      meta.callNotes = [...(Array.isArray(action.metadata?.callNotes) ? action.metadata.callNotes : []), entry];
+      updateData.metadata = meta;
+
+      const line = [
+        `[${formatDateTimeInTz(at, BUSINESS_TIMEZONE)}]`,
+        entry.outcome ? `${String(entry.outcome).replace(/_/g, ' ')}:` : '',
+        entry.note,
+        entry.nextGoal ? `(Next: ${entry.nextGoal})` : '',
+      ].filter(Boolean).join(' ');
+      const baseDescription = updateData.description !== undefined ? updateData.description : action.description;
+      updateData.description = baseDescription ? `${baseDescription}\n${line}` : line;
+    }
+
     const wasCompleted = action.status === 'completed';
     const isNowCompleted = updateData.status === 'completed';
 
@@ -2217,8 +2276,8 @@ export class CrmService implements OnModuleInit {
         try {
           const appointmentId = action.metadata.appointmentId;
           const apt = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
-          const isCompleted = apt && ['COMPLETED', 'EXECUTED'].includes(String(apt.status || '').toUpperCase());
-          if (apt && !isCompleted) {
+          const isClosed = apt && ['COMPLETED', 'EXECUTED', 'CANCELLED', 'NO_SHOW', 'DELETED'].includes(String(apt.status || '').toUpperCase());
+          if (apt && !isClosed) {
             await this.appointmentsRepository.update(appointmentId, {
               status: AppointmentStatus.CONFIRMED,
               updatedAt: new Date()
@@ -2240,7 +2299,24 @@ export class CrmService implements OnModuleInit {
     }
 
     Object.assign(action, updateData);
-    return this.crmActionsRepository.save(action);
+    const saved = await this.crmActionsRepository.save(action);
+
+    if (isReassigned) {
+      try {
+        const due = saved.dueDate ? ` - due ${formatDateTimeInTz(saved.dueDate, BUSINESS_TIMEZONE)}` : '';
+        await this.notificationsService.create(
+          saved.salespersonId,
+          NotificationType.PUSH,
+          'Task assigned to you',
+          `Task assigned to you: ${saved.title}${due}`,
+          { actionId: saved.id, trigger: 'TASK_OPEN' },
+        );
+      } catch (e) {
+        this.logger.warn(`[updateAction] Failed to notify new task owner: ${e.message}`);
+      }
+    }
+
+    return saved;
   }
 
   async deleteAction(id: string): Promise<void> {
@@ -2298,8 +2374,12 @@ export class CrmService implements OnModuleInit {
 
   async getActions(
     requesterId: string,
-    filters?: { status?: string; priority?: string; customerId?: string; salespersonId?: string }
-  ): Promise<CrmAction[]> {
+    filters?: {
+      status?: string; priority?: string; customerId?: string; salespersonId?: string;
+      // Server-side paging for the Tasks page (returns { data, total, page, limit } when `page` is set)
+      page?: string | number; limit?: string | number; search?: string; actionType?: string; dateRange?: string;
+    }
+  ): Promise<any> {
     try {
       const user = await this.usersRepository.findOne({ where: { id: requesterId } });
       const qb = this.crmActionsRepository
@@ -2350,8 +2430,36 @@ export class CrmService implements OnModuleInit {
       }
 
       // 2. Additional Filters from Query Params
-      if (filters?.status) {
+      if (filters?.status === 'overdue') {
+        qb.andWhere("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+      } else if (filters?.status === 'pending') {
+        qb.andWhere("action.status = 'pending' AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP)");
+      } else if (filters?.status && filters.status !== 'all') {
         qb.andWhere('action.status = :status', { status: filters.status });
+      }
+
+      if (filters?.actionType && filters.actionType !== 'all') {
+        qb.andWhere('action.actionType = :actionType', { actionType: filters.actionType });
+      }
+
+      if (filters?.search && String(filters.search).trim()) {
+        qb.andWhere(new Brackets(w => {
+          w.where('action.title ILIKE :q')
+            .orWhere('action.description ILIKE :q')
+            .orWhere("CONCAT(clientUser.firstName, ' ', clientUser.lastName) ILIKE :q")
+            .orWhere("CONCAT(relatedLead.firstName, ' ', relatedLead.lastName) ILIKE :q")
+            .orWhere('clientUser.phone ILIKE :q')
+            .orWhere('relatedLead.phone ILIKE :q');
+        }), { q: `%${String(filters.search).trim()}%` });
+      }
+
+      if (filters?.dateRange && filters.dateRange !== 'all') {
+        const range = this.taskDateRange(filters.dateRange);
+        if (range === 'overdue') {
+          qb.andWhere("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+        } else if (range) {
+          qb.andWhere('action.dueDate >= :rangeStart AND action.dueDate < :rangeEnd', { rangeStart: range.start, rangeEnd: range.end });
+        }
       }
 
       if (filters?.priority) {
@@ -2379,22 +2487,34 @@ export class CrmService implements OnModuleInit {
 
       const now = new Date();
 
-      // Custom sorting: Overdue (pending + date < now) first, then upcoming
-      // In TypeORM QueryBuilder, we can use CASE in orderBy
-      return await qb
-        .orderBy(`CASE 
-          WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 0 
-          WHEN action.status = 'pending' AND action.dueDate >= CURRENT_TIMESTAMP THEN 1
+      // Custom sorting: Overdue (open + date < now) first, then upcoming
+      qb.orderBy(`CASE 
+          WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 0 
+          WHEN action.status IN ('pending', 'in_progress') THEN 1
           ELSE 2 
         END`, 'ASC')
-        .addOrderBy('action.dueDate', 'ASC')
-        .getMany();
+        .addOrderBy('action.dueDate', 'ASC', 'NULLS LAST');
+
+      if (filters?.page === undefined || filters?.page === null || filters?.page === '') {
+        return await qb.getMany();
+      }
+
+      const page = Math.max(1, parseInt(String(filters.page), 10) || 1);
+      const limit = Math.min(200, Math.max(1, parseInt(String(filters.limit ?? 50), 10) || 50));
+      const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+      return { data, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
     } catch (error) {
       this.logger.error(`Error in getActions: ${error.message}`, error.stack);
       throw error;
     }
   }
 
+  /**
+   * Task counters (same definitions as the Tasks page list):
+   *  - overdue: open (pending / in progress) and due before now
+   *  - pending: open and due now or later (or no due date)
+   *  - total:   all tasks except cancelled
+   */
   async getTaskKpis(salespersonId?: string): Promise<any> {
     const qb = this.crmActionsRepository.createQueryBuilder('action');
 
@@ -2403,9 +2523,9 @@ export class CrmService implements OnModuleInit {
     }
 
     const raw = await qb
-      .select('COUNT(action.id)', 'total')
-      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP) THEN 1 END)", 'pending')
-      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 1 END)", 'overdue')
+      .select("COUNT(CASE WHEN action.status <> 'cancelled' THEN 1 END)", 'total')
+      .addSelect("COUNT(CASE WHEN action.status IN ('pending', 'in_progress') AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP) THEN 1 END)", 'pending')
+      .addSelect("COUNT(CASE WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 1 END)", 'overdue')
       .addSelect("COUNT(CASE WHEN action.status = 'in_progress' THEN 1 END)", 'inProgress')
       .addSelect("COUNT(CASE WHEN action.status = 'completed' THEN 1 END)", 'completed')
       .getRawOne();
@@ -2417,6 +2537,32 @@ export class CrmService implements OnModuleInit {
       inProgress: parseInt(raw?.inProgress || '0', 10),
       completed: parseInt(raw?.completed || '0', 10),
     };
+  }
+
+  /** Due-date window (Europe/Athens calendar days) for the Tasks page "Timeline" filter. */
+  private taskDateRange(range: string): { start: Date; end: Date } | 'overdue' | null {
+    const tz = BUSINESS_TIMEZONE;
+    const [y, m, d] = formatInTimeZone(new Date(), tz, 'yyyy-MM-dd').split('-').map(Number);
+    const dayStart = (offset: number) => {
+      const c = new Date(Date.UTC(y, m - 1, d + offset, 12));
+      return fromZonedTime(`${c.toISOString().slice(0, 10)}T00:00:00`, tz);
+    };
+    const monthStart = (offset: number) => {
+      const c = new Date(Date.UTC(y, m - 1 + offset, 1, 12));
+      return fromZonedTime(`${c.toISOString().slice(0, 10)}T00:00:00`, tz);
+    };
+    switch (range) {
+      case 'today': return { start: dayStart(0), end: dayStart(1) };
+      case 'tomorrow': return { start: dayStart(1), end: dayStart(2) };
+      case 'next_7_days': return { start: dayStart(1), end: dayStart(8) };
+      case 'next_15_days': return { start: dayStart(1), end: dayStart(16) };
+      case 'next_month': return { start: monthStart(1), end: monthStart(2) };
+      case 'yesterday': return { start: dayStart(-1), end: dayStart(0) };
+      case 'previous_7_days': return { start: dayStart(-7), end: dayStart(0) };
+      case 'previous_month': return { start: monthStart(-1), end: monthStart(0) };
+      case 'overdue': return 'overdue';
+      default: return null;
+    }
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
@@ -2708,6 +2854,12 @@ export class CrmService implements OnModuleInit {
       ])
       .getRawOne();
 
+    // Overdue = open now and past due (not limited to tasks created inside the period)
+    const overdueQ = this.crmActionsRepository.createQueryBuilder('action')
+      .where("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+    if (!isAll) overdueQ.andWhere('action.salespersonId = :salespersonId', { salespersonId });
+    const overdueTasks = await overdueQ.getCount();
+
     const tasksCompleted = parseInt(actionStats.completedActions || '0');
     const totalActions = parseInt(actionStats.totalActions || '0');
 
@@ -2733,8 +2885,8 @@ export class CrmService implements OnModuleInit {
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId');
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      aptBaseQ.where('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      aptBaseQ.where('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     } else {
       aptBaseQ.where('1=1');
     }
@@ -2836,8 +2988,8 @@ export class CrmService implements OnModuleInit {
       .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      mtdAptQ = mtdAptQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      mtdAptQ = mtdAptQ.andWhere('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     }
 
     // STRICTLY use MTD boundaries here
@@ -2875,8 +3027,8 @@ export class CrmService implements OnModuleInit {
       .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      timeSeriesQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      timeSeriesQ.andWhere('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     }
 
     timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod });
@@ -2967,7 +3119,9 @@ export class CrmService implements OnModuleInit {
         pending: parseInt(actionStats?.pendingActions || 0),
         completed: tasksCompleted,
         missed: parseInt(actionStats?.missedActions || 0),
+        overdue: overdueTasks,
       },
+      overdueTasks,
       customerStats: {
         totalCustomers: parseInt(customerStats?.totalCustomers || 0),
         repeatCustomers: parseInt(customerStats?.repeatCustomers || 0),
@@ -3454,7 +3608,9 @@ export class CrmService implements OnModuleInit {
       .leftJoin('apt.client', 'client')
       .leftJoin('apt.service', 'service')
       .leftJoin('service.treatment', 'treatment')
-      .leftJoin('users', 'agent', 'agent.id = apt.bookedById OR apt.providerId = agent.id')
+      .leftJoin('users', 'booker', 'booker.id = apt.bookedById')
+      // Booking belongs to the BD staff member who booked it, else the contact's owner (never the doctor)
+      .leftJoin('users', 'agent', `agent.id = CASE WHEN booker.role IN ('salesperson', 'manager', 'admin', 'SUPER_ADMIN') THEN apt.bookedById ELSE apt.representativeId END`)
       .select('apt.id', 'id')
       .addSelect('apt.startTime', 'date')
       .addSelect('treatment.name', 'eventType')
@@ -4747,6 +4903,177 @@ export class CrmService implements OnModuleInit {
       message: `Successfully seeded ${seeded} test leads with Facebook form names`,
       forms: testForms
     };
+  }
+
+  /**
+   * Admin import of open HubSpot tasks from a CSV export (item 63).
+   * Columns (header names, case-insensitive, EN/GR/HubSpot): client/contact name, phone,
+   * email, due date (dd/mm/yyyy or yyyy-mm-dd), time (HH:mm, Athens), salesperson (email or
+   * full name), title, notes. Client and salesperson must match existing records.
+   * Re-importing the same file does not create duplicates. `dryRun` validates only.
+   */
+  async importTasksFromCsv(csv: string, dryRun = false, importedBy?: string): Promise<{
+    dryRun: boolean; total: number; created: number; skipped: number; errors: { row: number; reason: string }[];
+  }> {
+    const rows = this.parseCsv(csv || '');
+    if (rows.length < 2) throw new BadRequestException('The CSV file has no data rows.');
+
+    const norm = (h: string) => h.toLowerCase().replace(/^﻿/, '').replace(/[^a-z0-9Ͱ-Ͽἀ-῿]+/g, ' ').trim();
+    const header = rows[0].map(norm);
+    const col = (...names: string[]) => header.findIndex(h => names.includes(h));
+    const idx = {
+      client: col('client', 'contact', 'associated contact', 'contact name', 'name', 'client name', 'customer', 'πελάτης', 'όνομα'),
+      phone: col('phone', 'phone number', 'mobile', 'mobile phone number', 'τηλέφωνο', 'κινητό'),
+      email: col('email', 'contact email', 'e mail'),
+      date: col('due date', 'date', 'due', 'ημερομηνία', 'προθεσμία'),
+      time: col('time', 'due time', 'ώρα'),
+      owner: col('salesperson', 'assigned to', 'task owner', 'owner', 'agent', 'πωλητής'),
+      title: col('title', 'task title', 'subject', 'task', 'τίτλος'),
+      notes: col('notes', 'task notes', 'body', 'description', 'σημειώσεις'),
+    };
+    if (idx.date < 0 || idx.owner < 0 || (idx.client < 0 && idx.phone < 0 && idx.email < 0)) {
+      throw new BadRequestException('Required columns: client (or phone/email), due date, salesperson. Optional: time, title, notes.');
+    }
+
+    const staff = await this.usersRepository.find({ where: { role: In(TASK_OWNER_ROLES as UserRole[]) } });
+    const findOwner = (value: string) => {
+      const v = (value || '').trim().toLowerCase();
+      if (!v) return null;
+      return staff.find(u => (u.email || '').toLowerCase() === v)
+        || staff.find(u => `${u.firstName || ''} ${u.lastName || ''}`.trim().toLowerCase() === v)
+        || null;
+    };
+
+    const result = { dryRun, total: rows.length - 1, created: 0, skipped: 0, errors: [] as { row: number; reason: string }[] };
+    const cell = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const rowNo = i + 1;
+      if (r.every(c => !c || !c.trim())) { result.total--; continue; }
+      try {
+        const dueDate = parseWallClockInTz(cell(r, idx.date), cell(r, idx.time) || null, BUSINESS_TIMEZONE);
+        if (!dueDate) { result.errors.push({ row: rowNo, reason: `Invalid due date "${cell(r, idx.date)}"` }); continue; }
+
+        const owner = findOwner(cell(r, idx.owner));
+        if (!owner) { result.errors.push({ row: rowNo, reason: `Salesperson "${cell(r, idx.owner)}" not found` }); continue; }
+
+        const contact = await this.findContactForImport(cell(r, idx.client), cell(r, idx.phone), cell(r, idx.email), !dryRun);
+        if (!contact) {
+          result.errors.push({ row: rowNo, reason: `Client "${cell(r, idx.client) || cell(r, idx.phone) || cell(r, idx.email)}" not found` });
+          continue;
+        }
+
+        const title = cell(r, idx.title) || 'Follow-up call (HubSpot)';
+        const importKey = `${contact.contactKey}|${dueDate.toISOString()}|${title.toLowerCase()}`;
+        const exists = await this.crmActionsRepository
+          .createQueryBuilder('action')
+          .where("action.metadata->>'importKey' = :importKey", { importKey })
+          .getCount();
+        if (exists) { result.skipped++; continue; }
+
+        if (!dryRun) {
+          await this.crmActionsRepository.save(this.crmActionsRepository.create({
+            customerId: contact.customerId,
+            relatedLeadId: contact.relatedLeadId,
+            salespersonId: owner.id,
+            actionType: 'call',
+            title,
+            description: cell(r, idx.notes) || null,
+            status: 'pending',
+            priority: 'medium',
+            dueDate,
+            reminderDate: dueDate,
+            metadata: { importSource: 'hubspot_csv', importKey, importedBy: importedBy || null, importedAt: new Date().toISOString() },
+          }));
+        }
+        result.created++;
+      } catch (e) {
+        result.errors.push({ row: rowNo, reason: e?.message || 'Unknown error' });
+      }
+    }
+    return result;
+  }
+
+  /** Finds a lead or customer for a CSV row: phone (last 10 digits), then email, then unique full name. */
+  private async findContactForImport(
+    name: string, phone: string, email: string, createRecord: boolean,
+  ): Promise<{ customerId?: string; relatedLeadId?: string; contactKey: string } | null> {
+    const toContact = async (userId?: string, leadId?: string) => {
+      if (userId) {
+        let record = await this.customerRecordsRepository.findOne({ where: { customerId: userId } });
+        if (!record && createRecord) record = await this.createCustomerRecord(userId);
+        return { customerId: record?.id, contactKey: userId };
+      }
+      return leadId ? { relatedLeadId: leadId, contactKey: leadId } : null;
+    };
+    const digitsSql = "regexp_replace(COALESCE(%s.phone, ''), '[^0-9]', '', 'g') LIKE :tail";
+
+    const digits = (phone || '').replace(/\D/g, '');
+    if (digits.length >= 8) {
+      const tail = `%${digits.slice(-10)}`;
+      const user = await this.usersRepository.createQueryBuilder('u')
+        .where(digitsSql.replace('%s', 'u'), { tail })
+        .andWhere('u.role = :role', { role: UserRole.CLIENT })
+        .getOne();
+      if (user) return toContact(user.id);
+      const lead = await this.leadsRepository.createQueryBuilder('l')
+        .where(digitsSql.replace('%s', 'l'), { tail })
+        .orderBy('l.createdAt', 'DESC')
+        .getOne();
+      if (lead) return toContact(undefined, lead.id);
+    }
+
+    const mail = (email || '').trim().toLowerCase();
+    if (mail.includes('@')) {
+      const user = await this.usersRepository.createQueryBuilder('u')
+        .where('LOWER(u.email) = :mail', { mail }).andWhere('u.role = :role', { role: UserRole.CLIENT }).getOne();
+      if (user) return toContact(user.id);
+      const lead = await this.leadsRepository.createQueryBuilder('l')
+        .where('LOWER(l.email) = :mail', { mail }).orderBy('l.createdAt', 'DESC').getOne();
+      if (lead) return toContact(undefined, lead.id);
+    }
+
+    const full = (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    if (full) {
+      const users = await this.usersRepository.createQueryBuilder('u')
+        .where("LOWER(TRIM(CONCAT(u.firstName, ' ', u.lastName))) = :full", { full })
+        .andWhere('u.role = :role', { role: UserRole.CLIENT }).take(2).getMany();
+      if (users.length === 1) return toContact(users[0].id);
+      const leads = await this.leadsRepository.createQueryBuilder('l')
+        .where("LOWER(TRIM(CONCAT(l.firstName, ' ', l.lastName))) = :full", { full }).take(2).getMany();
+      if (leads.length === 1) return toContact(undefined, leads[0].id);
+    }
+    return null;
+  }
+
+  /** Minimal RFC 4180 CSV parser (quotes, escaped quotes, CRLF); auto-detects ',' or ';'. */
+  private parseCsv(text: string): string[][] {
+    const firstLine = text.split(/\r?\n/, 1)[0] || '';
+    const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') inQuotes = false;
+        else field += ch;
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        row.push(field); field = '';
+      } else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = '';
+      } else {
+        field += ch;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
   }
 
   async bulkCreateActions(leadIds: string[], taskData: Partial<CrmAction>): Promise<any> {

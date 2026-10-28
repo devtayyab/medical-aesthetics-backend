@@ -191,8 +191,8 @@ export class CrmController {
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update CRM action' })
-  updateAction(@Param('id') id: string, @Body() updateData: any) {
-    return this.crmService.updateAction(id, updateData);
+  updateAction(@Param('id') id: string, @Body() updateData: any, @Request() req) {
+    return this.crmService.updateAction(id, updateData, req.user?.id);
   }
 
   @Delete('actions/:id')
@@ -233,7 +233,8 @@ export class CrmController {
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get task management KPIs' })
   getTaskKpis(@Query('salespersonId') salespersonId: string, @Request() req) {
-    const sid = salespersonId || undefined;
+    // Salespeople only count their own tasks (same scope as the task list)
+    const sid = req.user?.role === UserRole.SALESPERSON ? req.user.id : (salespersonId || undefined);
     return this.crmService.getTaskKpis(sid);
   }
 
@@ -545,6 +546,14 @@ export class CrmController {
     @Query('limit') limit?: number,
   ) {
     return this.crmService.getWebhookLeads({ days: days || 30, page: page || 1, limit: limit || 50 });
+  }
+
+  @Post('actions/import-csv')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Import open HubSpot tasks from CSV (admin only)' })
+  importTasksCsv(@Body() body: { csv: string; dryRun?: boolean }, @Request() req) {
+    return this.crmService.importTasksFromCsv(body?.csv, !!body?.dryRun, req.user?.id);
   }
 
   @Post('actions/bulk')
