@@ -29,7 +29,8 @@ export const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({
  console.log("ProtectedLayout: Not authenticated, redirecting to /login", {
  location: location.pathname,
  });
- return <Navigate to="/login" state={{ from: location }} replace />;
+ const redirect = encodeURIComponent(location.pathname + location.search);
+ return <Navigate to={`/login?redirect=${redirect}`} state={{ from: location }} replace />;
  }
 
  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role ||"")) {
