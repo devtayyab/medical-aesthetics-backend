@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, Reducer } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, Reducer, PayloadAction } from '@reduxjs/toolkit';
 import { notificationsAPI } from '@/services/api';
 import type { Notification } from '@/types';
 
@@ -55,12 +55,26 @@ const notificationsSlice = createSlice({
  clearError: (state) => {
  state.error = null;
  },
+ // Live notification (FCM foreground / socket). Ignored if already listed, so the same
+ // notification never shows twice.
+ addNotification: (state, action: PayloadAction<Notification>) => {
+ const incoming = action.payload;
+ if (!incoming?.id || state.notifications.some(n => n.id === incoming.id)) return;
+ state.notifications = [incoming, ...state.notifications];
+ if (!incoming.isRead) state.unreadCount += 1;
+ },
  },
  extraReducers: (builder) => {
  builder
  // Fetch notifications
  .addCase(fetchNotifications.fulfilled, (state, action) => {
- state.notifications = action.payload;
+ // De-duplicate by id (a notification must never be listed twice)
+ const seen = new Set<string>();
+ state.notifications = (Array.isArray(action.payload) ? action.payload : []).filter((n: Notification) => {
+ if (!n?.id || seen.has(n.id)) return false;
+ seen.add(n.id);
+ return true;
+ });
  })
  // Fetch unread count
  .addCase(fetchUnreadCount.fulfilled, (state, action) => {
@@ -110,6 +124,6 @@ const notificationsSlice = createSlice({
  },
 });
 
-export const { clearError } = notificationsSlice.actions;
+export const { clearError, addNotification } = notificationsSlice.actions;
 const notificationsReducer: Reducer<NotificationsState> = notificationsSlice.reducer;
 export default notificationsReducer;

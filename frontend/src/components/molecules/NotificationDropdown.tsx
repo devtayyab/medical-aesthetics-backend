@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from"react";
 import { useSelector, useDispatch } from"react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, CheckCircle, Clock, ExternalLink } from"lucide-react";
-import { formatDistanceToNow } from"date-fns";
 import { css } from"@emotion/css";
 import type { RootState, AppDispatch } from"@/store";
 import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from"@/store/slices/notificationsSlice";
@@ -88,7 +87,7 @@ interface NotificationDropdownProps {
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
- const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
+ const { notifications } = useSelector((state: RootState) => state.notifications);
  const { user } = useSelector((state: RootState) => state.auth);
  const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -103,29 +102,33 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  return '/notifications';
  };
 
- const handleMarkAllRead = async (e: React.MouseEvent | React.TouchEvent) => {
- e.preventDefault();
- e.stopPropagation();
- if (e.nativeEvent.stopImmediatePropagation) {
- e.nativeEvent.stopImmediatePropagation();
- }
-
- if (isLoading) return;
-
- try {
- await dispatch(markAllAsRead()).unwrap();
- await dispatch(fetchNotifications(10));
- } catch (err) {
- console.error("Failed to mark all as read:", err);
- }
- };
-
+ // Opening the bell marks everything read (counter back to 0); the items stay listed.
  useEffect(() => {
- if (isOpen) {
- dispatch(fetchNotifications(10));
+ if (!isOpen) return;
+ let cancelled = false;
+ (async () => {
+ try {
+ await dispatch(fetchNotifications(20));
+ if (!cancelled) await dispatch(markAllAsRead());
+ } catch {
  dispatch(fetchUnreadCount());
  }
+ })();
+ return () => {
+ cancelled = true;
+ };
  }, [isOpen, dispatch]);
+
+ const formatAthens = (value: string) =>
+ new Date(value).toLocaleString('el-GR', {
+ timeZone: 'Europe/Athens',
+ day: '2-digit',
+ month: '2-digit',
+ year: 'numeric',
+ hour: '2-digit',
+ minute: '2-digit',
+ hour12: false,
+ });
 
  useEffect(() => {
  const handleClickOutside = (event: MouseEvent) => {
@@ -160,22 +163,10 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  >
  <div className={headerStyle}>
  <div className="flex-1 min-w-0 pr-4">
- <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900 leading-none truncate">Activity</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">Updates & Alerts</p>
+ <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900 leading-none truncate">Ειδοποιήσεις</h3>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">Ενημερώσεις</p>
  </div>
- <div
- role="button"
- tabIndex={0}
- className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:bg-white/10 transition-all bg-black px-4 py-2 rounded-full cursor-pointer disabled:opacity-50 border border-transparent hover:border-[#CBFF38]/20 select-none"
- onClick={handleMarkAllRead}
- onKeyDown={(e) => {
- if (e.key === 'Enter' || e.key === ' ') {
- handleMarkAllRead(e as any);
- }
- }}
- >
- {isLoading ? '...' : 'Clear All'}
- </div>
+
  </div>
 
  <div className={scrollAreaStyle}>
@@ -184,8 +175,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  <div className="size-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
  <Bell className="text-gray-200" size={32} />
  </div>
- <p className="text-sm font-black uppercase tracking-tighter text-gray-400">All caught up</p>
- <p className="text-xs text-gray-300 mt-2">No new notifications at the moment.</p>
+ <p className="text-sm font-black uppercase tracking-tighter text-gray-400">Δεν υπάρχουν ειδοποιήσεις</p>
  </div>
  ) : (
  notifications.map((notif) => (
@@ -224,7 +214,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  {notif.title}
  </p>
  <p className="text-[10px] font-bold text-gray-400 shrink-0 ml-4">
- {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: false })}
+ {formatAthens(notif.createdAt)}
  </p>
  </div>
  <p className={`text-xs mt-1 leading-relaxed ${notif.isRead ? 'text-gray-400' : 'text-gray-600 font-medium'}`}>
@@ -243,7 +233,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  className="w-full h-14 bg-gray-900 text-[#CBFF38] hover:bg-black transition-all rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs decoration-none"
  style={{ textDecoration: 'none' }}
  >
- Expand Feed
+ Όλες οι ειδοποιήσεις
  <ExternalLink size={14} />
  </Link>
  </div>
