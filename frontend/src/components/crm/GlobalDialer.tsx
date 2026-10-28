@@ -8,6 +8,7 @@ import { Textarea } from"@/components/atoms/Textarea";
 import { Select } from"@/components/atoms/Select/Select";
 import { Phone, User, MoreHorizontal, X, Check, Activity, Clock, PhoneCall, Calendar } from"lucide-react";
 import toast from"react-hot-toast";
+import { CALL_OUTCOMES, KEEP_TASK_OPEN_OUTCOMES, formatAthens, nextWorkingDay0800 } from '@/constants/callOutcomes';
 
 // Reuse the visual Dialer UI
 const DialerModalUI = ({
@@ -130,6 +131,7 @@ export const GlobalDialer: React.FC = () => {
  const [outcome, setOutcome] = useState("");
  const [clinic, setClinic] = useState("");
  const [duration, setDuration] = useState(0);
+ const [nextCallAt, setNextCallAt] = useState("");
 
  if (!isOpen) return null;
 
@@ -151,16 +153,20 @@ export const GlobalDialer: React.FC = () => {
  metadata: { outcome, durationSeconds: duration, taskId }
  })).unwrap();
 
- // 2. Complete the task if it exists
+ // 2. Interested / Call back / No answer: the SAME task moves to the next call; else it is completed
  if (taskId) {
+ const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(outcome);
+ const next = keepOpen ? new Date(nextCallAt || nextWorkingDay0800()) : null;
  await dispatch(updateAction({
  id: taskId,
- updates: { 
- status: 'completed',
- metadata: { callOutcome: outcome } 
- }
+ updates: {
+ status: keepOpen ? 'pending' : 'completed',
+ ...(next ? { dueDate: next.toISOString(), reminderDate: next.toISOString() } : {}),
+ metadata: { callOutcome: outcome },
+ callNote: { note: notes.trim(), outcome },
+ } as any
  })).unwrap();
- toast.success("Task completed successfully!");
+ toast.success(next ? `Η εργασία μεταφέρθηκε στις ${formatAthens(next)}` : "Task completed successfully!");
  }
 
  // 3. Refresh data
@@ -172,6 +178,7 @@ export const GlobalDialer: React.FC = () => {
  setNotes("");
  setOutcome("");
  setClinic("");
+ setNextCallAt("");
  } catch (error) {
  console.error("Failed to save interaction:", error);
  toast.error("Failed to save interaction.");
@@ -207,15 +214,17 @@ export const GlobalDialer: React.FC = () => {
 
  <div className="p-6 space-y-4 overflow-y-auto">
  <div className="grid grid-cols-2 gap-3">
- {[
- { id: 'appointment_booked', label: 'Appt Booked', icon: Calendar },
- { id: 'call_later', label: 'Call Back', icon: Clock },
- { id: 'no_answer', label: 'No Answer', icon: PhoneCall },
- { id: 'not_interested', label: 'Not Interested', icon: X }
- ].map(opt => (
+ {CALL_OUTCOMES.map(o => ({
+ id: o.value,
+ label: o.labelEl,
+ icon: ({ interested: Activity, call_later: Clock, no_answer: PhoneCall, not_interested: X, appointment_booked: Calendar, wrong_number: X } as Record<string, any>)[o.value] || PhoneCall,
+ })).map(opt => (
  <button
  key={opt.id}
- onClick={() => setOutcome(opt.id)}
+ onClick={() => {
+ setOutcome(opt.id);
+ if (KEEP_TASK_OPEN_OUTCOMES.includes(opt.id) && !nextCallAt) setNextCallAt(nextWorkingDay0800());
+ }}
  className={`flex items-center gap-3 p-3 border rounded-xl transition-all text-left ${
  outcome === opt.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:border-blue-300'
  }`}
@@ -238,6 +247,18 @@ export const GlobalDialer: React.FC = () => {
  />
  </div>
 
+ {KEEP_TASK_OPEN_OUTCOMES.includes(outcome) && taskId && (
+ <div className="space-y-1.5">
+ <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Επόμενη κλήση</label>
+ <input
+ type="datetime-local"
+ value={nextCallAt}
+ onChange={(e) => setNextCallAt(e.target.value)}
+ className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm font-bold"
+ />
+ </div>
+ )}
+
  <div className="space-y-1.5">
  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Interaction Notes</label>
  <Textarea
@@ -251,7 +272,7 @@ export const GlobalDialer: React.FC = () => {
 
  <div className="p-6 bg-slate-50 border-t flex gap-3">
  <Button variant="white" className="flex-1 h-12 rounded-xl font-bold" onClick={() => dispatch(closeDialer())}>Cancel</Button>
- <Button variant="primary" className="flex-2 h-12 rounded-xl font-bold shadow-lg shadow-blue-500/20" onClick={handleSaveInteraction}>Save & Close Task</Button>
+ <Button variant="primary" className="flex-2 h-12 rounded-xl font-bold shadow-lg shadow-blue-500/20" onClick={handleSaveInteraction}>{KEEP_TASK_OPEN_OUTCOMES.includes(outcome) ? 'Αποθήκευση & επόμενη κλήση' : 'Save & Close Task'}</Button>
  </div>
  </div>
  </div>
