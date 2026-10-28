@@ -1219,7 +1219,14 @@ export class ClinicsService {
       }
     }
 
-    return this.servicesRepository.save(service);
+    const savedService = await this.servicesRepository.save(service);
+    const isAdminAction = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    if (!isAdminAction) this.eventEmitter.emit('treatment.added', {
+      treatment,
+      clinicName: clinic.name,
+      price: savedService.price,
+    });
+    return savedService;
   }
 
   async deleteService(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<void> {
@@ -1788,14 +1795,8 @@ export class ClinicsService {
       category: category.name, // Support legacy
     });
 
-    const savedTreatment = await this.treatmentsRepository.save(treatment);
-
-    this.eventEmitter.emit('treatment.added', {
-      treatment: savedTreatment,
-      clinicName: 'a clinic',
-    });
-
-    return savedTreatment;
+    // Admins are notified once, when the clinic adds the offer (therapy + price) for approval.
+    return this.treatmentsRepository.save(treatment);
   }
 
   async setTreatmentStatus(treatmentId: string, status: TreatmentStatus): Promise<Treatment> {
@@ -1803,15 +1804,32 @@ export class ClinicsService {
     if (!treatment) throw new NotFoundException('Treatment not found');
 
     treatment.status = status;
-    return this.treatmentsRepository.save(treatment);
+    const saved = await this.treatmentsRepository.save(treatment);
+
+    // One approval: deciding on the therapy also decides the clinic offers (therapy + price)
+    // that wait for it, and each clinic is told the result.
+    if (status === TreatmentStatus.APPROVED || status === TreatmentStatus.REJECTED) {
+      const pendingServices = await this.servicesRepository
+        .createQueryBuilder('service')
+        .where('service.treatmentId = :treatmentId', { treatmentId })
+        .andWhere("service.metadata->>'approvalStatus' = 'PENDING'")
+        .getMany();
+      for (const service of pendingServices) {
+        await this.setServiceApprovalStatus(service.id, status === TreatmentStatus.APPROVED ? 'APPROVED' : 'REJECTED');
+      }
+    }
+    return saved;
   }
 
+  /** Therapies waiting for approval that are not already part of a pending clinic offer. */
   async getPendingTreatments(): Promise<Treatment[]> {
-    return this.treatmentsRepository.find({
-      where: { status: TreatmentStatus.PENDING },
-      relations: ['categoryRef'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.treatmentsRepository
+      .createQueryBuilder('treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+      .where('treatment.status = :status', { status: TreatmentStatus.PENDING })
+      .andWhere(`NOT EXISTS (SELECT 1 FROM services s WHERE s."treatmentId" = treatment.id AND s.metadata->>'approvalStatus' = 'PENDING')`)
+      .orderBy('treatment.createdAt', 'DESC')
+      .getMany();
   }
 
   async getPendingCategories(): Promise<TreatmentCategory[]> {
@@ -2122,17 +2140,40 @@ export class ClinicsService {
   async setServiceApprovalStatus(serviceId: string, status: 'APPROVED' | 'REJECTED'): Promise<Service> {
     const service = await this.servicesRepository.findOne({ where: { id: serviceId }, relations: ['clinic', 'treatment'] });
     if (!service) throw new NotFoundException('Service not found');
-    
+    const previousStatus = service.metadata?.approvalStatus;
+
     service.metadata = {
       ...(service.metadata || {}),
       approvalStatus: status
     };
-    
+
     if (status === 'REJECTED') {
       service.isActive = false;
     }
-    
-    return this.servicesRepository.save(service);
+
+    const saved = await this.servicesRepository.save(service);
+
+    // One approval covers the therapy and its price: a new therapy that came with this offer
+    // is approved/rejected together with it.
+    if (service.treatment && service.treatment.status === TreatmentStatus.PENDING) {
+      service.treatment.status = status === 'APPROVED' ? TreatmentStatus.APPROVED : TreatmentStatus.REJECTED;
+      await this.treatmentsRepository.save(service.treatment);
+    }
+
+    if (previousStatus !== status && service.clinicId) {
+      const name = service.treatment?.name || 'Θεραπεία';
+      const price = service.price != null ? ` (€${Number(service.price)})` : '';
+      await this.notificationsService.notifyClinicStaff(
+        service.clinicId,
+        status === 'APPROVED' ? 'Η θεραπεία εγκρίθηκε' : 'Η θεραπεία απορρίφθηκε',
+        status === 'APPROVED'
+          ? `Η θεραπεία "${name}"${price} εγκρίθηκε και εμφανίζεται πλέον στις κρατήσεις.`
+          : `Η θεραπεία "${name}"${price} δεν εγκρίθηκε. Επικοινωνήστε με την ομάδα BeautyDoctors για λεπτομέρειες.`,
+        { serviceId: service.id, treatmentId: service.treatmentId, type: status === 'APPROVED' ? 'service_approved' : 'service_rejected' },
+      );
+    }
+
+    return saved;
   }
 
   async autoConnectTreatmentCategories() {

@@ -142,13 +142,13 @@ export class EventHandlersService {
 
   @OnEvent('treatment.added')
   async handleTreatmentAdded(eventData: any) {
-    const { treatment, clinicName } = eventData;
+    const { treatment, clinicName, price } = eventData;
     this.logger.log(`New treatment added: ${treatment?.name}`);
 
     // Only notify platform admins — not all staff (avoids duplicate/spam notifications)
     await this.notificationsService.notifyAdmins(
       'Νέα θεραπεία προς έγκριση',
-      `"${treatment?.name}" από ${clinicName || 'κλινική'}. Εγκρίνετε ή απορρίψτε στις Εγκρίσεις υπηρεσιών.`,
+      `"${treatment?.name}"${price != null ? ` (€${Number(price)})` : ''} από ${clinicName || 'κλινική'}. Εγκρίνετε ή απορρίψτε στον Κατάλογο θεραπειών > Εγκρίσεις.`,
       { treatmentId: treatment?.id, type: 'treatment_added', link: '/admin/treatments' }
     );
   }
