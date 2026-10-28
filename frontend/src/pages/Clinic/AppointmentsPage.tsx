@@ -22,7 +22,12 @@ const AppointmentsPage: React.FC = () => {
 
  const [selectedStatus, setSelectedStatus] = useState<string>('all');
  const [searchTerm, setSearchTerm] = useState('');
- const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+ // Staff -> Timeline opens this page with ?providerId=<staff id>: show that doctor's
+ // appointments over all dates.
+ const providerFilter = (() => {
+ try { return new URLSearchParams(window.location.search).get('providerId') || ''; } catch { return ''; }
+ })();
+ const [selectedDate, setSelectedDate] = useState<string>(providerFilter ? '' : new Date().toISOString().split('T')[0]);
  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
  const [showExecutionModal, setShowExecutionModal] = useState(false);
@@ -58,6 +63,7 @@ const AppointmentsPage: React.FC = () => {
  const filters: any = {};
  if (selectedDate) filters.date = selectedDate;
  if (activeClinicId) filters.clinicId = activeClinicId;
+ if (providerFilter) filters.providerId = providerFilter;
  dispatch(fetchAppointments(filters));
  };
 
@@ -108,7 +114,15 @@ const AppointmentsPage: React.FC = () => {
  };
 
  const handleCancel = async (id: string) => {
- if (window.confirm('Are you sure you want to cancel this appointment?')) {
+ const apt: any = (appointments || []).find((a: any) => a.id === id);
+ const isLate = apt?.startTime && new Date(apt.startTime).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+ const isPaid = Number(apt?.amountPaid || 0) > 0;
+ const message = [
+ isGreek ? 'Ακύρωση αυτού του ραντεβού;' : 'Are you sure you want to cancel this appointment?',
+ isLate ? (isGreek ? 'Προσοχή: ακύρωση λιγότερο από 24 ώρες πριν (καθυστερημένη ακύρωση).' : 'Warning: less than 24 hours before the appointment (late cancellation).') : '',
+ isPaid ? (isGreek ? 'Το ραντεβού έχει πληρωθεί. Η πληρωμή δεν αλλάζει, ο διαχειριστής αποφασίζει για επιστροφή.' : 'This appointment is paid. The payment stays as is; an admin decides on a refund.') : '',
+ ].filter(Boolean).join('\n\n');
+ if (window.confirm(message)) {
  await dispatch(
  updateAppointmentStatus({
  id,

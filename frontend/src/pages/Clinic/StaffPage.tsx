@@ -194,7 +194,7 @@ const StaffPage: React.FC = () => {
  key={member.id} 
  member={member} 
  onRemove={() => handleRemoveStaff(member.id)} 
- onViewSchedule={() => navigate('/clinic/appointments')}
+ onViewSchedule={() => navigate(`/clinic/appointments?providerId=${member.id}`)}
  />
  ))}
  

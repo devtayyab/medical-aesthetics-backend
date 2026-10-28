@@ -340,8 +340,9 @@ export class BookingsService {
 
     // Auto-assign to doctor if only one exists and none provided
     if (!providerId) {
+      // Only an ACTIVE doctor of the clinic can be auto-assigned (never a deactivated/test account).
       const clinicDoctors = await this.usersRepository.find({
-        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR }
+        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR, isActive: true } as any
       });
       if (clinicDoctors.length === 1) {
         providerId = clinicDoctors[0].id;
@@ -2922,6 +2923,7 @@ export class BookingsService {
       .leftJoinAndSelect('appointment.service', 'service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
+      .leftJoinAndSelect('appointment.executedBy', 'executedBy')
       .leftJoinAndSelect('appointment.client', 'client')
       .where('appointment.clientId = :clientId', { clientId });
 
@@ -2993,7 +2995,9 @@ export class BookingsService {
       appointments: appointments.map(apt => ({
         id: apt.id,
         serviceName: apt.service?.treatment?.name || 'Treatment',
-        providerName: apt.provider ? `${apt.provider.firstName || ''} ${apt.provider.lastName || ''}`.trim() : null,
+        // The real practitioner of THIS appointment: its provider, else the clinic staff
+        // member who performed it. Never a default/placeholder account.
+        providerName: this.practitionerName(apt),
         startTime: apt.startTime,
         status: apt.status,
         totalAmount: apt.totalAmount,
@@ -3005,6 +3009,15 @@ export class BookingsService {
         lastVisit: appointments[0]?.startTime || null,
       },
     };
+  }
+
+  private practitionerName(apt: Appointment): string | null {
+    const clinicRoles = [UserRole.DOCTOR, UserRole.CLINIC_OWNER].map(r => String(r).toLowerCase());
+    const person = apt.provider
+      || (apt.executedBy && clinicRoles.includes(String(apt.executedBy.role || '').toLowerCase()) ? apt.executedBy : null);
+    if (!person) return null;
+    const name = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+    return name || null;
   }
 
   async rescheduleAppointment(

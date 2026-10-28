@@ -324,7 +324,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
  <div>
  <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||"Clinical Service"}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "Assigned Practitioner"}</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "-"}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">
