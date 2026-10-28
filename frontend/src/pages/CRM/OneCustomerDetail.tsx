@@ -39,6 +39,14 @@ import { openDialer } from"@/store/slices/dialerSlice";
 import { AuthState } from"@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import toast from 'react-hot-toast';
+import {
+ CALL_OUTCOMES,
+ KEEP_TASK_OPEN_OUTCOMES,
+ formatAthens,
+ formatAthensDayMonth,
+ nextWorkingDay0800,
+ todayNextHour,
+} from '@/constants/callOutcomes';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
@@ -234,13 +242,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  // Dynamic Workflow State
  const [outcomeStep, setOutcomeStep] = useState<'interested' | 'callback' | 'wrong_number' | null>(null);
- const [interestedData, setInterestedData] = useState({ date: '', services: [] as string[] });
+ const [, setInterestedData] = useState({ date: '', services: [] as string[] });
  const [callbackDate, setCallbackDate] = useState('');
  const [wrongNumberRemakes, setWrongNumberRemakes] = useState(''); //"Remakes" as per user request (Remarks)
 
  const isConverted = customer?.status === 'converted' || (customer as any)?.role === 'customer' || (customer as any)?.role === 'client';
  const summary = customerRecord as CustomerSummary | null;
  const pendingTask = summary?.actions?.find(a => a.status === 'pending');
+ const openCallTask = [...(summary?.actions || [])]
+ .filter(a => (a.status === 'pending' || a.status === 'in_progress') && a.actionType !== 'confirmation_call_reminder')
+ .sort((a, b) => new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime())[0];
  const isBlocked = !isConverted && customer?.status !== 'lost' && !pendingTask;
 
  const [showBookingModal, setShowBookingModal] = useState(false);
@@ -545,10 +556,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  // Auto-advance workflow after call
  setWorkflowStep(2); // Go to Result step
- // Optional: Pre-fill notes with duration
- const mins = Math.floor(duration / 60);
- const secs = duration % 60;
- setInteractionNotes(prev => `Call Duration: ${mins}m ${secs}s\n${prev}`);
+ // Duration is saved with the call log; the note box stays empty
  };
 
   const handleSelectOutcome = (outcome: string) => {
@@ -565,28 +573,27 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     setCallbackDate('');
     setWrongNumberRemakes('');
     
-    // Strict Workflow Logic
-    if (outcome === 'not_interested') {
-      setOutcomeStep(null); // No specific sub-step for details, goes correctly to review
-      setWorkflowStep(3); // Tag step first
-      setAutoTask(null); // No task for closed lead
+    // Same outcomes as Process Task. No automatic task is created here: a call moves the
+    // contact's open task (or creates one) to the next call date chosen in step 4.
+    if (outcome === 'not_interested' || outcome === 'wrong_number') {
+      setAutoTask(null);
+      setWorkflowStep(3);
     } else if (outcome === 'appointment_booked') {
+      // The booking creates its own confirmation-call task
       setShowBookingModal(true);
-      setWorkflowStep(4); // Go to review to set confirmation task
-      // Task set by modal success or manually here? 
-      // We'll set a default confirmation task
-      setAutoTask({ title: 'Confirmation Call', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
+      setAutoTask(null);
+      setWorkflowStep(4);
     } else if (outcome === 'call_later') {
-      setOutcomeStep('callback'); // Shows date picker
-      setWorkflowStep(3); // Tag step (can skip or integrate) -> actually let's go to Tag then Task
-      // User requirement:"Tag -> Mandatory Task"
-      // So Outcome -> Tag -> Task
-    } else if (outcome === 'no_answer') {
-      setWorkflowStep(3); // Tag
-      // Mandatory Task: Call again
-      setAutoTask({ title: 'Call again (No Answer)', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
+      setOutcomeStep('callback'); // optional exact time in step 3, defaults to today
+      setAutoTask({ title: 'Επανάκληση', date: todayNextHour(), type: 'call' });
+      setWorkflowStep(3);
+    } else if (outcome === 'interested') {
+      setOutcomeStep('interested');
+      setAutoTask({ title: 'Επόμενη κλήση (ενδιαφέρεται)', date: nextWorkingDay0800(), type: 'call' });
+      setWorkflowStep(3);
     } else {
-      // Default Fallback
+      // no_answer
+      setAutoTask({ title: 'Νέα κλήση (δεν απάντησε)', date: nextWorkingDay0800(), type: 'call' });
       setWorkflowStep(3);
     }
   };
@@ -615,50 +622,30 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const handleCompleteWorkflow = async () => {
  if (!user?.id) return;
 
- // Smart Tag Detection Logic
- const hasNoAnswer = selectedTags.some(t => t.toLowerCase().includes('no answer'));
- const hasWrongNumber = selectedTags.some(t => t.toLowerCase().includes('wrong number'));
- const hasCallAgain = selectedTags.some(t => t.toLowerCase().includes('call again'));
  const provinceTag = selectedTags.find(t => t.toLowerCase().startsWith('province:'));
-
- // Compile Notes from specific steps
- let finalNotes = interactionNotes;
- if (outcomeStep === 'interested') {
- finalNotes = `[Interested]\nServices: ${interestedData.services.join(', ')}\nDate: ${interestedData.date}\n\n${finalNotes}`;
- } else if (outcomeStep === 'callback') {
- finalNotes = `[Callback Requested]\nTime: ${new Date(callbackDate).toLocaleString()}\n\n${finalNotes}`;
- } else if (outcomeStep === 'wrong_number') {
- finalNotes = `[Wrong Number]\nRemarks: ${wrongNumberRemakes}\n\n${finalNotes}`;
+ const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(interactionOutcome);
+ const nextCall = keepOpen && autoTask?.date ? new Date(autoTask.date) : null;
+ if (keepOpen && (!nextCall || isNaN(nextCall.getTime()))) {
+ toast.error('Ορίστε ημερομηνία και ώρα επόμενης κλήσης.');
+ return;
  }
 
- // Apply Smart Tag Actions
- let currentAutoTask = autoTask;
- if (hasNoAnswer && !currentAutoTask) {
- currentAutoTask = {
- title: 'Follow-up: No Answer (Auto)',
- date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
- type: 'call'
- };
+ // Compile notes (no "Invalid Date": the callback time is the task date)
+ const noteText = interactionNotes.trim();
+ let finalNotes = noteText;
+ if (interactionOutcome === 'call_later' && nextCall) {
+ finalNotes = `[Call back: ${formatAthensDayMonth(nextCall)} ${formatAthens(nextCall).split(' ')[1] || ''}]\n${finalNotes}`.trim();
+ } else if (nextCall) {
+ finalNotes = `[Επόμενη κλήση: ${formatAthens(nextCall)}]\n${finalNotes}`.trim();
  }
- if (hasCallAgain && !currentAutoTask) {
- currentAutoTask = {
- title: 'Follow-up: Call Again (Auto)',
- date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
- type: 'call'
- };
+ if (outcomeStep === 'wrong_number' || interactionOutcome === 'wrong_number') {
+ finalNotes = `[Wrong Number]${wrongNumberRemakes ? `\nRemarks: ${wrongNumberRemakes}` : ''}\n${finalNotes}`.trim();
  }
 
  try {
- // If Wrong Number, auto-close lead
- if (hasWrongNumber) {
- await dispatch(updateLead({ id: customer.id, updates: { status: 'lost' } })).unwrap();
- finalNotes = `[AUTO-CLOSED: WRONG NUMBER]\n${finalNotes}`;
- }
-
  // Province Routing (placeholder/logging)
  if (provinceTag) {
  finalNotes = `[ROUTING TAG: ${provinceTag}]\n${finalNotes}`;
- // Future: dispatch(reassignLead({ id: customer.id, province: provinceTag.split(':')[1] }));
  }
 
  await dispatch(logCommunication({
@@ -673,6 +660,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  clickOnly: true,
  outcome: interactionOutcome,
  tags: selectedTags,
+ originalTaskId: openCallTask?.id,
  // Do not fabricate a recording URL — there is no real recording, and a fake link
  // would render as a playable recording downstream.
  }
@@ -687,31 +675,58 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  })).unwrap();
  }
 
- if (currentAutoTask) {
- const taskDate = currentAutoTask.date ? new Date(currentAutoTask.date) : new Date();
- const safeDate = !isNaN(taskDate.getTime()) ? taskDate.toISOString() : new Date().toISOString();
+ const callNote = { note: noteText || finalNotes, outcome: interactionOutcome, nextGoal: autoTask?.title || undefined };
 
+ if (keepOpen && nextCall) {
+ if (openCallTask) {
+ // Move the SAME task to the next call
+ await dispatch(updateAction({
+ id: openCallTask.id,
+ updates: {
+ status: 'pending',
+ dueDate: nextCall.toISOString(),
+ reminderDate: nextCall.toISOString(),
+ metadata: { ...(openCallTask.metadata || {}), callOutcome: interactionOutcome },
+ callNote,
+ } as any
+ })).unwrap();
+ } else {
+ // No open task yet: create one, owned by the contact's salesperson
+ const ownerId = (customer as any)?.assignedSalesId
+ || (customerRecord?.record as any)?.assignedSalespersonId
+ || user?.id;
  await dispatch(createAction({
  customerId: customer.id,
- salespersonId: user?.id || undefined,
- actionType: currentAutoTask.type as any,
- title: currentAutoTask.title,
- description: `Generated from interaction outcome: ${interactionOutcome}${selectedTags.length ? ` (Tags: ${selectedTags.join(', ')})` : ''}`,
+ salespersonId: ownerId || undefined,
+ actionType: (autoTask?.type || 'call') as any,
+ title: autoTask?.title || 'Επόμενη κλήση',
+ description: finalNotes,
  status: 'pending',
- dueDate: safeDate,
- reminderDate: safeDate,
- priority: 'high'
+ dueDate: nextCall.toISOString(),
+ reminderDate: nextCall.toISOString(),
+ priority: 'high',
+ metadata: {
+ callOutcome: interactionOutcome,
+ callNotes: [{ at: new Date().toISOString(), by: user?.id, outcome: interactionOutcome, note: noteText, nextCallAt: nextCall.toISOString() }],
+ },
+ } as any)).unwrap();
+ }
+ } else if (interactionOutcome === 'appointment_booked' && openCallTask) {
+ await dispatch(updateAction({
+ id: openCallTask.id,
+ updates: {
+ status: 'completed',
+ metadata: { ...(openCallTask.metadata || {}), callOutcome: interactionOutcome },
+ callNote,
+ } as any
  })).unwrap();
- }
-
- // If appointment booked tagging, ensure logic
- if (interactionOutcome === 'appointment_booked' && !isConverted) {
- try {
- // Check if lead still exists or if it was converted in background
- await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' } })).unwrap();
- } catch (updateErr) {
- console.warn("Lead update skipped (maybe already converted):", updateErr);
- }
+ } else if (openCallTask) {
+ // Not interested / wrong number: open tasks are NOT closed automatically
+ await dispatch(updateAction({
+ id: openCallTask.id,
+ updates: { callNote } as any
+ })).unwrap();
+ toast('Η επαφή έχει ανοιχτές εργασίες. Κλείστε τις χειροκίνητα αν δεν χρειάζονται.', { icon: '⚠️' });
  }
 
  resetWorkflow();
@@ -769,21 +784,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  }
  })).unwrap();
 
- // Create follow-up task
- const nextDay = new Date();
- nextDay.setDate(nextDay.getDate() + 1);
-
- await dispatch(createAction({
- title: `Post-Treatment Follow-up: ${pendingAptObj?.serviceName || 'Procedure'}`,
- description: 'Check in with customer after procedure.',
- actionType: 'confirmation_call_reminder' as any,
- priority: 'medium',
- status: 'pending',
- dueDate: nextDay.toISOString().split('T')[0],
- reminderDate: nextDay.toISOString(),
- customerId: customer.id,
- salespersonId: user?.id || undefined,
- })).unwrap();
+ // No automatic follow-up task here: the only automatic task is the confirmation call.
 
  setIsPaymentPrompt(false);
  setPaymentAmt("");
@@ -863,12 +864,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {workflowStep === 2 && (
  <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
- {[
- { id: 'appointment_booked', label: 'Appointment Booked', sub: 'Confirmed', icon: Calendar, color: 'emerald' },
- { id: 'call_later', label: 'Call Back', sub: 'Set reminder', icon: Clock, color: 'blue' },
- { id: 'no_answer', label: 'No Answer', sub: 'Follow up later', icon: PhoneCall, color: 'slate' },
- { id: 'not_interested', label: 'Not Interested', sub: 'Archive lead', icon: X, color: 'red' }
- ].map(opt => (
+ {CALL_OUTCOMES.map(o => ({
+ id: o.value,
+ label: o.labelEl,
+ sub: o.label,
+ icon: ({ interested: Activity, call_later: Clock, no_answer: PhoneCall, not_interested: X, appointment_booked: Calendar, wrong_number: AlertCircle } as Record<string, any>)[o.value] || PhoneCall,
+ })).map(opt => (
  <button
  key={opt.id}
  onClick={() => handleSelectOutcome(opt.id)}
@@ -894,7 +895,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <div className="relative">
  <Textarea
- placeholder="Add interaction notes..."
+ placeholder="Σημειώσεις κλήσης..."
  value={interactionNotes}
  onChange={(e) => setInteractionNotes(e.target.value)}
  className="bg-slate-50 border-slate-200 min-h-[120px] rounded-lg p-4 font-medium text-sm focus:bg-white transition-all shadow-sm"
@@ -914,13 +915,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
  {interactionOutcome === 'call_later' && (
  <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-100">
- <label className="text-xs font-bold text-blue-800 block mb-3">Target Callback Time</label>
+ <label className="text-xs font-bold text-blue-800 block mb-3">Ώρα επανάκλησης (προαιρετικό, αλλιώς σήμερα)</label>
  <Input
  type="datetime-local"
  value={callbackDate}
  onChange={(e) => {
  setCallbackDate(e.target.value);
- setAutoTask({ title: 'Callback Request', date: e.target.value, type: 'call' });
+ setAutoTask(prev => ({ title: prev?.title || 'Επανάκληση', date: e.target.value || todayNextHour(), type: prev?.type || 'call' }));
  }}
  className="bg-white h-12 rounded-lg border-blue-200 text-sm font-bold px-4 shadow-sm"
  />
@@ -963,7 +964,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {workflowStep === 4 && (
  <div className="animate-in fade-in zoom-in-95 duration-500">
- {interactionOutcome === 'not_interested' ? (
+ {interactionOutcome === 'wrong_number' || interactionOutcome === 'appointment_booked' ? (
+ <div className="space-y-4">
+ <p className="text-[11px] text-slate-500 font-medium text-center">
+ {interactionOutcome === 'wrong_number' ? 'Λάθος αριθμός: χωρίς επόμενη κλήση.' : 'Το ραντεβού δημιουργεί αυτόματα την κλήση επιβεβαίωσης.'}
+ </p>
+ <div className="flex gap-2">
+ <Button variant="ghost" onClick={() => setWorkflowStep(3)} className="h-11 flex-1 rounded-lg font-bold text-slate-400 hover:bg-slate-50 text-xs">Πίσω</Button>
+ <Button onClick={handleCompleteWorkflow} className="h-11 flex-[2] bg-slate-900 text-white hover:bg-black rounded-lg font-bold text-sm shadow-md">Αποθήκευση</Button>
+ </div>
+ </div>
+ ) : interactionOutcome === 'not_interested' ? (
  <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 text-center space-y-4">
  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center mx-auto text-slate-400 shadow-sm border border-slate-100">
  <Trash2 className="w-6 h-6" />
@@ -994,9 +1005,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="text-center">
  <h3 className="text-base font-bold text-slate-800 flex items-center justify-center gap-2">
  <AlertCircle className="w-5 h-5 text-blue-500" />
- Next Action
+ Επόμενη κλήση
  </h3>
- <p className="text-[11px] text-slate-400 font-medium">Schedule the follow-up task</p>
+ <p className="text-[11px] text-slate-400 font-medium">Η ανοιχτή εργασία μεταφέρεται σε αυτή την ημερομηνία και ώρα</p>
  </div>
 
  <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 shadow-sm">
@@ -1011,13 +1022,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-slate-400 uppercase block px-1 text-center">Due Date</label>
+ <label className="text-[10px] font-bold text-slate-400 uppercase block px-1 text-center">Ημερομηνία & ώρα</label>
  <Input
- type="date"
- value={autoTask?.date?.includes('T') ? autoTask.date.split('T')[0] : autoTask?.date || ''}
+ type="datetime-local"
+ value={autoTask?.date || ''}
  onChange={(e) => setAutoTask(prev => ({ ...prev!, date: e.target.value }))}
  className="h-10 bg-white border-slate-200 rounded-lg font-bold px-3 text-xs shadow-sm"
- min={new Date().toISOString().split('T')[0]}
  />
  </div>
  <div className="space-y-1.5">

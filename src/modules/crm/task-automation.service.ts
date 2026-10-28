@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CustomerRecord } from './entities/customer-record.entity';
 import { User } from '../users/entities/user.entity';
@@ -10,20 +10,51 @@ import { NotificationType } from '../../common/enums/notification-type.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { CrmAction } from './entities/crm-action.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
+import {
+  BUSINESS_TIMEZONE,
+  confirmationCallDueDate,
+  formatDateTimeInTz,
+} from '../../common/utils/timezone.util';
 
 export interface TaskAutomationRule {
   id: string;
   name: string;
-  trigger: 'appointment_scheduled' | 'appointment_completed' | 'no_communication' | 'treatment_reminder';
-  delayDays: number;
+  trigger: 'appointment_scheduled';
   actionType: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   template: string;
-  conditions?: any;
 }
 
+/** Marker stored in metadata.automationRule of the one automatic task per booking. */
+export const CONFIRMATION_RULE_ID = 'appointment_confirmation';
+
+/** Roles that may own CRM tasks (BeautyDoctors staff). Doctors/clinic/clients never do. */
+export const TASK_OWNER_ROLES: string[] = [
+  UserRole.SALESPERSON,
+  UserRole.MANAGER,
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+];
+
+const ACTIVE_STATUSES: string[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
+const DONE_STATUSES: string[] = [AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED];
+const CLOSED_STATUSES: string[] = [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW, AppointmentStatus.DELETED];
+const OPEN_TASK_STATUSES = ['pending', 'in_progress'];
+const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * CRM task automation.
+ *
+ * Business rule (pre-launch item 36/37): exactly ONE automatic task per booking, the
+ * confirmation call, due 2 working days (Mon-Fri) before the appointment at 08:00
+ * Europe/Athens. It follows the appointment: reschedule moves it, cancel/no-show
+ * cancels it, completion completes it. No other automatic tasks are created
+ * (no follow-ups, no-show, treatment or no-contact reminders).
+ */
 @Injectable()
 export class TaskAutomationService {
+  private readonly logger = new Logger(TaskAutomationService.name);
+
   constructor(
     @InjectRepository(CrmAction)
     private crmActionsRepository: Repository<CrmAction>,
@@ -37,394 +68,265 @@ export class TaskAutomationService {
     private notificationsService: NotificationsService,
   ) { }
 
-  // Default automation rules
-  private readonly defaultRules: TaskAutomationRule[] = [
+  private readonly rules: TaskAutomationRule[] = [
     {
-      id: 'appointment_confirmation_2days',
-      name: 'Appointment Confirmation (2 days before)',
+      id: CONFIRMATION_RULE_ID,
+      name: 'Appointment confirmation call (2 working days before, 08:00 Athens)',
       trigger: 'appointment_scheduled',
-      delayDays: -2, // 2 days before appointment
-      actionType: 'appointment_confirmation',
+      actionType: 'confirmation_call_reminder',
       priority: 'high',
-      template: 'Confirm appointment scheduled for {appointment_date} at {appointment_time}',
-      conditions: { appointmentStatus: AppointmentStatus.CONFIRMED },
-    },
-    {
-      id: 'appointment_confirmation_1day',
-      name: 'Appointment Confirmation (1 day before)',
-      trigger: 'appointment_scheduled',
-      delayDays: -1, // 1 day before appointment
-      actionType: 'appointment_confirmation',
-      priority: 'urgent',
-      template: 'URGENT: Confirm appointment for tomorrow {appointment_date} at {appointment_time}',
-      conditions: { appointmentStatus: AppointmentStatus.CONFIRMED },
-    },
-    {
-      id: 'post_appointment_followup',
-      name: 'Post-Appointment Follow-up',
-      trigger: 'appointment_completed',
-      delayDays: 1,
-      actionType: 'follow_up',
-      priority: 'medium',
-      template: 'Follow up after appointment on {appointment_date}. Check satisfaction and book next appointment.',
-    },
-    {
-      id: 'no_communication_reminder',
-      name: 'No Communication Reminder',
-      trigger: 'no_communication',
-      delayDays: 7,
-      actionType: 'follow_up',
-      priority: 'medium',
-      template: 'No contact with customer for {days_since_contact} days. Time for follow-up call.',
-    },
-    {
-      id: 'treatment_reminder_6months',
-      name: 'Treatment Reminder (6 months)',
-      trigger: 'treatment_reminder',
-      delayDays: 180, // 6 months
-      actionType: 'treatment_reminder',
-      priority: 'medium',
-      template: 'Reminder: Customer may be due for {treatment_type} treatment (last treatment: {last_treatment_date})',
-    },
-    {
-      id: 'treatment_reminder_5months',
-      name: 'Treatment Reminder (5 months)',
-      trigger: 'treatment_reminder',
-      delayDays: 150,
-      actionType: 'treatment_reminder',
-      priority: 'medium',
-      template: 'Reminder: Consider repeating {treatment_type} (last: {last_treatment_date})',
-    },
-    {
-      id: 'treatment_reminder_10months',
-      name: 'Treatment Reminder (10 months)',
-      trigger: 'treatment_reminder',
-      delayDays: 300,
-      actionType: 'treatment_reminder',
-      priority: 'medium',
-      template: 'Reminder: Consider repeating {treatment_type} (last: {last_treatment_date})',
-    },
-    {
-      id: 'no_show_alert_2days',
-      name: 'No-Show Alert (2 days after)',
-      trigger: 'appointment_completed',
-      delayDays: 2,
-      actionType: 'no_show_follow_up',
-      priority: 'urgent',
-      template: 'URGENT: Patient missed appointment on {appointment_date}. Follow up.',
+      template: 'Confirmation call: {client} - {treatment}',
     },
   ];
 
-  async createAutomatedTasks(): Promise<void> {
-    // Create appointment confirmation tasks (2 days before)
-    await this.createAppointmentConfirmationTasks();
-
-    // Create post-appointment follow-up tasks
-    await this.createPostAppointmentFollowupTasks();
-
-    // Create no-communication reminder tasks
-    await this.createNoCommunicationReminderTasks();
-
-    // Create treatment reminder tasks
-    await this.createTreatmentReminderTasks();
-
-    // Create no-show alerts 2 days after missed appointments
-    await this.createNoShowAlertTasks();
+  async getAutomationRules(): Promise<TaskAutomationRule[]> {
+    return this.rules;
   }
 
-  private async createAppointmentConfirmationTasks(): Promise<void> {
-    const twoDaysFromNowStart = new Date();
-    twoDaysFromNowStart.setDate(twoDaysFromNowStart.getDate() + 2);
-    twoDaysFromNowStart.setHours(0, 0, 0, 0);
-
-    const twoDaysFromNowEnd = new Date(twoDaysFromNowStart);
-    twoDaysFromNowEnd.setHours(23, 59, 59, 999);
-
-    // Find appointments 2 days from now
-    const appointmentsIn2Days = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(twoDaysFromNowStart, twoDaysFromNowEnd),
-        status: AppointmentStatus.CONFIRMED,
-      },
-      relations: ['client', 'service', 'service.treatment'],
-    });
-
-    for (const appointment of appointmentsIn2Days) {
-      await this.createTaskForAppointment(appointment, 'appointment_confirmation_2days');
-    }
-
-    // Find appointments 1 day from now (urgent)
-    const tomorrowStart = new Date();
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
-
-    const tomorrowEnd = new Date(tomorrowStart);
-    tomorrowEnd.setHours(23, 59, 59, 999);
-
-    const appointmentsTomorrow = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(tomorrowStart, tomorrowEnd),
-        status: AppointmentStatus.CONFIRMED,
-      },
-      relations: ['client', 'service', 'service.treatment'],
-    });
-
-    for (const appointment of appointmentsTomorrow) {
-      await this.createTaskForAppointment(appointment, 'appointment_confirmation_1day');
-    }
-  }
-
-  private async createPostAppointmentFollowupTasks(): Promise<void> {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const today = new Date();
-
-    // Find completed appointments from yesterday
-    const completedAppointments = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(yesterday, today),
-        status: AppointmentStatus.COMPLETED,
-      },
-      relations: ['client', 'service', 'service.treatment'],
-    });
-
-    for (const appointment of completedAppointments) {
-      await this.createTaskForAppointment(appointment, 'post_appointment_followup');
-    }
-  }
-
-  private async createNoCommunicationReminderTasks(): Promise<void> {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    // Find customer records with no communication in the last 7 days
-    const customerRecordsNeedingContact = await this.customerRecordsRepository.find({
-      where: {
-        lastContactDate: LessThan(sevenDaysAgo),
-      },
-      relations: ['customer'],
-    });
-
-    // Also find customer records with no lastContactDate
-    const customerRecordsWithoutContact = await this.customerRecordsRepository.find({
-      where: {
-        lastContactDate: null,
-      },
-      relations: ['customer'],
-    });
-
-    // Combine both results and filter for clients only
-    const allRecordsNeedingContact = [...customerRecordsNeedingContact, ...customerRecordsWithoutContact];
-    const customersNeedingContact = allRecordsNeedingContact
-      .map(record => record.customer)
-      .filter(customer => customer && customer.role === 'client')
-      .filter((customer, index, self) => self.findIndex(c => c.id === customer.id) === index); // Remove duplicates
-
-    for (const customer of customersNeedingContact) {
-      // Check if task already exists for this customer
-      const existingTask = await this.crmActionsRepository.findOne({
-        where: {
-          customerId: customer.id,
-          actionType: 'follow_up',
-          status: 'pending',
-          metadata: { automationRule: 'no_communication_reminder' },
-        },
+  /** First active admin (then super admin): owner for online client bookings. */
+  private async findDefaultAdminId(): Promise<string | null> {
+    for (const role of [UserRole.ADMIN, UserRole.SUPER_ADMIN]) {
+      const admin = await this.usersRepository.findOne({
+        where: { role, isActive: true },
+        order: { createdAt: 'ASC' } as any,
       });
+      if (admin) return admin.id;
+    }
+    return null;
+  }
 
-      if (!existingTask) {
-        const rule = this.defaultRules.find(r => r.id === 'no_communication_reminder');
-        if (rule) {
-          // Find the customer record to get the lastContactDate
-          const customerRecord = await this.customerRecordsRepository.findOne({
-            where: { customerId: customer.id },
-          });
-
-          const daysSinceContact = Math.floor(
-            (Date.now() - (customerRecord?.lastContactDate?.getTime() || 0)) / (1000 * 60 * 60 * 24),
-          );
-
-          await this.createAutomatedTask(
-            customer.id,
-            rule,
-            {
-              days_since_contact: daysSinceContact,
-            },
-          );
-        }
+  /**
+   * Owner of the confirmation task: whoever booked it when that is BD staff
+   * (salesperson/manager/admin); otherwise (online client booking, doctor/clinic
+   * booking) an admin. Never a doctor or clinic account.
+   */
+  private async resolveOwnerId(appointment: Appointment): Promise<string | null> {
+    if (appointment.bookedById) {
+      const booker = appointment.bookedBy?.role
+        ? appointment.bookedBy
+        : await this.usersRepository.findOne({ where: { id: appointment.bookedById } });
+      if (booker && TASK_OWNER_ROLES.includes(booker.role) && booker.isActive !== false) {
+        return booker.id;
       }
     }
+    return this.findDefaultAdminId();
   }
 
-  private async createTreatmentReminderTasks(): Promise<void> {
-    // Determine reminders based on last completed appointment and treatment type
-    const clients = await this.usersRepository.find({
-      where: { role: UserRole.CLIENT },
-    });
-
-    for (const client of clients) {
-      const lastCompleted = await this.appointmentsRepository.findOne({
-        where: { clientId: client.id, status: AppointmentStatus.COMPLETED },
-        order: { startTime: 'DESC' },
-        relations: ['service', 'service.treatment'],
-      });
-
-      if (!lastCompleted) continue;
-
-      const serviceName = (lastCompleted.service?.treatment?.name || '').toLowerCase();
-      let ruleId = 'treatment_reminder_6months';
-      if (serviceName.includes('botox')) {
-        ruleId = 'treatment_reminder_5months';
-      } else if (serviceName.includes('filler')) {
-        ruleId = 'treatment_reminder_10months';
-      }
-
-      const rule = this.defaultRules.find(r => r.id === ruleId);
-      if (!rule) continue;
-
-      await this.createAutomatedTask(
-        client.id,
-        rule,
-        {
-          treatment_type: lastCompleted.service?.treatment?.name || 'treatment',
-          last_treatment_date: lastCompleted.startTime,
-        },
-      );
-    }
+  private async isBdStaff(userId?: string | null): Promise<boolean> {
+    if (!userId) return false;
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    return !!user && TASK_OWNER_ROLES.includes(user.role);
   }
 
-  private async createNoShowAlertTasks(): Promise<void> {
-    // two days ago range
-    const start = new Date();
-    start.setDate(start.getDate() - 2);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setDate(end.getDate() - 2);
-    end.setHours(23, 59, 59, 999);
-
-    const missed = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(start, end),
-        status: AppointmentStatus.NO_SHOW as any,
-      },
-      relations: ['client', 'clinic', 'service', 'service.treatment'],
-    });
-
-    const rule = this.defaultRules.find(r => r.id === 'no_show_alert_2days');
-    if (!rule) return;
-
-    for (const appointment of missed) {
-      await this.createAutomatedTask(
-        appointment.clientId,
-        rule,
-        {
-          appointment_id: appointment.id,
-          appointment_date: appointment.startTime,
-          clinic_name: appointment.clinic?.name,
-          service_name: appointment.service?.treatment?.name,
-        },
-      );
-    }
+  /** Open confirmation-type tasks of an appointment, incl. legacy shapes created by older code. */
+  private async findConfirmationTasks(appointmentId: string): Promise<CrmAction[]> {
+    return this.crmActionsRepository
+      .createQueryBuilder('action')
+      .where(
+        `(
+          (action.relatedAppointmentId = :aid AND action.actionType IN ('confirmation_call_reminder', 'appointment'))
+          OR (action.metadata->>'appointmentId' = :aid AND action.metadata->>'workflow' = 'call_center_confirmation')
+        )`,
+        { aid: appointmentId },
+      )
+      .orderBy(`CASE WHEN action.metadata->>'automationRule' = '${CONFIRMATION_RULE_ID}' THEN 0 WHEN action.actionType = 'confirmation_call_reminder' THEN 1 ELSE 2 END`, 'ASC')
+      .addOrderBy('action.createdAt', 'ASC')
+      .getMany();
   }
 
-  private async createTaskForAppointment(appointment: Appointment, ruleId: string): Promise<void> {
-    const rule = this.defaultRules.find(r => r.id === ruleId);
-    if (!rule) return;
+  /**
+   * Brings the confirmation task of one appointment in line with the appointment:
+   * create (once), move on reschedule, close on cancel/no-show/complete.
+   * Safe to call any number of times (idempotent).
+   */
+  async syncConfirmationTask(appointmentOrId: string | { id?: string } | null | undefined): Promise<void> {
+    const appointmentId = typeof appointmentOrId === 'string' ? appointmentOrId : appointmentOrId?.id;
+    if (!appointmentId) return;
 
-    // Check if task already exists
-    const existingTask = await this.crmActionsRepository.findOne({
-      where: {
-        customerId: appointment.clientId,
-        actionType: rule.actionType,
-        status: 'pending',
-        metadata: { appointmentId: appointment.id, automationRule: ruleId },
-      },
-    });
-
-    if (!existingTask) {
-      await this.createAutomatedTask(
-        appointment.clientId,
-        rule,
-        {
-          appointment_id: appointment.id,
-          appointment_date: appointment.startTime,
-          appointment_time: appointment.startTime,
-          clinic_name: appointment.clinic?.name,
-          service_name: appointment.service?.treatment?.name,
-        },
-      );
-    }
-  }
-
-  private async createAutomatedTask(
-    customerId: string,
-    rule: TaskAutomationRule,
-    variables: any = {},
-  ): Promise<CrmAction | null> {
     try {
-      // Find assigned salesperson for this customer by querying CustomerRecord directly
-      const customerRecord = await this.customerRecordsRepository.findOne({
-        where: { customerId },
+      const appointment = await this.appointmentsRepository.findOne({
+        where: { id: appointmentId },
+        relations: ['client', 'clinic', 'service', 'service.treatment', 'bookedBy'],
       });
+      const tasks = await this.findConfirmationTasks(appointmentId);
+      const openTasks = tasks.filter(t => OPEN_TASK_STATUSES.includes(t.status));
 
-      const salespersonId = customerRecord?.assignedSalespersonId;
-
-      if (!salespersonId) {
-        // If no assigned salesperson, assign to admin or skip
-        console.warn(`No assigned salesperson for customer ${customerId}, skipping automated task`);
-        return null;
+      // Appointment gone, cancelled, no-show or done -> close the open task(s)
+      const status = String(appointment?.status || '').toUpperCase();
+      if (!appointment || CLOSED_STATUSES.includes(status) || DONE_STATUSES.includes(status)) {
+        const done = !!appointment && DONE_STATUSES.includes(status);
+        for (const task of openTasks) {
+          await this.crmActionsRepository.update(task.id, {
+            status: done ? 'completed' : 'cancelled',
+            completedAt: done ? new Date() : task.completedAt,
+            metadata: { ...(task.metadata || {}), closedBy: 'system', closedReason: `appointment_${status.toLowerCase() || 'deleted'}` },
+          } as any);
+        }
+        return;
       }
 
-      // Calculate due date
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + rule.delayDays);
+      if (!ACTIVE_STATUSES.includes(status)) return; // e.g. PENDING_PAYMENT, ARRIVED, IN_PROGRESS: leave as is
+      if (!appointment.clientId || appointment.clientId === WALK_IN_DUMMY_ID) return;
 
-      // Replace template variables
-      let title = rule.template;
-      Object.keys(variables).forEach(key => {
-        title = title.replace(new RegExp(`{${key}}`, 'g'), variables[key]);
-      });
+      const startIso = new Date(appointment.startTime).toISOString();
+      const now = new Date();
+      let dueDate = confirmationCallDueDate(new Date(appointment.startTime));
+      if (dueDate < now) dueDate = now; // booked less than 2 working days ahead: call now
 
-      const task = this.crmActionsRepository.create({
-        customerId,
-        salespersonId,
-        actionType: rule.actionType,
-        title,
-        description: `Automated task created by rule: ${rule.name}`,
-        status: 'pending',
-        priority: rule.priority,
-        dueDate,
-        metadata: {
-          automationRule: rule.id,
-          createdBy: 'system',
-          ...variables,
-        },
-      });
+      const [primary, ...duplicates] = tasks;
 
-      const savedTask = await this.crmActionsRepository.save(task);
+      // Older code created 2-4 tasks per booking: keep one, cancel the other open ones
+      for (const dup of duplicates.filter(t => OPEN_TASK_STATUSES.includes(t.status))) {
+        await this.crmActionsRepository.update(dup.id, {
+          status: 'cancelled',
+          metadata: { ...(dup.metadata || {}), closedBy: 'system', closedReason: 'duplicate_automatic_task' },
+        } as any);
+      }
 
-      // Send notification to salesperson
-      await this.notificationsService.create(
-        salespersonId,
-        NotificationType.PUSH,
-        'New Automated Task',
-        `${title} - Due: ${dueDate.toLocaleDateString()}`,
-        { taskId: savedTask.id, customerId },
+      if (primary) {
+        const sameStart = primary.metadata?.appointmentStart === startIso;
+        const isOpen = OPEN_TASK_STATUSES.includes(primary.status);
+        const ownerIsStaff = await this.isBdStaff(primary.salespersonId);
+        const updates: Partial<CrmAction> = {};
+
+        // Legacy task without a known appointment time that is already closed: leave history alone
+        if (!sameStart && (isOpen || primary.metadata?.appointmentStart)) {
+          // Legacy task shape, or the appointment moved: (re)schedule the call and reopen it
+          updates.dueDate = dueDate;
+          updates.reminderDate = dueDate;
+          if (primary.actionType !== 'confirmation_call_reminder') {
+            updates.actionType = 'confirmation_call_reminder';
+            updates.title = primary.title?.replace(/^(Appointment|Confirmation Call Reminder)\b/i, 'Confirmation call') || 'Confirmation call';
+          }
+          updates.relatedAppointmentId = appointment.id;
+          if (!isOpen) {
+            updates.status = 'pending';
+            updates.completedAt = null;
+          }
+          const { reminderSent: _sent, ...rest } = primary.metadata || {};
+          updates.metadata = {
+            ...rest,
+            automationRule: CONFIRMATION_RULE_ID,
+            appointmentId: appointment.id,
+            appointmentStart: startIso,
+            workflow: 'call_center_confirmation',
+            createdBy: primary.metadata?.createdBy || 'system',
+          };
+        }
+        if (!ownerIsStaff && (isOpen || updates.status === 'pending')) {
+          const ownerId = await this.resolveOwnerId(appointment);
+          if (ownerId) updates.salespersonId = ownerId;
+        }
+        if (Object.keys(updates).length) {
+          await this.crmActionsRepository.update(primary.id, updates as any);
+        }
+        return;
+      }
+
+      // No task yet: create it
+      const ownerId = await this.resolveOwnerId(appointment);
+      if (!ownerId) {
+        this.logger.warn(`No admin found to own the confirmation task of appointment ${appointment.id}`);
+        return;
+      }
+
+      let record = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
+      if (!record) {
+        // Doctor's own patient booked by the clinic: not a BD contact, BD does not call them
+        if (appointment.appointmentSource === 'clinic_own' && !(await this.isBdStaff(appointment.bookedById))) {
+          return;
+        }
+        const clientUser = await this.usersRepository.findOne({ where: { id: appointment.clientId } });
+        if (!clientUser) return;
+        try {
+          record = await this.customerRecordsRepository.save(
+            this.customerRecordsRepository.create({ customerId: appointment.clientId }),
+          );
+        } catch {
+          record = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
+        }
+        if (!record) return;
+      }
+
+      const clientName = appointment.client
+        ? `${appointment.client.firstName || ''} ${appointment.client.lastName || ''}`.trim()
+        : appointment.clientDetails?.fullName || 'Client';
+      const treatment = appointment.service?.treatment?.name || 'Treatment';
+      const tz = BUSINESS_TIMEZONE;
+      const title = `Confirmation call: ${clientName} - ${treatment}`;
+
+      const saved = await this.crmActionsRepository.save(
+        this.crmActionsRepository.create({
+          customerId: record.id,
+          salespersonId: ownerId,
+          actionType: 'confirmation_call_reminder',
+          title,
+          therapy: treatment,
+          clinic: appointment.clinic?.name,
+          description: `Call the client to confirm the appointment on ${formatDateTimeInTz(appointment.startTime, tz)} at ${appointment.clinic?.name || 'the clinic'}.`,
+          status: 'pending',
+          priority: 'high',
+          dueDate,
+          reminderDate: dueDate,
+          relatedAppointmentId: appointment.id,
+          metadata: {
+            automationRule: CONFIRMATION_RULE_ID,
+            createdBy: 'system',
+            appointmentId: appointment.id,
+            appointmentStart: startIso,
+            workflow: 'call_center_confirmation',
+          },
+        }),
       );
 
-      this.eventEmitter.emit('automated.task.created', savedTask);
-
-      return savedTask;
+      await this.notificationsService.create(
+        ownerId,
+        NotificationType.PUSH,
+        'Task assigned to you',
+        `Task assigned to you: ${title} - due ${formatDateTimeInTz(dueDate, tz)}`,
+        { actionId: saved.id, trigger: 'TASK_OPEN' },
+      );
+      this.eventEmitter.emit('automated.task.created', saved);
     } catch (error) {
-      console.error(`Error creating automated task for customer ${customerId}, rule ${rule.id}:`, error);
-      return null;
+      this.logger.error(`Failed to sync confirmation task for appointment ${appointmentId}: ${error?.message}`, error?.stack);
     }
+  }
+
+  /**
+   * Safety net for every booking path (incl. edits that emit no event): makes sure each
+   * upcoming active appointment has its one confirmation task at the right time and that
+   * open confirmation tasks of cancelled/finished appointments are closed.
+   */
+  async reconcileConfirmationTasks(daysAhead = 60): Promise<{ synced: number }> {
+    const now = new Date();
+    const horizon = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+    const ids = new Set<string>();
+
+    const upcoming = await this.appointmentsRepository.find({
+      select: ['id'],
+      where: { startTime: Between(now, horizon), status: In(ACTIVE_STATUSES as AppointmentStatus[]) },
+    });
+    upcoming.forEach(a => ids.add(a.id));
+
+    const openTasks = await this.crmActionsRepository
+      .createQueryBuilder('action')
+      .select(['action.id', 'action.relatedAppointmentId'])
+      .where('action.status IN (:...open)', { open: OPEN_TASK_STATUSES })
+      .andWhere("action.actionType = 'confirmation_call_reminder'")
+      .andWhere('action.relatedAppointmentId IS NOT NULL')
+      .getMany();
+    openTasks.forEach(t => ids.add(t.relatedAppointmentId));
+
+    for (const id of ids) {
+      await this.syncConfirmationTask(id);
+    }
+    return { synced: ids.size };
   }
 
   async getOverdueTasks(salespersonId?: string): Promise<CrmAction[]> {
     const query = this.crmActionsRepository
       .createQueryBuilder('action')
-      .where('action.status = :status', { status: 'pending' })
+      .where('action.status IN (:...open)', { open: OPEN_TASK_STATUSES })
       .andWhere('action.dueDate < :now', { now: new Date() })
       .leftJoinAndSelect('action.customer', 'customer');
 
@@ -435,124 +337,57 @@ export class TaskAutomationService {
     return query.orderBy('action.dueDate', 'ASC').getMany();
   }
 
-  async markTaskOverdue(taskId: string): Promise<void> {
-    const task = await this.crmActionsRepository.findOne({ where: { id: taskId } });
-    if (!task) {
-      throw new NotFoundException('Task not found');
-    }
-
-    if (task.status === 'pending' && task.dueDate < new Date()) {
-      task.status = 'overdue';
-      await this.crmActionsRepository.save(task);
-
-      // Send urgent notification
-      await this.notificationsService.create(
-        task.salespersonId,
-        NotificationType.PUSH,
-        'Task Overdue!',
-        `Task "${task.title}" is now overdue!`,
-        { taskId: task.id },
-      );
-    }
-  }
-
-  async getAutomationRules(): Promise<TaskAutomationRule[]> {
-    return this.defaultRules;
-  }
-
   async runTaskAutomationCheck(): Promise<{ tasksCreated: number; overdueTasks: number }> {
-    let tasksCreated = 0;
-    let overdueTasks = 0;
-
-    console.log('Starting task automation check...');
-
+    const before = await this.crmActionsRepository.count({ where: { actionType: 'confirmation_call_reminder' } });
     try {
-      // Create automated tasks
-      await this.createAutomatedTasks();
+      await this.reconcileConfirmationTasks();
     } catch (error) {
-      console.error('Error during createAutomatedTasks:', error);
+      this.logger.error('Error during confirmation task reconciliation', error as any);
     }
+    const after = await this.crmActionsRepository.count({ where: { actionType: 'confirmation_call_reminder' } });
 
     try {
-      tasksCreated += await this.getRecentAutomatedTaskCount();
-    } catch (error) {
-      console.error('Error getting recent task count:', error);
-    }
-
-    try {
-      // Send reminders for pending tasks
       const remindersSent = await this.sendTaskReminders();
-      console.log(`Sent ${remindersSent} task reminders.`);
+      this.logger.log(`Sent ${remindersSent} task reminders.`);
     } catch (error) {
-      console.error('Error during sendTaskReminders:', error);
+      this.logger.error('Error during sendTaskReminders', error as any);
     }
 
-    try {
-      // Mark overdue tasks
-      const overdue = await this.getOverdueTasks();
-      for (const task of overdue) {
-        try {
-          await this.markTaskOverdue(task.id);
-          overdueTasks++;
-        } catch (e) {
-          console.error(`Failed to mark task ${task.id} as overdue:`, e);
-        }
-      }
-    } catch (error) {
-      console.error('Error during overdue task check:', error);
-    }
-
-    console.log(`Automation check complete. Created: ${tasksCreated}, Overdue: ${overdueTasks}`);
-    return { tasksCreated, overdueTasks };
+    // Overdue is derived (open + dueDate < now); there is no 'overdue' status to write.
+    const overdue = await this.getOverdueTasks();
+    return { tasksCreated: Math.max(0, after - before), overdueTasks: overdue.length };
   }
 
   async sendTaskReminders(): Promise<number> {
     let remindersSent = 0;
     const now = new Date();
 
-    // Find pending tasks where the reminderDate is in the past,
-    // we haven't sent a reminder yet, and we are within 24 hours of the reminder
     const tasksToRemind = await this.crmActionsRepository.createQueryBuilder('action')
-      .where('action.status = :status', { status: 'pending' })
+      .where('action.status IN (:...open)', { open: OPEN_TASK_STATUSES })
       .andWhere('action.reminderDate <= :now', { now })
       .andWhere("action.metadata->>'reminderSent' IS NULL")
+      .andWhere('action.salespersonId IS NOT NULL')
       .getMany();
 
     for (const task of tasksToRemind) {
-      // Avoid sending reminders for tasks that are super old (e.g. reminder was days ago)
-      // assuming they missed it, or just send it anyway? We will send it to make sure it's not missed.
-
       try {
         await this.notificationsService.create(
           task.salespersonId,
           NotificationType.PUSH,
           'Task Reminder',
-          `Reminder: Task "${task.title}" is due soon.`,
-          { actionId: task.id } // metadata for frontend linking
+          `Reminder: Task "${task.title}" is due ${task.dueDate ? formatDateTimeInTz(task.dueDate, BUSINESS_TIMEZONE) : 'now'}.`,
+          { actionId: task.id },
         );
 
-        // Mark as sent
         const metadata = task.metadata || {};
         metadata['reminderSent'] = true;
-
         await this.crmActionsRepository.update(task.id, { metadata });
         remindersSent++;
       } catch (e) {
-        console.error(`Failed to send reminder for task ${task.id}:`, e);
+        this.logger.error(`Failed to send reminder for task ${task.id}: ${e?.message}`);
       }
     }
 
     return remindersSent;
-  }
-  private async getRecentAutomatedTaskCount(): Promise<number> {
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    return this.crmActionsRepository.count({
-      where: {
-        metadata: { createdBy: 'system' },
-        createdAt: MoreThan(oneHourAgo),
-      },
-    });
   }
 }
