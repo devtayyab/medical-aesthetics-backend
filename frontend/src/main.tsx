@@ -7,8 +7,12 @@ import { store } from"./store";
 import { setupAxiosInterceptors } from"./services/api";
 import { setTokens, logout } from"./store/slices/authSlice";
 import"@/styles/globals.css";
+import { initLanguage } from"@/utils/language";
+import { installGreekUppercaseFix } from"@/utils/greekText";
 
 setupAxiosInterceptors(store, { setTokens, logout });
+initLanguage();
+installGreekUppercaseFix();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
  <React.StrictMode>
