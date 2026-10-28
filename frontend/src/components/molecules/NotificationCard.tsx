@@ -2,6 +2,7 @@ import React from"react";
 import { Card } from"@/components/atoms/Card/Card";
 import { Button } from"@/components/atoms/Button/Button";
 import type { Notification } from"@/types";
+import { formatDateTime } from "@/utils/formatters";
 
 interface NotificationCardProps {
  notification: Notification;
@@ -18,7 +19,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
  <h3 className="text-lg font-semibold">{notification.title}</h3>
  <p className="text-gray-600">{notification.message}</p>
  <p className="text-gray-600">
- {new Date(notification.createdAt).toLocaleString()}
+ {formatDateTime(notification.createdAt)}
  </p>
  {!notification.isRead && onMarkAsRead && (
  <Button

@@ -417,7 +417,7 @@ export const AppointmentBooking: React.FC = () => {
  <FaCalendarAlt className="text-black/60" size={10} />
  <span className="text-[9px] font-black uppercase text-black/60 tracking-[0.2em]">Scheduled For</span>
  </div>
- <p className="text-base font-black uppercase">{format(selectedDateState,"EEEE, MMMM d")}</p>
+ <p className="text-base font-black uppercase">{format(selectedDateState,"EEEE, dd/MM/yyyy")}</p>
  <p className="text-2xl font-black leading-none">{formatClinicTime(selectedSlot.startTime, clinic?.timezone)}</p>
  </div>
  )}
@@ -456,7 +456,7 @@ export const AppointmentBooking: React.FC = () => {
  <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4 shrink-0">
  <div>
  <h3 className="text-lg font-black uppercase text-gray-900 leading-tight">Select Time</h3>
- <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, MMMM d")}</p>
+ <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, dd/MM/yyyy")}</p>
  </div>
  <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200 shrink-0">
  <X className="w-4 h-4" />

@@ -9,6 +9,7 @@ import { getImageUrl } from "@/utils/imageUrl";
 
 // Use the custom hero image for blog
 import HeroBg from "@/assets/image copy.png";
+import { formatDate } from "@/utils/formatters";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -251,7 +252,7 @@ export const Blog: React.FC = () => {
                           <div className="flex items-center gap-4 mb-3">
                             <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
                               <Clock size={11} className="text-[#84cc16]" />
-                              {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
+                              {formatDate(post.publishedAt || post.createdAt)}
                             </div>
                           </div>
 

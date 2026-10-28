@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from"react-router-dom";
 import { Button } from"@/components/atoms/Button/Button";
 import { FaCheckCircle, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaChevronLeft, FaStar, FaShareAlt, FaCalendarPlus } from"react-icons/fa";
 import { css } from"@emotion/css";
-import { format } from"date-fns";
+import { formatWeekdayDate, formatTime } from"@/utils/formatters";
 
 const containerStyle = css`
  max-width: 650px;
@@ -137,7 +137,7 @@ const BookingConfirmation: React.FC = () => {
   <div>
   <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Date</p>
   <p className="font-black text-black uppercase text-xs sm:text-sm">
-  {format(new Date(appointment.startTime),"EEEE, MMM d")}
+  {formatWeekdayDate(appointment.startTime)}
   </p>
   </div>
   </div>
@@ -149,7 +149,7 @@ const BookingConfirmation: React.FC = () => {
   <div>
   <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Time</p>
   <p className="font-black text-black uppercase text-xs sm:text-sm">
-  {appointment.startTimeDisplay || format(new Date(appointment.startTime),"HH:mm")}
+  {formatTime(appointment.startTime) || appointment.startTimeDisplay}
   </p>
   </div>
   </div>

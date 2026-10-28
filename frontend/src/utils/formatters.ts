@@ -19,26 +19,86 @@ export const formatPhoneNumber = (phone?: string | null): string => {
   return phone;
 };
 
-export const formatDate = (dateStr?: string | Date | null): string => {
-  if (!dateStr) return '';
-  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  if (isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+// ─── Dates and times ──────────────────────────────────────────────────────────
+// Rule: every date/time on screen is shown in Europe/Athens (incl. DST),
+// dates as dd/mm/yyyy and times as 24h HH:mm, whatever the viewer's browser zone.
+
+export const APP_TIMEZONE = 'Europe/Athens';
+
+export type DateInput = string | number | Date | null | undefined;
+
+const toDate = (value: DateInput): Date | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return isNaN(date.getTime()) ? null : date;
 };
 
-export const formatDateTime = (dateStr?: string | Date | null): string => {
-  if (!dateStr) return '';
-  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  if (isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-GB', {
+const dateParts = (date: Date, timeZone: string) => {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hourCycle: 'h23',
   });
+  const map: Record<string, string> = {};
+  fmt.formatToParts(date).forEach((p) => {
+    map[p.type] = p.value;
+  });
+  return map;
+};
+
+/** "28/10/2026" in Athens time. */
+export const formatDate = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  const p = dateParts(date, timeZone);
+  return `${p.day}/${p.month}/${p.year}`;
+};
+
+/** "08:00" (24h) in Athens time. */
+export const formatTime = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  const p = dateParts(date, timeZone);
+  return `${p.hour}:${p.minute}`;
+};
+
+/** "28/10/2026 08:00" in Athens time. */
+export const formatDateTime = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  return `${formatDate(date, timeZone)} ${formatTime(date, timeZone)}`;
+};
+
+const currentLocale = (): string => {
+  try {
+    return localStorage.getItem('preferredLang') === 'el' ? 'el-GR' : 'en-GB';
+  } catch {
+    return 'en-GB';
+  }
+};
+
+/** Weekday + date, e.g. "Wednesday, 28/10/2026" or "Τετάρτη, 28/10/2026", in Athens time. */
+export const formatWeekdayDate = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  const weekday = new Intl.DateTimeFormat(currentLocale(), { timeZone, weekday: 'long' }).format(date);
+  return `${weekday}, ${formatDate(date, timeZone)}`;
+};
+
+/** Short weekday, e.g. "Wed" or "Τετ", in Athens time. */
+export const formatWeekdayShort = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  return new Intl.DateTimeFormat(currentLocale(), { timeZone, weekday: 'short' }).format(date);
+};
+
+/** Month + year, e.g. "October 2026" or "Οκτώβριος 2026", in Athens time. */
+export const formatMonthYear = (value: DateInput, timeZone: string = APP_TIMEZONE): string => {
+  const date = toDate(value);
+  if (!date) return '';
+  return new Intl.DateTimeFormat(currentLocale(), { timeZone, month: 'long', year: 'numeric' }).format(date);
 };

@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 
 // High-clarity hero portrait
 import HeroBg from "@/assets/personal detailis.jpg.jpeg";
+import { formatDate } from "@/utils/formatters";
 
 const glassCard = css`
   background: rgba(255, 255, 255, 0.65);
@@ -385,7 +386,7 @@ export const PersonalDetails: React.FC = () => {
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/70 border border-white/85 shadow-sm backdrop-blur-sm">
                 <div className="size-2 rounded-full bg-[#CBFF38] animate-pulse" />
                 <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                  JOINED {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase() : 'NOVEMBER 2025'}
+                  JOINED {user?.createdAt ? formatDate(user.createdAt) : ''}
                 </p>
               </div>
 
