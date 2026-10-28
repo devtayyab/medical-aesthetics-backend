@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, CreditCard, Calendar, MessageSquare, Save, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
-import { adminSettingsAPI } from '@/services/api';
+import { adminSettingsAPI, crmAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+
+// dd/mm/yyyy HH:mm in Athens time (24h)
+const fmtAthens = (d: string | Date) =>
+ new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(d)).replace(',', '');
 
 interface IntegrationLog {
  id: string;
@@ -25,6 +29,8 @@ export const Integrations: React.FC = () => {
  viva_api_key: '',
  });
  const [logs, setLogs] = useState<IntegrationLog[]>([]);
+ // Real Facebook lead-sync status (token check + last sync), not just the on/off toggle
+ const [fbHealth, setFbHealth] = useState<any>(null);
  const [isLoading, setIsLoading] = useState(true);
  const [isSaving, setIsSaving] = useState(false);
  const [activeConfig, setActiveConfig] = useState<string | null>(null);
@@ -42,6 +48,9 @@ export const Integrations: React.FC = () => {
  ]);
  setSettings(settingsRes.data);
  setLogs(logsRes.data);
+ crmAPI.getFacebookHealth(true)
+ .then((res: any) => setFbHealth(res.data))
+ .catch(() => setFbHealth({ status: 'error', lastError: 'Could not read the Facebook status' }));
  } catch (error) {
  toast.error('Failed to load integration data');
  } finally {
@@ -60,7 +69,9 @@ export const Integrations: React.FC = () => {
  const saveSettings = async () => {
  try {
  setIsSaving(true);
- await adminSettingsAPI.updateSettings(settings);
+ // The sync status is written by the server only; never send it back
+ const { facebook_sync_status, ...toSave } = settings || {};
+ await adminSettingsAPI.updateSettings(toSave);
  toast.success('Settings updated successfully');
  setActiveConfig(null);
  } catch (error) {
@@ -126,9 +137,15 @@ export const Integrations: React.FC = () => {
  <div className="flex justify-between items-start mb-4">
  <div className="p-3 bg-gray-50 rounded-xl">{intg.icon}</div>
  <div className="flex items-center gap-2">
+ {intg.id === 'meta' && settings[intg.enabledKey] && fbHealth ? (
+ <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${fbHealth.status === 'ok' ? 'bg-green-100 text-green-700' : fbHealth.status === 'warning' ? 'bg-amber-100 text-amber-700' : fbHealth.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+ {fbHealth.status === 'ok' ? 'Active' : fbHealth.status === 'warning' ? 'No new leads' : fbHealth.status === 'error' ? 'Error' : 'Unknown'}
+ </span>
+ ) : (
  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${settings[intg.enabledKey] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
  {settings[intg.enabledKey] ? 'Active' : 'Inactive'}
  </span>
+ )}
  <label className="relative inline-flex items-center cursor-pointer">
  <input 
  type="checkbox" 
@@ -142,6 +159,15 @@ export const Integrations: React.FC = () => {
  </div>
  <h3 className="text-lg font-bold text-gray-900">{intg.title}</h3>
  <p className="text-sm text-gray-500 mt-1 mb-6 h-10">{intg.desc}</p>
+ {intg.id === 'meta' && fbHealth && (
+ <div className={`-mt-3 mb-4 rounded-xl p-3 text-xs ${fbHealth.status === 'error' ? 'bg-red-50 text-red-700' : fbHealth.status === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'}`}>
+ {fbHealth.lastError && <p className="font-semibold break-words">{fbHealth.lastError}</p>}
+ {fbHealth.tokenValid === false && !fbHealth.lastError && <p className="font-semibold">Access token invalid: {fbHealth.tokenMessage}</p>}
+ <p>Last successful sync: {fbHealth.lastSuccessAt ? fmtAthens(fbHealth.lastSuccessAt) : 'never'}</p>
+ <p>Last Facebook lead: {fbHealth.lastLeadAt ? fmtAthens(fbHealth.lastLeadAt) : 'none'}</p>
+ {fbHealth.tokenExpiresAt && <p>Token expires: {fmtAthens(fbHealth.tokenExpiresAt)}</p>}
+ </div>
+ )}
  
  <button 
  onClick={() => setActiveConfig(intg.id)}
