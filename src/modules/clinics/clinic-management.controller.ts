@@ -139,6 +139,13 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
   async getClinicProfile(@Request() req, @Query('clinicId') clinicId?: string) {
+    if (clinicId && isClinicAccount(req.user.role)) {
+      // A clinic account only reads its own clinic(s); none assigned = no access
+      const allowed = await this.clinicPatientsService.resolveClinicIds(req.user.id, req.user.role);
+      if (allowed && !allowed.includes(clinicId)) {
+        throw new NotFoundException('Clinic not found');
+      }
+    }
     if (clinicId) {
       return this.clinicsService.findById(clinicId);
     }
