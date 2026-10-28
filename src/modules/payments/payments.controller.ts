@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { VivaWalletService } from './viva-wallet.service';
+import { stripUserPersonalData, stripClinicBankData } from '../../common/utils/privacy.util';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -21,11 +22,24 @@ export class PaymentsController {
     @Roles(UserRole.CLIENT)
     @ApiOperation({ summary: 'Get payment history for the current client' })
     async getMyWallet(@Req() req: any, @Query('limit') limit?: number, @Query('offset') offset?: number) {
-        return this.financialService.getLedger({
+        const ledger = await this.financialService.getLedger({
             clientId: req.user.id,
             limit: limit || 50,
             offset: offset || 0,
         });
+        // Client view: no staff contact details, no internal notes, no clinic bank details
+        return {
+            ...ledger,
+            items: ledger.items.map((p: any) => ({
+                ...p,
+                provider: stripUserPersonalData(p.provider),
+                salesperson: stripUserPersonalData(p.salesperson),
+                clinic: stripClinicBankData(p.clinic),
+                appointment: p.appointment
+                    ? (({ notes, clinicNotes, appointmentCompletionReport, ...rest }) => rest)(p.appointment)
+                    : p.appointment,
+            })),
+        };
     }
 
     @Get('gift-cards')

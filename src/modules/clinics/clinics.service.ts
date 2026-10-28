@@ -24,6 +24,7 @@ import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CLINIC_BANK_FIELDS, stripUserPersonalData, publicDisplayName } from '../../common/utils/privacy.util';
 
 @Injectable()
 export class ClinicsService {
@@ -50,47 +51,37 @@ export class ClinicsService {
     private notificationsService: NotificationsService,
   ) { }
 
-  private isClinicManagerOrAdmin(user: any, clinicId?: string): boolean {
-    if (!user) return false;
+  /** Admin, or the clinic owner of this clinic (primary owner, co-owner or assigned owner). */
+  private isClinicOwnerOrAdmin(user: any, clinic: Clinic): boolean {
+    if (!user || !clinic) return false;
     const r = (user.role || '').toLowerCase();
     if (r === 'admin' || r === 'super_admin') return true;
-    if (clinicId && (user.assignedClinicId === clinicId || user.clinicId === clinicId)) {
-      return ['clinic_owner', 'manager', 'doctor', 'secretariat'].includes(r);
-    }
-    return false;
+    if (r !== 'clinic_owner') return false;
+    return (
+      clinic.ownerId === user.id ||
+      user.assignedClinicId === clinic.id ||
+      (Array.isArray(clinic.owners) && clinic.owners.some((o) => o?.id === user.id))
+    );
+  }
+
+  /** BD staff and clinic-side staff may see staff contact details; clients and anonymous callers may not. */
+  private isStaffUser(user: any): boolean {
+    const r = (user?.role || '').toLowerCase();
+    return ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes(r);
   }
 
   sanitizeClinic(clinic: Clinic, user?: any): Clinic {
     if (!clinic) return clinic;
 
-    const isAdminOrStaff = this.isClinicManagerOrAdmin(user, clinic.id);
-
-    // 1. Bank details: never expose to unauthenticated callers or clients
-    if (!isAdminOrStaff) {
-      delete (clinic as any).bankIban;
-      delete (clinic as any).bankBic;
-      delete (clinic as any).bankAccountHolder;
-      delete (clinic as any).bankName;
+    // 1. Bank details: only the clinic owner and admins. (Columns are select: false, this is a second guard.)
+    if (!this.isClinicOwnerOrAdmin(user, clinic)) {
+      CLINIC_BANK_FIELDS.forEach((f) => delete (clinic as any)[f]);
     }
 
-    // 2. Doctor/Owner personal details: personal email, phone and lastLoginAt NEVER go to clients
-    const sanitizeOwnerUser = (u: any) => {
-      if (!u) return;
-      delete u.password;
-      delete u.refreshToken;
-      if (!user || user.role === UserRole.CLIENT || user.role?.toLowerCase() === 'client') {
-        delete u.email;
-        delete u.phone;
-        delete u.lastLoginAt;
-      }
-    };
-
-    if (clinic.owner) {
-      sanitizeOwnerUser(clinic.owner);
-    }
-
-    if (Array.isArray(clinic.owners)) {
-      clinic.owners.forEach((o) => sanitizeOwnerUser(o));
+    // 2. Doctor/Owner personal email, phone and lastLoginAt NEVER go to clients or anonymous callers
+    if (!this.isStaffUser(user)) {
+      if (clinic.owner) clinic.owner = stripUserPersonalData(clinic.owner);
+      if (Array.isArray(clinic.owners)) clinic.owners = clinic.owners.map((o) => stripUserPersonalData(o));
     }
 
     // 3. Treatment prices: if not logged in, strip all treatment prices
@@ -1076,7 +1067,7 @@ export class ClinicsService {
     });
 
     // Doctor's personal email/phone NEVER go to clients
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     return Array.from(uniqueProviders.values()).map((provider) => {
       const p = { ...provider };
@@ -1097,7 +1088,7 @@ export class ClinicsService {
       .andWhere('appointment.serviceId = :serviceId', { serviceId })
       .getMany();
 
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     // Map to the desired format: doctor's personal email/phone never go to clients
     return providers.map((u) => {
@@ -1408,7 +1399,21 @@ export class ClinicsService {
     if (query?.limit) queryBuilder.limit(query.limit);
     if (query?.offset) queryBuilder.offset(query.offset);
 
-    const [reviews, total] = await queryBuilder.getManyAndCount();
+    const [rows, total] = await queryBuilder.getManyAndCount();
+
+    // Public endpoint: never expose the reviewer's email/phone; show "First L." only
+    const reviews = rows.map((r) => ({
+      ...r,
+      client: r.client
+        ? {
+            id: r.client.id,
+            firstName: r.client.firstName,
+            lastName: (r.client.lastName || '').charAt(0) ? `${r.client.lastName.charAt(0)}.` : '',
+            fullName: publicDisplayName(r.client),
+            profilePictureUrl: r.client.profilePictureUrl,
+          }
+        : null,
+    }));
 
     return {
       reviews,

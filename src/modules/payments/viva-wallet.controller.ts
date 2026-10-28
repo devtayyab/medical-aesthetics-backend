@@ -97,9 +97,10 @@ export class VivaWalletController {
 
                         // ─── AUTO PAYOUT TO CLINIC IBAN ──────────────────────────────
                         if (appointment.clinicId) {
-                            const clinic = await this.clinicsRepository.findOne({
-                                where: { id: appointment.clinicId }
-                            });
+                            const clinic = await this.clinicsRepository.createQueryBuilder('clinic')
+                                .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName'])
+                                .where('clinic.id = :id', { id: appointment.clinicId })
+                                .getOne();
                             if (clinic?.bankIban) {
                                 console.log(`[Viva Payout] Clinic has IBAN. Initiating payout to: ${clinic.bankIban}`);
                                 const payout = await this.vivaWalletService.sendPayoutToIban({
@@ -229,9 +230,10 @@ export class VivaWalletController {
 
                     // ─── AUTO PAYOUT TO CLINIC IBAN (Webhook) ────────────────────
                     if (appointment.clinicId) {
-                        const clinic = await this.clinicsRepository.findOne({
-                            where: { id: appointment.clinicId }
-                        });
+                        const clinic = await this.clinicsRepository.createQueryBuilder('clinic')
+                            .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName'])
+                            .where('clinic.id = :id', { id: appointment.clinicId })
+                            .getOne();
                         if (clinic?.bankIban) {
                             const payoutAmount = amount ? amount / 100 : 0;
                             console.log(`[Viva Payout] Webhook: Initiating payout to clinic IBAN: ${clinic.bankIban}, amount: ${payoutAmount}`);
