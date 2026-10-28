@@ -11,6 +11,8 @@ interface BlockSlotModalProps {
   isOpen: boolean;
   initialDate?: string;
   initialTime?: string;
+  /** Clinic currently viewed in the calendar; the modal opens on it. */
+  initialClinicId?: string;
   clinics: any[];
   salespersons: any[];
   onClose: () => void;
@@ -21,6 +23,7 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
   isOpen,
   initialDate,
   initialTime,
+  initialClinicId,
   clinics,
   salespersons,
   onClose,
@@ -42,12 +45,13 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     if (isOpen) {
       setForm(prev => ({
         ...prev,
-        clinicId: prev.clinicId || clinics[0]?.id || '',
+        // Always the clinic being viewed; never a stale/first clinic when one is selected.
+        clinicId: (initialClinicId && initialClinicId !== 'all' ? initialClinicId : '') || prev.clinicId || clinics[0]?.id || '',
         date: initialDate || format(new Date(), 'yyyy-MM-dd'),
         startTime: initialTime || '10:00',
       }));
     }
-  }, [isOpen, initialDate, initialTime, clinics]);
+  }, [isOpen, initialDate, initialTime, initialClinicId, clinics]);
 
   const handleSubmit = async () => {
     if (!form.clinicId) { toast.error('Please select a clinic.'); return; }

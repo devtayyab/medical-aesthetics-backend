@@ -60,6 +60,15 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   const [blockInitialDate, setBlockInitialDate] = useState<string | undefined>();
   const [blockInitialTime, setBlockInitialTime] = useState<string | undefined>();
 
+  // Remember the clinic being viewed so Availability opens on it too.
+  React.useEffect(() => {
+    try {
+      if (filters.clinicId && filters.clinicId !== 'all') sessionStorage.setItem('calendar.viewedClinicId', filters.clinicId);
+    } catch {
+      // storage unavailable: nothing to remember
+    }
+  }, [filters.clinicId]);
+
   // ── Data ────────────────────────────────────────────────────────────────────
   const filtersWithProvider = useMemo(
     () => ({
@@ -310,6 +319,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         isOpen={isBlockSlotOpen}
         initialDate={blockInitialDate}
         initialTime={blockInitialTime}
+        initialClinicId={filters.clinicId}
         clinics={clinics}
         salespersons={providers as any}
         onClose={() => setIsBlockSlotOpen(false)}
@@ -319,6 +329,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
       <BlockDayModal
         isOpen={isBlockDayOpen}
         initialDate={blockInitialDate}
+        initialClinicId={filters.clinicId}
         clinics={clinics}
         onClose={() => setIsBlockDayOpen(false)}
         onSuccess={handleModalSuccess}

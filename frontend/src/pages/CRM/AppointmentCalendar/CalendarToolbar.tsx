@@ -7,8 +7,6 @@ import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
   startOfWeek, endOfWeek,
 } from 'date-fns';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/store';
 import type { CalendarView, CalendarFilters } from './types';
 
 interface CalendarToolbarProps {
@@ -47,8 +45,6 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onRefresh,
 }) => {
   const [showBlockMenu, setShowBlockMenu] = useState(false);
-  const { user } = useSelector((state: RootState) => state.auth);
-  const isSalesperson = user?.role === 'salesperson';
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
@@ -178,8 +174,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          {/* Block Slot menu */}
-          {!isSalesperson && (
+          {/* Block Slot menu (admins, clinic staff and salespeople) */}
+          {(
             <div className="relative">
               <button
                 onClick={() => setShowBlockMenu(v => !v)}

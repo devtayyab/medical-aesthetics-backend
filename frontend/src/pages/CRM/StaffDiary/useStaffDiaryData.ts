@@ -168,16 +168,20 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
 
   // Fetch blocked slots for selected clinic
   useEffect(() => {
-    const clinicId = filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id;
-    if (!clinicId) return;
-    adminAPI.getBlockedSlots(clinicId)
-      .then((res: any) => setBlockedSlots(res.data || []))
-      .catch(() => setBlockedSlots([]));
+    const clinicIds = filters.clinicId !== 'all'
+      ? [filters.clinicId]
+      : clinics.map((c: any) => c.id);
+    if (!clinicIds.length) { setBlockedSlots([]); return; }
+    Promise.all(
+      clinicIds.map((id: string) =>
+        adminAPI.getBlockedSlots(id).then((r: any) => r.data || []).catch(() => [])
+      )
+    ).then((results) => setBlockedSlots(results.flat()));
   }, [filters.clinicId, clinics]);
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {
-    return appointments.map((apt: any) => {
+    return appointments.filter((apt: any) => !apt.isBlocked).map((apt: any) => {
       const primaryPrice = parseFloat(String(apt.service?.price || 0));
       const additionalServicesTotal = (apt.additionalServices || []).reduce(
         (sum: number, s: any) => sum + parseFloat(String(s.price || 0)),

@@ -59,9 +59,21 @@ const AvailabilityPage: React.FC = () => {
  const loadClinics = async () => {
  try {
  const res = await crmAPI.getAccessibleClinics();
- setAvailableClinics(res.data || []);
- if (res.data?.length > 0) {
- setSelectedClinicId(res.data[0].id);
+ const list = res.data || [];
+ setAvailableClinics(list);
+ // Open the clinic being viewed (?clinicId=... or the clinic last selected in a calendar),
+ // falling back to the first accessible clinic.
+ let wanted: string | null = null;
+ try {
+ wanted = new URLSearchParams(window.location.search).get('clinicId') || sessionStorage.getItem('calendar.viewedClinicId');
+ } catch {
+ wanted = null;
+ }
+ const match = wanted ? list.find((c: any) => c.id === wanted) : null;
+ if (match) {
+ setSelectedClinicId(match.id);
+ } else if (list.length > 0) {
+ setSelectedClinicId(list[0].id);
  }
  } catch (err) {
  console.error("Failed to load clinics", err);
