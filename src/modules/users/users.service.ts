@@ -188,6 +188,21 @@ export class UsersService {
     await this.usersRepository.update(id, { lastLoginAt: new Date() });
   }
 
+  /**
+   * Atomically counts one attempt against the user's current login code and returns the new count.
+   * Parallel requests each get their own number, so no more than the limit can be tried per code.
+   */
+  async incrementLoginCodeAttempts(id: string): Promise<number> {
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ loginCodeAttempts: () => 'COALESCE("loginCodeAttempts", 0) + 1' } as any)
+      .where('id = :id', { id })
+      .returning(['loginCodeAttempts'])
+      .execute();
+    return Number(result.raw?.[0]?.loginCodeAttempts ?? Number.MAX_SAFE_INTEGER);
+  }
+
   async recordConsent(
     userId: string,
     consentType: string,

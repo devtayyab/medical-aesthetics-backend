@@ -72,7 +72,9 @@ export class UsersController {
     ) {
       throw new ForbiddenException('You are not allowed to assign this role.');
     }
-    return this.usersService.create(createUserDto);
+    // Created by staff with a password they hand over: no verification link is sent, so the account
+    // must not be blocked by the email-verification check at login.
+    return this.usersService.create({ ...createUserDto, isEmailVerified: true } as CreateUserDto);
   }
 
   @Patch(':id')

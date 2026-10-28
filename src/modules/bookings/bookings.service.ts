@@ -920,7 +920,7 @@ export class BookingsService {
     const summary = await this.financialService.getAppointmentPaymentSummary(appointmentId);
     let refunded = 0;
     for (const p of summary.payments) {
-      if (p.type === PaymentType.PAYMENT && p.status === 'completed') {
+      if ((p.type === PaymentType.PAYMENT || p.type === PaymentType.DEPOSIT) && p.status === 'completed') {
         await this.financialService.refundPayment(p.id, notes, userId);
         refunded += Number(p.amount || 0);
       }
@@ -930,19 +930,13 @@ export class BookingsService {
 
   /**
    * A PAID appointment was cancelled. Payment state is left untouched (unless an admin chose
-   * to refund); admins get a "refund?" alert and a domain event is emitted for the
-   * notification layer.
+   * to refund); a domain event is emitted. The admins' "refund?" alert comes from the
+   * notification listener.
    */
   async handlePaidAppointmentCancelled(
     appointment: Appointment,
     info: { amountPaid: number; refunded: boolean; cancelledById?: string; cancelledByRole?: string },
   ): Promise<void> {
-    const tz = appointment.clinic?.timezone || 'Europe/Athens';
-    const when = formatDateTimeInTz(appointment.startTime, tz);
-    const clientName = appointment.client
-      ? `${appointment.client.firstName || ''} ${appointment.client.lastName || ''}`.trim()
-      : appointment.clientDetails?.fullName || 'Client';
-
     this.eventEmitter.emit('appointment.paid_cancelled', {
       appointment,
       appointmentId: appointment.id,
@@ -1012,9 +1006,14 @@ export class BookingsService {
     }
 
     // Duration = sum of treatments; otherwise keep the requested / existing end.
-    const totalDuration = await this.computeServicesDuration(serviceIds);
+    // Edits that touch neither the time nor the treatments keep the stored end, so e.g. changing the
+    // owner of an appointment with a custom length does not re-run the slot check or extend it.
+    const startMoved = next.startTime.getTime() !== new Date(old.startTime).getTime();
+    const totalDuration = startMoved || servicesChanged ? await this.computeServicesDuration(serviceIds) : 0;
     let nextEnd: Date;
-    if (totalDuration > 0) {
+    if (!startMoved && !servicesChanged && !updateData.endTime) {
+      nextEnd = new Date(old.endTime);
+    } else if (totalDuration > 0) {
       nextEnd = new Date(next.startTime.getTime() + totalDuration * 60000);
     } else if (updateData.endTime) {
       nextEnd = new Date(updateData.endTime);
@@ -1236,9 +1235,7 @@ export class BookingsService {
         if (wantsRefund && !this.isAdminRole(actor?.role)) {
           throw new ForbiddenException('Only an admin can refund a paid appointment.');
         }
-        if (wantsRefund) {
-          await this.refundAppointmentPayments(appointment.id, userId, 'Refund on cancellation (admin decision)');
-        }
+        // The refund itself is written only after the cancellation is saved (below)
         paidCancellation = { amountPaid, refunded: wantsRefund };
       }
 
@@ -1259,6 +1256,10 @@ export class BookingsService {
     }
 
     await this.appointmentsRepository.update(id, updateData);
+
+    if (paidCancellation?.refunded) {
+      await this.refundAppointmentPayments(id, userId, 'Refund on cancellation (admin decision)');
+    }
 
     const updatedAppointment = await this.findById(id);
 
@@ -1788,13 +1789,8 @@ export class BookingsService {
         throw new ForbiddenException('Only an admin can refund a paid appointment.');
       }
       const paidBefore = Number(appointment.amountPaid || 0);
-      if (wantsRefund) {
-        await this.refundAppointmentPayments(appointment.id, userId, 'Refund on cancellation (admin decision)');
-        // recordPayment(REFUND) already lowered amountPaid in the DB; keep the entity in sync
-        // so the save() below does not write the stale value back.
-        const refreshed = await this.appointmentsRepository.findOne({ where: { id: appointment.id } });
-        if (refreshed) appointment.amountPaid = refreshed.amountPaid;
-      }
+      // The refund itself is written only after the cancellation is saved (below), so a failed
+      // save never leaves refunded payments on an active appointment.
       paidCancellation = { amountPaid: paidBefore, refunded: wantsRefund };
     }
 
@@ -1867,6 +1863,10 @@ export class BookingsService {
 
     appointment.status = status;
     const saved = await this.appointmentsRepository.save(appointment);
+    if (paidCancellation?.refunded) {
+      // recordPayment(REFUND) lowers amountPaid in the DB after the save, so nothing stale is written back
+      await this.refundAppointmentPayments(saved.id, userId, 'Refund on cancellation (admin decision)');
+    }
     const updated = await this.findById(saved.id);
 
     if (paidCancellation) {

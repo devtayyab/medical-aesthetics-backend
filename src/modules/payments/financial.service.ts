@@ -224,9 +224,10 @@ export class FinancialService {
         const originalPayment = await this.paymentRecordsRepository.findOne({ where: { id: paymentId } });
         if (!originalPayment) throw new NotFoundException('Payment record not found');
 
-        // Only a genuine, completed payment can be reversed — never a pending/failed record,
-        // and never a refund/void/deposit record.
-        if (originalPayment.type !== PaymentType.PAYMENT || originalPayment.status !== PaymentStatus.COMPLETED) {
+        // Only a genuine, completed payment or deposit can be reversed — never a pending/failed
+        // record, and never a refund/void record. (Deposits count as revenue, so they must be refundable.)
+        const refundable = originalPayment.type === PaymentType.PAYMENT || originalPayment.type === PaymentType.DEPOSIT;
+        if (!refundable || originalPayment.status !== PaymentStatus.COMPLETED) {
             throw new BadRequestException('Only completed payments can be refunded');
         }
 

@@ -75,9 +75,8 @@ export class AuthService {
       });
     }
 
-    if (user.failedLoginAttempts) {
-      await this.usersService.update(user.id, { failedLoginAttempts: 0, lockedUntil: null } as any);
-    }
+    // failedLoginAttempts is only cleared after the email code is also correct (verifyLoginCode):
+    // clearing it here would let a known password reset the lockout between code guesses.
     return user;
   }
 
@@ -180,19 +179,23 @@ export class AuthService {
       throw new UnauthorizedException({ statusCode: 401, code: "CODE_EXPIRED", message: "The code has expired. Please request a new one." });
     }
 
+    // Count the attempt atomically BEFORE comparing, so parallel requests cannot all guess at count 0.
+    const attempt = await this.usersService.incrementLoginCodeAttempts(user.id);
+    if (attempt > LOGIN_CODE_MAX_ATTEMPTS) {
+      throw new UnauthorizedException({ statusCode: 401, code: "CODE_EXPIRED", message: "Too many wrong codes. Please log in again." });
+    }
+
     const expected = Buffer.from(user.loginCodeHash, "hex");
     const actual = Buffer.from(this.hashCode(user.id, cleaned), "hex");
     const ok = cleaned.length === 6 && expected.length === actual.length && timingSafeEqual(expected, actual);
 
     if (!ok) {
-      const attempts = (user.loginCodeAttempts || 0) + 1;
-      if (attempts >= LOGIN_CODE_MAX_ATTEMPTS) {
+      if (attempt >= LOGIN_CODE_MAX_ATTEMPTS) {
         // Too many wrong codes: burn the code and count it as a failed login.
-        await this.usersService.update(user.id, { loginCodeHash: null, loginCodeExpiresAt: null, loginCodeAttempts: 0 } as any);
+        await this.usersService.update(user.id, { loginCodeHash: null, loginCodeExpiresAt: null } as any);
         await this.registerFailedAttempt(user);
         throw new UnauthorizedException({ statusCode: 401, code: "CODE_EXPIRED", message: "Too many wrong codes. Please log in again." });
       }
-      await this.usersService.update(user.id, { loginCodeAttempts: attempts } as any);
       throw new UnauthorizedException({ statusCode: 401, code: "INVALID_CODE", message: "Wrong code. Please try again." });
     }
 

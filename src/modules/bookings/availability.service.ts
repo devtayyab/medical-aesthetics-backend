@@ -93,7 +93,8 @@ export class AvailabilityService {
       log('🔵 Total duration:', totalDurationMinutes);
 
       const rawTz = clinic.timezone;
-      const timezone = (rawTz && rawTz !== 'null' && rawTz.trim() !== '') ? rawTz : 'UTC';
+      // Same fallback as the booking checks (assertSlotBookable): business time is Europe/Athens
+      const timezone = (rawTz && rawTz !== 'null' && rawTz.trim() !== '') ? rawTz : 'Europe/Athens';
       log('🔵 Using timezone:', timezone);
 
       // Create date objects for start and end of day respecting timezone
@@ -303,12 +304,12 @@ export class AvailabilityService {
                 timeZone: timezone 
               });
             } catch (e) {
-              log('⚠️ Invalid timezone for toLocaleTimeString, falling back to UTC:', timezone);
+              log('⚠️ Invalid timezone for toLocaleTimeString, falling back to Europe/Athens:', timezone);
               startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', 
                 minute: '2-digit',
                 hour12: false,
-                timeZone: 'UTC' 
+                timeZone: 'Europe/Athens'
               });
             }
 
