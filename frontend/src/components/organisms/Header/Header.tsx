@@ -366,7 +366,7 @@ export const Header: React.FC = () => {
     return [
       { to: "/appointments", label: isGreek ? "Τα ραντεβού μου" : "My Appointments" },
       { to: "/my-account", label: isGreek ? "Ο λογαριασμός μου" : "My Account" },
-      { to: "/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+      { to: "/messages", label: isGreek ? "Τα μηνύματά σας" : "Your inbox" },
       { to: "/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
       { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
     ];

@@ -600,7 +600,8 @@ export class ClinicManagementController {
       notificationDto.type as any,
       notificationDto.title,
       notificationDto.message,
-      notificationDto.data,
+      // Tagged as a message so it appears in the client's inbox
+      { ...(notificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
   }
 
@@ -617,7 +618,7 @@ export class ClinicManagementController {
       bulkNotificationDto.type as any,
       bulkNotificationDto.title,
       bulkNotificationDto.message,
-      bulkNotificationDto.data,
+      { ...(bulkNotificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
     return { message: 'Bulk notifications sent successfully' };
   }
@@ -695,16 +696,7 @@ export class ClinicManagementController {
     return this.clinicsService.respondToReview(req.user.id, id, body.response);
   }
 
-  @Patch('reviews/:id/toggle-visibility')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
-  @ApiOperation({ summary: 'Toggle review visibility' })
-  @ApiResponse({ status: 200, description: 'Review visibility toggled successfully' })
-  async toggleReviewVisibility(
-    @Param('id') id: string,
-    @Request() req,
-  ) {
-    return this.clinicsService.toggleReviewVisibility(req.user.id, id);
-  }
+  // Hiding/publishing reviews is an admin action only (see PATCH /clinics/reviews/:id/moderate).
 
   // Staff Management (Clinic Owners can manage their doctors/staff)
   @Get('staff')

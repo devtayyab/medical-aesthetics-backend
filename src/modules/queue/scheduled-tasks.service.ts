@@ -5,7 +5,7 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
-import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { athensDateTime } from '../notifications/utils/notification-format.util';
 
 @Injectable()
 export class ScheduledTasksService {
@@ -38,73 +38,9 @@ export class ScheduledTasksService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async sendAppointmentRemindersDaily() {
-    try {
-      this.logger.log('Running daily appointment reminders (1 day before)...');
-
-      const tomorrowStart = new Date();
-      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-      tomorrowStart.setHours(0, 0, 0, 0);
-
-      const tomorrowEnd = new Date();
-      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-      tomorrowEnd.setHours(23, 59, 59, 999);
-
-      // I'll need a method in BookingsService or use repository directly
-      // For now, let's assume we use repository logic here
-      const appointments = await this.bookingsService.findAppointmentsInRange(tomorrowStart, tomorrowEnd);
-
-      this.logger.log(`Found ${appointments.length} appointments for tomorrow.`);
-
-      for (const apt of appointments) {
-        if (apt.clientId && apt.client) {
-          // Send 1 day before reminder
-          const timeStr = apt.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_REMINDER, apt.clientId, {
-            customerName: `${apt.client?.firstName || 'Customer'}`,
-            serviceName: apt.service?.treatment?.name || 'Treatment',
-            appointmentDate: apt.startTime.toLocaleDateString(),
-            appointmentTime: timeStr,
-            clinicName: apt.clinic?.name,
-          });
-          this.logger.log(`Sent 1-day reminder for appointment ${apt.id}`);
-        }
-      }
-    } catch (error) {
-      this.logger.error('Failed to send daily appointment reminders:', error);
-    }
-  }
-
-  @Cron(CronExpression.EVERY_HOUR)
-  async sendAppointmentRemindersHourly() {
-    try {
-      this.logger.log('Running hourly appointment reminders (same day)...');
-
-      const now = new Date();
-      const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-
-      // Find appointments in next 4 hours that haven't been reminded today
-      const appointments = await this.bookingsService.findAppointmentsInRange(now, fourHoursLater);
-
-      for (const apt of appointments) {
-        if (apt.clientId && apt.client) {
-          const timeStr = apt.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          // Simple notification logic
-          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_REMINDER, apt.clientId, {
-            customerName: `${apt.client?.firstName || 'Customer'}`,
-            serviceName: apt.service?.treatment?.name || 'Treatment',
-            appointmentDate: apt.startTime.toLocaleDateString(),
-            appointmentTime: timeStr,
-            clinicName: apt.clinic?.name,
-          });
-          this.logger.log(`Sent same-day reminder for appointment ${apt.id}`);
-        }
-      }
-    } catch (error) {
-      this.logger.error('Failed to send hourly appointment reminders:', error);
-    }
-  }
+  // Appointment reminders (24h and 2h before, Athens time, each sent once) live in
+  // AppointmentNotificationsListener. The old daily/hourly UTC crons here sent the same
+  // reminder 3-4 times.
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async checkOverdueTasks() {
@@ -116,7 +52,7 @@ export class ScheduledTasksService {
         if (task.assigneeId) {
           await this.notificationsService.sendTriggeredNotification(NotificationTrigger.TASK_REMINDER, task.assigneeId, {
             taskTitle: task.description,
-            dueDate: task.dueDate.toLocaleDateString(),
+            dueDate: athensDateTime(task.dueDate),
           });
         }
         this.logger.log(`Task ${task.id} is overdue, notification sent.`);
@@ -126,31 +62,5 @@ export class ScheduledTasksService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_7PM)
-  async sendPostVisitThankYou() {
-    try {
-      this.logger.log('Running post-visit thank you messages...');
-      
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
-
-      const appointments = await this.bookingsService.findAppointmentsInRange(todayStart, todayEnd, AppointmentStatus.COMPLETED);
-
-      for (const apt of appointments) {
-        if (apt.clientId) {
-          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.POST_VISIT_THANK_YOU, apt.clientId, {
-            customerName: apt.client?.firstName || 'Customer',
-            clinicName: apt.clinic?.name,
-            serviceName: apt.service?.treatment?.name || 'your treatment',
-          });
-          this.logger.log(`Sent thank you for appointment ${apt.id}`);
-        }
-      }
-    } catch (error) {
-      this.logger.error('Failed to send post-visit thank you:', error);
-    }
-  }
+  // Post-visit message: replaced by the review request sent once on completion.
 }

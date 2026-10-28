@@ -1,7 +1,7 @@
-import { Injectable, forwardRef, Inject, OnModuleInit, BadRequestException } from '@nestjs/common';
+import { Injectable, forwardRef, Inject, OnModuleInit, OnApplicationBootstrap, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Queue } from 'bull';
 import { Notification } from './entities/notification.entity';
 import { NotificationType } from '../../common/enums/notification-type.enum';
@@ -11,10 +11,21 @@ import { NotificationsGateway } from './gateways/notifications.gateway';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationTemplate } from './entities/notification-template.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { User } from '../users/entities/user.entity';
 import { MailService } from './services/mail.service';
+import { NotificationDeliveryService } from './services/notification-delivery.service';
+import { NotificationDispatch } from './entities/notification-dispatch.entity';
+import { ContactMessage } from './entities/contact-message.entity';
+import { athensDate, athensTime } from './utils/notification-format.util';
+import { DEFAULT_TEMPLATES, LEGACY_DEFAULT_SUBJECTS } from './notification-templates.defaults';
+
+const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+const SALES_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER];
+const CLINIC_ROLES = [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT];
 
 @Injectable()
-export class NotificationsService implements OnModuleInit {
+export class NotificationsService implements OnModuleInit, OnApplicationBootstrap {
+  private readonly logger = new Logger(NotificationsService.name);
   private notificationsGateway: NotificationsGateway;
 
   constructor(
@@ -24,16 +35,65 @@ export class NotificationsService implements OnModuleInit {
     private templateRepository: Repository<NotificationTemplate>,
     @InjectRepository(Clinic)
     private clinicRepository: Repository<Clinic>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(NotificationDispatch)
+    private dispatchRepository: Repository<NotificationDispatch>,
+    @InjectRepository(ContactMessage)
+    private contactRepository: Repository<ContactMessage>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
     private usersService: UsersService,
     private mailService: MailService,
+    private deliveryService: NotificationDeliveryService,
     @Inject(forwardRef(() => NotificationsGateway))
     private _gateway: NotificationsGateway,
   ) { }
 
   onModuleInit() {
     this.notificationsGateway = this._gateway;
+  }
+
+  async onApplicationBootstrap() {
+    // Appointment emails depend on these templates; without them nothing is ever sent.
+    try {
+      await this.seedDefaultTemplates();
+    } catch (err: any) {
+      this.logger.warn(`Could not seed default notification templates: ${err?.message || err}`);
+    }
+  }
+
+  private toSocketPayload(n: Notification) {
+    return {
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      data: n.data,
+      isRead: n.isRead,
+      createdAt: n.createdAt,
+    };
+  }
+
+  /** Queue delivery; if the queue (Redis) is down, deliver right away instead of dropping it. */
+  private async enqueueDelivery(notificationIds: string[]): Promise<void> {
+    if (notificationIds.length === 0) return;
+    try {
+      await this.notificationsQueue.addBulk(
+        notificationIds.map((notificationId) => ({
+          name: 'send-notification',
+          data: { notificationId },
+          opts: { attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true },
+        })),
+      );
+    } catch (qErr: any) {
+      this.logger.warn(`Queue unavailable, delivering ${notificationIds.length} notification(s) directly: ${qErr?.message || qErr}`);
+      for (const id of notificationIds) {
+        this.deliveryService.deliver(id).catch((err) =>
+          this.logger.error(`Direct delivery failed for ${id}: ${err?.message || err}`),
+        );
+      }
+    }
   }
 
   async create(
@@ -53,28 +113,16 @@ export class NotificationsService implements OnModuleInit {
 
     const savedNotification = await this.notificationsRepository.save(notification);
 
-    // Send real-time notification via WebSocket if user is connected
-    if (this.notificationsGateway) {
-      await this.notificationsGateway.sendToUser(recipientId, {
-        id: savedNotification.id,
-        type: savedNotification.type,
-        title: savedNotification.title,
-        message: savedNotification.message,
-        data: savedNotification.data,
-        isRead: savedNotification.isRead,
-        createdAt: savedNotification.createdAt,
-      });
+    // Only in-app (push) notifications go to the bell in real time; emails are not bell items.
+    if (this.notificationsGateway && type === NotificationType.PUSH) {
+      try {
+        await this.notificationsGateway.sendToUser(recipientId, this.toSocketPayload(savedNotification));
+      } catch {
+        // Non-blocking
+      }
     }
 
-    // Queue for processing (push, email, etc.)
-    try {
-      await this.notificationsQueue.add('send-notification', {
-        notificationId: savedNotification.id,
-      });
-    } catch (qErr: any) {
-      console.warn('⚠️ [NotificationsService] Queue add error (non-blocking):', qErr?.message || qErr);
-    }
-
+    await this.enqueueDelivery([savedNotification.id]);
     return savedNotification;
   }
 
@@ -85,7 +133,10 @@ export class NotificationsService implements OnModuleInit {
     message: string,
     data?: any,
   ): Promise<void> {
-    const notifications = recipientIds.map(recipientId => ({
+    const uniqueIds = [...new Set((recipientIds || []).filter(Boolean))];
+    if (uniqueIds.length === 0) return;
+
+    const notifications = uniqueIds.map(recipientId => ({
       recipientId,
       type,
       title,
@@ -95,46 +146,25 @@ export class NotificationsService implements OnModuleInit {
 
     const savedNotifications = await this.notificationsRepository.save(notifications);
 
-    // Send real-time notifications via WebSocket to connected recipients
-    if (this.notificationsGateway) {
+    if (this.notificationsGateway && type === NotificationType.PUSH) {
       for (const notif of savedNotifications) {
         try {
-          this.notificationsGateway.sendToUser(notif.recipientId, {
-            id: notif.id,
-            type: notif.type,
-            title: notif.title,
-            message: notif.message,
-            data: notif.data,
-            isRead: notif.isRead,
-            createdAt: notif.createdAt,
-          });
-        } catch (wsErr) {
+          this.notificationsGateway.sendToUser(notif.recipientId, this.toSocketPayload(notif as Notification));
+        } catch {
           // Non-blocking error
         }
       }
     }
 
-    // Queue all for processing
-    const jobs = savedNotifications.map(notification => ({
-      name: 'send-notification',
-      data: { notificationId: notification.id },
-    }));
-
-    await this.notificationsQueue.addBulk(jobs);
+    await this.enqueueDelivery(savedNotifications.map((n) => n.id));
   }
 
+  /** Bell feed: in-app notifications of this user only (never other users' copies). */
   async findByRecipient(recipientId: string, limit: number = 50): Promise<Notification[]> {
     return this.notificationsRepository.find({
-      where: { recipientId },
+      where: { recipientId, type: NotificationType.PUSH },
       order: { createdAt: 'DESC' },
-      take: limit,
-    });
-  }
-
-  async findAllGlobal(limit: number = 50): Promise<Notification[]> {
-    return this.notificationsRepository.find({
-      order: { createdAt: 'DESC' },
-      take: limit,
+      take: Math.min(Number(limit) || 50, 200),
     });
   }
 
@@ -152,7 +182,7 @@ export class NotificationsService implements OnModuleInit {
       .createQueryBuilder()
       .update(Notification)
       .set({ isRead: true, readAt: new Date() })
-      .where("recipientId = :recipientId AND isRead = false", { recipientId })
+      .where('"recipientId" = :recipientId AND "isRead" = false', { recipientId })
       .execute();
   }
 
@@ -166,81 +196,158 @@ export class NotificationsService implements OnModuleInit {
 
   async getUnreadCount(recipientId: string): Promise<number> {
     return this.notificationsRepository.count({
-      where: { recipientId, isRead: false },
+      where: { recipientId, isRead: false, type: NotificationType.PUSH },
     });
   }
 
-  // Convenience methods for common notification scenarios
+  // ---------------------------------------------------------------------------
+  // Recipient groups
+  // ---------------------------------------------------------------------------
+
+  private async activeUserIdsByRoles(roles: UserRole[]): Promise<string[]> {
+    const users = await this.userRepository.find({
+      select: ['id'],
+      where: { role: In(roles as any[]), isActive: true },
+    });
+    return users.map((u) => u.id);
+  }
+
+  async getAdminIds(): Promise<string[]> {
+    return this.activeUserIdsByRoles(ADMIN_ROLES);
+  }
+
+  async getSalesIds(): Promise<string[]> {
+    return this.activeUserIdsByRoles(SALES_ROLES);
+  }
+
+  /** Owner + doctors/secretariat of one clinic. Never admins or salespeople. */
+  async getClinicStaffIds(clinicId: string): Promise<string[]> {
+    if (!clinicId) return [];
+    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
+    const staff = await this.userRepository.find({
+      select: ['id'],
+      where: { assignedClinicId: clinicId, isActive: true, role: In(CLINIC_ROLES as any[]) },
+    });
+    let ownerIds: string[] = [];
+    try {
+      const rows = await this.userRepository.manager.query(
+        'SELECT "ownerUserId" FROM clinic_ownership WHERE "clinicId" = $1',
+        [clinicId],
+      );
+      ownerIds = (rows || []).map((r: any) => r.ownerUserId).filter(Boolean);
+    } catch {
+      // Table may not exist in older databases
+    }
+    return [...new Set([...(clinic?.ownerId ? [clinic.ownerId] : []), ...ownerIds, ...staff.map((u) => u.id)])];
+  }
+
+  /** Send one in-app notification to each user once (deduplicated), skipping excluded ids. */
+  async notifyUsers(
+    recipientIds: string[],
+    title: string,
+    message: string,
+    data?: any,
+    excludeIds: string[] = [],
+  ): Promise<{ sentTo: number }> {
+    const exclude = new Set(excludeIds.filter(Boolean));
+    const ids = [...new Set(recipientIds.filter((id) => id && !exclude.has(id)))];
+    if (ids.length === 0) return { sentTo: 0 };
+    await this.sendBulk(ids, NotificationType.PUSH, title, message, data);
+    return { sentTo: ids.length };
+  }
+
+  async notifyAdmins(title: string, message: string, data?: any, excludeIds: string[] = []): Promise<{ sentTo: number }> {
+    return this.notifyUsers(await this.getAdminIds(), title, message, data, excludeIds);
+  }
+
+  /** Admins and salespeople, once each. */
+  async notifyAllStaff(
+    title: string,
+    message: string,
+    data?: any,
+    excludeIds: string[] = [],
+  ): Promise<{ sentTo: number }> {
+    const [admins, sales] = await Promise.all([this.getAdminIds(), this.getSalesIds()]);
+    return this.notifyUsers([...admins, ...sales], title, message, data, excludeIds);
+  }
+
+  /** Staff of one clinic (owner, doctors, secretariat). Admins are no longer copied. */
+  async notifyClinicStaff(
+    clinicId: string,
+    title: string,
+    message: string,
+    data?: any,
+    additionalRecipientIds: string[] = [],
+    excludeIds: string[] = [],
+  ): Promise<{ sentTo: number }> {
+    const staff = await this.getClinicStaffIds(clinicId);
+    return this.notifyUsers([...staff, ...additionalRecipientIds], title, message, data, excludeIds);
+  }
+
+  /** Message written by a clinic to the platform team (admins). */
+  async sendToPlatformAdmins(
+    title: string,
+    message: string,
+    data?: any,
+  ): Promise<{ message: string; sentTo: number }> {
+    const adminIds = await this.getAdminIds();
+    if (adminIds.length > 0) {
+      await this.sendBulk(
+        adminIds,
+        NotificationType.PUSH,
+        `[Μήνυμα κλινικής] ${title}`,
+        message,
+        { ...data, source: 'clinic_to_platform' },
+      );
+    }
+    return {
+      message: 'Message sent to platform admins',
+      sentTo: adminIds.length,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // One-off dispatch flags (reminders, review requests)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Atomically claims a one-off dispatch. Returns true only for the first caller, so a
+   * reminder is sent exactly once even with several cron runs or app instances.
+   */
+  async claimDispatch(dispatchKey: string, kind: string, appointmentId?: string): Promise<boolean> {
+    const result = await this.dispatchRepository
+      .createQueryBuilder()
+      .insert()
+      .into(NotificationDispatch)
+      .values({ dispatchKey, kind, appointmentId: appointmentId || null })
+      .orIgnore()
+      .returning(['id'])
+      .execute();
+    // Postgres returns the inserted row only when there was no conflict.
+    return Array.isArray(result.raw) && result.raw.length > 0;
+  }
+
+  /** Undo a claim when the send itself failed, so the next cron run retries. */
+  async releaseDispatch(dispatchKey: string): Promise<void> {
+    await this.dispatchRepository.delete({ dispatchKey });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Convenience senders
+  // ---------------------------------------------------------------------------
+
+  /** Manual reminder sent by a clinic from the appointment card. */
   async sendAppointmentReminder(
     recipientId: string,
-    appointmentDetails: any,
+    appointmentDetails: { id: string; time: Date | string; serviceName?: string },
   ): Promise<Notification> {
+    const when = `${athensDate(appointmentDetails.time)} στις ${athensTime(appointmentDetails.time)}`;
     return this.create(
       recipientId,
       NotificationType.PUSH,
-      'Appointment Reminder',
-      `You have an appointment tomorrow at ${appointmentDetails.time}`,
-      { appointmentId: appointmentDetails.id },
-    );
-  }
-
-  async sendAppointmentConfirmation(
-    recipientId: string,
-    appointmentDetails: any,
-  ): Promise<Notification> {
-    const serviceName = appointmentDetails.serviceName || 'Appointment';
-    const providerName = appointmentDetails.providerName || 'Professional';
-    const date = appointmentDetails.date instanceof Date
-      ? appointmentDetails.date.toLocaleDateString()
-      : appointmentDetails.date;
-    const time = appointmentDetails.time instanceof Date
-      ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : appointmentDetails.time;
-
-    return this.create(
-      recipientId,
-      NotificationType.PUSH,
-      'Appointment Confirmed',
-      `${serviceName} with ${providerName} confirmed for ${date} at ${time}`,
-      {
-        appointmentId: appointmentDetails.id,
-        serviceName,
-        providerName,
-        date,
-        time,
-      },
-    );
-  }
-
-  async sendAppointmentRescheduled(
-    recipientId: string,
-    appointmentDetails: any,
-  ): Promise<Notification> {
-    const serviceName = appointmentDetails.serviceName || 'Appointment';
-    const providerName = appointmentDetails.providerName ? ` with ${appointmentDetails.providerName}` : '';
-    const date = appointmentDetails.date instanceof Date
-      ? appointmentDetails.date.toLocaleDateString()
-      : appointmentDetails.date;
-    const time = appointmentDetails.time instanceof Date
-      ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : appointmentDetails.time;
-    const isPending = appointmentDetails.isPending;
-    const statusNote = isPending ? ' (Status: Pending Confirmation)' : '';
-
-    return this.create(
-      recipientId,
-      NotificationType.PUSH,
-      'Appointment Rescheduled',
-      `Your appointment for ${serviceName}${providerName} has been rescheduled to ${date} at ${time}${statusNote}.`,
-      {
-        appointmentId: appointmentDetails.id,
-        serviceName,
-        providerName: appointmentDetails.providerName,
-        date,
-        time,
-        status: isPending ? 'PENDING' : (appointmentDetails.status || 'CONFIRMED'),
-        type: 'appointment_rescheduled',
-      },
+      'Υπενθύμιση ραντεβού',
+      `Υπενθύμιση: έχετε ραντεβού${appointmentDetails.serviceName ? ` για ${appointmentDetails.serviceName}` : ''} στις ${when}.`,
+      { appointmentId: appointmentDetails.id, type: 'appointment_reminder' },
     );
   }
 
@@ -251,103 +358,10 @@ export class NotificationsService implements OnModuleInit {
     return this.create(
       recipientId,
       NotificationType.PUSH,
-      'Loyalty Points Updated',
-      `You've earned ${loyaltyDetails.points} points! Your new balance is ${loyaltyDetails.balance}`,
+      'Πόντοι επιβράβευσης',
+      `Κερδίσατε ${loyaltyDetails.points} πόντους. Νέο υπόλοιπο: ${loyaltyDetails.balance}.`,
       loyaltyDetails,
     );
-  }
-
-  async sendToPlatformAdmins(
-    title: string,
-    message: string,
-    data?: any,
-  ): Promise<{ message: string; sentTo: number }> {
-    // Find all admin and super admin users
-    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true, limit: 1000 });
-    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true, limit: 1000 });
-    const platformAdmins = [...admins, ...superAdmins];
-
-    if (platformAdmins.length === 0) {
-      throw new Error('No admin users found to send message to');
-    }
-
-    // Deduplicate in case a user appears in multiple role queries
-    const adminIds = [...new Set(platformAdmins.map(admin => admin.id))];
-
-    // Send bulk notification to all admins
-    await this.sendBulk(
-      adminIds,
-      NotificationType.PUSH,
-      `[Clinic Message] ${title}`,
-      message,
-      { ...data, source: 'clinic_to_platform' },
-    );
-
-    return {
-      message: 'Message sent to platform admins',
-      sentTo: adminIds.length,
-    };
-  }
-
-  async notifyAllStaff(
-    title: string,
-    message: string,
-    data?: any,
-  ): Promise<{ sentTo: number }> {
-    // Find all users who should be notified (Admins, Super Admins, and Salespeople)
-    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true, limit: 1000 });
-    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true, limit: 1000 });
-    const salespeople = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true, limit: 1000 });
-
-    const recipientIds = [...new Set([...admins, ...superAdmins, ...salespeople].map(u => u.id))];
-
-    if (recipientIds.length === 0) return { sentTo: 0 };
-
-    await this.sendBulk(
-      recipientIds,
-      NotificationType.PUSH,
-      title,
-      message,
-      data
-    );
-
-    return { sentTo: recipientIds.length };
-  }
-
-  async notifyClinicStaff(
-    clinicId: string,
-    title: string,
-    message: string,
-    data?: any,
-    additionalRecipientIds: string[] = [],
-  ): Promise<{ sentTo: number }> {
-    // Find the clinic to get the owner
-    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
-
-    // Find all users related to this clinic (Secretariat, Doctors)
-    const users = await this.usersService.findAll({ isActive: true, limit: 1000 });
-    const clinicStaff = users.filter(u =>
-      u.assignedClinicId === clinicId ||
-      [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(u.role as UserRole)
-    );
-
-    const recipientIds = [...new Set([
-      ...clinicStaff.map(u => u.id),
-      ...(clinic?.ownerId ? [clinic.ownerId] : []),
-      ...additionalRecipientIds.filter(Boolean),
-    ])];
-
-    if (recipientIds.length === 0) return { sentTo: 0 };
-
-    await this.sendBulk(
-      recipientIds,
-      NotificationType.PUSH,
-      title,
-      message,
-      data
-    );
-
-    return { sentTo: recipientIds.length };
   }
 
   async sendWelcomeCredentials(
@@ -356,24 +370,24 @@ export class NotificationsService implements OnModuleInit {
     password: string,
     userName?: string,
   ): Promise<Notification> {
+    // The email is sent directly; the password is never stored in a notification row.
     try {
       await this.mailService.sendWelcomeCredentialsEmail(email, password, userName);
-    } catch (err) {
-      // Log error but don't fail notification creation
+    } catch (err: any) {
+      this.logger.error(`Welcome email failed for ${recipientId}: ${err?.message || err}`);
     }
 
     return this.create(
       recipientId,
-      NotificationType.EMAIL,
-      'Welcome to Beauty & Doctors - Your Account is Ready',
-      `Hi there,\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in to the portal using the following credentials:\n\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after your first login for security.\n\nSee you inside!`,
-      { email, password, passwordType: 'temporary' },
+      NotificationType.PUSH,
+      'Καλώς ήρθατε στο Beauty Doctors',
+      'Ο λογαριασμός σας δημιουργήθηκε. Σας στείλαμε τα στοιχεία σύνδεσης με email.',
+      { type: 'welcome' },
     );
   }
 
   /**
    * Helper for sending BOTH push + email to a single user in one call.
-   * Useful for admin broadcasts or important alerts.
    */
   async sendEmailAndPushToUser(
     recipientId: string,
@@ -382,14 +396,7 @@ export class NotificationsService implements OnModuleInit {
     emailBody?: string,
     data?: any,
   ): Promise<{ push: Notification; email: Notification }> {
-    const push = await this.create(
-      recipientId,
-      NotificationType.PUSH,
-      title,
-      message,
-      data,
-    );
-
+    const push = await this.create(recipientId, NotificationType.PUSH, title, message, data);
     const email = await this.create(
       recipientId,
       NotificationType.EMAIL,
@@ -397,11 +404,127 @@ export class NotificationsService implements OnModuleInit {
       emailBody ?? message,
       { ...data, channel: 'email' },
     );
-
     return { push, email };
   }
 
+  // ---------------------------------------------------------------------------
+  // Broadcast (marketing)
+  // ---------------------------------------------------------------------------
+
+  /** Active clients who accepted marketing communication (GDPR). */
+  private marketingAudienceQuery() {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.email'])
+      .where('user.role = :role', { role: UserRole.CLIENT })
+      .andWhere('user.isActive = true')
+      .andWhere('user.marketingEmailConsent = true');
+  }
+
+  async getBroadcastAudienceCount(): Promise<number> {
+    return this.marketingAudienceQuery().getCount();
+  }
+
+  async broadcastToMarketingClients(
+    title: string,
+    message: string,
+    channels: { push?: boolean; email?: boolean },
+    senderId?: string,
+  ): Promise<{ recipients: number; push: number; email: number }> {
+    if (!title?.trim() || !message?.trim()) {
+      throw new BadRequestException('Title and message are required');
+    }
+    if (!channels?.push && !channels?.email) {
+      throw new BadRequestException('Select push, email or both');
+    }
+
+    const users = await this.marketingAudienceQuery().getMany();
+    const ids = users.map((u) => u.id);
+    const data = { type: 'broadcast', category: 'message', senderId };
+
+    // Insert in chunks so a large audience does not create one huge statement.
+    const chunkSize = 500;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      if (channels.push) await this.sendBulk(chunk, NotificationType.PUSH, title.trim(), message.trim(), data);
+      if (channels.email) await this.sendBulk(chunk, NotificationType.EMAIL, title.trim(), message.trim(), data);
+    }
+
+    return {
+      recipients: ids.length,
+      push: channels.push ? ids.length : 0,
+      email: channels.email ? ids.length : 0,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Device tokens (web push)
+  // ---------------------------------------------------------------------------
+
+  async registerDeviceToken(userId: string, token: string): Promise<{ success: boolean }> {
+    if (!token || typeof token !== 'string' || token.length > 4096) {
+      throw new BadRequestException('Invalid device token');
+    }
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    await this.userRepository.update(userId, {
+      profile: { ...(user.profile || {}), fcmToken: token, fcmTokenUpdatedAt: new Date().toISOString() },
+    });
+    return { success: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Contact form inbox
+  // ---------------------------------------------------------------------------
+
+  async saveContactMessage(data: { name: string; email: string; phone?: string; subject: string; message: string }): Promise<ContactMessage> {
+    const saved = await this.contactRepository.save(
+      this.contactRepository.create({
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone?.trim() || null,
+        subject: data.subject.trim(),
+        message: data.message.trim(),
+      }),
+    );
+
+    await this.notifyAdmins(
+      'Νέο μήνυμα επικοινωνίας',
+      `${saved.name}: ${saved.subject}`,
+      { type: 'contact_message', contactMessageId: saved.id, link: '/admin/contact-messages' },
+    );
+
+    return saved;
+  }
+
+  async listContactMessages(query: { limit?: number; offset?: number; unreadOnly?: boolean | string }) {
+    const take = Math.min(Number(query?.limit) || 50, 200);
+    const skip = Number(query?.offset) || 0;
+    const where: any = {};
+    if (query?.unreadOnly === true || query?.unreadOnly === 'true') where.isRead = false;
+    const [items, total] = await this.contactRepository.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      take,
+      skip,
+    });
+    const unread = await this.contactRepository.count({ where: { isRead: false } });
+    return { items, total, unread, limit: take, offset: skip };
+  }
+
+  async setContactMessageRead(id: string, isRead: boolean, userId: string): Promise<ContactMessage> {
+    const msg = await this.contactRepository.findOne({ where: { id } });
+    if (!msg) throw new NotFoundException('Message not found');
+    msg.isRead = isRead;
+    msg.readAt = isRead ? new Date() : null;
+    msg.readById = isRead ? userId : null;
+    return this.contactRepository.save(msg);
+  }
+
+  // ---------------------------------------------------------------------------
   // Template Management
+  // ---------------------------------------------------------------------------
+
   async getTemplates() {
     return this.templateRepository.find({ order: { trigger: 'ASC', type: 'ASC' } });
   }
@@ -428,6 +551,7 @@ export class NotificationsService implements OnModuleInit {
     trigger: NotificationTrigger,
     recipientId: string,
     context: any,
+    options: { channels?: NotificationType[] } = {},
   ): Promise<Notification[]> {
     const templates = await this.templateRepository.find({
       where: { trigger, isActive: true },
@@ -436,6 +560,7 @@ export class NotificationsService implements OnModuleInit {
     const notifications: Notification[] = [];
 
     for (const template of templates) {
+      if (options.channels && !options.channels.includes(template.type)) continue;
       const title = this.replacePlaceholders(template.subject, context);
       const message = this.replacePlaceholders(template.content, context);
 
@@ -455,118 +580,47 @@ export class NotificationsService implements OnModuleInit {
   private replacePlaceholders(text: string, context: any): string {
     return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
       const value = key.split('.').reduce((obj, k) => obj?.[k.trim()], context);
-      return value !== undefined ? value : match;
+      return value !== undefined && value !== null ? String(value) : '';
     });
   }
 
+  /**
+   * Creates any missing default template and upgrades templates that still hold the old
+   * English default text (admin-edited templates are left untouched).
+   */
   async seedDefaultTemplates() {
-    const defaults = [
-      {
-        trigger: NotificationTrigger.APPOINTMENT_BOOKED,
-        type: NotificationType.EMAIL,
-        subject: 'Appointment Booked: {{serviceName}}',
-        content: 'Hi {{customerName}},\n\nYour appointment for {{serviceName}} has been booked for {{appointmentDate}} at {{appointmentTime}} at {{clinicName}}.\n\nThank you!',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_BOOKED,
-        type: NotificationType.PUSH,
-        subject: 'New Appointment Booked',
-        content: 'Your appointment for {{serviceName}} has been scheduled for {{appointmentDate}} at {{appointmentTime}}.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_CONFIRMED,
-        type: NotificationType.PUSH,
-        subject: 'Appointment Confirmed!',
-        content: 'Your {{serviceName}} at {{clinicName}} is confirmed for {{appointmentDate}} at {{appointmentTime}}.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_CONFIRMED,
-        type: NotificationType.EMAIL,
-        subject: 'Confirmed: Your Appointment at {{clinicName}}',
-        content: 'Dear {{customerName}},\n\nWe are happy to confirm your appointment for {{serviceName}} on {{appointmentDate}} at {{appointmentTime}}.\n\nLocation: {{clinicName}}\n\nWe look forward to seeing you!',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_RESCHEDULED,
-        type: NotificationType.PUSH,
-        subject: 'Appointment Rescheduled',
-        content: 'Your appointment for {{serviceName}} has been moved to {{appointmentDate}} at {{appointmentTime}}.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_RESCHEDULED,
-        type: NotificationType.EMAIL,
-        subject: 'Updated Appointment Details',
-        content: 'Hi {{customerName}},\n\nYour appointment for {{serviceName}} has been rescheduled. Your new time is {{appointmentDate}} at {{appointmentTime}}.\n\nPlease let us know if this doesn\'t work for you.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_CANCELED,
-        type: NotificationType.EMAIL,
-        subject: 'Appointment Cancelled',
-        content: 'Hi {{customerName}},\n\nThis is to confirm that your appointment for {{serviceName}} on {{appointmentDate}} has been cancelled. If you didn\'t request this, please contact us immediately.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_REMINDER,
-        type: NotificationType.PUSH,
-        subject: 'Upcoming Appointment Reminder',
-        content: 'Don\'t forget! You have an appointment for {{serviceName}} tomorrow at {{appointmentTime}}.',
-      },
-      {
-        trigger: NotificationTrigger.APPOINTMENT_REMINDER,
-        type: NotificationType.EMAIL,
-        subject: 'Reminder: Your Appointment Tomorrow at {{clinicName}}',
-        content: 'Dear {{customerName}},\n\nThis is a friendly reminder that you have an upcoming appointment:\n\n Date: {{appointmentDate}}\n Time: {{appointmentTime}}\n Treatment: {{serviceName}}\n Clinic: {{clinicName}}\n\nIf you need to reschedule or have any questions, please contact us as soon as possible.\n\nWe look forward to seeing you tomorrow!\n\nBest regards,\nThe {{clinicName}} Team',
-      },
-      {
-        trigger: NotificationTrigger.POST_VISIT_THANK_YOU,
-        type: NotificationType.EMAIL,
-        subject: 'Thank You for Choosing {{clinicName}}',
-        content: 'Hi {{customerName}},\n\nIt was a pleasure seeing you today for your {{serviceName}} treatment. We hope you had a great experience!\n\nBest regards,\nThe {{clinicName}} Team',
-      },
-      {
-        trigger: NotificationTrigger.TASK_REMINDER,
-        type: NotificationType.PUSH,
-        subject: 'Task Reminder',
-        content: 'Reminder: Task "{{taskTitle}}" is due on {{dueDate}}.',
-      },
-      {
-        trigger: NotificationTrigger.WELCOME_CREDENTIALS,
-        type: NotificationType.EMAIL,
-        subject: 'Welcome to Beauty & Doctors - Your Account is Ready',
-        content: 'Hi {{customerName}},\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in using these credentials:\nEmail: {{email}}\nPassword: {{password}}\n\nPlease change your password after logging in.\n\nSee you inside!',
-      },
-      {
-        trigger: NotificationTrigger.EXECUTION_NOTIFICATION,
-        type: NotificationType.PUSH,
-        subject: 'Action Completed',
-        content: 'The action "{{actionName}}" has been executed successfully.',
-      },
-    ];
-
-    for (const data of defaults) {
+    let created = 0;
+    let upgraded = 0;
+    for (const data of DEFAULT_TEMPLATES) {
       const existing = await this.templateRepository.findOne({
         where: { trigger: data.trigger, type: data.type },
       });
 
       if (!existing) {
         await this.templateRepository.save(this.templateRepository.create({ ...data, isActive: true }));
+        created++;
+      } else if (LEGACY_DEFAULT_SUBJECTS.has(existing.subject)) {
+        await this.templateRepository.update(existing.id, { subject: data.subject, content: data.content });
+        upgraded++;
       }
     }
+    if (created || upgraded) {
+      this.logger.log(`Notification templates: ${created} created, ${upgraded} upgraded to Greek defaults`);
+    }
+    return { created, upgraded };
   }
 
   /**
    * Send a 6-digit OTP code for email verification during registration.
+   * The code is emailed directly and never stored in a notification row.
    */
   async sendEmailVerificationOtp(
     recipientId: string,
     firstName: string,
     otp: string,
   ): Promise<void> {
-    await this.create(
-      recipientId,
-      NotificationType.EMAIL,
-      'Your Beauty & Doctors Verification Code',
-      `Hi ${firstName},\n\nYour verification code is:\n\n${otp}\n\nThis code is valid for 15 minutes. Do not share it with anyone.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nBeauty & Doctors Team`,
-      { otp, type: 'email_verification' },
-    );
+    const user = await this.userRepository.findOne({ where: { id: recipientId } });
+    if (!user?.email) return;
+    await this.mailService.sendVerificationEmail(user.email, { userName: firstName, code: otp });
   }
-
 }

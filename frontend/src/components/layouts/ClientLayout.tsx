@@ -99,7 +99,7 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     { title: "Gift Cards", icon: <HiOutlineGift size={15} />, link: "/gift-card" },
     { title: "My Reviews", icon: <FaStar size={14} />, link: "/reviews" },
     { title: "Notifications", icon: <TbBell size={15} />, link: "/notifications" },
-    { title: "Messages", icon: <TbMessage size={15} />, link: "/messages" },
+    { title: "Your inbox", icon: <TbMessage size={15} />, link: "/messages" },
     { title: "Blog", icon: <FaBookOpen size={14} />, link: "/blog" },
     { title: "Settings", icon: <TbSettings size={15} />, link: "/settings" },
     { title: "My Account", icon: <TbHome size={15} />, link: "/my-account" },

@@ -107,33 +107,10 @@ export class CrmListener {
     }
 
     @OnEvent('appointment.executed')
-    async handleAppointmentExecuted(appointment: any) {
-        // No follow-up task here: the only automatic task is the confirmation call (closed by the sync below).
-        await this.taskAutomationService.syncConfirmationTask(appointment?.id);
-
-        try {
-            const representativeId = appointment.representativeId || appointment.bookedById;
-            if (representativeId) {
-                const therapyName = appointment.service?.treatment?.name || 'Treatment';
-
-                // Notify the specific salesperson
-                await this.notificationsService.create(
-                    representativeId,
-                    NotificationType.PUSH,
-                    'Appointment Executed',
-                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
-                    { appointmentId: appointment.id, type: 'execution' }
-                );
-
-                // Notify Platform Admins (Logic in service now restricts to Admins only)
-                await this.notificationsService.sendToPlatformAdmins(
-                    'Appointment Executed',
-                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
-                    { appointmentId: appointment.id, type: 'execution' }
-                );
-            }
-        } catch (error) {
-            this.logger.error(`Failed to handle appointment execution notifications for ${appointment?.id}`, error.stack);
-        }
+    async handleAppointmentExecuted(payload: any) {
+        // Emitted as { appointment, performedBy }; completion notifications are sent once by
+        // AppointmentNotificationsListener, so only the confirmation task is closed here.
+        const appointmentId = payload?.appointment?.id ?? payload?.id;
+        await this.taskAutomationService.syncConfirmationTask(appointmentId);
     }
 }

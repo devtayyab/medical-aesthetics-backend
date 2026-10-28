@@ -5,7 +5,7 @@ import { openDialer } from "@/store/slices/dialerSlice";
 import { Phone, Bell } from "lucide-react";
 import { firebaseApp as app } from "@/config/firebase";
 import { ENV } from "@/config/env";
-import { getAccessToken } from "@/services/client";
+import api from "@/services/api";
 
 export const initializeFirebase = async (
  dispatch: AppDispatch
@@ -29,24 +29,31 @@ export const initializeFirebase = async (
  }
 
  const permission = await Notification.requestPermission();
- if (permission ==="granted") {
+ if (permission ==="granted" && "serviceWorker" in navigator) {
+ // Register the messaging service worker from the site root (frontend/public) and pass
+ // the web config in the URL, since a service worker cannot read Vite env variables.
+ const swParams = new URLSearchParams({
+ apiKey: ENV.FIREBASE.API_KEY,
+ authDomain: ENV.FIREBASE.AUTH_DOMAIN,
+ projectId: ENV.FIREBASE.PROJECT_ID,
+ storageBucket: ENV.FIREBASE.STORAGE_BUCKET,
+ messagingSenderId: ENV.FIREBASE.MESSAGING_SENDER_ID,
+ appId: ENV.FIREBASE.APP_ID,
+ });
+ const registration = await navigator.serviceWorker.register(
+ `/firebase-messaging-sw.js?${swParams.toString()}`,
+ { scope: "/firebase-cloud-messaging-push-scope" },
+ );
+
  const token = await getToken(messaging, {
  vapidKey: ENV.FIREBASE.VAPID_KEY || undefined,
+ serviceWorkerRegistration: registration,
  });
- console.log("FCM Token:", token);
 
- // Send token to backend
- const apiUrl = ENV.API_BASE_URL;
- const accessToken = getAccessToken();
- await fetch(`${apiUrl}/notifications/register`, {
- method:"POST",
- // Session cookie + in-memory token (tokens are no longer in localStorage)
- credentials:"include",
- headers: {"Content-Type":"application/json",
- ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
- },
- body: JSON.stringify({ token }),
- });
+ // Send token to backend (shared api client: same auth as every other request)
+ if (token) {
+ await api.post("/notifications/register", { token });
+ }
  }
 
  // Handle foreground messages
@@ -82,7 +89,8 @@ export const initializeFirebase = async (
  });
 
  const notification = {
- id: payload.messageId,
+ // Same id as the stored notification, so the bell never lists it twice
+ id: data?.notificationId || payload.messageId,
  recipientId:"", 
  type:"push",
  title: payload.notification?.title ||"",

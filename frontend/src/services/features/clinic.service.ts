@@ -22,8 +22,11 @@ export const clinicService = {
 
   getProviders: (clinicId: string) => api.get(`/clinics/${clinicId}/providers`),
 
-  getPendingReviews: (params?: { limit?: number; offset?: number }) =>
+  getPendingReviews: (params?: { limit?: number; offset?: number; status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' }) =>
     api.get('/clinics/reviews/pending', { params }),
+
+  setReviewResponseVisibility: (id: string, hidden: boolean) =>
+    api.patch(`/clinics/reviews/${id}/response-visibility`, { hidden }),
 
   moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
     api.patch(`/clinics/reviews/${id}/moderate`, data),

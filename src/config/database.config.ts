@@ -37,6 +37,8 @@ import { ConversationParticipant } from '../modules/messages/entities/conversati
 import { PaymentRecord } from '../modules/payments/entities/payment-record.entity';
 import { NotificationTemplate } from '../modules/notifications/entities/notification-template.entity';
 import { ClinicCalendarConnection } from '../modules/google-calendar/entities/clinic-calendar-connection.entity';
+import { NotificationDispatch } from '../modules/notifications/entities/notification-dispatch.entity';
+import { ContactMessage } from '../modules/notifications/entities/contact-message.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -89,6 +91,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         ClinicOwnership,
         AdSpendLog,
         ClinicCalendarConnection,
+        NotificationDispatch,
+        ContactMessage,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

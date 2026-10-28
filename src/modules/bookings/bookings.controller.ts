@@ -234,6 +234,7 @@ export class BookingsController {
         end,
         body.reason || body.notes,
         isClient,
+        req.user.id,
       );
     } catch (error) {
       console.error('[Reschedule error in controller]:', error);
@@ -264,7 +265,7 @@ export class BookingsController {
     if (body.additionalServiceIds !== undefined) updateData.additionalServiceIds = body.additionalServiceIds;
     if (body.representativeId !== undefined) updateData.representativeId = body.representativeId || null;
     if (body.bookedById !== undefined) updateData.bookedById = body.bookedById || null;
-    return this.bookingsService.updateAppointmentDetails(id, updateData);
+    return this.bookingsService.updateAppointmentDetails(id, updateData, req.user?.id);
   }
 
   @Patch('appointments/:id/cancel')

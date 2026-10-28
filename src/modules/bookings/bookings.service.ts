@@ -25,6 +25,7 @@ import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
+import { APPOINTMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 
@@ -541,37 +542,8 @@ export class BookingsService {
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
 
-    // Trigger Notification for Booked (Safe try/catch so notification failures never abort booking completion)
-    try {
-      const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
-      if (appointmentWithRelations.clientId && appointmentWithRelations.clientId !== WALK_IN_DUMMY_ID) {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
-          customerName: `${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Customer'}`,
-          serviceName: appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment',
-          appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-          appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-          clinicName: appointmentWithRelations.clinic?.name,
-        });
-      }
-
-      // Notify Staff
-      await this.notificationsService.notifyAllStaff(
-        'New Appointment Booked',
-        `Client ${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-        { appointmentId: savedAppointment.id }
-      );
-
-      if (appointmentWithRelations.clinicId) {
-        await this.notificationsService.notifyClinicStaff(
-          appointmentWithRelations.clinicId,
-          'New Clinic Appointment',
-          `A new appointment has been scheduled for your clinic on ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-          { appointmentId: savedAppointment.id }
-        );
-      }
-    } catch (notifErr: any) {
-      console.warn('⚠️ [BookingsService] Non-blocking notification error during appointment creation:', notifErr?.message || notifErr);
-    }
+    // One notification event; recipients are decided in AppointmentNotificationsListener.
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
 
       // If card payment, generate Viva Wallet redirect URL
       // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
@@ -707,13 +679,40 @@ export class BookingsService {
 
   // Update whitelisted appointment detail fields (provider/time/service/price). Authorization
   // and field whitelisting are enforced by the controller; this replaces direct private-repo access.
-  async updateAppointmentDetails(id: string, updateData: any): Promise<Appointment> {
+  async updateAppointmentDetails(id: string, updateData: any, actorId?: string): Promise<Appointment> {
     const appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
     }
     await this.appointmentsRepository.update(id, updateData);
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: id,
+      actorId,
+      previous: {
+        startTime: appointment.startTime,
+        clinicId: appointment.clinicId,
+        serviceId: appointment.serviceId,
+        additionalServiceIds: appointment.additionalServiceIds || [],
+        providerId: appointment.providerId,
+        bookedById: appointment.bookedById,
+        representativeId: appointment.representativeId,
+      },
+    });
     return this.findById(id);
+  }
+
+  /** Maps a status change to the single appointment notification event. */
+  private emitStatusNotification(appointmentId: string, status: AppointmentStatus, actorId?: string, paidAmount?: number) {
+    const s = String(status).toUpperCase();
+    const kind =
+      s === AppointmentStatus.CANCELLED ? 'cancelled' :
+      s === AppointmentStatus.CONFIRMED ? 'confirmed' :
+      s === AppointmentStatus.NO_SHOW ? 'no_show' :
+      (s === AppointmentStatus.COMPLETED || s === AppointmentStatus.EXECUTED) ? 'completed' :
+      null;
+    if (!kind) return;
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind, appointmentId, actorId, paidAmount });
   }
 
   async updateStatus(id: string, status: AppointmentStatus, data?: any, userId?: string): Promise<Appointment> {
@@ -856,36 +855,7 @@ export class BookingsService {
 
     // Trigger Notification if status actually changed
     if (status !== oldStatus) {
-      let trigger: NotificationTrigger;
-      if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
-      else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-      else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
-
-      if (trigger && updatedAppointment.clientId) {
-        await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
-          customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
-          serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
-          appointmentDate: formatDateInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
-          appointmentTime: formatTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
-          clinicName: updatedAppointment.clinic?.name,
-        });
-      }
-
-      // Notify Staff about status change
-      await this.notificationsService.notifyAllStaff(
-        `Appointment ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
-        `Appointment for ${updatedAppointment.client?.firstName || 'Guest'} has been ${status.toLowerCase()} by ${userId ? 'staff' : 'system'}.`,
-        { appointmentId: id, status }
-      );
-
-      if (updatedAppointment.clinicId) {
-        await this.notificationsService.notifyClinicStaff(
-          updatedAppointment.clinicId,
-          `Appointment Status: ${status}`,
-          `Appointment on ${formatDateTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone)} is now ${status.toLowerCase()}.`,
-          { appointmentId: id, status }
-        );
-      }
+      this.emitStatusNotification(id, status, userId, Number(appointment.amountPaid || 0));
 
       // Emit events for status changes
       this.eventEmitter.emit('appointment.status.changed', {
@@ -922,6 +892,7 @@ export class BookingsService {
     newEndTime: Date,
     notes?: string,
     isClientReschedule: boolean = false,
+    actorId?: string,
   ): Promise<Appointment> {
     let appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
@@ -929,6 +900,7 @@ export class BookingsService {
     }
     
     const oldStatus = appointment.status;
+    const oldStartTime = appointment.startTime;
     const updatePayload: any = {
       startTime: newStartTime,
       endTime: newEndTime,
@@ -946,91 +918,13 @@ export class BookingsService {
 
     appointment = await this.findById(id);
 
-    const formattedDate = formatDateInTz(appointment.startTime, appointment.clinic?.timezone);
-    const formattedTime = formatTimeInTz(appointment.startTime, appointment.clinic?.timezone);
-    const formattedDateTime = formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone);
-    const serviceName = appointment.service?.treatment?.name || 'Treatment';
-    const providerName = appointment.provider
-      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`.trim()
-      : '';
-    const clientName = appointment.client
-      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
-      : 'Client';
-
-    // 1. In-App Notification directly for the client (shows in notification bell dropdown)
-    if (appointment.clientId) {
-      try {
-        await this.notificationsService.sendAppointmentRescheduled(appointment.clientId, {
-          id: appointment.id,
-          serviceName,
-          providerName,
-          date: formattedDate,
-          time: formattedTime,
-          isPending: isClientReschedule,
-          status: appointment.status,
-        });
-      } catch (clientNotifErr) {
-        console.error('[BookingsService] Failed to send client reschedule push notification:', clientNotifErr);
-      }
-
-      // Also send template-based notifications (e.g. Email)
-      try {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
-          customerName: clientName,
-          serviceName,
-          appointmentDate: formattedDate,
-          appointmentTime: formattedTime,
-          clinicName: appointment.clinic?.name || 'Clinic',
-        });
-      } catch (error) {
-        console.error('[BookingsService] Failed to send triggered reschedule notification:', error);
-      }
-    }
-
-    // 2. Direct notification to assigned Provider (Doctor / Aesthetician)
-    if (appointment.providerId && appointment.providerId !== appointment.clientId) {
-      try {
-        await this.notificationsService.create(
-          appointment.providerId,
-          NotificationType.PUSH,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
-          {
-            appointmentId: id,
-            type: 'appointment_rescheduled',
-            status: appointment.status,
-          }
-        );
-      } catch (providerNotifErr) {
-        console.error('[BookingsService] Failed to send provider reschedule notification:', providerNotifErr);
-      }
-    }
-
-    // 3. Notify Clinic Staff & Owner
-    if (appointment.clinicId) {
-      try {
-        await this.notificationsService.notifyClinicStaff(
-          appointment.clinicId,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
-          { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status },
-          appointment.providerId ? [appointment.providerId] : []
-        );
-      } catch (clinicStaffErr) {
-        console.error('[BookingsService] Failed to notify clinic staff:', clinicStaffErr);
-      }
-    }
-
-    // 4. Notify Platform Staff / Admins
-    try {
-      await this.notificationsService.notifyAllStaff(
-        'Appointment Rescheduled',
-        `Appointment for ${clientName} moved to ${formattedDateTime}${isClientReschedule ? ' and requires re-confirmation (Status: PENDING).' : '.'}`,
-        { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status }
-      );
-    } catch (allStaffErr) {
-      console.error('[BookingsService] Failed to notify all staff:', allStaffErr);
-    }
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: id,
+      actorId,
+      previous: { startTime: oldStartTime },
+      isClientReschedule,
+    });
 
     if (isClientReschedule && oldStatus !== AppointmentStatus.PENDING) {
       this.eventEmitter.emit('appointment.status.changed', {
@@ -1487,20 +1381,9 @@ export class BookingsService {
     // 3. The linked confirmation-call task follows the appointment via the CRM listener
     //    ('appointment.calendar.dirty' / 'appointment.executed'); no follow-up tasks are created.
 
-    // 4. NOTIFICATION TRIGGERS
-    let trigger: NotificationTrigger;
-    if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
-    else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-    else if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
-
-    if (trigger && updated.clientId) {
-      await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {
-        customerName: `${updated.client?.firstName || 'Customer'}`,
-        serviceName: updated.service?.treatment?.name || 'Treatment',
-        appointmentDate: formatDateInTz(updated.startTime, updated.clinic?.timezone),
-        appointmentTime: formatTimeInTz(updated.startTime, updated.clinic?.timezone),
-        clinicName: updated.clinic?.name,
-      });
+    // 4. NOTIFICATION (one event; recipients decided by the listener)
+    if (oldStatus !== status) {
+      this.emitStatusNotification(updated.id, status, userId, Number(appointment.amountPaid || 0));
     }
 
     // This clinic-scoped path previously only emitted `appointment.executed`. Emit a
@@ -1757,6 +1640,7 @@ export class BookingsService {
       oldStatus,
       newStatus: AppointmentStatus.COMPLETED,
     });
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'completed', appointmentId: savedAppointment.id, actorId: userId });
 
     return savedAppointment;
   }
@@ -1852,6 +1736,7 @@ export class BookingsService {
     // Dedicated calendar-sync signal (not the shared status.changed event, to avoid
     // altering existing notification/loyalty listeners) so Google Calendar removes the event.
     this.eventEmitter.emit('appointment.calendar.dirty', { appointmentId });
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'deleted', appointmentId, actorId: userId });
 
     return this.findById(appointmentId);
   }
@@ -2370,90 +2255,12 @@ export class BookingsService {
     const updatedAppointment = await this.appointmentsRepository.save(appointment);
     const fullAppointment = await this.findById(updatedAppointment.id);
 
-    const formattedDate = formatDateInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const formattedTime = formatTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const formattedDateTime = formatDateTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const serviceName = fullAppointment.service?.treatment?.name || 'Treatment';
-    const providerName = fullAppointment.provider
-      ? `${fullAppointment.provider.firstName} ${fullAppointment.provider.lastName}`.trim()
-      : '';
-    const clientName = fullAppointment.client
-      ? `${fullAppointment.client.firstName} ${fullAppointment.client.lastName || ''}`.trim()
-      : 'Client';
-
-    // 1. Notify Client
-    if (fullAppointment.clientId) {
-      try {
-        await this.notificationsService.sendAppointmentRescheduled(fullAppointment.clientId, {
-          id: fullAppointment.id,
-          serviceName,
-          providerName,
-          date: formattedDate,
-          time: formattedTime,
-          isPending: false,
-          status: fullAppointment.status,
-        });
-      } catch (clientNotifErr) {
-        console.error('[BookingsService] Failed to send client reschedule notification:', clientNotifErr);
-      }
-
-      try {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, fullAppointment.clientId, {
-          customerName: clientName,
-          serviceName,
-          appointmentDate: formattedDate,
-          appointmentTime: formattedTime,
-          clinicName: fullAppointment.clinic?.name || 'Clinic',
-        });
-      } catch (err) {
-        console.error('[BookingsService] Failed to send triggered notification:', err);
-      }
-    }
-
-    // 2. Direct notification to assigned Provider
-    if (fullAppointment.providerId && fullAppointment.providerId !== fullAppointment.clientId) {
-      try {
-        await this.notificationsService.create(
-          fullAppointment.providerId,
-          NotificationType.PUSH,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
-          {
-            appointmentId: fullAppointment.id,
-            type: 'appointment_rescheduled',
-            status: fullAppointment.status,
-          }
-        );
-      } catch (providerErr) {
-        console.error('[BookingsService] Failed to send provider reschedule notification:', providerErr);
-      }
-    }
-
-    // 3. Notify Clinic Staff & Owner
-    if (fullAppointment.clinicId) {
-      try {
-        await this.notificationsService.notifyClinicStaff(
-          fullAppointment.clinicId,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
-          { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status },
-          fullAppointment.providerId ? [fullAppointment.providerId] : []
-        );
-      } catch (clinicErr) {
-        console.error('[BookingsService] Failed to notify clinic staff:', clinicErr);
-      }
-    }
-
-    // 4. Notify Platform Staff
-    try {
-      await this.notificationsService.notifyAllStaff(
-        'Appointment Rescheduled',
-        `Appointment for ${clientName} moved to ${formattedDateTime}.`,
-        { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status }
-      );
-    } catch (staffErr) {
-      console.error('[BookingsService] Failed to notify all staff:', staffErr);
-    }
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: fullAppointment.id,
+      actorId: userId,
+      previous: { startTime: oldStartTime },
+    });
 
     // Emit event for notifications
     this.eventEmitter.emit('appointment.rescheduled', {

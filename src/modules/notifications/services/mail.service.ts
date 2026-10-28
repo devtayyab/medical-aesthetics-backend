@@ -2,6 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { isPlaceholderEmail } from '../utils/notification-format.util';
+
+const BRAND = 'Beauty Doctors';
+
+function escapeHtml(value: string): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 @Injectable()
 export class MailService {
@@ -11,27 +22,35 @@ export class MailService {
   private fromAddress: string;
 
   constructor(private configService: ConfigService) {
-    this.fromAddress = this.configService.get<string>('MAIL_FROM') || 'no-reply@beautydoctors.gr';
+    const fromEmail = this.configService.get<string>('MAIL_FROM') || 'no-reply@beautydoctors.gr';
+    const fromName = this.configService.get<string>('MAIL_FROM_NAME') || BRAND;
+    // A display name improves deliverability and shows "Beauty Doctors" in the inbox.
+    this.fromAddress = fromEmail.includes('<') ? fromEmail : `${fromName} <${fromEmail}>`;
 
-    // 1. Check for AWS SES SDK configuration
-    const awsRegion = this.configService.get<string>('AWS_REGION') || this.configService.get<string>('AWS_DEFAULT_REGION') || 'eu-central-1';
+    // 1. AWS SES SDK. Explicit keys, or MAIL_TRANSPORT=ses to use the default AWS credential
+    //    chain (e.g. the EC2 instance role) without putting keys in the environment.
+    const awsRegion =
+      this.configService.get<string>('SES_REGION') ||
+      this.configService.get<string>('AWS_REGION') ||
+      this.configService.get<string>('AWS_DEFAULT_REGION') ||
+      'eu-central-1';
     const awsAccessKey = this.configService.get<string>('AWS_ACCESS_KEY_ID');
     const awsSecretKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+    const transport = (this.configService.get<string>('MAIL_TRANSPORT') || '').toLowerCase();
 
-    if (awsAccessKey && awsSecretKey) {
-      this.logger.log(`Initializing AWS SES Client for region ${awsRegion}`);
+    if ((awsAccessKey && awsSecretKey) || transport === 'ses') {
+      this.logger.log(`Initializing AWS SES client for region ${awsRegion}`);
       this.sesClient = new SESClient({
         region: awsRegion,
-        credentials: {
-          accessKeyId: awsAccessKey,
-          secretAccessKey: awsSecretKey,
-        },
+        ...(awsAccessKey && awsSecretKey
+          ? { credentials: { accessKeyId: awsAccessKey, secretAccessKey: awsSecretKey } }
+          : {}),
       });
     }
 
-    // 2. Check for SMTP (e.g. Amazon SES SMTP or standard SMTP)
+    // 2. SMTP (e.g. the Amazon SES SMTP endpoint).
     const host = this.configService.get<string>('MAIL_HOST');
-    const port = this.configService.get<number>('MAIL_PORT') || 587;
+    const port = Number(this.configService.get<number>('MAIL_PORT') || 587);
     const user = this.configService.get<string>('MAIL_USER');
     const pass = this.configService.get<string>('MAIL_PASS');
 
@@ -41,40 +60,43 @@ export class MailService {
         host,
         port,
         secure: port === 465,
-        auth: {
-          user,
-          pass,
-        },
+        auth: { user, pass },
       });
     }
 
     if (!this.sesClient && !this.transporter) {
-      this.logger.warn('MailService initialized without email configuration. Emails will be logged to console in dev mode.');
+      this.logger.warn('MailService has no SES or SMTP configuration. Emails are only logged.');
     }
   }
 
-  async sendMail(to: string, subject: string, text: string, html?: string): Promise<{ messageId?: string } | null> {
-    const from = this.fromAddress;
+  /** True when a real transport (SES or SMTP) is configured. */
+  isConfigured(): boolean {
+    return !!(this.sesClient || this.transporter);
+  }
 
-    // Prefer AWS SES SDK if configured
+  /**
+   * Sends an email. Returns null when the email was NOT delivered to a transport, so callers
+   * (and the notification queue) never mark a failed email as sent.
+   */
+  async sendMail(to: string, subject: string, text: string, html?: string): Promise<{ messageId?: string } | null> {
+    if (isPlaceholderEmail(to)) {
+      this.logger.warn(`Skipping email "${subject}": recipient has no real email address`);
+      return null;
+    }
+
+    const from = this.fromAddress;
+    const htmlBody = html || this.renderLayout(subject, this.textToHtml(text));
+
     if (this.sesClient) {
       try {
         const command = new SendEmailCommand({
           Source: from,
-          Destination: {
-            ToAddresses: [to],
-          },
+          Destination: { ToAddresses: [to] },
           Message: {
-            Subject: {
-              Data: subject,
-              Charset: 'UTF-8',
-            },
+            Subject: { Data: subject, Charset: 'UTF-8' },
             Body: {
-              Text: {
-                Data: text,
-                Charset: 'UTF-8',
-              },
-              ...(html ? { Html: { Data: html, Charset: 'UTF-8' } } : {}),
+              Text: { Data: text, Charset: 'UTF-8' },
+              Html: { Data: htmlBody, Charset: 'UTF-8' },
             },
           },
         });
@@ -84,21 +106,13 @@ export class MailService {
         return { messageId: res.MessageId };
       } catch (err: any) {
         this.logger.error(`AWS SES send failed to ${to}: ${err.message}`, err.stack);
-        // Fallback to SMTP if available
+        // Fall through to SMTP if it is configured as well
       }
     }
 
-    // Use SMTP if configured
     if (this.transporter) {
       try {
-        const info = await this.transporter.sendMail({
-          from,
-          to,
-          subject,
-          text,
-          html: html || text.replace(/\n/g, '<br>'),
-        });
-
+        const info = await this.transporter.sendMail({ from, to, subject, text, html: htmlBody });
         this.logger.log(`Email dispatched via SMTP to ${to}: ${info.messageId}`);
         return info;
       } catch (error: any) {
@@ -107,132 +121,125 @@ export class MailService {
       }
     }
 
-    // Development fallback log
+    if (this.sesClient) {
+      // SES was configured but failed and there is no SMTP fallback: report the failure.
+      return null;
+    }
+
+    // Development fallback: nothing configured at all
     this.logger.warn(`[DEV MODE - EMAIL NOT SENT] To: ${to} | Subject: ${subject}\nText: ${text}`);
     return { messageId: `mock-dev-${Date.now()}` };
   }
 
-  /**
-   * Sends a styled Password Reset email with link
-   */
+  /** Plain text (with blank-line paragraphs) to simple HTML paragraphs. */
+  textToHtml(text: string): string {
+    return String(text || '')
+      .split(/\n{2,}/)
+      .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
+      .join('\n');
+  }
+
+  /** Shared branded layout for every outgoing email. */
+  renderLayout(heading: string, bodyHtml: string, button?: { url: string; label: string }): string {
+    const buttonHtml = button
+      ? `<div class="btn-wrap"><a href="${escapeHtml(button.url)}" class="btn" target="_blank">${escapeHtml(button.label)}</a></div>
+         <p style="font-size: 12px; color: #64748b;">Αν το κουμπί δεν λειτουργεί, αντιγράψτε τον σύνδεσμο στον browser σας:<br><a href="${escapeHtml(button.url)}" style="color: #3b82f6; word-break: break-all;">${escapeHtml(button.url)}</a></p>`
+      : '';
+
+    return `<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+    .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .header { background: #0f172a; padding: 28px 24px; text-align: center; }
+    .logo { color: #CBFF38; font-size: 22px; font-weight: 900; letter-spacing: 2px; margin: 0; }
+    .content { padding: 32px; }
+    h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 16px; }
+    p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 16px; }
+    .btn-wrap { text-align: center; margin: 28px 0; }
+    .btn { display: inline-block; background-color: #0f172a; color: #CBFF38 !important; text-decoration: none; padding: 14px 32px; font-size: 13px; font-weight: 800; border-radius: 12px; letter-spacing: 1px; }
+    .footer { background: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><div class="logo">${BRAND}</div></div>
+    <div class="content">
+      <h1>${escapeHtml(heading)}</h1>
+      ${bodyHtml}
+      ${buttonHtml}
+    </div>
+    <div class="footer">&copy; ${new Date().getFullYear()} ${BRAND} · info@beautydoctors.gr</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  /** Password reset link (Greek). */
   async sendPasswordResetEmail(to: string, resetUrl: string, userName?: string): Promise<boolean> {
-    const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const subject = 'Reset Your Password - Beauty & Doctors';
-
-    const text = `${greeting}\n\nWe received a request to reset your password. Please click the link below to set a new password:\n\n${resetUrl}\n\nThis link is valid for 1 hour. If you did not request this, please ignore this email.\n\nBest regards,\nBeauty & Doctors Team`;
-
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
-        .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        .header { background: #0f172a; padding: 32px 24px; text-align: center; }
-        .logo { color: #CBFF38; font-size: 22px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
-        .content { padding: 36px 32px; }
-        h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
-        p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px; }
-        .btn-wrap { text-align: center; margin: 32px 0; }
-        .btn { display: inline-block; background-color: #0f172a; color: #CBFF38 !important; text-decoration: none; padding: 14px 32px; font-size: 13px; font-weight: 800; border-radius: 12px; letter-spacing: 1px; text-transform: uppercase; }
-        .footer { background: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">Beauty & Doctors</div>
-        </div>
-        <div class="content">
-          <h1>Password Reset Request</h1>
-          <p>${greeting}</p>
-          <p>We received a request to reset your account password. Click the button below to choose a new secure password:</p>
-          <div class="btn-wrap">
-            <a href="${resetUrl}" class="btn" target="_blank">Reset My Password</a>
-          </div>
-          <p style="font-size: 12px; color: #64748b;">Or copy and paste this link in your browser:<br><a href="${resetUrl}" style="color: #3b82f6; word-break: break-all;">${resetUrl}</a></p>
-          <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">This link will expire in 1 hour for your security. If you didn't request a password reset, you can safely ignore this email.</p>
-        </div>
-        <div class="footer">
-          &copy; ${new Date().getFullYear()} Beauty & Doctors. All rights reserved.
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
-
+    const greeting = userName ? `Γεια σας ${userName},` : 'Γεια σας,';
+    const subject = 'Επαναφορά κωδικού πρόσβασης - Beauty Doctors';
+    const text =
+      `${greeting}\n\n` +
+      `Λάβαμε αίτημα επαναφοράς του κωδικού σας. Ανοίξτε τον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό:\n\n${resetUrl}\n\n` +
+      `Ο σύνδεσμος ισχύει για 1 ώρα. Αν δεν κάνατε εσείς το αίτημα, αγνοήστε αυτό το email.\n\n` +
+      `Με εκτίμηση,\nΗ ομάδα Beauty Doctors`;
+    const html = this.renderLayout(
+      'Επαναφορά κωδικού πρόσβασης',
+      `<p>${escapeHtml(greeting)}</p>
+       <p>Λάβαμε αίτημα επαναφοράς του κωδικού σας. Πατήστε το κουμπί για να ορίσετε νέο κωδικό.</p>
+       <p style="font-size: 12px; color: #94a3b8;">Ο σύνδεσμος ισχύει για 1 ώρα. Αν δεν κάνατε εσείς το αίτημα, αγνοήστε αυτό το email.</p>`,
+      { url: resetUrl, label: 'Ορισμός νέου κωδικού' },
+    );
     const res = await this.sendMail(to, subject, text, html);
     return !!res?.messageId;
   }
 
-  /**
-   * Sends a styled Welcome email with system-generated password when a lead is converted
-   */
+  /** Email verification: a link and/or a one-time code (Greek). */
+  async sendVerificationEmail(to: string, options: { userName?: string; verifyUrl?: string; code?: string }): Promise<boolean> {
+    const greeting = options.userName ? `Γεια σας ${options.userName},` : 'Γεια σας,';
+    const subject = 'Επιβεβαίωση email - Beauty Doctors';
+    const textParts = [`${greeting}`, 'Επιβεβαιώστε τη διεύθυνση email σας για να ολοκληρωθεί η εγγραφή σας.'];
+    if (options.code) textParts.push(`Ο κωδικός επιβεβαίωσης είναι: ${options.code}\nΙσχύει για 15 λεπτά. Μην τον μοιραστείτε με κανέναν.`);
+    if (options.verifyUrl) textParts.push(`Σύνδεσμος επιβεβαίωσης:\n${options.verifyUrl}`);
+    textParts.push('Αν δεν δημιουργήσατε εσείς λογαριασμό, αγνοήστε αυτό το email.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors');
+    const text = textParts.join('\n\n');
+
+    const codeHtml = options.code
+      ? `<p style="text-align:center; font-size: 28px; font-weight: 900; letter-spacing: 8px; color: #0f172a;">${escapeHtml(options.code)}</p>
+         <p style="font-size: 12px; color: #94a3b8; text-align:center;">Ο κωδικός ισχύει για 15 λεπτά. Μην τον μοιραστείτε με κανέναν.</p>`
+      : '';
+    const html = this.renderLayout(
+      'Επιβεβαίωση email',
+      `<p>${escapeHtml(greeting)}</p>
+       <p>Επιβεβαιώστε τη διεύθυνση email σας για να ολοκληρωθεί η εγγραφή σας.</p>
+       ${codeHtml}`,
+      options.verifyUrl ? { url: options.verifyUrl, label: 'Επιβεβαίωση email' } : undefined,
+    );
+    const res = await this.sendMail(to, subject, text, html);
+    return !!res?.messageId;
+  }
+
+  /** Welcome email with the generated password (Greek). */
   async sendWelcomeCredentialsEmail(to: string, password: string, userName?: string, loginUrl?: string): Promise<boolean> {
-    const greeting = userName ? `Hello ${userName},` : 'Hello,';
+    const greeting = userName ? `Γεια σας ${userName},` : 'Γεια σας,';
     const siteUrl = loginUrl || this.configService.get<string>('FRONTEND_URL') || 'https://beautydoctors.gr/login';
-    const subject = 'Welcome to Beauty & Doctors - Your Account is Ready';
-
-    const text = `${greeting}\n\nWelcome to Beauty & Doctors! Your customer account has been created.\n\nYou can now log in using the following credentials:\n\nEmail: ${to}\nTemporary Password: ${password}\n\nLogin URL: ${siteUrl}\n\nPlease change your password after logging in for security.\n\nBest regards,\nBeauty & Doctors Team`;
-
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
-        .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        .header { background: #0f172a; padding: 32px 24px; text-align: center; }
-        .logo { color: #CBFF38; font-size: 22px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
-        .content { padding: 36px 32px; }
-        h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
-        p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px; }
-        .cred-box { background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 14px; padding: 20px; margin: 24px 0; text-align: left; }
-        .cred-item { margin-bottom: 10px; font-size: 13px; color: #334155; }
-        .cred-label { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; display: block; margin-bottom: 2px; }
-        .cred-val { font-family: monospace; font-size: 15px; font-weight: 700; color: #0f172a; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; }
-        .btn-wrap { text-align: center; margin: 28px 0; }
-        .btn { display: inline-block; background-color: #0f172a; color: #CBFF38 !important; text-decoration: none; padding: 14px 32px; font-size: 13px; font-weight: 800; border-radius: 12px; letter-spacing: 1px; text-transform: uppercase; }
-        .footer { background: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">Beauty & Doctors</div>
-        </div>
-        <div class="content">
-          <h1>Welcome to Beauty & Doctors!</h1>
-          <p>${greeting}</p>
-          <p>Your client account has been activated. You can now access your treatments, appointments, and medical history online.</p>
-          
-          <div class="cred-box">
-            <div class="cred-item">
-              <span class="cred-label">Login Email</span>
-              <span class="cred-val">${to}</span>
-            </div>
-            <div class="cred-item" style="margin-bottom: 0;">
-              <span class="cred-label">Your Generated Password</span>
-              <span class="cred-val">${password}</span>
-            </div>
-          </div>
-
-          <div class="btn-wrap">
-            <a href="${siteUrl}" class="btn" target="_blank">Sign In To Your Account</a>
-          </div>
-          
-          <p style="font-size: 12px; color: #64748b;">For your security, we recommend changing your password from your profile settings after your first login.</p>
-        </div>
-        <div class="footer">
-          &copy; ${new Date().getFullYear()} Beauty & Doctors. All rights reserved.
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
-
+    const subject = 'Καλώς ήρθατε στο Beauty Doctors - Ο λογαριασμός σας είναι έτοιμος';
+    const text =
+      `${greeting}\n\nΟ λογαριασμός σας στο Beauty Doctors δημιουργήθηκε.\n\n` +
+      `Στοιχεία σύνδεσης:\nEmail: ${to}\nΠροσωρινός κωδικός: ${password}\n\nΣύνδεση: ${siteUrl}\n\n` +
+      `Για την ασφάλειά σας, αλλάξτε τον κωδικό μετά την πρώτη σύνδεση.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
+    const html = this.renderLayout(
+      'Καλώς ήρθατε στο Beauty Doctors',
+      `<p>${escapeHtml(greeting)}</p>
+       <p>Ο λογαριασμός σας δημιουργήθηκε. Μπορείτε να δείτε τα ραντεβού και τις θεραπείες σας online.</p>
+       <p><strong>Email:</strong> ${escapeHtml(to)}<br><strong>Προσωρινός κωδικός:</strong> <code>${escapeHtml(password)}</code></p>
+       <p style="font-size: 12px; color: #64748b;">Για την ασφάλειά σας, αλλάξτε τον κωδικό μετά την πρώτη σύνδεση.</p>`,
+      { url: siteUrl, label: 'Σύνδεση στον λογαριασμό' },
+    );
     const res = await this.sendMail(to, subject, text, html);
     return !!res?.messageId;
   }

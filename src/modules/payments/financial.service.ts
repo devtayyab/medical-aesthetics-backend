@@ -7,6 +7,7 @@ import { Appointment } from '../bookings/entities/appointment.entity';
 import { GiftCard } from '../clinics/entities/gift-card.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PAYMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -45,23 +46,9 @@ export class FinancialService {
 
         const savedPayment = await this.paymentRecordsRepository.save(payment);
 
-        // Notify Staff about payment
-        if (savedPayment.type === PaymentType.PAYMENT) {
-          this.notificationsService.notifyAllStaff(
-            'New Payment Received',
-            `A payment of ${savedPayment.amount} has been recorded via ${savedPayment.method}.`,
-            { paymentId: savedPayment.id }
-          );
-
-          if (savedPayment.clinicId) {
-            this.notificationsService.notifyClinicStaff(
-              savedPayment.clinicId,
-              'Clinic Payment Received',
-              `Payment of ${savedPayment.amount} recorded for your clinic.`,
-              { paymentId: savedPayment.id, amount: savedPayment.amount }
-            );
-          }
-        }
+        // One notification per payment/refund/void; recipients decided by the listener
+        // (admins + that client's salesperson, receipt email to the client).
+        this.eventEmitter.emit(PAYMENT_NOTIFY_EVENT, { paymentId: savedPayment.id, actorId: data.recordedById });
 
         // Update appointment if linked
         if (data.appointmentId) {
@@ -177,13 +164,6 @@ export class FinancialService {
         // Update original payment status
         await this.paymentRecordsRepository.update(paymentId, { status: PaymentStatus.REFUNDED });
 
-        // Notify Admin specifically for Refund (Cancel Amount)
-        this.notificationsService.notifyAllStaff(
-            'Payment Refunded (Amount Cancelled)',
-            `A refund of ${originalPayment.amount} has been processed for appointment ${originalPayment.appointmentId}.`,
-            { paymentId, originalPaymentId: paymentId, type: 'REFUND' }
-        );
-
         this.eventEmitter.emit('audit.log', {
             userId: recordedById,
             action: 'PAYMENT_REFUND',
@@ -222,13 +202,6 @@ export class FinancialService {
 
         // Update original payment status
         await this.paymentRecordsRepository.update(paymentId, { status: PaymentStatus.VOIDED });
-
-        // Notify Admin specifically for Void (Amount Cancelled)
-        this.notificationsService.notifyAllStaff(
-            'Payment Voided (Amount Cancelled)',
-            `A payment of ${originalPayment.amount} has been voided.`,
-            { paymentId, type: 'VOID' }
-        );
 
         this.eventEmitter.emit('audit.log', {
             userId: recordedById,

@@ -251,11 +251,6 @@ export const reviewsApi = {
  const res = await apiClient.post(`/clinic/reviews/${id}/respond`, { response });
  return res.data;
  },
-
- toggleVisibility: async (id: string): Promise<Review> => {
- const response = await apiClient.patch(`/clinic/reviews/${id}/toggle-visibility`);
- return response.data;
- },
 };
 
 // Notifications API
