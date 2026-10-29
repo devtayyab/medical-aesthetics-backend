@@ -1425,7 +1425,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     className="w-8 h-8 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[11px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
                     title="View Lead Details"
                   >
-                    {lead.firstName[0]}{lead.lastName[0]}
+                    {lead.firstName?.[0]}{lead.lastName?.[0]}
                   </div>
                 ) : (
                   <Link 
@@ -1433,7 +1433,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     className="w-8 h-8 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[11px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
                     title="View Lead Details"
                   >
-                    {lead.firstName[0]}{lead.lastName[0]}
+                    {lead.firstName?.[0]}{lead.lastName?.[0]}
                   </Link>
                 )}
                 <div className="flex-1 min-w-0 flex items-center gap-2">

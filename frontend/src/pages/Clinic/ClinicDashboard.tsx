@@ -76,8 +76,11 @@ const ClinicDashboard: React.FC = () => {
  }
  return;
  }
- dispatch(fetchClinicProfile());
- dispatch(fetchAppointments(undefined));
+ // Same clinic as the layout switcher; without it this request races the layout's and
+ // can replace the chosen clinic with the default one.
+ const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
+ dispatch(fetchClinicProfile(savedClinicId));
+ dispatch(fetchAppointments(savedClinicId ? { clinicId: savedClinicId } : undefined));
  }, [dispatch, user, navigate]);
 
  // Revenue: ONE figure from the payments ledger (paid only, EUR, this month, own clinic),
