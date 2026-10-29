@@ -463,9 +463,9 @@ export class CrmService implements OnModuleInit {
   private async countClientAppointments(clientId: string): Promise<{ completed: number; active: number }> {
     const row = await this.appointmentsRepository
       .createQueryBuilder('a')
-      .select("SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
+      .select("SUM(CASE WHEN UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
       .addSelect(
-        "SUM(CASE WHEN UPPER(a.status) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
+        "SUM(CASE WHEN UPPER(a.status::text) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
         'active',
       )
       .where('a.clientId = :clientId', { clientId })
