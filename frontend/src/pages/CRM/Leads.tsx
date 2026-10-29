@@ -1194,7 +1194,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  value={stats ? stats.total : leads.length}
  icon={Users}
  color="bg-[#CBFF38]/20 text-gray-900"
- trend="+12%"
  isActive={!leadFilters.status}
  onClick={() => handleFilterChange('status', '')}
  />
@@ -1219,7 +1218,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  value={stats ? stats.converted : leads.filter(l => l.status === 'converted').length}
  icon={CheckCircle}
  color="bg-[#b3d81b] text-white"
- trend="4.5%"
  isActive={leadFilters.status === 'converted'}
  onClick={() => handleFilterChange('status', 'converted')}
  />
