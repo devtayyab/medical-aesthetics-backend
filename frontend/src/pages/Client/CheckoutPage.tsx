@@ -114,13 +114,8 @@ export const CheckoutPage: React.FC = () => {
  setFormData(prev => ({
  fullName: prev.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
  email: prev.email || user.email || '',
- phone: prev.phone || user.phone || (user as any).phoneNumber || (user as any).mobile || localStorage.getItem('lastUsedPhone') || ''
+ phone: prev.phone || user.phone || (user as any).phoneNumber || (user as any).mobile || ''
  }));
- } else if (!formData.phone) {
- const savedPhone = localStorage.getItem('lastUsedPhone');
- if (savedPhone) {
- setFormData(prev => ({ ...prev, phone: savedPhone }));
- }
  }
  }, [user]);
 
@@ -138,9 +133,6 @@ export const CheckoutPage: React.FC = () => {
  alert('Please agree to the Terms of Service and consent to communications to continue.');
  return;
  }
-
- // Save phone to localStorage for future use
- localStorage.setItem('lastUsedPhone', formData.phone);
 
  setIsSubmitting(true);
  try {

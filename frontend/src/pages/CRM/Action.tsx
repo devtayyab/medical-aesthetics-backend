@@ -41,9 +41,9 @@ export const Actions: React.FC<ActionsPageProps> = ({ salespersonId, onViewActio
  const { actions, isLoading, error, leads } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
 
- console.log(user);
  const currentUserId = salespersonId || user?.id;
- const customerId = user?.role === 'client' ? user.id : 'c3ea86c1-f06a-47de-8928-5003e3e994b3';
+ // Staff pick the customer in the form (no hard-coded test customer).
+ const customerId = user?.role === 'client' ? user.id : undefined;
 
  const [formData, setFormData] = useState<FormData>({
  title: '',

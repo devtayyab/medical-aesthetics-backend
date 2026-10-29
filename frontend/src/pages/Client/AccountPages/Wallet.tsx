@@ -23,7 +23,6 @@ export const Wallet: React.FC = () => {
  const [giftCard, setGiftCard] = React.useState("");
  const handleAddGiftCard = () => {
  if (!giftCard) return;
- console.log("Adding gift card:", giftCard);
  // TODO: Call API to add gift card
  setGiftCard("");
  };
