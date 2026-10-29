@@ -114,7 +114,9 @@ export class NotificationsController {
 
   @Post('send')
   @ApiOperation({ summary: 'Send notification' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  // BeautyDoctors staff only: any recipient. Clinic accounts use POST /clinic/notifications/send,
+  // which only reaches the clinic's own patients.
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON)
   @UseGuards(RolesGuard)
   sendNotification(@Body() body: any, @Request() req) {
     return this.notificationsService.create(
