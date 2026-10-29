@@ -82,6 +82,15 @@ export class ClinicPatientsService {
     return [...ids];
   }
 
+  /** Throws unless a clinic account works for this clinic. Other roles are not limited here. */
+  async assertClinicAccess(userId: string, role: string, clinicId?: string | null): Promise<void> {
+    if (!this.isClinicRole(role)) return;
+    const allowed = await this.resolveClinicIds(userId, role);
+    if (!clinicId || !allowed || !allowed.includes(String(clinicId))) {
+      throw new ForbiddenException('You do not have access to this clinic');
+    }
+  }
+
   /** Clinic ids to use for a request: the requested one (if allowed) or all of the user's clinics. */
   private async scopeClinicIds(userId: string, role: string, requestedClinicId?: string): Promise<string[] | null> {
     const allowed = await this.resolveClinicIds(userId, role);
@@ -145,24 +154,34 @@ export class ClinicPatientsService {
       searchSql = ` AND (CONCAT(u."firstName", ' ', u."lastName") ILIKE ${p} OR u.email ILIKE ${p} OR u.phone ILIKE ${p})`;
     }
 
+    // Page in SQL (a search with a limit must not load every client, e.g. all clients for admins)
+    const offset = Math.max(0, Number(query.offset || 0) || 0);
+    const limit = query.limit ? Math.max(1, Number(query.limit) || 1) : null;
+    let pageSql = '';
+    if (limit !== null) {
+      params.push(limit, offset);
+      pageSql = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    }
+
     const rows = await this.usersRepository.query(
       `SELECT u.id AS "appointment_clientId", u."firstName" AS firstname, u."lastName" AS lastname,
+              COUNT(*) OVER() AS total_count,
               u.email AS clientemail, u.phone AS clientphone, u."createdAt" AS createdat,
               COUNT(a.id) AS totalvisits,
-              COALESCE(SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN COALESCE(NULLIF(a."amountPaid", 0), a."totalAmount", 0) ELSE COALESCE(a."amountPaid", 0) END), 0) AS totalspent,
+              COALESCE(SUM(CASE WHEN UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED') THEN COALESCE(NULLIF(a."amountPaid", 0), a."totalAmount", 0) ELSE COALESCE(a."amountPaid", 0) END), 0) AS totalspent,
               MAX(a."startTime") AS lastvisit
          FROM users u
          LEFT JOIN appointments a ON a."clientId" = u.id AND ${aptScope}
         WHERE u.role = 'client'
           AND (a.id IS NOT NULL OR ${profileScope})${searchSql}
         GROUP BY u.id
-        ORDER BY MAX(a."startTime") DESC NULLS LAST, u."createdAt" DESC`,
+        ORDER BY MAX(a."startTime") DESC NULLS LAST, u."createdAt" DESC${pageSql}`,
       params,
     );
 
-    const offset = Number(query.offset || 0);
-    const limit = query.limit ? Number(query.limit) : rows.length;
-    return { clients: rows.slice(offset, offset + limit), total: rows.length, limit, offset };
+    const total = rows.length ? Number(rows[0].total_count) : 0;
+    const clients = rows.map(({ total_count, ...row }) => row);
+    return { clients, total, limit: limit ?? clients.length, offset };
   }
 
   /**
@@ -226,7 +245,7 @@ export class ClinicPatientsService {
   }
 
   /** Throws unless the client is a patient of one of the user's clinics. */
-  private async assertOwnPatient(userId: string, role: string, clientId: string): Promise<string[] | null> {
+  async assertOwnPatient(userId: string, role: string, clientId: string): Promise<string[] | null> {
     const clinicIds = await this.resolveClinicIds(userId, role);
     if (clinicIds === null) return null;
     if (clinicIds.length === 0) throw new ForbiddenException('No clinic is assigned to your account');
@@ -323,7 +342,7 @@ export class ClinicPatientsService {
 
   /** Doctor edits his own patient: the new details reach the account, appointments and the CRM card. */
   async updatePatient(userId: string, role: string, clientId: string, input: Partial<PatientInput>): Promise<any> {
-    await this.assertOwnPatient(userId, role, clientId);
+    const clinicIds = await this.assertOwnPatient(userId, role, clientId);
     const client = await this.usersRepository.findOne({ where: { id: clientId } });
     if (!client) throw new NotFoundException('Patient not found');
 
@@ -341,6 +360,11 @@ export class ClinicPatientsService {
         .andWhere('u.id != :id', { id: clientId })
         .getCount();
       if (taken) throw new BadRequestException('This email belongs to another account');
+      // The email is the client's login: a clinic may only change it for its OWN clients. A BeautyDoctors
+      // client (or one linked just by phone) would otherwise be taken over via a password reset.
+      if (clinicIds !== null && !(await this.isClinicOwnClient(client, clinicIds))) {
+        throw new ForbiddenException('Only BeautyDoctors can change the email of this client');
+      }
       patch.email = input.email.trim();
     }
     if (Object.keys(patch).length === 0) return this.publicPatient(client);
@@ -416,6 +440,14 @@ export class ClinicPatientsService {
         clinicNotes: [a.clinicNotes, a.appointmentCompletionReport?.notes].filter((n) => n && String(n).trim()).join('\n') || null,
       })),
     };
+  }
+
+  /** The clinic's own client (created by one of these clinics) and not a BeautyDoctors customer. */
+  private async isClinicOwnClient(client: User, clinicIds: string[]): Promise<boolean> {
+    const own: string[] = Array.isArray((client.profile as any)?.[OWN_CLIENT_KEY]) ? (client.profile as any)[OWN_CLIENT_KEY] : [];
+    if (!own.some((id) => clinicIds.includes(id))) return false;
+    const isBd = await this.customerRecordsRepository.count({ where: { customerId: client.id } });
+    return isBd === 0;
   }
 
   private async tieClientToClinic(client: User, key: string, clinicId: string): Promise<void> {

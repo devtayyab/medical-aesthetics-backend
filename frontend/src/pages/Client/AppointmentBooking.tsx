@@ -10,6 +10,7 @@ import {
  addService,
  setSelectedDate,
  setSelectedTimeSlot,
+ clearBooking,
 } from"@/store/slices/bookingSlice";
 import {
  fetchClinicServices,
@@ -168,11 +169,15 @@ export const AppointmentBooking: React.FC = () => {
 
  const hasProcessedServices = useRef(false);
 
- const clinic = selectedClinic || selectedClinicFromClient || clinics.find((c) => c.id === clinicId);
+ // Only a clinic that matches the URL: a previous booking's clinic must never be used.
+ const clinic = [selectedClinic, selectedClinicFromClient].find((c) => c?.id === clinicId) || clinics.find((c) => c.id === clinicId);
  const isLoading = bookingLoading || clientLoading || !clinicId;
 
  useEffect(() => {
  if (clinicId) {
+ // Start from an empty basket: services, clinic and hold of an earlier visit to this
+ // page would otherwise be booked together with the ones in the URL.
+ dispatch(clearBooking());
  dispatch(fetchClinicById(clinicId));
  dispatch(fetchClinicServices(clinicId));
  hasProcessedServices.current = false;
@@ -182,6 +187,8 @@ export const AppointmentBooking: React.FC = () => {
  useEffect(() => {
  if (services.length > 0 && serviceIds.length > 0 && clinicId && !hasProcessedServices.current) {
  const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
+ // Still the previous clinic's service list: wait for this clinic's services.
+ if (servicesToAdd.length === 0) return;
  servicesToAdd.forEach((service) => dispatch(addService(service)));
 
  dispatch(fetchAvailability({
@@ -238,6 +245,9 @@ export const AppointmentBooking: React.FC = () => {
  })).unwrap();
  } catch (err) {
  console.error('Failed to hold slot:', err);
+ // Someone else holds or booked it: do not let the user continue with this slot.
+ setSelectedSlot(null);
+ alert('This time is no longer available. Please choose another time.');
  }
  }
  };

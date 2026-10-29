@@ -93,46 +93,36 @@ export class FacebookService {
   async validateSignature(signature: string, payload: any): Promise<boolean> {
     const creds = await this.getFacebookCredentials();
 
-    // If no app secret configured, skip validation (useful for local dev)
+    // No app secret configured: allow only outside production (local dev). In production an
+    // unsigned webhook would let anyone inject leads.
     if (!creds.appSecret) {
-      this.logger.warn('FACEBOOK_APP_SECRET not set - skipping webhook signature check');
-      return true;
-    }
-
-    // If no signature provided by Facebook, log warning but accept
-    if (!signature) {
-      this.logger.warn('No x-hub-signature-256 header found in webhook request - allowing fallback ingestion');
-      return true;
-    }
-
-    // Get raw body as string for hashing
-    let payloadString: string;
-    if (Buffer.isBuffer(payload)) {
-      payloadString = payload.toString('utf8');
-    } else if (typeof payload === 'string') {
-      payloadString = payload;
-    } else {
-      payloadString = JSON.stringify(payload);
-    }
-
-    // Compute expected signature
-    const hmac = crypto.createHmac('sha256', creds.appSecret);
-    const expectedSignature = 'sha256=' + hmac.update(payloadString).digest('hex');
-
-    // Timing-safe comparison to prevent timing attacks
-    try {
-      const isValid = crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature),
-      );
-      if (!isValid) {
-        this.logger.warn(`Signature mismatch! Expected: ${expectedSignature}, Received: ${signature}. Allowing lead ingestion.`);
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error('FACEBOOK_APP_SECRET not set - rejecting webhook (cannot verify signature)');
+        return false;
       }
-      return true;
-    } catch {
-      this.logger.warn(`Signature length mismatch. Expected: ${expectedSignature}, Received: ${signature}. Allowing lead ingestion.`);
+      this.logger.warn('FACEBOOK_APP_SECRET not set - skipping webhook signature check (non-production)');
       return true;
     }
+
+    if (!signature) {
+      this.logger.warn('No x-hub-signature-256 header found in webhook request - rejecting');
+      return false;
+    }
+
+    // Facebook signs the exact raw request bytes; hash the raw body when available.
+    const payloadBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(typeof payload === 'string' ? payload : JSON.stringify(payload), 'utf8');
+
+    const expectedSignature = 'sha256=' + crypto.createHmac('sha256', creds.appSecret).update(payloadBuffer).digest('hex');
+
+    const received = Buffer.from(String(signature));
+    const expected = Buffer.from(expectedSignature);
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) {
+      this.logger.warn('Facebook webhook signature mismatch - rejecting');
+      return false;
+    }
+    return true;
   }
 
   async getLead(leadId: string): Promise<FacebookLeadData> {

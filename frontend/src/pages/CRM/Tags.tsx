@@ -4,7 +4,6 @@ import {
  Hash,
  Filter,
  Users,
- CheckCircle,
  TrendingUp,
  Activity,
  Layers,
@@ -219,7 +218,6 @@ export const Tags: React.FC = () => {
  { label: 'Tag Definitions', value: availableTags.length, icon: Hash, color: 'text-blue-500', bg: 'bg-blue-50' },
  { label: 'Active Segments', value: availableTags.filter(t => t.usageCount > 0).length || 0, icon: Layers, color: 'text-emerald-500', bg: 'bg-emerald-50' },
  { label: 'Direct Assignments', value: 'Live', icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
- { label: 'Sync Status', value: '99.2%', icon: CheckCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
  ].map((kpi, i) => (
  <Card
  key={i}

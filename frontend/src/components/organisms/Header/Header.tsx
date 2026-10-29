@@ -375,7 +375,7 @@ export const Header: React.FC = () => {
  if (user.role ==="doctor") {
  return [
  { to:"/clinic/diary", label:"My Appointments" },
- { to:"/crm/settings", label:"Settings" },
+ { to:"/change-password", label:"Settings" },
  { action: handleLogout, label:"Logout" },
  ];
  }
@@ -387,7 +387,7 @@ export const Header: React.FC = () => {
  { to:"/clinic/availability-settings", label:"Availability" },
  { to:"/clinic/diary", label:"Diary" },
  { to:"/messages", label:"Messages" },
- { to:"/crm/settings", label:"Settings" },
+ { to:"/change-password", label:"Settings" },
  { action: handleLogout, label:"Logout" },
  ];
  }

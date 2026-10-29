@@ -40,7 +40,11 @@ export const getAccessToken = (): string | null => {
 
 /** Same-path check used for redirects after login: only relative app paths are allowed. */
 export const isSafeRedirect = (value: string | null | undefined): value is string =>
-  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\');
+  typeof value === 'string' &&
+  value.startsWith('/') &&
+  !value.startsWith('//') &&
+  // Browsers drop tabs/newlines and treat "\" as "/" in URLs: "/\t/evil.com" is "//evil.com".
+  !/[\\\u0000-\u001f\u007f]/.test(value);
 
 /** Sends the user to the login page with "Please log in again" and a way back. */
 export const redirectToLoginAfterExpiry = () => {

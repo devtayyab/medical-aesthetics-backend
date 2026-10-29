@@ -227,31 +227,39 @@ export class AdminService {
       .orderBy('user.createdAt', 'DESC')
       .getMany();
 
-    // Load clinic accesses for users where applicable
+    // Load clinic accesses for all listed users in a few batched queries
+    // (previously 1-2 queries per user, i.e. ~1,000+ queries for this page).
+    // Note: assignedClinicId is not in the select above, so the old per-user
+    // assignedClinicId fallback never fired; it is intentionally not batched.
+    const ownerIds = users.filter((u) => u.role === 'clinic_owner').map((u) => u.id);
+    const otherIds = users.filter((u) => u.role !== 'clinic_owner').map((u) => u.id);
+
+    const [ownerships, primaryOwned, accesses] = await Promise.all([
+      ownerIds.length ? this.clinicOwnershipRepository.find({ where: { ownerUserId: In(ownerIds) } }) : Promise.resolve([]),
+      ownerIds.length ? this.clinicsRepository.find({ where: { ownerId: In(ownerIds) } }) : Promise.resolve([]),
+      otherIds.length
+        ? this.agentClinicAccessRepository.find({ where: { agentUserId: In(otherIds) }, relations: ['clinic'] })
+        : Promise.resolve([]),
+    ]);
+
+    const mappedClinicIds = [...new Set(ownerships.map((o) => o.clinicId))];
+    const mappedClinics = mappedClinicIds.length
+      ? await this.clinicsRepository.find({ where: { id: In(mappedClinicIds) } })
+      : [];
+    const clinicById = new Map(mappedClinics.map((c) => [c.id, c]));
+
     for (const u of users) {
       if (u.role === 'clinic_owner') {
-        // Load from clinic_ownership table (supports multiple clinics per owner)
-        const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: u.id } });
-        if (ownerships.length > 0) {
-          const clinicIds = ownerships.map(o => o.clinicId);
-          const ownedClinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
-          (u as any).assignedClinics = ownedClinics;
-        } else {
-          // Fallback: check ownedClinics relation (primary owner)
-          const owned = await this.usersRepository.findOne({
-            where: { id: u.id },
-            relations: ['ownedClinics']
-          });
-          (u as any).assignedClinics = owned?.ownedClinics || [];
-        }
+        // clinic_ownership table (multiple clinics per owner), else primary owner relation
+        const own = ownerships.filter((o) => o.ownerUserId === u.id);
+        (u as any).assignedClinics = own.length > 0
+          ? own.map((o) => clinicById.get(o.clinicId)).filter(Boolean)
+          : primaryOwned.filter((c) => c.ownerId === u.id);
       } else {
-        const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: u.id }, relations: ['clinic'] });
-        const clinicsList = accesses.map(a => a.clinic).filter(Boolean);
-        if (clinicsList.length === 0 && (u as any).assignedClinicId) {
-          const directClinic = await this.clinicsRepository.findOne({ where: { id: (u as any).assignedClinicId } });
-          if (directClinic) clinicsList.push(directClinic);
-        }
-        (u as any).assignedClinics = clinicsList;
+        (u as any).assignedClinics = accesses
+          .filter((a) => a.agentUserId === u.id)
+          .map((a) => a.clinic)
+          .filter(Boolean);
       }
     }
 

@@ -248,6 +248,8 @@ export class ClinicManagementController {
     @Body() createAppointmentDto: any,
     @Request() req,
   ) {
+    // Clinic accounts only book into their own clinic(s).
+    await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, createAppointmentDto?.clinicId);
     // Ensure appointment is marked as clinic_own and track who booked it
     return this.bookingsService.createAppointment({
       ...createAppointmentDto,
@@ -330,14 +332,12 @@ export class ClinicManagementController {
     },
     @Request() req,
   ) {
-    console.log('[ClinicManagementController] completeAppointment HIT! Body:', body);
     // Robustness: Map top-level fields to paymentData or completionReport if they are missing
     const paymentData = body.paymentData || (body.paymentMethod ? {
       paymentMethod: body.paymentMethod,
       amount: body.amountPaid || body.totalAmount || 0,
     } : undefined);
-    
-    console.log('[ClinicManagementController] Extracted paymentData:', paymentData);
+
 
     const completionReport = body.completionReport || (body.amountPaid !== undefined ? {
       patientCame: true,
@@ -375,6 +375,9 @@ export class ClinicManagementController {
     @Body() availabilitySettingsDto: AvailabilitySettingsDto,
     @Request() req,
   ) {
+    if (availabilitySettingsDto.clinicId) {
+      await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, availabilitySettingsDto.clinicId);
+    }
     return this.clinicsService.updateClinicAvailability(
       req.user.id,
       availabilitySettingsDto,
@@ -401,6 +404,7 @@ export class ClinicManagementController {
     if (!clinicId) {
       throw new BadRequestException('clinicId is required');
     }
+    await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, clinicId);
 
     const effectiveProviderId = body.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
 
@@ -455,6 +459,7 @@ export class ClinicManagementController {
   ) {
     let clinic;
     if (query.clinicId) {
+      await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, query.clinicId);
       clinic = await this.clinicsService.findById(query.clinicId);
     } else {
       clinic = await this.clinicsService.findByOwnerId(req.user.id);
@@ -485,6 +490,8 @@ export class ClinicManagementController {
     @Body() recordPaymentDto: RecordPaymentDto,
     @Request() req,
   ) {
+    // recordPayment itself does not scope by clinic; clinic accounts only pay their own appointments.
+    await this.bookingsService.findAppointmentForClinic(id, req.user.id, String(req.user.role).toLowerCase());
     return this.bookingsService.recordPayment(
       id,
       req.user.id,
@@ -684,6 +691,10 @@ export class ClinicManagementController {
     @Body() notificationDto: { recipientId: string; type: string; title: string; message: string; data?: any },
     @Request() req,
   ) {
+    // Clinic accounts may only message their own patients.
+    if (isClinicAccount(req.user.role)) {
+      await this.clinicPatientsService.assertOwnPatient(req.user.id, req.user.role, notificationDto.recipientId);
+    }
     return this.notificationsService.create(
       notificationDto.recipientId,
       notificationDto.type as any,
@@ -702,6 +713,12 @@ export class ClinicManagementController {
     @Body() bulkNotificationDto: { recipientIds: string[]; type: string; title: string; message: string; data?: any },
     @Request() req,
   ) {
+    // Clinic accounts may only message their own patients.
+    if (isClinicAccount(req.user.role)) {
+      for (const recipientId of bulkNotificationDto.recipientIds || []) {
+        await this.clinicPatientsService.assertOwnPatient(req.user.id, req.user.role, recipientId);
+      }
+    }
     await this.notificationsService.sendBulk(
       bulkNotificationDto.recipientIds,
       bulkNotificationDto.type as any,
@@ -795,6 +812,9 @@ export class ClinicManagementController {
     @Query('clinicId') clinicId: string,
     @Request() req
   ) {
+    if (clinicId) {
+      await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, clinicId);
+    }
     return this.clinicsService.getClinicStaff(req.user.id, req.user.role, clinicId);
   }
 
@@ -805,6 +825,9 @@ export class ClinicManagementController {
     @Body() staffData: any,
     @Request() req,
   ) {
+    if (staffData?.clinicId) {
+      await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, staffData.clinicId);
+    }
     return this.clinicsService.createClinicStaff(req.user.id, req.user.role, staffData);
   }
 
@@ -818,6 +841,12 @@ export class ClinicManagementController {
     const staff = await this.usersRepository.findOne({ where: { id: id } });
     if (!staff) {
       throw new NotFoundException('Staff member not found');
+    }
+
+    // Clinic accounts only remove staff of their own clinic(s).
+    if (isClinicAccount(req.user.role)) {
+      if (!staff.assignedClinicId) throw new NotFoundException('Staff member not found');
+      await this.clinicPatientsService.assertClinicAccess(req.user.id, req.user.role, staff.assignedClinicId);
     }
 
     let clinicToUse = staff.assignedClinicId;

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -202,7 +202,7 @@ export class DuplicateDetectionService {
         message: `Lead merged into existing customer ${existingCustomer.firstName} ${existingCustomer.lastName}`,
       };
     } catch (error) {
-      throw new ConflictException(`Failed to merge lead: ${error.message}`);
+      throw new ConflictException(error instanceof HttpException ? `Failed to merge lead: ${error.message}` : 'Failed to merge lead');
     }
   }
 

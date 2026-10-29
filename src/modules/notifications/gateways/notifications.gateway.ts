@@ -10,6 +10,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { resolveJwtSecret } from '../../../common/utils/jwt-secret.util';
+
+// NOTE: same fallback chain as JwtStrategy (testing phase); remove the hardcoded fallback before production.
+// Read at connect time: .env is loaded by ConfigModule after this file is imported.
+const accessSecret = () => resolveJwtSecret('JWT_ACCESS_SECRET', 'JWT_SECRET');
 import { NotificationsService } from '../notifications.service';
 
 interface AuthenticatedSocket extends Socket {
@@ -47,8 +52,15 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       }
 
       // Verify JWT token
-      const payload = await this.jwtService.verifyAsync(token as string);
-      client.userId = payload.sub || payload.id;
+      // Same secret the access tokens are signed with (this module's JwtModule has none).
+      const payload = await this.jwtService.verifyAsync(token as string, { secret: accessSecret() });
+      // Only access tokens: login-challenge (password step only), reset, verification and
+      // refresh tokens can share the secret and must never open a session.
+      if (!payload?.sub || payload.purpose || payload.type === 'refresh') {
+        client.disconnect();
+        return;
+      }
+      client.userId = payload.sub;
       
       // Store connection
       this.connectedClients.set(client.userId, client.id);

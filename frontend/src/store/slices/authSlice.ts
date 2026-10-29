@@ -21,7 +21,9 @@ export interface AuthState {
 // Cross-tab sync key (login/logout in another tab).
 export const AUTH_EVENT_KEY = "bd_auth_event";
 
-const LEGACY_TOKEN_KEYS = ["accessToken", "refreshToken"];
+// "lastUsedPhone" was a phone number cached by checkout; "activeClinicId" is the clinic
+// switcher choice, which must not carry over to the next account. Removed with the tokens.
+const LEGACY_TOKEN_KEYS = ["accessToken", "refreshToken", "lastUsedPhone", "activeClinicId"];
 
 const readLegacyRefreshToken = (): string | null => {
   try {
@@ -52,7 +54,9 @@ const getStoredUser = (): User | null => {
 const storeUser = (user?: User | null) => {
   try {
     if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
+      // Only what the first paint needs; no name, email or phone in localStorage.
+      const { id, role, assignedClinicId } = user;
+      localStorage.setItem("user", JSON.stringify({ id, role, assignedClinicId }));
       if (user.role) localStorage.setItem("userRole", user.role);
     } else {
       localStorage.removeItem("user");

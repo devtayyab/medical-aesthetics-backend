@@ -176,7 +176,6 @@ export const RepeatManagement: React.FC = () => {
  bookedById: user?.id
  };
  
- console.log("🚀 [RepeatManagement] Submitting recurring payload:", payload);
  
  await dispatch(scheduleRecurring(payload)).unwrap();
  setSuccess("Recurring appointment scheduled successfully! First session created.");

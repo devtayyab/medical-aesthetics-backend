@@ -1,5 +1,5 @@
 import { RecordPaymentDto } from '../clinics/dto/clinic.dto';
-import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import {
@@ -305,16 +305,15 @@ export class BookingsService {
                 userExists = retryUser;
                 console.log('⚠️ [BookingsService] createCustomer failed, but found existing user on retry:', retryUser.id);
               } else {
-                throw new BadRequestException(`Failed to create guest record: ${createErr.message}`);
+                // Only surface our own HTTP error messages; raw DB errors leak schema details.
+                throw new BadRequestException(createErr instanceof HttpException ? `Failed to create guest record: ${createErr.message}` : 'Failed to create guest record');
               }
             }
           } else {
             console.error('❌ [BookingsService] Client identification failed. Details:', {
               clientId,
-              receivedDto: {
-                ...createAppointmentDto,
-                // Mask sensitive info if needed, but here we need to see what's actually there
-              }
+              clinicId: createAppointmentDto.clinicId,
+              serviceId: createAppointmentDto.serviceId,
             });
             throw new NotFoundException(`Client not found as User or Lead: ${clientId}. Please ensure client details are provided for guest bookings.`);
           }
@@ -322,7 +321,7 @@ export class BookingsService {
       } catch (e) {
         if (e instanceof NotFoundException || e instanceof BadRequestException) throw e;
         console.error('Lead lookup/conversion failed:', e);
-        throw new BadRequestException(`Client identification failed: ${e.message}`);
+        throw new BadRequestException(e instanceof HttpException ? `Client identification failed: ${e.message}` : 'Client identification failed');
       }
     }
 
@@ -470,6 +469,13 @@ export class BookingsService {
 
           if (isSameClient) {
             console.log(`🔄 [BookingsService] Removing previous pending payment appointment (${apt.id}) for same client so they can re-book.`);
+            // Give back the gift card the abandoned booking had claimed, or the client loses it
+            if (apt.giftCardId) {
+              await this.releaseGiftCardClaim(apt.id, {
+                id: apt.giftCardId,
+                balance: Number(apt.giftCardBalanceBefore ?? apt.giftCardAmountRedeemed ?? 0),
+              });
+            }
             await this.appointmentsRepository.remove(apt);
             continue;
           }
@@ -511,6 +517,7 @@ export class BookingsService {
       validGiftCard = await this.financialService.validateGiftCard(createAppointmentDto.giftCardCode);
       if (validGiftCard && validGiftCard.valid) {
         appointmentData.giftCardId = validGiftCard.id;
+        appointmentData.giftCardBalanceBefore = validGiftCard.balance;
         
         const discount = Math.min(validGiftCard.balance, appointmentData.totalAmount);
         appointmentData.giftCardAmountRedeemed = discount;
@@ -553,17 +560,26 @@ export class BookingsService {
 
     // Single-use Gift Card Invalidation
     if (validGiftCard) {
-      const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
-      const card = await giftCardRepo.findOne({ where: { id: validGiftCard.id } });
-      if (card) {
-        card.isActive = false;
-        card.balance = 0;
-        card.redeemedByUserId = clientId;
-        card.redeemedAt = new Date();
-        card.redeemedAppointmentId = savedAppointment.id;
-        await giftCardRepo.save(card);
-        console.log(`✅ [BookingsService] Gift Card ${card.code} redeemed and marked as inactive.`);
+      // Atomic claim: only succeeds while the card is still active. Two parallel bookings with
+      // the same code both pass validateGiftCard(), but only one can flip isActive here, so the
+      // card cannot be spent twice.
+      const claim = await this.appointmentsRepository.manager
+        .createQueryBuilder()
+        .update('GiftCard')
+        .set({
+          isActive: false,
+          balance: 0,
+          redeemedByUserId: clientId,
+          redeemedAt: new Date(),
+          redeemedAppointmentId: savedAppointment.id,
+        })
+        .where('id = :id AND "isActive" = true', { id: validGiftCard.id })
+        .execute();
+      if (!claim.affected) {
+        await this.appointmentsRepository.delete(savedAppointment.id);
+        throw new ConflictException('This gift card has already been used.');
       }
+      console.log(`✅ [BookingsService] Gift Card ${validGiftCard.id} redeemed and marked as inactive.`);
     }
 
     // The confirmation-call CRM task is created by the CRM listener on 'appointment.created'
@@ -574,7 +590,10 @@ export class BookingsService {
     const bookedTreatmentLabel = await this.getTreatmentLabel(appointmentWithRelations);
 
     // One notification event; recipients are decided in AppointmentNotificationsListener.
-    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
+    // Sent only once the booking is final: a card booking whose payment order fails is deleted
+    // again, and must not have announced itself to staff, the clinic and the client.
+    const notifyCreated = () =>
+      this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
 
       // If card payment, generate Viva Wallet redirect URL
       // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
@@ -596,6 +615,12 @@ export class BookingsService {
         const hasBasicAuth = vivaMerchantId && vivaApiKey && vivaMerchantId !== 'your-viva-merchant-id';
 
         if (!hasOAuth && !hasBasicAuth) {
+          // Never auto-confirm an unpaid card booking in production because credentials are missing.
+          if (process.env.NODE_ENV === 'production') {
+            await this.releaseGiftCardClaim(savedAppointment.id, validGiftCard);
+            await this.appointmentsRepository.delete(savedAppointment.id);
+            throw new BadRequestException('Card payments are temporarily unavailable. Please choose another payment method.');
+          }
           console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
           const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
           const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
@@ -603,13 +628,14 @@ export class BookingsService {
           await this.appointmentsRepository.update(savedAppointment.id, {
             status: AppointmentStatus.CONFIRMED,
           });
+          notifyCreated();
           return {
             ...appointmentWithRelations,
             redirectUrl: demoRedirectUrl,
           };
         }
 
-        console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}, email=${customerEmail}`);
+        console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}`);
         console.log('💳 [BookingsService] Initiating Viva Wallet payment order...', { amount });
 
       try {
@@ -622,6 +648,7 @@ export class BookingsService {
         });
 
         console.log(`[Viva Wallet] Payment order created. Redirect URL: ${redirectUrl}`);
+        notifyCreated();
 
         return {
           ...appointmentWithRelations,
@@ -630,7 +657,9 @@ export class BookingsService {
       } catch (err) {
         // Log the full error details so we can debug
         console.error('[Viva Wallet] Order creation FAILED:', err?.response?.data || err?.message || err);
-        // Delete the saved appointment since payment setup failed
+        // Delete the saved appointment since payment setup failed, and give back the gift card
+        // it had claimed so the client does not lose it.
+        await this.releaseGiftCardClaim(savedAppointment.id, validGiftCard);
         await this.appointmentsRepository.delete(savedAppointment.id);
         throw new BadRequestException(
           `Payment setup failed: ${err?.message || 'Could not connect to Viva Wallet. Please verify VIVA_CLIENT_ID and VIVA_CLIENT_SECRET in .env'}`
@@ -638,6 +667,8 @@ export class BookingsService {
       }
     }
 
+
+    notifyCreated();
 
     // Emit event for notifications with full relations (safe try/catch)
     try {
@@ -669,6 +700,23 @@ export class BookingsService {
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
     return `${serviceName} with ${providerName}`;
+  }
+
+  // Undo a gift card claim made by an appointment that is being rolled back.
+  private async releaseGiftCardClaim(appointmentId: string, giftCard: { id: string; balance: number } | null): Promise<void> {
+    if (!giftCard) return;
+    await this.appointmentsRepository.manager
+      .createQueryBuilder()
+      .update('GiftCard')
+      .set({
+        isActive: true,
+        balance: giftCard.balance,
+        redeemedByUserId: null,
+        redeemedAt: null,
+        redeemedAppointmentId: null,
+      })
+      .where('id = :id AND "redeemedAppointmentId" = :appointmentId', { id: giftCard.id, appointmentId })
+      .execute();
   }
 
   // Generate a Viva Wallet payment URL for an existing pending_payment appointment
@@ -732,6 +780,40 @@ export class BookingsService {
   isAdminRole(role?: string | null): boolean {
     const r = String(role || '').toLowerCase();
     return r === String(UserRole.ADMIN).toLowerCase() || r === String(UserRole.SUPER_ADMIN).toLowerCase();
+  }
+
+  /** Clinic accounts (owner, doctor, secretariat) only work on their own clinic(s). */
+  isClinicAccountRole(role?: string | null): boolean {
+    const r = String(role || '').toLowerCase();
+    return r === UserRole.CLINIC_OWNER || r === UserRole.DOCTOR || r === UserRole.SECRETARIAT;
+  }
+
+  /**
+   * Clinic ids a clinic account works for: its assigned clinic, clinics it owns, and (for owners)
+   * co-owned clinics from clinic_ownership. Same rule as ClinicPatientsService.resolveClinicIds.
+   */
+  async clinicIdsForAccount(userId: string, role?: string | null): Promise<string[]> {
+    const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+    if (!user) return [];
+    const ids = new Set<string>((user.ownedClinics || []).map(c => String(c.id)));
+    if (user.assignedClinicId) ids.add(String(user.assignedClinicId));
+    if (String(role || user.role || '').toLowerCase() === UserRole.CLINIC_OWNER) {
+      const rows: { clinicId: string }[] = await this.usersRepository.manager.query(
+        'SELECT "clinicId" FROM clinic_ownership WHERE "ownerUserId" = $1',
+        [userId],
+      );
+      rows.forEach(r => ids.add(String(r.clinicId)));
+    }
+    return [...ids];
+  }
+
+  /** Throws unless a clinic account works for this clinic. Other roles are not limited here. */
+  async assertClinicAccountCanUseClinic(userId: string, role: string, clinicId?: string | null): Promise<void> {
+    if (!this.isClinicAccountRole(role)) return;
+    const clinicIds = await this.clinicIdsForAccount(userId, role);
+    if (!clinicId || !clinicIds.includes(String(clinicId))) {
+      throw new ForbiddenException('You do not have access to this clinic');
+    }
   }
 
   /**
@@ -1490,10 +1572,9 @@ export class BookingsService {
       if (normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'manager') {
         queryBuilder.where('1=1');
       } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
-        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+        const user = await this.usersRepository.findOne({ where: { id: userId }, select: ['id'] });
         if (!user) throw new NotFoundException('User not found');
-        const clinicIds = (user.ownedClinics || []).map(c => c.id);
-        if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+        const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
 
         if (clinicIds.length > 0) {
           queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
@@ -1681,14 +1762,9 @@ export class BookingsService {
       }
 
       if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
-        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-        if (user) {
-          const clinicIds = (user.ownedClinics || []).map(c => c.id);
-          if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-
-          if (clinicIds.length > 0) {
-            blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
-          }
+        const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
+        if (clinicIds.length > 0) {
+          blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
         }
       }
 
@@ -1736,11 +1812,7 @@ export class BookingsService {
 
     // Add role-based filtering
     if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-      const availableClinicIds = [
-        ...(user?.ownedClinics || []).map(c => c.id),
-        user?.assignedClinicId
-      ].filter(Boolean);
+      const availableClinicIds = await this.clinicIdsForAccount(userId, userRole);
 
       if (availableClinicIds.length > 0) {
         queryBuilder.andWhere('appointment.clinicId IN (:...availableClinicIds)', { availableClinicIds });
@@ -1915,7 +1987,7 @@ export class BookingsService {
     serviceId?: string,
     giftCardCode?: string,
   ): Promise<Appointment> {
-    console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, paymentData, serviceId, giftCardCode });
+    console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, serviceId, hasGiftCard: !!giftCardCode });
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('This appointment has already been completed and is locked.');
@@ -1965,8 +2037,26 @@ export class BookingsService {
           const giftCard = await this.financialService.validateGiftCard(giftCardCode);
           if (giftCard && giftCard.valid) {
             const discount = Math.min(giftCard.balance, paymentData.amount);
-            console.log(`[BookingsService] Redeeming Gift Card ${giftCardCode} for amount ${discount}`);
-            
+            console.log(`[BookingsService] Redeeming Gift Card ${giftCard.id} for amount ${discount}`);
+
+            // Atomically debit the card first (only if it still holds enough), so two parallel
+            // completions cannot both spend the same balance.
+            const debit = await this.appointmentsRepository.manager
+              .createQueryBuilder()
+              .update('GiftCard')
+              .set({
+                balance: () => 'GREATEST(0, "balance" - :discount)',
+                isActive: () => '("balance" - :discount) > 0',
+                redeemedByUserId: appointment.clientId,
+                redeemedAt: new Date(),
+                redeemedAppointmentId: appointment.id,
+              })
+              .where('id = :id AND "isActive" = true AND "balance" >= :discount', { id: giftCard.id, discount })
+              .execute();
+            if (!debit.affected) {
+              throw new Error('Gift card balance changed concurrently; not redeemed');
+            }
+
             // Record Gift Card Payment explicitly
             await this.financialService.recordPayment({
               appointmentId: appointment.id,
@@ -1979,20 +2069,6 @@ export class BookingsService {
               notes: `Gift Card Redeemed: Code ${giftCardCode}`,
               recordedById: userId,
             });
-
-            // Update Gift Card Status
-            const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
-            const card = await giftCardRepo.findOne({ where: { id: giftCard.id } });
-            if (card) {
-              card.balance = Math.max(0, Number(card.balance) - discount);
-              if (card.balance <= 0) {
-                card.isActive = false;
-              }
-              card.redeemedByUserId = appointment.clientId;
-              card.redeemedAt = new Date();
-              card.redeemedAppointmentId = appointment.id;
-              await giftCardRepo.save(card);
-            }
 
             // Reduce remaining amount for the rest of the logic
             paymentData.amount = Math.max(0, paymentData.amount - discount);

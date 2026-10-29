@@ -81,7 +81,7 @@ export class UsersService {
       .getOne();
   }
 
-  async findAll(query?: { role?: string; isActive?: boolean | string; includeInactive?: boolean | string; limit?: number; offset?: number; search?: string; salespersonId?: string }): Promise<User[]> {
+  async findAll(query?: { role?: string; isActive?: boolean | string; includeInactive?: boolean | string; limit?: number; offset?: number; search?: string; salespersonId?: string; excludeClients?: boolean }): Promise<User[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
     
     if (query?.salespersonId) {
@@ -91,6 +91,10 @@ export class UsersService {
 
     if (query?.role) {
       queryBuilder.andWhere('user.role = :role', { role: query.role });
+    }
+
+    if (query?.excludeClients === true) {
+      queryBuilder.andWhere('user.role <> :clientRole', { clientRole: UserRole.CLIENT });
     }
 
     if (query?.isActive !== undefined && query.isActive !== '') {

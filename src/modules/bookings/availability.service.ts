@@ -482,6 +482,16 @@ export class AvailabilityService {
     return saved;
   }
 
+  /** Clinic accounts (owner, doctor, secretariat) may only change blocks of their own clinic(s). */
+  private async assertClinicAccountOwnsBlock(blockedSlot: BlockedTimeSlot, userId: string, userRole: string): Promise<void> {
+    const role = String(userRole || '').toLowerCase();
+    if (role !== 'clinic_owner' && role !== 'doctor' && role !== 'secretariat') return;
+    const clinics = await this.clinicsService.findAllByOwner(userId).catch(() => []);
+    if (!clinics.some((c) => String(c?.id) === String(blockedSlot.clinicId))) {
+      throw new ForbiddenException('Unauthorized to change this time slot');
+    }
+  }
+
   async unblockTimeSlot(blockedSlotId: string, userId: string, userRole: string): Promise<void> {
     const blockedSlot = await this.blockedTimeSlotsRepository.findOne({
       where: { id: blockedSlotId },
@@ -503,6 +513,7 @@ export class AvailabilityService {
         throw new ForbiddenException('Unauthorized to unblock this time slot');
       }
     }
+    await this.assertClinicAccountOwnsBlock(blockedSlot, userId, userRole);
 
     const copy = { ...blockedSlot };
     await this.blockedTimeSlotsRepository.remove(blockedSlot);
@@ -530,6 +541,7 @@ export class AvailabilityService {
     if (!isAdmin && blockedSlot.clinic?.ownerId !== userId && upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
       throw new ForbiddenException('Unauthorized to update this time slot');
     }
+    await this.assertClinicAccountOwnsBlock(blockedSlot, userId, userRole);
 
     if (updates.startTime) blockedSlot.startTime = updates.startTime;
     if (updates.endTime) blockedSlot.endTime = updates.endTime;

@@ -54,10 +54,14 @@ export class BookingsController {
     return STAFF_ROLES.includes((user?.role || '').toLowerCase());
   }
 
-  // Owner-or-staff: a client may only touch their own appointment; staff may touch any.
+  // Owner-or-staff: a client may only touch their own appointment; clinic accounts only
+  // appointments of their own clinic(s); BeautyDoctors staff may touch any.
   private async assertCanAccess(id: string, user: any) {
     const appointment = await this.bookingsService.findById(id);
-    if (!this.isStaff(user) && String(appointment.clientId) !== String(user?.id)) {
+    if (this.bookingsService.isClinicAccountRole(user?.role)) {
+      // Throws NotFound unless the appointment belongs to one of the account's clinics.
+      await this.bookingsService.findAppointmentForClinic(id, user.id, String(user.role).toLowerCase());
+    } else if (!this.isStaff(user) && String(appointment.clientId) !== String(user?.id)) {
       throw new ForbiddenException('You do not have access to this appointment.');
     }
     return appointment;
@@ -131,20 +135,29 @@ export class BookingsController {
       };
       // A public/non-staff caller must never dictate the appointment status (e.g. self-confirm
       // without paying). Only staff may pass an explicit status; otherwise it's derived server-side.
-      if (!callerIsStaff && !createAppointmentDto.bookedById) {
+      // (Sending a bookedById must not lift this: only staff may set either.)
+      if (!callerIsStaff) {
         delete payload.status;
+      }
+      // A logged-in client always books for themselves, never under another client's account.
+      if (caller && String(caller.role || '').toLowerCase() === UserRole.CLIENT) {
+        payload.clientId = caller.id;
+      }
+      // Clinic accounts only book into their own clinic(s).
+      if (caller) {
+        await this.bookingsService.assertClinicAccountCanUseClinic(caller.id, caller.role, payload.clinicId);
       }
       return await this.bookingsService.createAppointment(payload, caller ? { id: caller.id, role: caller.role } : null);
     } catch (error) {
       console.error('❌ [BookingsController] Create Appointment Error:', {
         message: error.message,
         response: error.response,
+        // Only ID presence: the DTO carries clientDetails (name, email, phone).
         payload: {
-          ...createAppointmentDto,
-          // Mask sensitive details but show ID presence
           clientId: !!createAppointmentDto.clientId,
           clinicId: !!createAppointmentDto.clinicId,
           serviceId: !!createAppointmentDto.serviceId,
+          hasClientDetails: !!createAppointmentDto.clientDetails,
         }
       });
       throw error;
@@ -227,7 +240,8 @@ export class BookingsController {
     @Body() body: { startTime: string; endTime: string; notes?: string; reason?: string },
     @Request() req,
   ) {
-    const appointment = await this.bookingsService.findById(id);
+    // Same access rule as every other appointment action (clinic accounts: own clinic only).
+    const appointment = await this.assertCanAccess(id, req.user);
     
     console.log('[Reschedule Debug]', {
       userId: req.user.id,
@@ -283,7 +297,11 @@ export class BookingsController {
     if (body.startTime) updateData.startTime = new Date(body.startTime);
     if (body.endTime) updateData.endTime = new Date(body.endTime);
     if (body.providerId !== undefined) updateData.providerId = body.providerId || null;
-    if (body.clinicId !== undefined) updateData.clinicId = body.clinicId || null;
+    if (body.clinicId !== undefined) {
+      // Clinic accounts cannot move an appointment to a clinic they don't work for.
+      await this.bookingsService.assertClinicAccountCanUseClinic(req.user.id, req.user.role, body.clinicId);
+      updateData.clinicId = body.clinicId || null;
+    }
     if (body.serviceId !== undefined) updateData.serviceId = body.serviceId || null;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.totalAmount !== undefined) updateData.totalAmount = body.totalAmount;
@@ -311,7 +329,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Soft-delete appointment (status=DELETED, revenue voided)' })
   async softDelete(@Param('id') id: string, @Request() req) {
     this.assertStaff(req.user);
-    const appointment = await this.bookingsService.findById(id);
+    const appointment = await this.assertCanAccess(id, req.user);
     this.assertNotLockedForSales(appointment, req.user);
     return this.bookingsService.softDeleteAppointment(id, req.user.id, req.user.role);
   }
@@ -380,9 +398,10 @@ export class BookingsController {
   
   @Post('blocked-slots')
   @ApiOperation({ summary: 'Block a time slot' })
-  createBlockedSlot(@Body() body: any, @Request() req) {
-    // Only staff (incl. salespeople) may block a clinic's calendar.
+  async createBlockedSlot(@Body() body: any, @Request() req) {
+    // Only staff (incl. salespeople) may block a clinic's calendar; clinic accounts only their own.
     this.assertStaff(req.user);
+    await this.bookingsService.assertClinicAccountCanUseClinic(req.user.id, req.user.role, body?.clinicId);
     return this.availabilityService.blockTimeSlot(
       body.clinicId,
       body.providerId || null,

@@ -47,3 +47,6 @@ logs/
 scratch/
 *.pdf
 Project_Update_Report_For_Client.*
+
+# Private keys never belong in the repo
+*.pem

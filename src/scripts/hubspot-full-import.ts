@@ -7,7 +7,11 @@ import { Logger } from '@nestjs/common';
 import axios from 'axios';
 
 const logger = new Logger('HubSpotFullImport');
-const HUBSPOT_TOKEN = process.env.HUBSPOT_API_TOKEN || ('pat-na1-' + '0636c4c1-d343-4cf5-9908-1b5733ce051d');
+// Never hard-code the token: it was previously committed here and must be rotated.
+const HUBSPOT_TOKEN = process.env.HUBSPOT_API_TOKEN;
+if (!HUBSPOT_TOKEN) {
+  throw new Error('HUBSPOT_API_TOKEN is not set in the environment.');
+}
 
 const mapHubSpotStatus = (status?: string, lifecycle?: string): LeadStatus => {
   const s = (status || '').toUpperCase().trim();

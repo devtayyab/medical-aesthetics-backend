@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { RefreshCw, Briefcase, FileText, Calendar, DollarSign, User, CalendarDays } from 'lucide-react';
 import { Badge } from '@/components/atoms/Badge';
 import api from '@/services/api';
+import { sanitizeHtml } from '@/utils/sanitizeHtml';
 
 interface HubSpotDeal {
   id: string;
@@ -138,7 +139,7 @@ export const HubSpotWidget: React.FC<HubSpotWidgetProps> = ({ email, phone }) =>
                         {note.body ? (
                           <div 
                             className="text-xs text-slate-600 prose prose-sm max-w-none prose-p:my-1" 
-                            dangerouslySetInnerHTML={{ __html: note.body }} 
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.body) }} 
                           />
                         ) : (
                           <div className="text-xs text-slate-400 italic">No detailed notes.</div>

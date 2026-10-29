@@ -544,7 +544,11 @@ export class CrmController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.crmService.getWebhookLeads({ days: days || 30, page: page || 1, limit: limit || 50 });
+    return this.crmService.getWebhookLeads({
+      days: Math.min(Math.max(Number(days) || 30, 1), 365),
+      page: Math.max(Number(page) || 1, 1),
+      limit: Math.min(Math.max(Number(limit) || 50, 1), 200),
+    });
   }
 
   @Post('actions/import-csv')

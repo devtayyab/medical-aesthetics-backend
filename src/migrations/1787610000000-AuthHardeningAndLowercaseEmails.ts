@@ -39,7 +39,8 @@ export class AuthHardeningAndLowercaseEmails1787610000000 implements MigrationIn
         if (duplicates.length > 0) {
             console.warn(`[AuthHardeningAndLowercaseEmails] ${duplicates.length} email(s) exist more than once with different casing. NOT changed, please merge manually:`);
             for (const d of duplicates) {
-                console.warn(`  ${d.normalized}: ${JSON.stringify(d.emails)} ids=${JSON.stringify(d.ids)}`);
+                // Ids only: deploy logs are not the place for customer email addresses.
+                console.warn(`  ids=${JSON.stringify(d.ids)}`);
             }
         }
 

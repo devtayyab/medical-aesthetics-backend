@@ -835,12 +835,19 @@ export class ClinicsService {
   ): Promise<User> {
     let clinic = null;
 
-    // 1. If explicit clinicId provided, look it up directly regardless of user role
+    // 1. If explicit clinicId provided, look it up (non-admins only for clinics they belong to,
+    // otherwise a doctor could file staff requests that show up as coming from another clinic)
     if (staffData.clinicId) {
       try {
         clinic = await this.findById(staffData.clinicId);
       } catch (err) {
         console.warn(`[ClinicsService] Clinic with id ${staffData.clinicId} not found`);
+      }
+      if (clinic && role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) {
+        const myClinics = await this.findAllByOwner(ownerId);
+        if (!myClinics.some((c) => c.id === clinic.id)) {
+          throw new ForbiddenException('You do not have access to this clinic');
+        }
       }
     }
 

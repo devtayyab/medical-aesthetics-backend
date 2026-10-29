@@ -311,8 +311,8 @@ export const ClinicAnalyticsPage = () => {
             <span>Refresh</span>
           </button>
 
-          {/* Admin Seeder */}
-          {(user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager') && (
+          {/* Admin Seeder: development builds only, it writes fake data to the database */}
+          {import.meta.env.DEV && (user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager') && (
             <button
               onClick={handleSeedData}
               title="Seed Mock Data for Demonstration"
