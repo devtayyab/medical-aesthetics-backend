@@ -74,6 +74,14 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'uploads'),
       serveRoot: '/api/uploads',
+      serveStaticOptions: {
+        // User uploads: never let the browser sniff them into HTML/script, and sandbox anything
+        // that is opened directly so it cannot run script on our origin.
+        setHeaders: (res) => {
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+        },
+      },
     }),
   ],
   controllers: [AppController],

@@ -9,6 +9,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { randomBytes } from 'crypto';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -23,15 +24,17 @@ export class UploadController {
       storage: diskStorage({
         destination: './public/uploads',
         filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          cb(null, `${randomName}${extname(file.originalname)}`);
+          const randomName = randomBytes(16).toString('hex');
+          cb(null, `${randomName}${extname(file.originalname).toLowerCase()}`);
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+        // Both the extension AND the declared type must be a raster image. SVG/HTML are never
+        // accepted: they would be served from our origin and could run script.
+        if (
+          !/\.(jpg|jpeg|png|gif|webp)$/i.test(file.originalname) ||
+          !/^image\/(jpeg|png|gif|webp)$/i.test(file.mimetype || '')
+        ) {
           return cb(new BadRequestException('Only image files are allowed!'), false);
         }
         cb(null, true);
