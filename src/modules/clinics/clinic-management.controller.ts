@@ -332,14 +332,12 @@ export class ClinicManagementController {
     },
     @Request() req,
   ) {
-    console.log('[ClinicManagementController] completeAppointment HIT! Body:', body);
     // Robustness: Map top-level fields to paymentData or completionReport if they are missing
     const paymentData = body.paymentData || (body.paymentMethod ? {
       paymentMethod: body.paymentMethod,
       amount: body.amountPaid || body.totalAmount || 0,
     } : undefined);
-    
-    console.log('[ClinicManagementController] Extracted paymentData:', paymentData);
+
 
     const completionReport = body.completionReport || (body.amountPaid !== undefined ? {
       patientCame: true,

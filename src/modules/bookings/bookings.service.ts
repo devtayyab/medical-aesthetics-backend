@@ -624,7 +624,7 @@ export class BookingsService {
           };
         }
 
-        console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}, email=${customerEmail}`);
+        console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}`);
         console.log('💳 [BookingsService] Initiating Viva Wallet payment order...', { amount });
 
       try {
@@ -1967,7 +1967,7 @@ export class BookingsService {
     serviceId?: string,
     giftCardCode?: string,
   ): Promise<Appointment> {
-    console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, paymentData, serviceId, giftCardCode });
+    console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, serviceId, hasGiftCard: !!giftCardCode });
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('This appointment has already been completed and is locked.');
@@ -2017,7 +2017,7 @@ export class BookingsService {
           const giftCard = await this.financialService.validateGiftCard(giftCardCode);
           if (giftCard && giftCard.valid) {
             const discount = Math.min(giftCard.balance, paymentData.amount);
-            console.log(`[BookingsService] Redeeming Gift Card ${giftCardCode} for amount ${discount}`);
+            console.log(`[BookingsService] Redeeming Gift Card ${giftCard.id} for amount ${discount}`);
 
             // Atomically debit the card first (only if it still holds enough), so two parallel
             // completions cannot both spend the same balance.

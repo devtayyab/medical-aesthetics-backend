@@ -50,7 +50,7 @@ export class VivaWalletController {
         const orderCode = query.s;
         const transactionId = query.t;
 
-        console.log('[Viva Wallet] SUCCESS callback received:', { orderCode, transactionId, query });
+        console.log('[Viva Wallet] SUCCESS callback received:', { orderCode, transactionId });
 
         if (transactionId) {
             try {
@@ -239,7 +239,13 @@ export class VivaWalletController {
     @Post('webhook')
     @ApiOperation({ summary: 'Viva Wallet IPN webhook' })
     async handleWebhook(@Body() body: any) {
-        console.log('[Viva Wallet] Webhook received:', JSON.stringify(body));
+        // Do not dump the body: EventData carries the payer's name, email and phone.
+        console.log('[Viva Wallet] Webhook received:', JSON.stringify({
+            EventTypeId: body?.EventTypeId,
+            TransactionId: body?.EventData?.TransactionId,
+            OrderCode: body?.EventData?.OrderCode,
+            StatusId: body?.EventData?.StatusId,
+        }));
 
         const eventType = body?.EventTypeId;
 

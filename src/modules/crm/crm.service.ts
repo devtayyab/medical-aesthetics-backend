@@ -599,7 +599,6 @@ export class CrmService implements OnModuleInit {
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
     console.log('🚀 [CrmService] scheduleRecurringAppointment request received');
-    console.log('Payload Data:', JSON.stringify(data, null, 2));
 
     const { customerId, serviceId, frequency, clinicId, startDate, providerId, bookedById } = data;
 
