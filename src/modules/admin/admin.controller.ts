@@ -30,6 +30,16 @@ export class AdminController {
     private readonly auditService: AuditService,
   ) {}
 
+  // Only a SUPER_ADMIN may change, reset, (de)activate or delete a SUPER_ADMIN account;
+  // otherwise an ADMIN could change its email or password and take it over.
+  private async assertCanManageUser(actor: any, targetId: string) {
+    if (String(actor?.role || '').toUpperCase() === UserRole.SUPER_ADMIN) return;
+    const target = await this.adminService.getUserById(targetId);
+    if (String(target?.role || '').toUpperCase() === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only a SUPER_ADMIN can manage this account.');
+    }
+  }
+
   @Get('audit-logs')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get system audit logs (who changed what, when, before/after)' })
@@ -121,25 +131,28 @@ export class AdminController {
   @Put('users/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update user' })
-  updateUser(@Request() req, @Param('id') id: string, @Body() updateData: any) {
+  async updateUser(@Request() req, @Param('id') id: string, @Body() updateData: any) {
     // Only a SUPER_ADMIN may grant the SUPER_ADMIN role — prevents ADMIN self-escalation.
-    if (updateData?.role === UserRole.SUPER_ADMIN && req.user?.role !== UserRole.SUPER_ADMIN) {
+    if (String(updateData?.role || '').toUpperCase() === UserRole.SUPER_ADMIN && req.user?.role !== UserRole.SUPER_ADMIN) {
       throw new ForbiddenException('You are not allowed to assign the SUPER_ADMIN role.');
     }
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.updateUser(id, updateData);
   }
 
   @Patch('users/:id/password')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Change user password' })
-  changeUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
+  async changeUserPassword(@Request() req, @Param('id') id: string, @Body() body: { password: string }) {
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.changeUserPassword(id, body.password);
   }
 
   @Patch('users/:id/toggle-status')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle user active status (prefer deactivate/reactivate)' })
-  toggleUserStatus(@Request() req, @Param('id') id: string) {
+  async toggleUserStatus(@Request() req, @Param('id') id: string) {
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.toggleUserStatus(id, req.user?.id);
   }
 
@@ -153,14 +166,16 @@ export class AdminController {
   @Post('users/:id/deactivate')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Deactivate a user: blocks login at once and hands open leads/tasks to another user' })
-  deactivateUser(@Request() req, @Param('id') id: string, @Body() body: { reassignToUserId?: string }) {
+  async deactivateUser(@Request() req, @Param('id') id: string, @Body() body: { reassignToUserId?: string }) {
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.deactivateUser(id, req.user?.id, body?.reassignToUserId);
   }
 
   @Post('users/:id/reactivate')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Reactivate a user' })
-  reactivateUser(@Request() req, @Param('id') id: string) {
+  async reactivateUser(@Request() req, @Param('id') id: string) {
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.reactivateUser(id, req.user?.id);
   }
 
@@ -188,7 +203,8 @@ export class AdminController {
   @Delete('users/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete user' })
-  deleteUser(@Param('id') id: string) {
+  async deleteUser(@Request() req, @Param('id') id: string) {
+    await this.assertCanManageUser(req.user, id);
     return this.adminService.deleteUser(id);
   }
 
@@ -261,7 +277,8 @@ export class AdminController {
   }
 
   @Get('clinics/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  // Admin only: this returns any clinic with all its appointments and owners (no ownership check).
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get clinic by ID' })
   getClinicById(@Param('id') id: string) {
     return this.adminService.getClinicById(id);
@@ -289,7 +306,7 @@ export class AdminController {
   }
 
   @Get('clinics/:id/analytics')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get clinic analytics' })
   getClinicAnalytics(
     @Param('id') id: string,

@@ -23,6 +23,14 @@ const PERSONAL_USER_FIELDS = [
   'referredById',
   'marketingEmailConsent',
   'marketingEmailConsentDate',
+  // @Exclude()d on the entity, but the exclusion is lost once the user is copied into a plain
+  // object here, so they must be removed explicitly.
+  'failedLoginAttempts',
+  'lockedUntil',
+  'loginCodeHash',
+  'loginCodeExpiresAt',
+  'loginCodeSentAt',
+  'loginCodeAttempts',
 ] as const;
 
 /** Returns a shallow copy of a user-like object without contact, login or credential fields. */

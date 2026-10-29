@@ -3,6 +3,19 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MessagesService } from './messages.service';
 import { CreateConversationDto, SendMessageDto } from './dto/messages.dto';
+import { stripUserPersonalData } from '../../common/utils/privacy.util';
+
+const isClient = (user: any) => String(user?.role || '').toLowerCase() === 'client';
+
+// Clients never receive staff personal email/phone through conversation participants or senders.
+function stripConversation(c: any) {
+    if (!c) return c;
+    return {
+        ...c,
+        participants: (c.participants || []).map((p: any) => ({ ...p, user: stripUserPersonalData(p.user) })),
+        lastMessage: c.lastMessage ? { ...c.lastMessage, sender: stripUserPersonalData(c.lastMessage.sender) } : c.lastMessage,
+    };
+}
 
 @ApiTags('Messages')
 @ApiBearerAuth()
@@ -29,30 +42,36 @@ export class MessagesController {
 
     @Get('conversations')
     @ApiOperation({ summary: 'Get user conversations' })
-    getConversations(@Req() req) {
-        return this.messagesService.getConversations(req.user.id);
+    async getConversations(@Req() req) {
+        const conversations = await this.messagesService.getConversations(req.user.id);
+        return isClient(req.user) ? conversations.map(stripConversation) : conversations;
     }
 
     @Post('conversations/:id/messages')
     @ApiOperation({ summary: 'Send a message' })
-    sendMessage(@Req() req, @Param('id') id: string, @Body() dto: SendMessageDto) {
-        return this.messagesService.sendMessage(req.user.id, id, dto);
+    async sendMessage(@Req() req, @Param('id') id: string, @Body() dto: SendMessageDto) {
+        const message: any = await this.messagesService.sendMessage(req.user.id, id, dto);
+        return isClient(req.user) && message ? { ...message, sender: stripUserPersonalData(message.sender) } : message;
     }
 
     @Get('conversations/:id/messages')
     @ApiOperation({ summary: 'Get messages for a conversation' })
-    getMessages(
+    async getMessages(
         @Req() req,
         @Param('id') id: string,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
     ) {
-        return this.messagesService.getMessages(req.user.id, id, limit, offset);
+        const messages: any[] = await this.messagesService.getMessages(req.user.id, id, limit, offset);
+        return isClient(req.user)
+            ? messages.map((m) => ({ ...m, sender: stripUserPersonalData(m.sender) }))
+            : messages;
     }
 
     @Get('search')
     @ApiOperation({ summary: 'Search conversations' })
-    search(@Req() req, @Query('q') query: string) {
-        return this.messagesService.searchConversations(req.user.id, query);
+    async search(@Req() req, @Query('q') query: string) {
+        const conversations = await this.messagesService.searchConversations(req.user.id, query);
+        return isClient(req.user) ? conversations.map(stripConversation) : conversations;
     }
 }

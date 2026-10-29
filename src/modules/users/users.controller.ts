@@ -52,16 +52,26 @@ export class UsersController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
   @ApiQuery({ name: 'salespersonId', required: false })
-  findAll(@Query() query: { role?: string; search?: string; limit?: number; offset?: number; salespersonId?: string }) {
-    return this.usersService.findAll(query);
+  findAll(@Request() req, @Query() query: { role?: string; search?: string; limit?: number; offset?: number; salespersonId?: string }) {
+    // Clinic accounts use this to find colleagues and BeautyDoctors staff (new chat). They see
+    // their own patients through /clinic/patients, never the platform-wide client list.
+    const isClinicAccount = [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT]
+      .some((r) => r === String(req.user?.role || '').toLowerCase());
+    return this.usersService.findAll({ ...query, excludeClients: isClinicAccount });
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SUPER_ADMIN)
+  // Clinic owners request staff through POST /clinic/staff (admin approval), not here.
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new user (Agent/Staff)' })
   create(@Request() req, @Body() createUserDto: CreateUserDto) {
+    // A manager creates sales agents only; any other role (manager, clinic, admin) is an admin task.
+    const actorRole = String(req.user?.role || '').toLowerCase();
+    if (actorRole === UserRole.MANAGER && createUserDto.role !== UserRole.SALESPERSON) {
+      throw new ForbiddenException('Managers can create salesperson accounts only.');
+    }
     // Prevent privilege escalation: only a SUPER_ADMIN may create ADMIN/SUPER_ADMIN accounts.
     const requestedRole = createUserDto.role;
     const privilegedRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -82,7 +92,14 @@ export class UsersController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update user details (Admin only)' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(@Request() req, @Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    // Only a SUPER_ADMIN may grant the SUPER_ADMIN role or change a SUPER_ADMIN account.
+    if (req.user?.role !== UserRole.SUPER_ADMIN) {
+      const target = await this.usersService.findById(id);
+      if (updateUserDto.role === UserRole.SUPER_ADMIN || String(target.role).toUpperCase() === UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException('You are not allowed to change this account or assign the SUPER_ADMIN role.');
+      }
+    }
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -93,6 +110,17 @@ export class UsersController {
   updateOwnProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
     // UpdateProfileDto omits role/clinic fields; the global whitelist pipe strips any
     // privileged fields a client tries to send, so this can no longer escalate roles.
+    // profile is a free JSON object: keep the server-managed keys (staff request, clinic ties)
+    // as they are, so a user cannot fake a pending staff request or a clinic link.
+    if (updateProfileDto.profile && typeof updateProfileDto.profile === 'object') {
+      const current = req.user?.profile || {};
+      const profile = { ...updateProfileDto.profile };
+      for (const key of ['staffRequest', 'ownerClinicIds', 'clinicPatientOf']) {
+        if (current[key] !== undefined) profile[key] = current[key];
+        else delete profile[key];
+      }
+      updateProfileDto.profile = profile;
+    }
     return this.usersService.update(req.user.id, updateProfileDto);
   }
 
@@ -101,9 +129,17 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Record user consent' })
   recordConsent(
+    @Request() req,
     @Param('id') userId: string,
     @Body() consentData: any,
   ) {
+    // Consent is personal: only the user themselves (or an admin) records it.
+    const isAdmin = [UserRole.ADMIN, UserRole.SUPER_ADMIN].some(
+      (r) => r.toLowerCase() === String(req.user?.role || '').toLowerCase(),
+    );
+    if (!isAdmin && String(userId) !== String(req.user?.id)) {
+      throw new ForbiddenException('You can only record your own consent.');
+    }
     return this.usersService.recordConsent(
       userId,
       consentData.consentType,

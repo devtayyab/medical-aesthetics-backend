@@ -7,6 +7,7 @@ import { ConversationParticipant } from './entities/conversation-participant.ent
 import { User } from '../users/entities/user.entity';
 import { CreateConversationDto, SendMessageDto } from './dto/messages.dto';
 import { MessagesGateway } from './gateways/messages.gateway';
+import { stripUserPersonalData } from '../../common/utils/privacy.util';
 
 @Injectable()
 export class MessagesService {
@@ -65,7 +66,12 @@ export class MessagesService {
         });
 
         // Notify participants about new conversation
-        this.gateway.notifyParticipants(participantIds, 'new-conversation', result);
+        // Socket payloads skip the HTTP serializer (@Exclude), so user rows would go out with
+        // password hashes and tokens; send them without personal or credential fields.
+        this.gateway.notifyParticipants(participantIds, 'new-conversation', result && {
+            ...result,
+            participants: (result.participants || []).map((p) => ({ ...p, user: stripUserPersonalData(p.user) })),
+        });
 
         return result;
     }
@@ -101,7 +107,10 @@ export class MessagesService {
 
         // Notify all participants
         const participantIds = participants.map((p) => p.userId);
-        this.gateway.notifyParticipants(participantIds, 'new-message', fullMessage);
+        this.gateway.notifyParticipants(participantIds, 'new-message', fullMessage && {
+            ...fullMessage,
+            sender: stripUserPersonalData(fullMessage.sender),
+        });
 
         return fullMessage;
     }

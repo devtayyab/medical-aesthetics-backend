@@ -734,6 +734,24 @@ export class BookingsService {
     return r === String(UserRole.ADMIN).toLowerCase() || r === String(UserRole.SUPER_ADMIN).toLowerCase();
   }
 
+  /** Clinic accounts (owner, doctor, secretariat) only work on their own clinic(s). */
+  isClinicAccountRole(role?: string | null): boolean {
+    const r = String(role || '').toLowerCase();
+    return r === UserRole.CLINIC_OWNER || r === UserRole.DOCTOR || r === UserRole.SECRETARIAT;
+  }
+
+  /** Throws unless a clinic account works for this clinic. Other roles are not limited here. */
+  async assertClinicAccountCanUseClinic(userId: string, role: string, clinicId?: string | null): Promise<void> {
+    if (!this.isClinicAccountRole(role)) return;
+    const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+    const clinicIds = [...(user?.ownedClinics || []).map(c => c.id), user?.assignedClinicId]
+      .filter(Boolean)
+      .map(String);
+    if (!clinicId || !clinicIds.includes(String(clinicId))) {
+      throw new ForbiddenException('You do not have access to this clinic');
+    }
+  }
+
   /**
    * Normalizes any status input ('completed', 'Completed', ' COMPLETED ') to the canonical
    * upper-case enum value. Unknown values are rejected so nothing but the enum is ever stored.
