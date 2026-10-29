@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FinancialService } from './financial.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -53,6 +53,12 @@ export class PaymentsController {
     @Roles(UserRole.CLIENT)
     @ApiOperation({ summary: 'Purchase a new gift card via Viva Wallet' })
     async purchaseGiftCard(@Req() req: any, @Body() body: { amount: number; recipientEmail?: string; message?: string }) {
+        // The face value is client-chosen (the client pays it), but it must be a sane EUR amount.
+        const amount = Number(body?.amount);
+        if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
+            throw new BadRequestException('Gift card amount must be between €1 and €10,000');
+        }
+        body = { ...body, amount: Math.round(amount * 100) / 100 };
         const giftCard = await this.financialService.purchaseGiftCard(req.user.id, body);
         
         // Generate Viva Wallet checkout link
