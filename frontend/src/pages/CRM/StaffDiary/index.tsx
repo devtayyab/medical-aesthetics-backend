@@ -89,6 +89,8 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   useEffect(() => {
     if (clinicId && clinicId !== 'all') {
       setFilters(prev => ({ ...prev, clinicId }));
+      // A doctor of the previous clinic would filter the new clinic's calendar to nothing.
+      setSelectedProviderId('all');
     }
   }, [clinicId]);
 
@@ -141,8 +143,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
   const handleSlotClick = useCallback(
     (payload: SlotClickPayload) => {
+      // Local date parts: toISOString() turns local midnight into the previous day in Athens.
+      const d = payload.date;
       setInitialAptData({
-        date: payload.date.toISOString().split('T')[0],
+        date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
         startTime: payload.timeStr,
         clinicId: filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id || '',
         providerId: selectedProviderId !== 'all' ? selectedProviderId : user?.id || '',

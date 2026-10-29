@@ -25,37 +25,36 @@ export const Dashboard: React.FC = () => {
  dispatch(fetchMetrics());
  }, [dispatch]);
 
- // Mock data for the new requirements (until integrated with the backend)
+ // Only turnover comes from the API so far. The other figures are not computed yet:
+ // show a dash instead of invented numbers.
+ const NA = "—";
  const expandedMetrics = {
- leadsToday: 12,
- leadsLast7Days: 84,
+ leadsToday: NA,
+ leadsLast7Days: NA,
  appointmentsDateRange: {
- booked: 145,
- confirmed: 120,
- canceled: 15,
- noShow: 10,
- done: 80,
+ booked: NA,
+ confirmed: NA,
+ canceled: NA,
+ noShow: NA,
+ done: NA,
  },
  // Turnover MTD comes from the payments ledger (shared revenue definition, EUR, paid only).
  turnoverMtd: Number((_metrics as any)?.revenue || 0),
- cancellationRate:"10%",
- noShowRate:"6%",
- tasksDueToday: 5,
- tasksOverdue: 2,
+ cancellationRate: NA,
+ noShowRate: NA,
+ tasksDueToday: NA,
+ tasksOverdue: NA,
  };
 
  const actionWidgets = [
- { title:"Pending Reviews", count: 8, icon: <Clock className="w-5 h-5 text-yellow-500" />, color:"bg-yellow-50 border-yellow-200" },
- { title:"New Therapy Requests", count: 3, icon: <AlertTriangle className="w-5 h-5 text-orange-500" />, color:"bg-orange-50 border-orange-200" },
- { title:"Missing Coordinates", count: 4, icon: <MapPin className="w-5 h-5 text-red-500" />, color:"bg-red-50 border-red-200" },
- { title:"Missing Therapy Photos", count: 12, icon: <ImageIcon className="w-5 h-5 text-purple-500" />, color:"bg-purple-50 border-purple-200" },
+ { title:"Pending Reviews", count: NA, icon: <Clock className="w-5 h-5 text-yellow-500" />, color:"bg-yellow-50 border-yellow-200" },
+ { title:"New Therapy Requests", count: NA, icon: <AlertTriangle className="w-5 h-5 text-orange-500" />, color:"bg-orange-50 border-orange-200" },
+ { title:"Missing Coordinates", count: NA, icon: <MapPin className="w-5 h-5 text-red-500" />, color:"bg-red-50 border-red-200" },
+ { title:"Missing Therapy Photos", count: NA, icon: <ImageIcon className="w-5 h-5 text-purple-500" />, color:"bg-purple-50 border-purple-200" },
  ];
 
- const executionFeed = [
- { id: 1, clinic:"Lumina Aesthetics", service:"Botox", status:"Done", time:"10 mins ago" },
- { id: 2, clinic:"DermaCare Plus", service:"Laser Hair Removal", status:"Done", time:"45 mins ago" },
- { id: 3, clinic:"Glow Skin Clinic", service:"Chemical Peel", status:"Done", time:"2 hours ago" },
- ];
+ // No execution feed API yet: never show invented clinics.
+ const executionFeed: { id: number; clinic: string; service: string; status: string; time: string }[] = [];
 
  return (
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">

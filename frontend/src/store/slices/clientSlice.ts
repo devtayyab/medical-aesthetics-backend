@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction, Reducer } from"@reduxjs/toolkit";
 import { clinicsAPI, bookingAPI, loyaltyAPI } from"@/services/api";
-import type { RootState } from"@/store";
 import type {
  Clinic,
  Service,
@@ -177,16 +176,9 @@ export const createAppointment = createAsyncThunk("client/createAppointment",
 );
 
 export const fetchUserAppointments = createAsyncThunk("client/fetchUserAppointments",
- async (_, { getState, rejectWithValue }) => {
+ async (_, { rejectWithValue }) => {
  try {
- const state = getState() as RootState;
- console.log("fetchUserAppointments: Using accessToken:",
- state.auth.accessToken
- ? `${state.auth.accessToken.substring(0, 20)}...`
- :"missing"
- );
  const response = await bookingAPI.getUserAppointments();
- console.log("fetchUserAppointments: Response:", response.data);
  return response.data;
  } catch (error: any) {
  console.error("fetchUserAppointments: Error:",

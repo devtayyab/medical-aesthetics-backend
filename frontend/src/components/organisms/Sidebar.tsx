@@ -323,7 +323,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  'manager': '/crm/settings',
  'admin': '/crm/settings',
  'super_admin': '/crm/settings',
- 'doctor': '/crm/settings',
+ 'doctor': '/change-password',
+ 'secretariat': '/change-password',
  'client': '/settings'
  };
  if (routes[role]) navigate(routes[role]);

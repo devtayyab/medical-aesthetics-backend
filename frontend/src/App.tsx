@@ -15,7 +15,6 @@ import { Header } from"@/components/organisms/Header/Header";
 import { Footer } from"@/components/organisms/Footer/Footer";
 import { HomePage } from"@/pages/HomePage/HomePage";
 import { Booking } from"@/pages/Booking/Booking";
-import { Clinic } from"@/pages/ClinicPage/ClinicPage";
 import { Login } from"@/pages/Login/Login";
 import { Register } from"@/pages/Register/Register";
 import { ProtectedLayout } from"@/components/organisms/ProtectedLayout";
@@ -319,7 +318,8 @@ function AppContent() {
  <Routes>
  <Route path="/" element={<ClientLayout><HomePage /></ClientLayout>} />
  <Route path="/booking" element={<ClientLayout><Booking /></ClientLayout>} />
- <Route path="/clinicpage" element={<ClientLayout><Clinic /></ClientLayout>} />
+ {/* Old static mock page (fake reviews and prices): send visitors to the real search. */}
+ <Route path="/clinicpage" element={<Navigate to="/search" replace />} />
  <Route
  path="/login"
  element={
@@ -826,7 +826,7 @@ function AppContent() {
  <Route
  path="/crm/notifications"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <NotificationsCrm />
  </AdminLayout>
@@ -897,7 +897,7 @@ function AppContent() {
  <Route
  path="/crm/settings"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CrmSettings />
  </AdminLayout>

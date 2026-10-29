@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore, type UnknownAction } from '@reduxjs/toolkit';
 import authSlice from '@/store/slices/authSlice';
 import clinicsSlice from '@/store/slices/clinicsSlice';
 import bookingSlice from '@/store/slices/bookingSlice';
@@ -18,8 +18,7 @@ import uiSlice from '@/store/slices/uiSlice';
  * Combines domain-specific slices (auth, clinics, bookings, CRM, notifications, etc.)
  * Configured with custom serializable checks for external actions.
  */
-export const store = configureStore({
-  reducer: {
+const appReducer = combineReducers({
     auth: authSlice,
     clinics: clinicsSlice,
     booking: bookingSlice,
@@ -33,7 +32,20 @@ export const store = configureStore({
     messages: messagesSlice,
     dialer: dialerSlice,
     ui: uiSlice,
-  },
+});
+
+// On logout every slice goes back to its initial state, so the next person on this browser
+// never sees the previous user's appointments, basket or CRM data. Kept: the theme, and auth
+// (its own reducer clears it; its initial state was read from storage at page load).
+const rootReducer = (state: ReturnType<typeof appReducer> | undefined, action: UnknownAction) => {
+  if (state && (action.type === 'auth/logout/fulfilled' || action.type === 'auth/clearSessionLocally/fulfilled')) {
+    return appReducer({ auth: state.auth, ui: state.ui } as ReturnType<typeof appReducer>, action);
+  }
+  return appReducer(state, action);
+};
+
+export const store = configureStore({
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

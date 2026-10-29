@@ -192,18 +192,15 @@ const bookingSlice = createSlice({
  builder
  // Fetch availability
  .addCase(fetchAvailability.pending, (state) => {
- console.log('⏳ Fetching availability...');
  state.isLoading = true;
+ // Never show the previous date's (or clinic's) slots while, or after failing, loading.
+ state.availableSlots = [];
  state.error = null;
  state.availabilityReason = null;
  })
  .addCase(fetchAvailability.fulfilled, (state, action) => {
- console.log('✅ Availability fetched:', action.payload);
  // Backend returns { slots, count, reason?, debug? }
  const slots = action.payload?.slots || action.payload || [];
- const count = action.payload?.count || slots.length || 0;
- console.log('📊 Number of slots:', count);
- 
  state.isLoading = false;
  state.availableSlots = Array.isArray(slots) ? slots : [];
  state.availabilityReason = action.payload?.reason || null;
@@ -214,6 +211,10 @@ const bookingSlice = createSlice({
  state.error = action.error.message || (action.payload as string) || 'Failed to fetch availability';
  })
  // Hold slot
+ .addCase(holdTimeSlot.pending, (state) => {
+ // A hold belongs to one slot: drop the old one so a failed hold is never reused.
+ state.holdId = undefined;
+ })
  .addCase(holdTimeSlot.fulfilled, (state, action) => {
  state.holdId = action.payload.id;
  })

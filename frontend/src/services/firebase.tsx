@@ -58,7 +58,6 @@ export const initializeFirebase = async (
 
  // Handle foreground messages
  onMessage(messaging, (payload) => {
- console.log("Message received:", payload);
  const data = payload.data as any;
  const isCallAction = data?.trigger === 'DIALER_CALLBACK';
 

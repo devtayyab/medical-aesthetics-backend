@@ -51,13 +51,14 @@ const AppointmentsPage: React.FC = () => {
    };
  }, []);
 
- // Get clinicId from user context
+ // The clinic chosen in the layout switcher (profile is reloaded on every switch), then the
+ // user's own clinic.
  const userRole = user?.role?.toLowerCase();
  const clinicId = userRole === 'clinic_owner' 
- ? (user as any).ownedClinics?.[0]?.id 
- : (user as any).assignedClinicId;
+ ? (user as any)?.ownedClinics?.[0]?.id 
+ : (user as any)?.assignedClinicId;
  
- const activeClinicId = clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
+ const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
  const isPastDate = new Date(selectedDate) < new Date(new Date().toISOString().split('T')[0]);
 
  const refreshAppointments = () => {

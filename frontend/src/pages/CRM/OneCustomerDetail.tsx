@@ -20,6 +20,7 @@ import { Textarea } from"@/components/atoms/Textarea";
 
 import type { Lead, Customer, CustomerSummary, CommunicationLog, CrmAction } from"@/types";
 import type { RootState, AppDispatch } from"@/store";
+import { sanitizeHtml } from"@/utils/sanitizeHtml";
 import {
  fetchCustomerRecord,
  createAction,
@@ -1577,7 +1578,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
           <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
         </div>
         {item.data.body ? (
-          <div className="text-sm text-slate-700 leading-relaxed bg-[#ff7a59]/5 p-4 rounded-lg border border-[#ff7a59]/10 prose prose-sm max-w-none prose-p:my-1" dangerouslySetInnerHTML={{ __html: item.data.body }} />
+          <div className="text-sm text-slate-700 leading-relaxed bg-[#ff7a59]/5 p-4 rounded-lg border border-[#ff7a59]/10 prose prose-sm max-w-none prose-p:my-1" dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.body) }} />
         ) : (
           <div className="text-sm text-slate-400 italic">No detailed notes.</div>
         )}

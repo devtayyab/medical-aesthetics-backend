@@ -322,7 +322,7 @@ export const CRM: React.FC = () => {
  if (val.length > 2) {
  const filtered = leads.filter(l =>
  `${l.firstName} ${l.lastName}`.toLowerCase().includes(val.toLowerCase()) ||
- l.email.toLowerCase().includes(val.toLowerCase()) ||
+ (l.email || '').toLowerCase().includes(val.toLowerCase()) ||
  l.phone?.includes(val)
  ).slice(0, 5);
  setSearchResults(filtered);

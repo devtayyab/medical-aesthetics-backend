@@ -125,7 +125,6 @@ export const fetchCallLogs = async (params?: {
 };
 
 export const initiateCall = async (phone: string): Promise<{ ok: boolean; providerHint: string }> => {
- console.log('Initiating redial to:', phone);
  return {
  ok: false,
  providerHint:"Telephony integration pending. Target:" + phone,

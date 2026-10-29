@@ -5,6 +5,7 @@ import { css } from "@emotion/css";
 import { ChevronLeft, ChevronRight, Calendar, User, Tag, Clock, Sparkles, ArrowRight, ArrowUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/utils/imageUrl";
+import { sanitizeHtml } from "@/utils/sanitizeHtml";
 
 // Custom clinical hero visual
 import HeroBg from "@/assets/image copy.png";
@@ -289,7 +290,7 @@ export const BlogPost: React.FC = () => {
                 <div className="p-6 sm:p-10 md:p-16">
                   <div 
                     className={articleBody}
-                    dangerouslySetInnerHTML={{ __html: post.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
                   />
                   
                   <div className="mt-16 pt-8 border-t border-gray-200/60 flex flex-col md:flex-row items-center justify-between gap-6">
