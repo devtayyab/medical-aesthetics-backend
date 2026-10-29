@@ -110,6 +110,17 @@ export class UsersController {
   updateOwnProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
     // UpdateProfileDto omits role/clinic fields; the global whitelist pipe strips any
     // privileged fields a client tries to send, so this can no longer escalate roles.
+    // profile is a free JSON object: keep the server-managed keys (staff request, clinic ties)
+    // as they are, so a user cannot fake a pending staff request or a clinic link.
+    if (updateProfileDto.profile && typeof updateProfileDto.profile === 'object') {
+      const current = req.user?.profile || {};
+      const profile = { ...updateProfileDto.profile };
+      for (const key of ['staffRequest', 'ownerClinicIds', 'clinicPatientOf']) {
+        if (current[key] !== undefined) profile[key] = current[key];
+        else delete profile[key];
+      }
+      updateProfileDto.profile = profile;
+    }
     return this.usersService.update(req.user.id, updateProfileDto);
   }
 
