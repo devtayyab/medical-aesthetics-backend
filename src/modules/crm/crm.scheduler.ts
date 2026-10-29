@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { CrmService } from './crm.service';
 import { AdAttributionService } from './services/ad-attribution.service';
 
@@ -22,8 +22,8 @@ export class CrmScheduler implements OnModuleInit {
     }, 3000);
   }
 
-  // Every Monday at 08:00
-  @Cron(CronExpression.EVERY_WEEK)
+  // Every Monday at 08:00 (Athens). CronExpression.EVERY_WEEK is Sunday 00:00 server time.
+  @Cron('0 8 * * 1', { timeZone: 'Europe/Athens' })
   async sendWeeklyAgentReports() {
     try {
       const result = await this.crmService.sendWeeklyAgentReports();
@@ -33,8 +33,8 @@ export class CrmScheduler implements OnModuleInit {
     }
   }
 
-  // Every day at 03:00 AM
-  @Cron('0 3 * * *')
+  // Every day at 03:00 Athens
+  @Cron('0 3 * * *', { timeZone: 'Europe/Athens' })
   async syncAdCampaignMetrics() {
     try {
       this.logger.log('Starting daily ad campaign metrics sync...');

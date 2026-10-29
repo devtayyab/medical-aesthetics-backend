@@ -5780,7 +5780,25 @@ export class CrmService implements OnModuleInit {
    * Import every live form. Already-known Facebook lead ids are skipped, so
    * running it after an outage re-imports the missed leads without duplicates.
    */
+  // Guards against overlapping syncs (startup run, 30-min cron and the manual
+  // "import all" button). leads.facebookLeadId has no unique constraint, so two
+  // concurrent imports of the same form can insert the same lead twice.
+  private fbSyncRunning = false;
+
   async runFacebookSync(trigger: 'cron' | 'manual' | 'startup' = 'cron'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
+    if (this.fbSyncRunning) {
+      this.logger.warn(`Facebook sync (${trigger}) skipped: a previous sync is still running`);
+      return { formsChecked: 0, imported: 0, errors: [] };
+    }
+    this.fbSyncRunning = true;
+    try {
+      return await this.runFacebookSyncOnce(trigger);
+    } finally {
+      this.fbSyncRunning = false;
+    }
+  }
+
+  private async runFacebookSyncOnce(trigger: 'cron' | 'manual' | 'startup'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
     this.facebookService.clearApiErrors();
     const errors: string[] = [];
     let formsChecked = 0;
