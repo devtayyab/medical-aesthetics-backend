@@ -24,8 +24,8 @@ export class PaymentsController {
     async getMyWallet(@Req() req: any, @Query('limit') limit?: number, @Query('offset') offset?: number) {
         const ledger = await this.financialService.getLedger({
             clientId: req.user.id,
-            limit: limit || 50,
-            offset: offset || 0,
+            limit: Math.min(Math.max(Number(limit) || 50, 1), 200),
+            offset: Math.max(Number(offset) || 0, 0),
         });
         // Client view: no staff contact details, no internal notes, no clinic bank details
         return {

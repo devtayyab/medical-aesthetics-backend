@@ -127,7 +127,8 @@ export class MailService {
     }
 
     // Development fallback: nothing configured at all
-    this.logger.warn(`[DEV MODE - EMAIL NOT SENT] To: ${to} | Subject: ${subject}\nText: ${text}`);
+    // Never log the body: it can carry password-reset links and login codes.
+    this.logger.warn(`[DEV MODE - EMAIL NOT SENT] Subject: ${subject}`);
     return { messageId: `mock-dev-${Date.now()}` };
   }
 

@@ -62,7 +62,9 @@ export class MessagesController {
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
     ) {
-        const messages: any[] = await this.messagesService.getMessages(req.user.id, id, limit, offset);
+        const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+        const safeOffset = Math.max(Number(offset) || 0, 0);
+        const messages: any[] = await this.messagesService.getMessages(req.user.id, id, safeLimit, safeOffset);
         return isClient(req.user)
             ? messages.map((m) => ({ ...m, sender: stripUserPersonalData(m.sender) }))
             : messages;

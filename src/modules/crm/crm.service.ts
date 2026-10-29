@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef, HttpException } from '@nestjs/common';
 import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal } from '../payments/revenue.util';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -463,9 +463,9 @@ export class CrmService implements OnModuleInit {
   private async countClientAppointments(clientId: string): Promise<{ completed: number; active: number }> {
     const row = await this.appointmentsRepository
       .createQueryBuilder('a')
-      .select("SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
+      .select("SUM(CASE WHEN UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
       .addSelect(
-        "SUM(CASE WHEN UPPER(a.status) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
+        "SUM(CASE WHEN UPPER(a.status::text) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
         'active',
       )
       .where('a.clientId = :clientId', { clientId })
@@ -599,7 +599,6 @@ export class CrmService implements OnModuleInit {
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
     console.log('🚀 [CrmService] scheduleRecurringAppointment request received');
-    console.log('Payload Data:', JSON.stringify(data, null, 2));
 
     const { customerId, serviceId, frequency, clinicId, startDate, providerId, bookedById } = data;
 
@@ -692,7 +691,7 @@ export class CrmService implements OnModuleInit {
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException(error.message || 'An unexpected error occurred while scheduling recurring appointments');
+      throw new BadRequestException(error instanceof HttpException ? error.message : 'An unexpected error occurred while scheduling recurring appointments');
     }
   }
 
@@ -1523,7 +1522,7 @@ export class CrmService implements OnModuleInit {
         throw error;
       }
       this.logger.error(`[findById] Unexpected error fetching lead ${id}: ${error.message}`, error.stack);
-      throw new BadRequestException(`Error fetching lead details: ${error.message}`);
+      throw new BadRequestException('Error fetching lead details');
     }
   }
 
@@ -5781,7 +5780,25 @@ export class CrmService implements OnModuleInit {
    * Import every live form. Already-known Facebook lead ids are skipped, so
    * running it after an outage re-imports the missed leads without duplicates.
    */
+  // Guards against overlapping syncs (startup run, 30-min cron and the manual
+  // "import all" button). leads.facebookLeadId has no unique constraint, so two
+  // concurrent imports of the same form can insert the same lead twice.
+  private fbSyncRunning = false;
+
   async runFacebookSync(trigger: 'cron' | 'manual' | 'startup' = 'cron'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
+    if (this.fbSyncRunning) {
+      this.logger.warn(`Facebook sync (${trigger}) skipped: a previous sync is still running`);
+      return { formsChecked: 0, imported: 0, errors: [] };
+    }
+    this.fbSyncRunning = true;
+    try {
+      return await this.runFacebookSyncOnce(trigger);
+    } finally {
+      this.fbSyncRunning = false;
+    }
+  }
+
+  private async runFacebookSyncOnce(trigger: 'cron' | 'manual' | 'startup'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
     this.facebookService.clearApiErrors();
     const errors: string[] = [];
     let formsChecked = 0;

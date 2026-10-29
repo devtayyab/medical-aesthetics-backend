@@ -158,7 +158,7 @@ export class ClinicPatientsService {
       `SELECT u.id AS "appointment_clientId", u."firstName" AS firstname, u."lastName" AS lastname,
               u.email AS clientemail, u.phone AS clientphone, u."createdAt" AS createdat,
               COUNT(a.id) AS totalvisits,
-              COALESCE(SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN COALESCE(NULLIF(a."amountPaid", 0), a."totalAmount", 0) ELSE COALESCE(a."amountPaid", 0) END), 0) AS totalspent,
+              COALESCE(SUM(CASE WHEN UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED') THEN COALESCE(NULLIF(a."amountPaid", 0), a."totalAmount", 0) ELSE COALESCE(a."amountPaid", 0) END), 0) AS totalspent,
               MAX(a."startTime") AS lastvisit
          FROM users u
          LEFT JOIN appointments a ON a."clientId" = u.id AND ${aptScope}
