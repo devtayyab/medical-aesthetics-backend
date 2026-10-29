@@ -553,17 +553,26 @@ export class BookingsService {
 
     // Single-use Gift Card Invalidation
     if (validGiftCard) {
-      const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
-      const card = await giftCardRepo.findOne({ where: { id: validGiftCard.id } });
-      if (card) {
-        card.isActive = false;
-        card.balance = 0;
-        card.redeemedByUserId = clientId;
-        card.redeemedAt = new Date();
-        card.redeemedAppointmentId = savedAppointment.id;
-        await giftCardRepo.save(card);
-        console.log(`✅ [BookingsService] Gift Card ${card.code} redeemed and marked as inactive.`);
+      // Atomic claim: only succeeds while the card is still active. Two parallel bookings with
+      // the same code both pass validateGiftCard(), but only one can flip isActive here, so the
+      // card cannot be spent twice.
+      const claim = await this.appointmentsRepository.manager
+        .createQueryBuilder()
+        .update('GiftCard')
+        .set({
+          isActive: false,
+          balance: 0,
+          redeemedByUserId: clientId,
+          redeemedAt: new Date(),
+          redeemedAppointmentId: savedAppointment.id,
+        })
+        .where('id = :id AND "isActive" = true', { id: validGiftCard.id })
+        .execute();
+      if (!claim.affected) {
+        await this.appointmentsRepository.delete(savedAppointment.id);
+        throw new ConflictException('This gift card has already been used.');
       }
+      console.log(`✅ [BookingsService] Gift Card ${validGiftCard.id} redeemed and marked as inactive.`);
     }
 
     // The confirmation-call CRM task is created by the CRM listener on 'appointment.created'
@@ -596,6 +605,12 @@ export class BookingsService {
         const hasBasicAuth = vivaMerchantId && vivaApiKey && vivaMerchantId !== 'your-viva-merchant-id';
 
         if (!hasOAuth && !hasBasicAuth) {
+          // Never auto-confirm an unpaid card booking in production because credentials are missing.
+          if (process.env.NODE_ENV === 'production') {
+            await this.releaseGiftCardClaim(savedAppointment.id, validGiftCard);
+            await this.appointmentsRepository.delete(savedAppointment.id);
+            throw new BadRequestException('Card payments are temporarily unavailable. Please choose another payment method.');
+          }
           console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
           const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
           const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
@@ -630,7 +645,9 @@ export class BookingsService {
       } catch (err) {
         // Log the full error details so we can debug
         console.error('[Viva Wallet] Order creation FAILED:', err?.response?.data || err?.message || err);
-        // Delete the saved appointment since payment setup failed
+        // Delete the saved appointment since payment setup failed, and give back the gift card
+        // it had claimed so the client does not lose it.
+        await this.releaseGiftCardClaim(savedAppointment.id, validGiftCard);
         await this.appointmentsRepository.delete(savedAppointment.id);
         throw new BadRequestException(
           `Payment setup failed: ${err?.message || 'Could not connect to Viva Wallet. Please verify VIVA_CLIENT_ID and VIVA_CLIENT_SECRET in .env'}`
@@ -669,6 +686,23 @@ export class BookingsService {
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
     return `${serviceName} with ${providerName}`;
+  }
+
+  // Undo a gift card claim made by an appointment that is being rolled back.
+  private async releaseGiftCardClaim(appointmentId: string, giftCard: { id: string; balance: number } | null): Promise<void> {
+    if (!giftCard) return;
+    await this.appointmentsRepository.manager
+      .createQueryBuilder()
+      .update('GiftCard')
+      .set({
+        isActive: true,
+        balance: giftCard.balance,
+        redeemedByUserId: null,
+        redeemedAt: null,
+        redeemedAppointmentId: null,
+      })
+      .where('id = :id AND "redeemedAppointmentId" = :appointmentId', { id: giftCard.id, appointmentId })
+      .execute();
   }
 
   // Generate a Viva Wallet payment URL for an existing pending_payment appointment
@@ -1984,7 +2018,25 @@ export class BookingsService {
           if (giftCard && giftCard.valid) {
             const discount = Math.min(giftCard.balance, paymentData.amount);
             console.log(`[BookingsService] Redeeming Gift Card ${giftCardCode} for amount ${discount}`);
-            
+
+            // Atomically debit the card first (only if it still holds enough), so two parallel
+            // completions cannot both spend the same balance.
+            const debit = await this.appointmentsRepository.manager
+              .createQueryBuilder()
+              .update('GiftCard')
+              .set({
+                balance: () => 'GREATEST(0, "balance" - :discount)',
+                isActive: () => '("balance" - :discount) > 0',
+                redeemedByUserId: appointment.clientId,
+                redeemedAt: new Date(),
+                redeemedAppointmentId: appointment.id,
+              })
+              .where('id = :id AND "isActive" = true AND "balance" >= :discount', { id: giftCard.id, discount })
+              .execute();
+            if (!debit.affected) {
+              throw new Error('Gift card balance changed concurrently; not redeemed');
+            }
+
             // Record Gift Card Payment explicitly
             await this.financialService.recordPayment({
               appointmentId: appointment.id,
@@ -1997,20 +2049,6 @@ export class BookingsService {
               notes: `Gift Card Redeemed: Code ${giftCardCode}`,
               recordedById: userId,
             });
-
-            // Update Gift Card Status
-            const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
-            const card = await giftCardRepo.findOne({ where: { id: giftCard.id } });
-            if (card) {
-              card.balance = Math.max(0, Number(card.balance) - discount);
-              if (card.balance <= 0) {
-                card.isActive = false;
-              }
-              card.redeemedByUserId = appointment.clientId;
-              card.redeemedAt = new Date();
-              card.redeemedAppointmentId = appointment.id;
-              await giftCardRepo.save(card);
-            }
 
             // Reduce remaining amount for the rest of the logic
             paymentData.amount = Math.max(0, paymentData.amount - discount);

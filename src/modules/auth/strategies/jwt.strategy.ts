@@ -4,6 +4,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
 import { ACCESS_COOKIE, readCookie } from '../auth-cookies';
+import { resolveJwtSecret } from '../../../common/utils/jwt-secret.util';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -18,8 +19,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         (req: any) => readCookie(req, ACCESS_COOKIE),
       ]),
       ignoreExpiration: false,
-      // NOTE: hardcoded fallback kept intentionally for the testing phase. Remove before production.
-      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET') || configService.get<string>('JWT_SECRET') || 'medical-aesthetics-secret-key',
+      // Dev fallback only; startup fails in production when the secret is missing.
+      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET') || configService.get<string>('JWT_SECRET') || resolveJwtSecret('JWT_ACCESS_SECRET', 'JWT_SECRET'),
     });
   }
 

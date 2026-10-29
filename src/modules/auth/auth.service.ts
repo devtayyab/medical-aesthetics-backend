@@ -10,6 +10,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { ClinicsService } from "../clinics/clinics.service";
 import { UserRole } from "../../common/enums/user-role.enum";
 import { LoyaltyService } from "../loyalty/loyalty.service";
+import { resolveJwtSecret } from "../../common/utils/jwt-secret.util";
 import { BookingsService } from "../bookings/bookings.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationTrigger } from "../../common/enums/notification-trigger.enum";
@@ -122,7 +123,7 @@ export class AuthService {
   // ---------------------------------------------------------------------------
 
   private hashCode(userId: string, code: string): string {
-    const secret = process.env.JWT_SECRET || "medical-aesthetics-secret-key";
+    const secret = resolveJwtSecret("JWT_SECRET", "JWT_ACCESS_SECRET");
     return createHmac("sha256", secret).update(`${userId}:${code}`).digest("hex");
   }
 

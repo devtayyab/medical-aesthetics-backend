@@ -111,6 +111,11 @@ export class VivaWalletService {
     }
 
     async verifyTransaction(transactionId: string): Promise<any> {
+        // Viva transaction ids are UUIDs. Reject anything else so a caller-supplied id can never
+        // rewrite the authenticated request path (e.g. "../../something").
+        if (typeof transactionId !== 'string' || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(transactionId)) {
+            return null;
+        }
         try {
             const authHeader = await this.getAuthHeader();
             const response = await axios.get(

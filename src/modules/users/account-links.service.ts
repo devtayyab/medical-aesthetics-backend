@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash } from 'crypto';
 import { User } from './entities/user.entity';
 import { MailService } from '../notifications/services/mail.service';
+import { resolveJwtSecret } from '../../common/utils/jwt-secret.util';
 
 export type PasswordTokenPurpose = 'password_reset' | 'password_set';
 
@@ -29,7 +30,7 @@ export class AccountLinksService {
 
   // Same secret the auth module uses for its default JwtService.
   private get secret(): string {
-    return process.env.JWT_SECRET || 'medical-aesthetics-secret-key';
+    return resolveJwtSecret('JWT_SECRET', 'JWT_ACCESS_SECRET');
   }
 
   get frontendUrl(): string {

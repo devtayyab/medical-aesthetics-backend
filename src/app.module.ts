@@ -28,6 +28,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
 import { HubspotModule } from './modules/hubspot/hubspot.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { resolveJwtSecret } from './common/utils/jwt-secret.util';
 import { join } from 'path';
 
 @Module({
@@ -50,7 +51,7 @@ import { join } from 'path';
     ScheduleModule.forRoot(),
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
+      secret: resolveJwtSecret('JWT_SECRET', 'JWT_ACCESS_SECRET'),
       signOptions: { expiresIn: '1d' },
     }),
 
@@ -74,6 +75,14 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'uploads'),
       serveRoot: '/api/uploads',
+      serveStaticOptions: {
+        // User uploads: never let the browser sniff them into HTML/script, and sandbox anything
+        // that is opened directly so it cannot run script on our origin.
+        setHeaders: (res) => {
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+        },
+      },
     }),
   ],
   controllers: [AppController],

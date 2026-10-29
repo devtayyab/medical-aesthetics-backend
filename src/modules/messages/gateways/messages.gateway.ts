@@ -10,10 +10,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { resolveJwtSecret } from '../../../common/utils/jwt-secret.util';
 
 // NOTE: same fallback chain as JwtStrategy (testing phase); remove the hardcoded fallback before production.
 // Read at connect time: .env is loaded by ConfigModule after this file is imported.
-const accessSecret = () => process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'medical-aesthetics-secret-key';
+const accessSecret = () => resolveJwtSecret('JWT_ACCESS_SECRET', 'JWT_SECRET');
 
 interface AuthenticatedSocket extends Socket {
     userId?: string;

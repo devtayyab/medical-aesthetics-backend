@@ -264,7 +264,7 @@ export class GoogleCalendarService {
       this.logger.warn(`Webhook for unknown channel ${headers.channelId}`);
       return;
     }
-    if (connection.watchToken && headers.token !== connection.watchToken) {
+    if (!connection.watchToken || headers.token !== connection.watchToken) {
       this.logger.warn(`Webhook token mismatch for channel ${headers.channelId}`);
       return;
     }

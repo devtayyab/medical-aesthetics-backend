@@ -85,21 +85,36 @@ export class LoyaltyService {
       throw new BadRequestException('Points to redeem must be a positive whole number');
     }
 
-    const balance = await this.getClientBalance(clientId, clinicId);
+    // Serialise redemptions per client inside one DB transaction (transaction-scoped advisory
+    // lock), so two parallel requests cannot both pass the balance check and overspend.
+    const { balance, savedEntry } = await this.ledgerRepository.manager.transaction(async (em) => {
+      await em.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`loyalty:${clientId}`]);
 
-    if (balance.totalPoints < points) {
-      throw new BadRequestException('Insufficient points balance');
-    }
+      let balanceQuery = em
+        .getRepository(LoyaltyLedger)
+        .createQueryBuilder('ledger')
+        .select('SUM(ledger.points)', 'totalPoints')
+        .where('ledger.clientId = :clientId', { clientId })
+        .andWhere('(ledger.expiresAt IS NULL OR ledger.expiresAt > NOW())');
+      if (clinicId) {
+        balanceQuery = balanceQuery.andWhere('ledger.clinicId = :clinicId', { clinicId });
+      }
+      const totalPoints = parseInt((await balanceQuery.getRawOne())?.totalPoints) || 0;
 
-    const ledgerEntry = this.ledgerRepository.create({
-      clientId,
-      clinicId,
-      points: -points, // Negative for redemption
-      transactionType: 'redeemed',
-      description,
+      if (totalPoints < points) {
+        throw new BadRequestException('Insufficient points balance');
+      }
+
+      const ledgerEntry = em.getRepository(LoyaltyLedger).create({
+        clientId,
+        clinicId,
+        points: -points, // Negative for redemption
+        transactionType: 'redeemed',
+        description,
+      });
+
+      return { balance: { totalPoints }, savedEntry: await em.getRepository(LoyaltyLedger).save(ledgerEntry) };
     });
-
-    const savedEntry = await this.ledgerRepository.save(ledgerEntry);
 
     this.eventEmitter.emit('audit.log', {
       userId: recordedById,
