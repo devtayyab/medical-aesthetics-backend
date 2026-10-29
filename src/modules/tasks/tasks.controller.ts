@@ -57,8 +57,13 @@ export class TasksController {
     // If no specific assignee filter, show user's own tasks, except for admin/super admin
     const isAdminLike =
       req.user.role === 'admin' || req.user.role === 'SUPER_ADMIN';
+    // Same rule as single-task access: only admins/managers may read someone else's tasks.
+    const isPrivileged = ['admin', 'SUPER_ADMIN', 'manager'].includes(req.user?.role);
 
     if (!filters.assigneeId && !isAdminLike) {
+      filters.assigneeId = req.user.id;
+    }
+    if (!isPrivileged) {
       filters.assigneeId = req.user.id;
     }
 
