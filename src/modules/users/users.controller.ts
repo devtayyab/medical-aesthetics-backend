@@ -57,7 +57,10 @@ export class UsersController {
     // their own patients through /clinic/patients, never the platform-wide client list.
     const isClinicAccount = [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT]
       .some((r) => r === String(req.user?.role || '').toLowerCase());
-    return this.usersService.findAll({ ...query, excludeClients: isClinicAccount });
+    // Cap page size so one request cannot dump the whole users table.
+    const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 500);
+    const offset = Math.max(Number(query.offset) || 0, 0);
+    return this.usersService.findAll({ ...query, limit, offset, excludeClients: isClinicAccount });
   }
 
   @Post()
