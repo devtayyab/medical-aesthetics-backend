@@ -10,6 +10,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { resolveJwtSecret } from '../../common/utils/jwt-secret.util';
 
 @Module({
   imports: [
@@ -20,9 +21,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     NotificationsModule,
     PassportModule,
     JwtModule.register({
-      // NOTE: hardcoded fallback kept intentionally for the testing phase.
-      // TODO(security): remove the fallback and fail fast before production.
-      secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
+      // Dev fallback only; startup fails in production when the secret is missing.
+      secret: resolveJwtSecret('JWT_SECRET', 'JWT_ACCESS_SECRET'),
       signOptions: { expiresIn: '1d' },
     }),
   ],

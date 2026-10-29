@@ -28,6 +28,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
 import { HubspotModule } from './modules/hubspot/hubspot.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { resolveJwtSecret } from './common/utils/jwt-secret.util';
 import { join } from 'path';
 
 @Module({
@@ -50,7 +51,7 @@ import { join } from 'path';
     ScheduleModule.forRoot(),
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
+      secret: resolveJwtSecret('JWT_SECRET', 'JWT_ACCESS_SECRET'),
       signOptions: { expiresIn: '1d' },
     }),
 

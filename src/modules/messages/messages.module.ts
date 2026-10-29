@@ -6,6 +6,7 @@ import { ConversationParticipant } from './entities/conversation-participant.ent
 import { MessagesService } from './messages.service';
 import { MessagesController } from './messages.controller';
 import { User } from '../users/entities/user.entity';
+import { resolveJwtSecret } from '../../common/utils/jwt-secret.util';
 import { JwtModule } from '@nestjs/jwt';
 import { MessagesGateway } from './gateways/messages.gateway';
 
@@ -13,8 +14,8 @@ import { MessagesGateway } from './gateways/messages.gateway';
     imports: [
         TypeOrmModule.forFeature([Conversation, Message, ConversationParticipant, User]),
         JwtModule.register({
-            // NOTE: hardcoded fallback kept intentionally for the testing phase. Remove before production.
-            secret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
+            // Dev fallback only; startup fails in production when the secret is missing.
+            secret: resolveJwtSecret('JWT_ACCESS_SECRET', 'JWT_SECRET'),
             signOptions: { expiresIn: '1d' },
         }),
     ],
