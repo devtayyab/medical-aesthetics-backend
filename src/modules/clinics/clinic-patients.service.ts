@@ -82,6 +82,15 @@ export class ClinicPatientsService {
     return [...ids];
   }
 
+  /** Throws unless a clinic account works for this clinic. Other roles are not limited here. */
+  async assertClinicAccess(userId: string, role: string, clinicId?: string | null): Promise<void> {
+    if (!this.isClinicRole(role)) return;
+    const allowed = await this.resolveClinicIds(userId, role);
+    if (!clinicId || !allowed || !allowed.includes(String(clinicId))) {
+      throw new ForbiddenException('You do not have access to this clinic');
+    }
+  }
+
   /** Clinic ids to use for a request: the requested one (if allowed) or all of the user's clinics. */
   private async scopeClinicIds(userId: string, role: string, requestedClinicId?: string): Promise<string[] | null> {
     const allowed = await this.resolveClinicIds(userId, role);
@@ -226,7 +235,7 @@ export class ClinicPatientsService {
   }
 
   /** Throws unless the client is a patient of one of the user's clinics. */
-  private async assertOwnPatient(userId: string, role: string, clientId: string): Promise<string[] | null> {
+  async assertOwnPatient(userId: string, role: string, clientId: string): Promise<string[] | null> {
     const clinicIds = await this.resolveClinicIds(userId, role);
     if (clinicIds === null) return null;
     if (clinicIds.length === 0) throw new ForbiddenException('No clinic is assigned to your account');
