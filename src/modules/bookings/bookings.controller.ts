@@ -148,12 +148,12 @@ export class BookingsController {
       console.error('❌ [BookingsController] Create Appointment Error:', {
         message: error.message,
         response: error.response,
+        // Only ID presence: the DTO carries clientDetails (name, email, phone).
         payload: {
-          ...createAppointmentDto,
-          // Mask sensitive details but show ID presence
           clientId: !!createAppointmentDto.clientId,
           clinicId: !!createAppointmentDto.clinicId,
           serviceId: !!createAppointmentDto.serviceId,
+          hasClientDetails: !!createAppointmentDto.clientDetails,
         }
       });
       throw error;

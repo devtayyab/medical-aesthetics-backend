@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef, HttpException } from '@nestjs/common';
 import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal } from '../payments/revenue.util';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -691,7 +691,7 @@ export class CrmService implements OnModuleInit {
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException(error.message || 'An unexpected error occurred while scheduling recurring appointments');
+      throw new BadRequestException(error instanceof HttpException ? error.message : 'An unexpected error occurred while scheduling recurring appointments');
     }
   }
 
@@ -1522,7 +1522,7 @@ export class CrmService implements OnModuleInit {
         throw error;
       }
       this.logger.error(`[findById] Unexpected error fetching lead ${id}: ${error.message}`, error.stack);
-      throw new BadRequestException(`Error fetching lead details: ${error.message}`);
+      throw new BadRequestException('Error fetching lead details');
     }
   }
 

@@ -1,5 +1,5 @@
 import { RecordPaymentDto } from '../clinics/dto/clinic.dto';
-import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import {
@@ -305,16 +305,15 @@ export class BookingsService {
                 userExists = retryUser;
                 console.log('⚠️ [BookingsService] createCustomer failed, but found existing user on retry:', retryUser.id);
               } else {
-                throw new BadRequestException(`Failed to create guest record: ${createErr.message}`);
+                // Only surface our own HTTP error messages; raw DB errors leak schema details.
+                throw new BadRequestException(createErr instanceof HttpException ? `Failed to create guest record: ${createErr.message}` : 'Failed to create guest record');
               }
             }
           } else {
             console.error('❌ [BookingsService] Client identification failed. Details:', {
               clientId,
-              receivedDto: {
-                ...createAppointmentDto,
-                // Mask sensitive info if needed, but here we need to see what's actually there
-              }
+              clinicId: createAppointmentDto.clinicId,
+              serviceId: createAppointmentDto.serviceId,
             });
             throw new NotFoundException(`Client not found as User or Lead: ${clientId}. Please ensure client details are provided for guest bookings.`);
           }
@@ -322,7 +321,7 @@ export class BookingsService {
       } catch (e) {
         if (e instanceof NotFoundException || e instanceof BadRequestException) throw e;
         console.error('Lead lookup/conversion failed:', e);
-        throw new BadRequestException(`Client identification failed: ${e.message}`);
+        throw new BadRequestException(e instanceof HttpException ? `Client identification failed: ${e.message}` : 'Client identification failed');
       }
     }
 
