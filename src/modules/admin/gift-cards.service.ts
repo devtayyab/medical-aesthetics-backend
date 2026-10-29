@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -56,6 +56,11 @@ export class GiftCardsService {
     }
 
     async generateGiftCard(adminId: string, data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: Date }) {
+        const amount = Number(data?.amount);
+        if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
+            throw new BadRequestException('Gift card amount must be greater than €0 and at most €10,000');
+        }
+        data = { ...data, amount: Math.round(amount * 100) / 100 };
         const code = crypto.randomBytes(4).toString('hex').toUpperCase() + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
         const giftCard = this.giftCardRepository.create({
