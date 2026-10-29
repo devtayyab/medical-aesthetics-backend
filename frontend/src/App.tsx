@@ -826,7 +826,7 @@ function AppContent() {
  <Route
  path="/crm/notifications"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <NotificationsCrm />
  </AdminLayout>
@@ -897,7 +897,7 @@ function AppContent() {
  <Route
  path="/crm/settings"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CrmSettings />
  </AdminLayout>
