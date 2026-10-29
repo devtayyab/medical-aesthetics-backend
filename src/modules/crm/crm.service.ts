@@ -697,16 +697,18 @@ export class CrmService implements OnModuleInit {
   }
 
   async verifyWebhook(mode: string, verifyToken: string, challenge: string): Promise<string> {
-    const WEBHOOK_VERIFY_TOKEN = this.configService.get<string>('FACEBOOK_WEBHOOK_VERIFY_TOKEN') || 'my_secure_verify_token';
+    // No hard-coded default: a guessable token would let anyone subscribe/verify our endpoint.
+    const WEBHOOK_VERIFY_TOKEN = this.configService.get<string>('FACEBOOK_WEBHOOK_VERIFY_TOKEN');
 
-    this.logger.log(`Received Webhook Verification Request: Mode=${mode}, Token=${verifyToken}`);
+    this.logger.log(`Received Webhook Verification Request: Mode=${mode}`);
 
-    if (mode === 'subscribe' && verifyToken === WEBHOOK_VERIFY_TOKEN) {
+    if (WEBHOOK_VERIFY_TOKEN && mode === 'subscribe' && verifyToken === WEBHOOK_VERIFY_TOKEN) {
       this.logger.log('Webhook verified successfully');
       return challenge;
     }
 
-    this.logger.warn(`Webhook verification failed. Expected '${WEBHOOK_VERIFY_TOKEN}', got '${verifyToken}'`);
+    // Never log the expected token.
+    this.logger.warn('Webhook verification failed (token mismatch or FACEBOOK_WEBHOOK_VERIFY_TOKEN not set)');
     throw new ForbiddenException('Invalid verify token');
   }
 
