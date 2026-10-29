@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,8 @@ import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { PaymentRecord, PaymentStatus, PaymentType } from '../payments/entities/payment-record.entity';
+import { buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { Lead } from '../crm/entities/lead.entity';
 import { Treatment } from '../clinics/entities/treatment.entity';
 import { TreatmentCategory } from '../clinics/entities/treatment-category.entity';
@@ -24,6 +27,15 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { TreatmentStatus } from '../clinics/enums/treatment-status.enum';
+import { UsersService } from '../users/users.service';
+import { AccountLinksService } from '../users/account-links.service';
+import { UserRole } from '../../common/enums/user-role.enum';
+
+// Statuses that mean a lead / task is still being worked on (item 48: reassigned on deactivation).
+const CLOSED_LEAD_STATUSES = ['converted', 'lost', 'merged'];
+const OPEN_TASK_STATUSES = ['pending', 'in_progress'];
+// Roles that can own leads and tasks.
+const ASSIGNABLE_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class AdminService {
@@ -61,6 +73,8 @@ export class AdminService {
     private clinicsService: ClinicsService,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
+    private usersService: UsersService,
+    private accountLinks: AccountLinksService,
   ) { }
 
   private resolveDateRange(dateRange?: { startDate?: string; endDate?: string }) {
@@ -69,19 +83,23 @@ export class AdminService {
       return { startDate: new Date(dateRange.startDate), endDate: new Date(dateRange.endDate) };
     }
 
-    // Default to Month-To-Date (UTC-ish; stored as timestamptz)
-    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+    // Default to Month-To-Date in Europe/Athens
+    const monthStart = formatInTimeZone(now, 'Europe/Athens', 'yyyy-MM-01');
+    const startDate = fromZonedTime(`${monthStart}T00:00:00`, 'Europe/Athens');
     const endDate = now;
     return { startDate, endDate };
   }
 
   private paymentNetExpression(alias = 'p') {
-    // Net turnover: payments/deposits add, refunds/voids subtract
-    return `SUM(CASE
-      WHEN ${alias}.type IN ('${PaymentType.PAYMENT}', '${PaymentType.DEPOSIT}') THEN ${alias}.amount
-      WHEN ${alias}.type IN ('${PaymentType.REFUND}', '${PaymentType.VOID}') THEN -${alias}.amount
-      ELSE 0
-    END)`;
+    // Net turnover: payments/deposits add, refunds/voids subtract (shared definition).
+    return netPaidExpression(alias);
+  }
+
+  /** Revenue MTD (Athens month) from payments: the same figure every revenue page shows. */
+  async getRevenueSummary(dateRange?: { startDate?: string; endDate?: string }) {
+    const { startDate, endDate } = this.resolveDateRange(dateRange);
+    const total = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, { startDate, endDate });
+    return { total, currency: 'EUR', period: { startDate: startDate.toISOString(), endDate: endDate.toISOString() } };
   }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
@@ -101,8 +119,7 @@ export class AdminService {
   }
 
   async getReports(): Promise<any> {
-    // This would contain complex analytics queries
-    // For now, return mock data structure
+    const revenue = await this.getRevenueSummary();
     return {
       leadsToConversions: {
         totalLeads: 0,
@@ -110,8 +127,9 @@ export class AdminService {
         conversionRate: 0,
       },
       revenueStats: {
-        totalRevenue: 0,
-        monthlyRevenue: 0,
+        // Month-to-date net paid revenue (EUR) from payments.
+        totalRevenue: revenue.total,
+        monthlyRevenue: revenue.total,
         averageAppointmentValue: 0,
       },
       appointmentStats: {
@@ -165,6 +183,8 @@ export class AdminService {
   // User Management
   async getAllUsers(query?: { role?: string; isActive?: boolean; search?: string; limit?: number; offset?: number }): Promise<any> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
+    // Pending clinic staff requests are listed separately (GET /admin/staff-requests).
+    queryBuilder.andWhere(`COALESCE(user.profile::jsonb #>> '{staffRequest,status}', '') <> 'pending'`);
 
     if (query?.role) {
       queryBuilder.andWhere('user.role = :role', { role: query.role });
@@ -366,12 +386,191 @@ export class AdminService {
     return updated;
   }
 
-  async changeUserPassword(id: string, newPassword: string): Promise<void> {
+  /**
+   * Admin password reset (item 69): same rule as registration/reset (min 8), hashed once,
+   * clears any lockout so the new password works immediately, and ends old sessions.
+   */
+  async changeUserPassword(id: string, newPassword: string): Promise<{ message: string }> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
-    const salt = await bcrypt.genSalt();
-    const passwordHash = await bcrypt.hash(newPassword, salt);
-    await this.usersRepository.update(id, { passwordHash });
+    await this.usersService.setPassword(id, newPassword);
+    return { message: 'Password updated. The user can log in with the new password now.' };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deactivate / Reactivate (item 48)
+  // ---------------------------------------------------------------------------
+
+  async getUserOpenWork(id: string): Promise<{ leads: number; tasks: number }> {
+    const [leadRow] = await this.usersRepository.query(
+      `SELECT COUNT(*)::int AS count FROM "leads" WHERE "assignedSalesId" = $1 AND COALESCE("status"::text, '') <> ALL($2::text[])`,
+      [id, CLOSED_LEAD_STATUSES],
+    );
+    const [taskRow] = await this.usersRepository.query(
+      `SELECT COUNT(*)::int AS count FROM "tasks" WHERE "assigneeId" = $1 AND "status"::text = ANY($2::text[])`,
+      [id, OPEN_TASK_STATUSES],
+    );
+    return { leads: leadRow?.count || 0, tasks: taskRow?.count || 0 };
+  }
+
+  async deactivateUser(
+    id: string,
+    actorId: string,
+    reassignToUserId?: string | null,
+  ): Promise<{ user: User; reassigned: { leads: number; tasks: number }; reassignedTo?: string }> {
+    if (id === actorId) {
+      throw new BadRequestException('You cannot deactivate your own account.');
+    }
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const openWork = await this.getUserOpenWork(id);
+    const hasOpenWork = openWork.leads + openWork.tasks > 0;
+    let reassignedTo: string | undefined;
+
+    if (hasOpenWork) {
+      if (!reassignToUserId) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'REASSIGN_REQUIRED',
+          message: `Choose who takes over ${openWork.leads} open lead(s) and ${openWork.tasks} open task(s).`,
+          openWork,
+        });
+      }
+      if (reassignToUserId === id) {
+        throw new BadRequestException('Choose another person to take over the open work.');
+      }
+      const target = await this.usersRepository.findOne({ where: { id: reassignToUserId } });
+      if (!target || !target.isActive || !ASSIGNABLE_ROLES.includes(target.role)) {
+        throw new BadRequestException('The new owner must be an active salesperson or admin.');
+      }
+      await this.usersRepository.query(
+        `UPDATE "leads" SET "assignedSalesId" = $1 WHERE "assignedSalesId" = $2 AND COALESCE("status"::text, '') <> ALL($3::text[])`,
+        [target.id, id, CLOSED_LEAD_STATUSES],
+      );
+      await this.usersRepository.query(
+        `UPDATE "tasks" SET "assigneeId" = $1 WHERE "assigneeId" = $2 AND "status"::text = ANY($3::text[])`,
+        [target.id, id, OPEN_TASK_STATUSES],
+      );
+      reassignedTo = target.id;
+    }
+
+    // isActive=false blocks login and every existing token at once (JwtStrategy checks it);
+    // clearing the refresh token ends the session for good.
+    await this.usersRepository.update(id, {
+      isActive: false,
+      refreshToken: null,
+      loginCodeHash: null,
+      profile: {
+        ...(user.profile || {}),
+        deactivatedAt: new Date().toISOString(),
+        deactivatedBy: actorId,
+        ...(reassignedTo ? { openWorkReassignedTo: reassignedTo } : {}),
+      },
+    } as any);
+
+    return {
+      user: await this.getUserById(id),
+      reassigned: hasOpenWork ? openWork : { leads: 0, tasks: 0 },
+      reassignedTo,
+    };
+  }
+
+  async reactivateUser(id: string, actorId: string): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.profile?.staffRequest?.status === 'pending') {
+      throw new BadRequestException('This is a pending staff request. Approve it instead.');
+    }
+    await this.usersRepository.update(id, {
+      isActive: true,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      profile: {
+        ...(user.profile || {}),
+        reactivatedAt: new Date().toISOString(),
+        reactivatedBy: actorId,
+      },
+    } as any);
+    return this.getUserById(id);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Staff requests from clinics (item 26)
+  // ---------------------------------------------------------------------------
+
+  async getPendingStaffRequests(): Promise<any[]> {
+    const users = await this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.assignedClinic', 'clinic')
+      .where(`(user.profile::jsonb #>> '{staffRequest,status}') = 'pending'`)
+      .orderBy('user.createdAt', 'ASC')
+      .getMany();
+    return users.map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      clinic: u.assignedClinic ? { id: u.assignedClinic.id, name: u.assignedClinic.name } : null,
+      requestedBy: u.profile?.staffRequest?.requestedByName || null,
+      requestedAt: u.profile?.staffRequest?.requestedAt || u.createdAt,
+    }));
+  }
+
+  private async getPendingRequestOrFail(id: string): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user || user.profile?.staffRequest?.status !== 'pending') {
+      throw new NotFoundException('Staff request not found or already handled.');
+    }
+    return user;
+  }
+
+  async approveStaffRequest(id: string, actorId: string): Promise<User> {
+    const user = await this.getPendingRequestOrFail(id);
+    await this.usersRepository.update(id, {
+      isActive: true,
+      isEmailVerified: true,
+      accountSetupPending: true,
+      profile: {
+        ...(user.profile || {}),
+        staffRequest: {
+          ...(user.profile?.staffRequest || {}),
+          status: 'approved',
+          reviewedBy: actorId,
+          reviewedAt: new Date().toISOString(),
+        },
+      },
+    } as any);
+    const approved = await this.usersRepository.findOne({ where: { id } });
+    // The new staff member chooses their own password through a one-time link.
+    await this.accountLinks.sendSetPasswordLink(approved!, 'staff');
+    return this.getUserById(id);
+  }
+
+  async rejectStaffRequest(id: string, actorId: string): Promise<{ message: string }> {
+    const user = await this.getPendingRequestOrFail(id);
+    try {
+      // The account was never active and owns nothing: remove it so the email is free again.
+      await this.usersRepository.delete(id);
+    } catch {
+      await this.usersRepository.update(id, {
+        email: `rejected-${id}@invalid.local`,
+        isActive: false,
+        profile: {
+          ...(user.profile || {}),
+          staffRequest: { ...(user.profile?.staffRequest || {}), status: 'rejected', reviewedBy: actorId, reviewedAt: new Date().toISOString() },
+        },
+      } as any);
+    }
+    return { message: 'Staff request rejected.' };
+  }
+
+  assertCanAssignRole(actorRole: string, role?: string) {
+    if (role === UserRole.SUPER_ADMIN && actorRole !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You are not allowed to assign the SUPER_ADMIN role.');
+    }
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
@@ -380,7 +579,8 @@ export class AdminService {
     // Whitelist updatable columns — prevents mass-assignment of passwordHash, refreshToken,
     // emailVerificationToken, or other sensitive columns via `@Body() any`.
     const ALLOWED_FIELDS = [
-      'firstName', 'lastName', 'email', 'phone', 'role', 'isActive',
+      // isActive is changed only through deactivate/reactivate (open work must be handed over).
+      'firstName', 'lastName', 'email', 'phone', 'role',
       'assignedClinicId', 'monthlyTarget', 'profile', 'profilePictureUrl',
     ] as const;
     const dataToUpdate: any = {};
@@ -428,10 +628,14 @@ export class AdminService {
     return this.getUserById(id);
   }
 
-  async toggleUserStatus(id: string): Promise<User> {
-    const user = await this.getUserById(id);
-    user.isActive = !user.isActive;
-    return this.usersRepository.save(user);
+  /** Kept for older clients: deactivation still requires reassigning open work. */
+  async toggleUserStatus(id: string, actorId?: string): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.isActive) {
+      return (await this.deactivateUser(id, actorId || '')).user;
+    }
+    return this.reactivateUser(id, actorId || '');
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -444,7 +648,9 @@ export class AdminService {
     const queryBuilder = this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.owner', 'owner')
       .leftJoinAndSelect('clinic.owners', 'owners')
-      .leftJoinAndSelect('clinic.services', 'services');
+      .leftJoinAndSelect('clinic.services', 'services')
+      // Bank columns are select: false; admins manage them, so load them here explicitly.
+      .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName']);
 
     if (query?.isActive !== undefined) {
       queryBuilder.andWhere('clinic.isActive = :isActive', { isActive: query.isActive });
@@ -490,7 +696,7 @@ export class AdminService {
   async toggleClinicStatus(id: string): Promise<Clinic> {
     const clinic = await this.getClinicById(id);
     clinic.isActive = !clinic.isActive;
-    return this.clinicsRepository.save(clinic);
+    return this.clinicsService.withBankFields(await this.clinicsRepository.save(clinic));
   }
 
   async createClinic(clinicData: any): Promise<Clinic> {
@@ -520,21 +726,29 @@ export class AdminService {
     const stats = await appointmentQuery
       .select([
         'COUNT(appointment.id) as totalAppointments',
-        'SUM(appointment.totalAmount) as totalRevenue',
-        'AVG(appointment.totalAmount) as avgAppointmentValue',
+        `COUNT(CASE WHEN appointment.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.EXECUTED}') THEN 1 END) as completedAppointments`,
         'COUNT(DISTINCT appointment.clientId) as uniqueClients',
       ])
       .getRawOne();
+
+    // Revenue: payments received (EUR, net of refunds), same as every other revenue page.
+    const totalRevenue = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, {
+      clinicId: id,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
+    const completed = parseInt(stats.completedAppointments ?? stats.completedappointments) || 0;
 
     return {
       clinicId: clinic.id,
       clinicName: clinic.name,
       period: dateRange,
       stats: {
-        totalAppointments: parseInt(stats.totalAppointments) || 0,
-        totalRevenue: parseFloat(stats.totalRevenue) || 0,
-        avgAppointmentValue: parseFloat(stats.avgAppointmentValue) || 0,
-        uniqueClients: parseInt(stats.uniqueClients) || 0,
+        totalAppointments: parseInt(stats.totalAppointments ?? stats.totalappointments) || 0,
+        totalRevenue,
+        currency: 'EUR',
+        avgAppointmentValue: completed > 0 ? totalRevenue / completed : 0,
+        uniqueClients: parseInt(stats.uniqueClients ?? stats.uniqueclients) || 0,
       },
     };
   }
@@ -583,10 +797,7 @@ export class AdminService {
       .getRawOne();
 
     // Turnover (payments-derived) in the same period
-    const turnoverRow = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+    const turnoverRow = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .select([
         `${this.paymentNetExpression('p')} as netRevenue`,
         'COUNT(p.id) as paymentCount',
@@ -594,12 +805,9 @@ export class AdminService {
       .getRawOne();
 
     // Turnover MTD (€) vs target per salesperson
-    const salespersonTurnoverRows = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
+    const salespersonTurnoverRows = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .leftJoin(User, 'u', 'u.id = p.salespersonId')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
       .andWhere('p.salespersonId IS NOT NULL')
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
       .select([
         'p.salespersonId as salespersonId',
         `COALESCE(u.firstName, '') as firstName`,
@@ -700,10 +908,7 @@ export class AdminService {
       .addGroupBy('c.name')
       .getRawMany();
 
-    const clinicRevenueRows = await this.paymentRecordsRepository
-      .createQueryBuilder('p')
-      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
-      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+    const clinicRevenueRows = await buildPaidRevenueQuery(this.paymentRecordsRepository.manager, { startDate, endDate }, 'p')
       .select(['p.clinicId as clinicId', `${this.paymentNetExpression('p')} as netRevenue`])
       .groupBy('p.clinicId')
       .getRawMany();

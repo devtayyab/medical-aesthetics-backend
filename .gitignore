@@ -32,6 +32,7 @@ ios/
 /tmp/
 *.js
 !client-mobile-app/*.js
+!frontend/public/firebase-messaging-sw.js
 *.mjs
 *.tsbuildinfo
 tmp_check.ts

@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CreateClinicProfileDto,
@@ -15,7 +16,8 @@ import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
-import { Repository, DeepPartial, In, IsNull } from 'typeorm';
+import { Repository, DeepPartial, In, IsNull, ILike } from 'typeorm';
+import { getPaidRevenueTotal } from '../payments/revenue.util';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -24,6 +26,9 @@ import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CLINIC_BANK_FIELDS, stripUserPersonalData, publicDisplayName } from '../../common/utils/privacy.util';
+import { AccountLinksService } from '../users/account-links.service';
+import { assertPasswordPolicy } from '../../common/utils/password-policy.util';
 
 @Injectable()
 export class ClinicsService {
@@ -48,49 +53,40 @@ export class ClinicsService {
     private agentAccessRepository: Repository<AgentClinicAccess>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
+    private accountLinks: AccountLinksService,
   ) { }
 
-  private isClinicManagerOrAdmin(user: any, clinicId?: string): boolean {
-    if (!user) return false;
+  /** Admin, or the clinic owner of this clinic (primary owner, co-owner or assigned owner). */
+  private isClinicOwnerOrAdmin(user: any, clinic: Clinic): boolean {
+    if (!user || !clinic) return false;
     const r = (user.role || '').toLowerCase();
     if (r === 'admin' || r === 'super_admin') return true;
-    if (clinicId && (user.assignedClinicId === clinicId || user.clinicId === clinicId)) {
-      return ['clinic_owner', 'manager', 'doctor', 'secretariat'].includes(r);
-    }
-    return false;
+    if (r !== 'clinic_owner') return false;
+    return (
+      clinic.ownerId === user.id ||
+      user.assignedClinicId === clinic.id ||
+      (Array.isArray(clinic.owners) && clinic.owners.some((o) => o?.id === user.id))
+    );
+  }
+
+  /** BD staff and clinic-side staff may see staff contact details; clients and anonymous callers may not. */
+  private isStaffUser(user: any): boolean {
+    const r = (user?.role || '').toLowerCase();
+    return ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes(r);
   }
 
   sanitizeClinic(clinic: Clinic, user?: any): Clinic {
     if (!clinic) return clinic;
 
-    const isAdminOrStaff = this.isClinicManagerOrAdmin(user, clinic.id);
-
-    // 1. Bank details: never expose to unauthenticated callers or clients
-    if (!isAdminOrStaff) {
-      delete (clinic as any).bankIban;
-      delete (clinic as any).bankBic;
-      delete (clinic as any).bankAccountHolder;
-      delete (clinic as any).bankName;
+    // 1. Bank details: only the clinic owner and admins. (Columns are select: false, this is a second guard.)
+    if (!this.isClinicOwnerOrAdmin(user, clinic)) {
+      CLINIC_BANK_FIELDS.forEach((f) => delete (clinic as any)[f]);
     }
 
-    // 2. Doctor/Owner personal details: personal email, phone and lastLoginAt NEVER go to clients
-    const sanitizeOwnerUser = (u: any) => {
-      if (!u) return;
-      delete u.password;
-      delete u.refreshToken;
-      if (!user || user.role === UserRole.CLIENT || user.role?.toLowerCase() === 'client') {
-        delete u.email;
-        delete u.phone;
-        delete u.lastLoginAt;
-      }
-    };
-
-    if (clinic.owner) {
-      sanitizeOwnerUser(clinic.owner);
-    }
-
-    if (Array.isArray(clinic.owners)) {
-      clinic.owners.forEach((o) => sanitizeOwnerUser(o));
+    // 2. Doctor/Owner personal email, phone and lastLoginAt NEVER go to clients or anonymous callers
+    if (!this.isStaffUser(user)) {
+      if (clinic.owner) clinic.owner = stripUserPersonalData(clinic.owner);
+      if (Array.isArray(clinic.owners)) clinic.owners = clinic.owners.map((o) => stripUserPersonalData(o));
     }
 
     // 3. Treatment prices: if not logged in, strip all treatment prices
@@ -118,7 +114,7 @@ export class ClinicsService {
   }, user?: any): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
-      .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
+      .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND services.price > 0 AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
       .leftJoinAndSelect('services.treatment', 'treatment')
       .where('clinic.isActive = :isActive', { isActive: true })
       .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' });
@@ -212,7 +208,7 @@ export class ClinicsService {
       .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
       .leftJoin('categoryRef.parent', 'categoryParent')
       .leftJoinAndSelect('service.clinic', 'clinic')
-      .where("service.isActive = :sActive AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
+      .where("service.isActive = :sActive AND service.price > 0 AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
         sActive: true,
         cActive: true
       })
@@ -551,6 +547,7 @@ export class ClinicsService {
       .leftJoinAndSelect('service.treatment', 'treatment')
       .where('service.clinicId = :clinicId', { clinicId })
       .andWhere('service.isActive = :isActive', { isActive: true })
+      .andWhere('service.price > 0')
       .andWhere('treatment.isActive = :tIsActive', { tIsActive: true })
       .andWhere("(service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')")
       .getMany();
@@ -669,7 +666,20 @@ export class ClinicsService {
       where: { id: saved.id },
       relations: ['services', 'owner', 'owners'],
     });
-    return finalClinic;
+    return this.withBankFields(finalClinic);
+  }
+
+  /** Adds the select:false bank columns to a clinic. Only for admin responses (admin edit form needs them). */
+  async withBankFields(clinic: Clinic): Promise<Clinic> {
+    if (!clinic) return clinic;
+    const bank = await this.clinicsRepository
+      .createQueryBuilder('clinic')
+      .select('clinic.id')
+      .addSelect(CLINIC_BANK_FIELDS.map((f) => `clinic.${f}`))
+      .where('clinic.id = :id', { id: clinic.id })
+      .getOne();
+    CLINIC_BANK_FIELDS.forEach((f) => ((clinic as any)[f] = (bank as any)?.[f] ?? null));
+    return clinic;
   }
 
   async updateClinicOwnershipForOwner(ownerUserId: string, clinicIds: string[]): Promise<void> {
@@ -863,61 +873,95 @@ export class ClinicsService {
       throw new BadRequestException('Could not determine clinic to assign staff to. Please select or specify a clinic.');
     }
 
-    // Check if user already exists
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: staffData.email },
-    });
+    const email = typeof staffData.email === 'string' ? staffData.email.trim().toLowerCase() : '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('A valid email address is required.');
+    }
 
+    // Never touch an existing account (item 26): earlier this changed a doctor's own
+    // account into a salesperson. The admin handles existing accounts from Users.
+    const existingUser = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email })
+      .getOne();
     if (existingUser) {
-      // If user exists, we update their assignment to this clinic
-      existingUser.assignedClinicId = clinic.id;
-      if (staffData.role) {
-        existingUser.role = staffData.role;
-      }
-      const updated = await this.usersRepository.save(existingUser);
+      throw new ConflictException('An account with this email already exists. Its role was not changed. Please contact the BeautyDoctors admin.');
+    }
 
-      if (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner') {
-        const existingOwnership = await this.clinicOwnershipRepository.findOne({
-          where: { clinicId: clinic.id, ownerUserId: updated.id },
-        });
-        if (!existingOwnership) {
-          await this.clinicOwnershipRepository.save(
-            this.clinicOwnershipRepository.create({
-              clinicId: clinic.id,
-              ownerUserId: updated.id,
-            }),
-          );
-        }
+    const isAdminRequest = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    const requestedRole = staffData.role || UserRole.DOCTOR;
+
+    if (!isAdminRequest) {
+      // Clinics can only ask for clinic staff; anything else needs the admin.
+      const clinicRoles = [UserRole.DOCTOR, UserRole.SECRETARIAT];
+      if (!clinicRoles.includes(requestedRole)) {
+        throw new ForbiddenException('Clinics can request doctor or secretariat accounts only.');
       }
-      return updated;
+    } else if (requestedRole === UserRole.SUPER_ADMIN && role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You are not allowed to assign the SUPER_ADMIN role.');
+    }
+
+    const requester = await this.usersRepository.findOne({ where: { id: ownerId } });
+    // Unusable random password: the person sets their own through the emailed link.
+    const randomPassword = randomBytes(24).toString('hex');
+    const adminPassword = isAdminRequest && typeof staffData.password === 'string' && staffData.password.length > 0
+      ? staffData.password
+      : null;
+    if (adminPassword) {
+      assertPasswordPolicy(adminPassword);
     }
 
     const newUser = this.usersRepository.create({
-      ...staffData,
-      role: staffData.role || UserRole.DOCTOR,
+      email,
+      firstName: staffData.firstName,
+      lastName: staffData.lastName,
+      phone: staffData.phone || '',
+      role: requestedRole,
       assignedClinicId: clinic.id,
-      passwordHash: staffData.password || 'TemporaryPassword123!',
-      isActive: true,
+      passwordHash: adminPassword || randomPassword,
+      // Clinic "Add staff" is only a REQUEST until an admin approves it.
+      isActive: isAdminRequest,
+      isEmailVerified: isAdminRequest,
+      accountSetupPending: !adminPassword,
+      profile: isAdminRequest
+        ? undefined
+        : {
+            staffRequest: {
+              status: 'pending',
+              requestedById: ownerId,
+              requestedByName: requester ? `${requester.firstName || ''} ${requester.lastName || ''}`.trim() : null,
+              clinicId: clinic.id,
+              requestedAt: new Date().toISOString(),
+            },
+          },
     } as any);
 
-    const savedUser = await this.usersRepository.save(newUser);
+    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
-    // If role is clinic_owner, also ensure mapping in clinicOwnership
-    if (clinic && (staffData.role === UserRole.CLINIC_OWNER || staffData.role === 'clinic_owner')) {
+    // If role is clinic_owner (admin only), also ensure mapping in clinicOwnership
+    if (isAdminRequest && (requestedRole === UserRole.CLINIC_OWNER || requestedRole === 'clinic_owner')) {
       const existingOwnership = await this.clinicOwnershipRepository.findOne({
-        where: { clinicId: clinic.id, ownerUserId: (savedUser as any).id },
+        where: { clinicId: clinic.id, ownerUserId: savedUser.id },
       });
       if (!existingOwnership) {
         await this.clinicOwnershipRepository.save(
           this.clinicOwnershipRepository.create({
             clinicId: clinic.id,
-            ownerUserId: (savedUser as any).id,
+            ownerUserId: savedUser.id,
           }),
         );
       }
     }
 
-    return savedUser as unknown as User;
+    if (isAdminRequest && !adminPassword) {
+      await this.accountLinks.sendSetPasswordLink(savedUser, 'staff');
+    }
+
+    if (!isAdminRequest) {
+      (savedUser as any).pendingApproval = true;
+      (savedUser as any).message = 'Request sent. The BeautyDoctors admin will review it; the new staff member gets an email to set a password once approved.';
+    }
+    return savedUser;
   }
 
   async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
@@ -949,10 +993,11 @@ export class ClinicsService {
 
     // 1. Get all staff assigned to this clinic (Doctor, Clinic Owner, Secretariat)
     const assignedStaff = await this.usersRepository.find({
+      // Deactivated staff and pending staff requests are never offered for assignment.
       where: [
-        { assignedClinicId: clinicId, role: UserRole.DOCTOR },
-        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
-        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT },
+        { assignedClinicId: clinicId, role: UserRole.DOCTOR, isActive: true },
+        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER, isActive: true },
+        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT, isActive: true },
       ],
       order: { firstName: 'ASC' },
     });
@@ -980,6 +1025,7 @@ export class ClinicsService {
       const owner = clinic.owner;
       if (
         (owner.role === UserRole.DOCTOR || owner.role === UserRole.CLINIC_OWNER) &&
+        owner.isActive !== false &&
         !uniqueProviders.has(owner.id)
       ) {
         uniqueProviders.set(owner.id, {
@@ -1006,6 +1052,7 @@ export class ClinicsService {
     if (missingOwnerUserIds.length > 0) {
       const coOwners = await this.usersRepository.findBy({
         id: In(missingOwnerUserIds),
+        isActive: true,
       });
       for (const owner of coOwners) {
         if (!uniqueProviders.has(owner.id)) {
@@ -1076,7 +1123,7 @@ export class ClinicsService {
     });
 
     // Doctor's personal email/phone NEVER go to clients
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     return Array.from(uniqueProviders.values()).map((provider) => {
       const p = { ...provider };
@@ -1097,7 +1144,7 @@ export class ClinicsService {
       .andWhere('appointment.serviceId = :serviceId', { serviceId })
       .getMany();
 
-    const isStaff = user && ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'].includes((user.role || '').toLowerCase());
+    const isStaff = this.isStaffUser(user);
 
     // Map to the desired format: doctor's personal email/phone never go to clients
     return providers.map((u) => {
@@ -1120,14 +1167,32 @@ export class ClinicsService {
   async getClinicAnalytics(clinicId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
     const clinic = await this.findById(clinicId);
 
-    // This would typically aggregate data from appointments, payments, etc.
-    // For now, return basic clinic stats
+    const manager = this.clinicsRepository.manager;
+    const aptQb = this.appointmentsRepository.createQueryBuilder('a')
+      .where('a.clinicId = :clinicId', { clinicId })
+      .andWhere('a.status != :deleted', { deleted: AppointmentStatus.DELETED });
+    if (dateRange?.startDate && dateRange?.endDate) {
+      aptQb.andWhere('a.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+    const counts = await aptQb
+      .select('COUNT(a.id)', 'total')
+      .addSelect('COUNT(DISTINCT a.clientId)', 'clients')
+      .getRawOne();
+
+    // Revenue: shared definition (payments received, EUR, net of refunds, by payment date).
+    const totalRevenue = await getPaidRevenueTotal(manager, {
+      clinicId,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
+
     return {
       clinicId: clinic.id,
       clinicName: clinic.name,
-      totalAppointments: 0, // Would be calculated from appointments table
-      totalRevenue: 0, // Would be calculated from payments
-      activeClients: 0, // Would be calculated from unique clients
+      totalAppointments: Number(counts?.total || 0),
+      totalRevenue,
+      currency: 'EUR',
+      activeClients: Number(counts?.clients || 0),
       period: dateRange || { startDate: new Date(), endDate: new Date() },
     };
   }
@@ -1174,8 +1239,10 @@ export class ClinicsService {
     }
 
     if (!treatment && serviceData.name) {
+      // Case-insensitive match so "botox" and "Botox" do not become two catalog therapies
+      const cleanName = serviceData.name.trim().replace(/[%_\\]/g, (ch) => `\\${ch}`);
       treatment = await this.treatmentsRepository.findOne({
-        where: { name: serviceData.name }
+        where: { name: ILike(cleanName) }
       });
 
       if (!treatment) {
@@ -1193,6 +1260,30 @@ export class ClinicsService {
 
     if (!treatment) {
       throw new NotFoundException('Treatment master record not found');
+    }
+
+    // A service is never created at €0
+    if (!(Number(serviceData.price) > 0)) {
+      throw new BadRequestException('Please set a price greater than €0 for this service.');
+    }
+
+    // One service per therapy per clinic: never create a duplicate
+    const existing = await this.servicesRepository.findOne({
+      where: { clinicId: clinic.id, treatmentId: treatment.id },
+      relations: ['treatment'],
+    });
+    if (existing) {
+      const isPlaceholder = !existing.isActive && !(Number(existing.price) > 0);
+      if (!isPlaceholder) {
+        throw new ConflictException('This therapy is already offered by this clinic. Edit the existing service instead.');
+      }
+      // A therapy linked by the admin waits as a hidden placeholder: fill it in instead of adding a second one
+      existing.price = serviceData.price;
+      existing.durationMinutes = serviceData.durationMinutes ?? existing.durationMinutes;
+      if (serviceData.imageUrl !== undefined) existing.imageUrl = serviceData.imageUrl;
+      existing.isActive = (serviceData as any).isActive ?? true;
+      if (existing.isActive) this.validateServiceForPublishing(existing);
+      return this.servicesRepository.save(existing);
     }
 
     const service = this.servicesRepository.create({
@@ -1219,7 +1310,14 @@ export class ClinicsService {
       }
     }
 
-    return this.servicesRepository.save(service);
+    const savedService = await this.servicesRepository.save(service);
+    const isAdminAction = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    if (!isAdminAction) this.eventEmitter.emit('treatment.added', {
+      treatment,
+      clinicName: clinic.name,
+      price: savedService.price,
+    });
+    return savedService;
   }
 
   async deleteService(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<void> {
@@ -1261,6 +1359,10 @@ export class ClinicsService {
   private validateServiceForPublishing(service: Service) {
     if (!service.treatment) {
       throw new BadRequestException('Service must be linked to a treatment master record to be active');
+    }
+
+    if (!(Number(service.price) > 0)) {
+      throw new BadRequestException('This service cannot be published without a price greater than €0.');
     }
 
     const t = service.treatment;
@@ -1408,10 +1510,24 @@ export class ClinicsService {
     if (query?.limit) queryBuilder.limit(query.limit);
     if (query?.offset) queryBuilder.offset(query.offset);
 
-    const [reviews, total] = await queryBuilder.getManyAndCount();
+    const [rows, total] = await queryBuilder.getManyAndCount();
+
+    // Public endpoint: never expose the reviewer's email/phone; show "First L." only
+    const reviews = rows.map((r) => ({
+      ...r,
+      client: r.client
+        ? {
+            id: r.client.id,
+            firstName: r.client.firstName,
+            lastName: (r.client.lastName || '').charAt(0) ? `${r.client.lastName.charAt(0)}.` : '',
+            fullName: publicDisplayName(r.client),
+            profilePictureUrl: r.client.profilePictureUrl,
+          }
+        : null,
+    }));
 
     return {
-      reviews,
+      reviews: reviews.map((r) => (r.responseHidden ? { ...r, response: null, respondedAt: null } : r)),
       total,
       limit: query?.limit,
       offset: query?.offset || 0,
@@ -1473,8 +1589,24 @@ export class ClinicsService {
       throw new NotFoundException('Review not found');
     }
 
-    review.response = response;
+    if (!response || !response.trim()) {
+      throw new BadRequestException('Response text is required');
+    }
+    review.response = response.trim();
     review.respondedAt = new Date();
+    review.responseHidden = false;
+    const saved = await this.reviewsRepository.save(review);
+
+    // Replies are published without approval; admins are told so they can hide one if needed.
+    this.eventEmitter.emit('review.responded', { review: saved, clinicName: clinic.name, responderId: ownerId });
+    return saved;
+  }
+
+  /** Admin: hide or show the clinic's reply to a review. */
+  async setReviewResponseVisibility(reviewId: string, hidden: boolean): Promise<Review> {
+    const review = await this.reviewsRepository.findOne({ where: { id: reviewId } });
+    if (!review) throw new NotFoundException('Review not found');
+    review.responseHidden = !!hidden;
     return this.reviewsRepository.save(review);
   }
 
@@ -1512,55 +1644,19 @@ export class ClinicsService {
     return savedReview;
   }
 
-  async toggleReviewVisibility(ownerId: string, reviewId: string): Promise<Review> {
-    // 1. Find the clinic managed by this user (owner or agent)
-    const clinic = await this.findByOwnerId(ownerId);
-    if (!clinic) {
-      throw new NotFoundException('Clinic not found for this user');
-    }
-
-    // 2. Find the review and ensure it belongs to this clinic
-    const review = await this.reviewsRepository.findOne({
-      where: { id: reviewId },
-      relations: ['clinic'],
-    });
-
-    if (!review) {
-      throw new NotFoundException('Review not found');
-    }
-
-    if (review.clinicId !== clinic.id) {
-      throw new BadRequestException('Review does not belong to your clinic');
-    }
-
-    // 3. Toggle status
-    if (review.status === ReviewStatus.APPROVED) {
-      review.status = ReviewStatus.REJECTED;
-      review.approvedById = null;
-      review.approvedAt = null;
-    } else {
-      review.status = ReviewStatus.APPROVED;
-      review.approvedById = ownerId;
-      review.approvedAt = new Date();
-      review.rejectReason = null;
-    }
-
-    const savedReview = await this.reviewsRepository.save(review);
-
-    // 4. Recalculate clinic rating immediately
-    await this.recalculateClinicRating(clinic.id);
-
-    return savedReview;
-  }
-
-
-  async getPendingReviews(query?: { limit?: number; offset?: number }): Promise<any> {
+  async getPendingReviews(query?: { limit?: number; offset?: number; status?: string }): Promise<any> {
+    // Admin moderation list. Defaults to PENDING; `status=APPROVED|REJECTED|ALL` lets the admin
+    // find published reviews to hide (REJECTED = hidden) or replies to hide.
+    const requested = String(query?.status || ReviewStatus.PENDING).toUpperCase();
     const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
       .leftJoinAndSelect('review.client', 'client')
       .leftJoinAndSelect('review.clinic', 'clinic')
       .leftJoinAndSelect('review.appointment', 'appointment')
-      .where('review.status = :status', { status: ReviewStatus.PENDING })
       .orderBy('review.createdAt', 'DESC');
+    if (requested !== 'ALL') {
+      const status = (Object.values(ReviewStatus) as string[]).includes(requested) ? requested : ReviewStatus.PENDING;
+      queryBuilder.where('review.status = :status', { status });
+    }
 
     if (query?.limit) queryBuilder.limit(query.limit);
     if (query?.offset) queryBuilder.offset(query.offset);
@@ -1653,7 +1749,8 @@ export class ClinicsService {
           id: appointmentId,
           clientId,
           clinicId,
-          status: AppointmentStatus.COMPLETED
+          // Completed visits are reviewable as soon as they are completed (COMPLETED or EXECUTED).
+          status: In([AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED])
         }
       });
 
@@ -1679,7 +1776,9 @@ export class ClinicsService {
         status: ReviewStatus.PENDING,
       });
 
-      return await this.reviewsRepository.save(review);
+      const savedReview = await this.reviewsRepository.save(review);
+      this.eventEmitter.emit('review.created', { review: savedReview, clinicName: clinic.name });
+      return savedReview;
     } catch (error) {
       console.error('Error creating review:', error);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
@@ -1806,14 +1905,8 @@ export class ClinicsService {
       category: category.name, // Support legacy
     });
 
-    const savedTreatment = await this.treatmentsRepository.save(treatment);
-
-    this.eventEmitter.emit('treatment.added', {
-      treatment: savedTreatment,
-      clinicName: 'a clinic',
-    });
-
-    return savedTreatment;
+    // Admins are notified once, when the clinic adds the offer (therapy + price) for approval.
+    return this.treatmentsRepository.save(treatment);
   }
 
   async setTreatmentStatus(treatmentId: string, status: TreatmentStatus): Promise<Treatment> {
@@ -1821,15 +1914,32 @@ export class ClinicsService {
     if (!treatment) throw new NotFoundException('Treatment not found');
 
     treatment.status = status;
-    return this.treatmentsRepository.save(treatment);
+    const saved = await this.treatmentsRepository.save(treatment);
+
+    // One approval: deciding on the therapy also decides the clinic offers (therapy + price)
+    // that wait for it, and each clinic is told the result.
+    if (status === TreatmentStatus.APPROVED || status === TreatmentStatus.REJECTED) {
+      const pendingServices = await this.servicesRepository
+        .createQueryBuilder('service')
+        .where('service.treatmentId = :treatmentId', { treatmentId })
+        .andWhere("service.metadata->>'approvalStatus' = 'PENDING'")
+        .getMany();
+      for (const service of pendingServices) {
+        await this.setServiceApprovalStatus(service.id, status === TreatmentStatus.APPROVED ? 'APPROVED' : 'REJECTED');
+      }
+    }
+    return saved;
   }
 
+  /** Therapies waiting for approval that are not already part of a pending clinic offer. */
   async getPendingTreatments(): Promise<Treatment[]> {
-    return this.treatmentsRepository.find({
-      where: { status: TreatmentStatus.PENDING },
-      relations: ['categoryRef'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.treatmentsRepository
+      .createQueryBuilder('treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+      .where('treatment.status = :status', { status: TreatmentStatus.PENDING })
+      .andWhere(`NOT EXISTS (SELECT 1 FROM services s WHERE s."treatmentId" = treatment.id AND s.metadata->>'approvalStatus' = 'PENDING')`)
+      .orderBy('treatment.createdAt', 'DESC')
+      .getMany();
   }
 
   async getPendingCategories(): Promise<TreatmentCategory[]> {
@@ -1978,15 +2088,16 @@ export class ClinicsService {
       for (const clinicId of clinicIds) {
         const existing = existingServices.find(s => s.clinicId === clinicId);
         if (!existing) {
+          // Hidden until the clinic sets its price: never a live €0 service
           const newService = this.servicesRepository.create({
             clinicId,
             treatmentId: id,
             price: 0,
             durationMinutes: 30,
-            isActive: true,
+            isActive: false,
           });
           await this.servicesRepository.save(newService);
-        } else if (!existing.isActive) {
+        } else if (!existing.isActive && Number(existing.price) > 0) {
           existing.isActive = true;
           await this.servicesRepository.save(existing);
         }
@@ -2055,12 +2166,13 @@ export class ClinicsService {
 
     if (clinicIds && clinicIds.length > 0) {
       for (const clinicId of clinicIds) {
+        // Hidden until the clinic sets its price: never a live €0 service
         const service = this.servicesRepository.create({
           clinicId,
           treatmentId: savedTreatment.id,
           price: 0,
           durationMinutes: 30,
-          isActive: true,
+          isActive: false,
         });
         await this.servicesRepository.save(service);
       }
@@ -2140,17 +2252,40 @@ export class ClinicsService {
   async setServiceApprovalStatus(serviceId: string, status: 'APPROVED' | 'REJECTED'): Promise<Service> {
     const service = await this.servicesRepository.findOne({ where: { id: serviceId }, relations: ['clinic', 'treatment'] });
     if (!service) throw new NotFoundException('Service not found');
-    
+    const previousStatus = service.metadata?.approvalStatus;
+
     service.metadata = {
       ...(service.metadata || {}),
       approvalStatus: status
     };
-    
+
     if (status === 'REJECTED') {
       service.isActive = false;
     }
-    
-    return this.servicesRepository.save(service);
+
+    const saved = await this.servicesRepository.save(service);
+
+    // One approval covers the therapy and its price: a new therapy that came with this offer
+    // is approved/rejected together with it.
+    if (service.treatment && service.treatment.status === TreatmentStatus.PENDING) {
+      service.treatment.status = status === 'APPROVED' ? TreatmentStatus.APPROVED : TreatmentStatus.REJECTED;
+      await this.treatmentsRepository.save(service.treatment);
+    }
+
+    if (previousStatus !== status && service.clinicId) {
+      const name = service.treatment?.name || 'Θεραπεία';
+      const price = service.price != null ? ` (€${Number(service.price)})` : '';
+      await this.notificationsService.notifyClinicStaff(
+        service.clinicId,
+        status === 'APPROVED' ? 'Η θεραπεία εγκρίθηκε' : 'Η θεραπεία απορρίφθηκε',
+        status === 'APPROVED'
+          ? `Η θεραπεία "${name}"${price} εγκρίθηκε και εμφανίζεται πλέον στις κρατήσεις.`
+          : `Η θεραπεία "${name}"${price} δεν εγκρίθηκε. Επικοινωνήστε με την ομάδα BeautyDoctors για λεπτομέρειες.`,
+        { serviceId: service.id, treatmentId: service.treatmentId, type: status === 'APPROVED' ? 'service_approved' : 'service_rejected' },
+      );
+    }
+
+    return saved;
   }
 
   async autoConnectTreatmentCategories() {

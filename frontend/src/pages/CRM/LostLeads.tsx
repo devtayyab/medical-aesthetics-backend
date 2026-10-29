@@ -50,6 +50,8 @@ export const LostLeadsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { leads, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
+  // Export and permanent delete are admin-only (also enforced on the server)
+  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,7 +107,8 @@ export const LostLeadsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this lost lead?')) return;
+    if (!isAdmin) return;
+    if (!window.confirm('Delete 1 lead permanently?')) return;
     try {
       await dispatch(deleteLead(id)).unwrap();
       toast.success('Lead deleted');
@@ -115,11 +118,12 @@ export const LostLeadsPage: React.FC = () => {
   };
 
   const handleExportCSV = () => {
+    if (!isAdmin) return;
     if (lostLeads.length === 0) {
       toast.error('No lost leads to export');
       return;
     }
-    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Source', 'Form Name', 'Reason/Notes', 'Created Date'];
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Source', 'Form Name', 'Lost reason', 'Reason/Notes', 'Created Date'];
     const rows = lostLeads.map(l => [
       l.firstName || '',
       l.lastName || '',
@@ -127,6 +131,7 @@ export const LostLeadsPage: React.FC = () => {
       l.phone || '',
       l.source || '',
       (l as any).lastMetaFormName || '',
+      (l as any).metadata?.lostReason || '',
       (l as any).notes || '',
       (l as any).createdAt ? new Date((l as any).createdAt).toLocaleDateString() : ''
     ]);
@@ -165,6 +170,7 @@ export const LostLeadsPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {isAdmin && (
           <Button
             variant="outline"
             onClick={handleExportCSV}
@@ -172,6 +178,7 @@ export const LostLeadsPage: React.FC = () => {
           >
             <Download size={16} /> {isGreek ? 'Εξαγωγή CSV' : 'Export CSV'}
           </Button>
+          )}
         </div>
       </div>
 
@@ -412,6 +419,11 @@ export const LostLeadsPage: React.FC = () => {
                     <div className="max-w-[200px]">
                       <p className="text-xs font-bold text-gray-800 truncate" title={(lead as any).lastMetaFormName || 'N/A'}>{(lead as any).lastMetaFormName || 'N/A'}</p>
                       <p className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{lead.source || 'facebook_ads'}</p>
+                      {(lead as any).metadata?.lostReason && (
+                        <p className="text-[10px] text-red-500 font-semibold mt-0.5 truncate" title={(lead as any).metadata.lostReason}>
+                          {isGreek ? 'Λόγος: ' : 'Reason: '}{(lead as any).metadata.lostReason}
+                        </p>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -446,6 +458,7 @@ export const LostLeadsPage: React.FC = () => {
                       >
                         <RotateCcw size={11} /> Reactivate
                       </Button>
+                      {isAdmin && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -455,6 +468,7 @@ export const LostLeadsPage: React.FC = () => {
                       >
                         <Trash2 size={11} /> Delete
                       </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

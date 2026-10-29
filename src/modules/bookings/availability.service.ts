@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan, In, Not } from 'typeorm';
+import { Repository, Between, MoreThan, LessThan, In, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
@@ -93,7 +93,8 @@ export class AvailabilityService {
       log('🔵 Total duration:', totalDurationMinutes);
 
       const rawTz = clinic.timezone;
-      const timezone = (rawTz && rawTz !== 'null' && rawTz.trim() !== '') ? rawTz : 'UTC';
+      // Same fallback as the booking checks (assertSlotBookable): business time is Europe/Athens
+      const timezone = (rawTz && rawTz !== 'null' && rawTz.trim() !== '') ? rawTz : 'Europe/Athens';
       log('🔵 Using timezone:', timezone);
 
       // Create date objects for start and end of day respecting timezone
@@ -192,11 +193,14 @@ export class AvailabilityService {
         },
       });
 
-      // Get blocked time slots (clinic-wide and provider-specific)
+      // Get blocked time slots (clinic-wide and provider-specific).
+      // Overlap test (not just "starts today") so a block that began earlier, e.g. a
+      // Google Calendar busy event imported as a clinic-wide block, still blocks slots.
       const blockedSlots = await this.blockedTimeSlotsRepository.find({
         where: {
           clinicId,
-          startTime: Between(startOfDay, endOfDay),
+          startTime: LessThan(endOfDay),
+          endTime: MoreThan(startOfDay),
         },
       });
 
@@ -280,6 +284,16 @@ export class AvailabilityService {
               }
           }
 
+          // No specific provider requested: the clinic is treated as one calendar, exactly like
+          // booking does (an appointment without provider conflicts with ANY overlapping one).
+          // So an existing 10:00-11:00 appointment makes 10:00 (and 10:30) busy.
+          if (!providerId) {
+            const clinicBusy =
+              existingAppointments.some(apt => slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)) ||
+              activeHolds.some(hold => slotStart < new Date(hold.endTime) && slotEnd > new Date(hold.startTime));
+            if (clinicBusy) availableProviders.length = 0;
+          }
+
             // Always format display time for the slot
             let startTimeDisplay: string;
             try {
@@ -290,12 +304,12 @@ export class AvailabilityService {
                 timeZone: timezone 
               });
             } catch (e) {
-              log('⚠️ Invalid timezone for toLocaleTimeString, falling back to UTC:', timezone);
+              log('⚠️ Invalid timezone for toLocaleTimeString, falling back to Europe/Athens:', timezone);
               startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', 
                 minute: '2-digit',
                 hour12: false,
-                timeZone: 'UTC' 
+                timeZone: 'Europe/Athens'
               });
             }
 
@@ -437,7 +451,7 @@ export class AvailabilityService {
     // Verify clinic exists
     const clinic = await this.clinicsService.findById(clinicId);
     if (!clinic) {
-      throw new Error('Clinic not found');
+      throw new NotFoundException('Clinic not found');
     }
 
     // Check for conflicts with existing appointments
@@ -451,7 +465,7 @@ export class AvailabilityService {
     });
 
     if (conflictingAppointment) {
-      throw new Error('Cannot block time slot with existing confirmed appointment');
+      throw new BadRequestException('Cannot block time slot with existing confirmed appointment');
     }
 
     const blockedSlot = this.blockedTimeSlotsRepository.create({
@@ -482,7 +496,7 @@ export class AvailabilityService {
     const upperRole = userRole.toUpperCase();
     const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
     
-    if (!isAdmin && blockedSlot.clinic.ownerId !== userId) {
+    if (!isAdmin && blockedSlot.clinic?.ownerId !== userId) {
       // Check if user is staff of this clinic (optional but safer)
       // For now, let's at least fix the basic role check
       if (upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
@@ -513,7 +527,7 @@ export class AvailabilityService {
     // Reuse permission logic
     const upperRole = userRole.toUpperCase();
     const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
-    if (!isAdmin && blockedSlot.clinic.ownerId !== userId && upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR') {
+    if (!isAdmin && blockedSlot.clinic?.ownerId !== userId && upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
       throw new ForbiddenException('Unauthorized to update this time slot');
     }
 
@@ -541,9 +555,9 @@ export class AvailabilityService {
         '(blocked.providerId = :providerId OR blocked.providerId IS NULL)',
         { providerId }
       );
-    } else {
-      queryBuilder.andWhere('blocked.providerId IS NULL');
     }
+    // No provider filter: every block of the clinic (clinic-wide and per staff member), so the
+    // calendars can show them and delete them by their real id.
 
     if (startDate && endDate) {
       queryBuilder.andWhere('blocked.startTime BETWEEN :startDate AND :endDate', {

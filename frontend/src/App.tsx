@@ -10,7 +10,7 @@ import {
 } from"react-router-dom";
 import { Provider, useDispatch, useSelector } from"react-redux";
 import { store, AppDispatch } from"@/store";
-import { restoreSession, logout } from "@/store/slices/authSlice";
+import { restoreSession, clearSessionLocally, AUTH_EVENT_KEY } from "@/store/slices/authSlice";
 import { Header } from"@/components/organisms/Header/Header";
 import { Footer } from"@/components/organisms/Footer/Footer";
 import { HomePage } from"@/pages/HomePage/HomePage";
@@ -40,7 +40,10 @@ import AnalyticsPage from"@/pages/Clinic/AnalyticsPage";
 import ClientsPage from"@/pages/Clinic/ClientsPage";
 import ReviewsPage from"@/pages/Clinic/ReviewsPage";
 import NotificationsPage from"@/pages/Clinic/NotificationsPage";
+import BroadcastPage from"@/pages/Admin/BroadcastPage";
+import ContactMessages from"@/pages/Admin/ContactMessages";
 import SettingsPage from"@/pages/Clinic/SettingsPage";
+import GoogleCalendarPage from"@/pages/Clinic/GoogleCalendarPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
 import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
@@ -120,10 +123,12 @@ import { MessagesPage } from"@/pages/Messages/MessagesPage";
 import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from"@/services/firebase";
+import { isSafeRedirect } from "@/services/client";
 import { GlobalDialer } from"./components/crm/GlobalDialer";
 
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail/VerifyEmail'));
 
 const AuthHeader: React.FC = () => {
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
@@ -183,6 +188,12 @@ function getRoleHomePath(role?: string): string {
  return"/";
 }
 
+/** After login: go back to the page she came from (e.g. the booking), else the role home. */
+function postLoginTarget(search: string, role?: string): string {
+ const redirect = new URLSearchParams(search).get("redirect");
+ return isSafeRedirect(redirect) ? redirect : getRoleHomePath(role);
+}
+
 const ClinicIndexRedirect: React.FC = () => {
  const user = useSelector((state: RootState) => state.auth.user);
  if (user?.role ==="doctor" || user?.role ==="secretariat") {
@@ -222,10 +233,11 @@ function AppContent() {
  // Sync auth state across multiple browser tabs
  useEffect(() => {
    const handleStorageChange = (e: StorageEvent) => {
-     if (e.key === "refreshToken") {
-       if (!e.newValue) {
-         dispatch(logout());
-       } else if (e.newValue !== e.oldValue && !isAuthenticated) {
+     // Sessions are httpOnly cookies shared by all tabs; tabs only signal login/logout.
+     if (e.key === AUTH_EVENT_KEY && e.newValue) {
+       if (e.newValue.startsWith("logout")) {
+         dispatch(clearSessionLocally());
+       } else if (e.newValue.startsWith("login") && !isAuthenticated) {
          dispatch(restoreSession());
        }
      }
@@ -255,11 +267,6 @@ function AppContent() {
       }
     };
   }, []);
-
-  // Re-apply language translation on SPA route change
-  useEffect(() => {
-    (window as any).reapplyLanguage?.();
-  }, [location.pathname]);
 
  // Role-aware redirect after session restore or login
  useEffect(() => {
@@ -298,7 +305,8 @@ function AppContent() {
  location.pathname ==="/login" ||
  location.pathname ==="/register" ||
  location.pathname ==="/forgot-password" ||
- location.pathname ==="/reset-password";
+ location.pathname ==="/reset-password" ||
+ location.pathname ==="/verify-email";
 
  return (
  <div className="App">
@@ -318,8 +326,16 @@ function AppContent() {
  !isAuthenticated ? (
  <Login />
  ) : (
- <Navigate to={getRoleHomePath(user?.role)} replace />
+ <Navigate to={postLoginTarget(location.search, user?.role)} replace />
  )
+ }
+ />
+ <Route
+ path="/verify-email"
+ element={
+ <Suspense fallback={<div>Loading...</div>}>
+ <VerifyEmail />
+ </Suspense>
  }
  />
  <Route
@@ -631,6 +647,14 @@ function AppContent() {
  }
  />
  <Route
+ path="google-calendar"
+ element={
+ <ProtectedLayout allowedRoles={["clinic_owner","doctor","secretariat"]}>
+ <GoogleCalendarPage />
+ </ProtectedLayout>
+ }
+ />
+ <Route
  path="diary"
  element={
  <ProtectedLayout allowedRoles={["clinic_owner","doctor","secretariat"]}>
@@ -649,7 +673,7 @@ function AppContent() {
  <Route
  path="sales-diary"
  element={
- <ProtectedLayout allowedRoles={["clinic_owner","manager","admin","salesperson"]}>
+ <ProtectedLayout allowedRoles={["manager","admin","salesperson"]}>
  <SalesDiaryPage />
  </ProtectedLayout>
  }
@@ -692,7 +716,7 @@ function AppContent() {
  <Route
  path="/crm/customers"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Customers />
  </AdminLayout>
@@ -702,7 +726,7 @@ function AppContent() {
  <Route
  path="/crm/archive"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <ArchivedLeads />
  </AdminLayout>
@@ -712,7 +736,7 @@ function AppContent() {
  <Route
  path="/crm/customer/:id"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CustomerDetails />
  </AdminLayout>
@@ -722,7 +746,7 @@ function AppContent() {
  <Route
  path="/crm/tasks"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Tasks />
  </AdminLayout>
@@ -732,7 +756,7 @@ function AppContent() {
  <Route
  path="/crm/leads"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <LeadsPage />
  </AdminLayout>
@@ -742,7 +766,7 @@ function AppContent() {
  <Route
  path="/crm/lost-leads"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <LostLeadsPage />
  </AdminLayout>
@@ -752,7 +776,7 @@ function AppContent() {
  <Route
  path="/crm/actions"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Actions />
  </AdminLayout>
@@ -762,7 +786,7 @@ function AppContent() {
  <Route
  path="/crm/calendar"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <AppointmentCalendar />
  </AdminLayout>
@@ -772,7 +796,7 @@ function AppContent() {
  <Route
  path="/crm/repeat-management"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <RepeatManagement />
  </AdminLayout>
@@ -782,7 +806,7 @@ function AppContent() {
  <Route
  path="/crm"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <CRM />
  </AdminLayout>
@@ -792,7 +816,7 @@ function AppContent() {
  <Route
  path="/crm/diary"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <SalesDiaryPage />
  </AdminLayout>
@@ -813,7 +837,7 @@ function AppContent() {
  <Route
  path="/crm/communication"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Communication />
  </AdminLayout>
@@ -823,7 +847,7 @@ function AppContent() {
  <Route
  path="/crm/analytics"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Analytics />
  </AdminLayout>
@@ -833,7 +857,7 @@ function AppContent() {
  <Route
  path="/crm/sales-analytics"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <SalesAnalyticsDashboard />
  </AdminLayout>
@@ -853,7 +877,7 @@ function AppContent() {
  <Route
  path="/crm/tag"
  element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
  <AdminLayout>
  <Tags />
  </AdminLayout>
@@ -926,7 +950,7 @@ function AppContent() {
  <Route
  path="/admin/manager-dashboard"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerDashboard />
  </AdminLayout>
@@ -936,7 +960,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/calls"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmCalls />
  </AdminLayout>
@@ -946,7 +970,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/reports"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmReports />
  </AdminLayout>
@@ -956,7 +980,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/advertising"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmAdvertising />
  </AdminLayout>
@@ -966,7 +990,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/access"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmAccessControl />
  </AdminLayout>
@@ -976,7 +1000,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/benefits"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmBenefits />
  </AdminLayout>
@@ -986,7 +1010,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/no-show-alerts"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmNoShowAlerts />
  </AdminLayout>
@@ -996,7 +1020,7 @@ function AppContent() {
  <Route
  path="/admin/manager-crm/clinic-stats"
  element={
- <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","clinic_owner","manager"]}>
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
  <ManagerCrmClinicStats />
  </AdminLayout>
@@ -1008,7 +1032,17 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin","manager"]}>
  <AdminLayout>
- <NotificationsPage />
+ <BroadcastPage />
+ </AdminLayout>
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="/admin/contact-messages"
+ element={
+ <ProtectedLayout allowedRoles={["SUPER_ADMIN","admin"]}>
+ <AdminLayout>
+ <ContactMessages />
  </AdminLayout>
  </ProtectedLayout>
  }

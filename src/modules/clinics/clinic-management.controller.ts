@@ -14,6 +14,7 @@ import {
   HttpCode,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -46,6 +47,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { User } from '../users/entities/user.entity';
+import { ClinicPatientsService, PatientInput } from './clinic-patients.service';
+
+const CLINIC_PORTAL_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR];
+const isClinicAccount = (role: string) =>
+  [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR].some((r) => r === String(role || '').toLowerCase());
 
 @ApiTags('Clinic Management')
 @Controller('clinic')
@@ -63,11 +69,61 @@ export class ClinicManagementController {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Clinic)
     private readonly clinicsRepository: Repository<Clinic>,
+    private readonly clinicPatientsService: ClinicPatientsService,
   ) { }
 
+  // Clinics the logged-in clinic account works for (replaces /crm/accessible-clinics
+  // for the clinic portal; a clinic account without a clinic gets an empty list)
+  @Get('accessible-clinics')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Clinics accessible to the current clinic account' })
+  async getAccessibleClinics(@Request() req) {
+    return this.clinicPatientsService.getAccessibleClinics(req.user.id, req.user.role);
+  }
+
+  // Clinic patients (own clinic only)
+  @Get('patients')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Patients of the clinic: appointments at this clinic + clients the clinic added' })
+  async listPatients(
+    @Query() query: { search?: string; clinicId?: string; limit?: number; offset?: number },
+    @Request() req,
+  ) {
+    return this.clinicPatientsService.listPatients(req.user.id, req.user.role, query);
+  }
+
+  @Get('patients/search')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Find a patient: own patients by name/phone/email, BeautyDoctors clients only by exact full phone' })
+  async searchPatients(@Query('q') q: string, @Query('clinicId') clinicId: string, @Request() req) {
+    return this.clinicPatientsService.searchPatients(req.user.id, req.user.role, q, clinicId);
+  }
+
+  @Post('patients')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Add patient (phone rule: known phone links to the existing contact, new phone = clinic own client)' })
+  async createPatient(@Body() body: PatientInput, @Request() req) {
+    return this.clinicPatientsService.createPatient(req.user.id, req.user.role, body);
+  }
+
+  @Patch('patients/:id')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Update an own patient (details reach the account, appointments and CRM card)' })
+  async updatePatient(@Param('id') id: string, @Body() body: Partial<PatientInput>, @Request() req) {
+    return this.clinicPatientsService.updatePatient(req.user.id, req.user.role, id, body);
+  }
+
+  @Get('patients/:id/medical-record')
+  @Roles(...CLINIC_PORTAL_ROLES)
+  @ApiOperation({ summary: 'Medical record (own clinic appointments + clinic notes) for the PDF export' })
+  async getMedicalRecord(@Param('id') id: string, @Request() req) {
+    return this.clinicPatientsService.getMedicalRecord(req.user.id, req.user.role, id);
+  }
+
   // Clinic Profile Management
+  // Clinic self-registration is disabled (item 57): only admins create clinics.
   @Post('profile')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create clinic profile' })
   @ApiResponse({ status: 201, description: 'Clinic profile created successfully' })
   async createClinicProfile(
@@ -85,6 +141,13 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
   async getClinicProfile(@Request() req, @Query('clinicId') clinicId?: string) {
+    if (clinicId && isClinicAccount(req.user.role)) {
+      // A clinic account only reads its own clinic(s); none assigned = no access
+      const allowed = await this.clinicPatientsService.resolveClinicIds(req.user.id, req.user.role);
+      if (allowed && !allowed.includes(clinicId)) {
+        throw new NotFoundException('Clinic not found');
+      }
+    }
     if (clinicId) {
       return this.clinicsService.findById(clinicId);
     }
@@ -117,7 +180,12 @@ export class ClinicManagementController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic bank/IBAN details for Viva payouts' })
   async getBankDetails(@Request() req) {
-    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    const owned = await this.clinicsService.findByOwnerId(req.user.id);
+    // Bank columns are select: false; load them explicitly for the owner/admin only.
+    const clinic = await this.clinicsRepository.createQueryBuilder('clinic')
+      .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName'])
+      .where('clinic.id = :id', { id: owned.id })
+      .getOne();
     return {
       bankIban: clinic.bankIban || null,
       bankAccountHolder: clinic.bankAccountHolder || null,
@@ -185,7 +253,7 @@ export class ClinicManagementController {
       ...createAppointmentDto,
       appointmentSource: 'clinic_own',
       bookedById: req.user.id,
-    });
+    }, { id: req.user.id, role: req.user.role });
   }
 
   @Get('appointments/:id')
@@ -213,6 +281,13 @@ export class ClinicManagementController {
     @Body() updateAppointmentStatusDto: UpdateAppointmentStatusDto,
     @Request() req,
   ) {
+    // Paid appointments stay locked for salespeople; only an admin can change them.
+    if (String(req.user?.role || '').toLowerCase() === UserRole.SALESPERSON) {
+      const existing = await this.bookingsService.findById(id);
+      if (Number(existing.amountPaid || 0) > 0) {
+        throw new ForbiddenException('This appointment is paid. Only an admin can change it.');
+      }
+    }
     return this.bookingsService.updateAppointmentStatus(
       id,
       updateAppointmentStatusDto.status as AppointmentStatus,
@@ -324,7 +399,7 @@ export class ClinicManagementController {
     }
 
     if (!clinicId) {
-      throw new Error('clinicId is required');
+      throw new BadRequestException('clinicId is required');
     }
 
     const effectiveProviderId = body.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
@@ -349,7 +424,7 @@ export class ClinicManagementController {
   }
 
   @Put('availability/block-time-slot/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Update a blocked time slot' })
   @ApiResponse({ status: 200, description: 'Time slot updated successfully' })
   async updateBlockedTimeSlot(
@@ -371,7 +446,7 @@ export class ClinicManagementController {
   }
 
   @Get('availability/blocked-slots')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Get blocked time slots' })
   @ApiResponse({ status: 200, description: 'Blocked time slots retrieved successfully' })
   async getBlockedTimeSlots(
@@ -384,8 +459,13 @@ export class ClinicManagementController {
     } else {
       clinic = await this.clinicsService.findByOwnerId(req.user.id);
     }
-    
-    const effectiveProviderId = query.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
+    if (!clinic) {
+      throw new NotFoundException('Clinic not found');
+    }
+
+    // Without an explicit provider filter, return EVERY block of the clinic (clinic-wide and
+    // per staff member) so calendars can show and delete them.
+    const effectiveProviderId = query.providerId || null;
 
     return this.availabilityService.getBlockedTimeSlots(
       clinic.id,
@@ -410,6 +490,14 @@ export class ClinicManagementController {
       req.user.id,
       recordPaymentDto,
     );
+  }
+
+  @Get('appointments/:id/payment-summary')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR, UserRole.SALESPERSON, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Total, paid, balance and every payment (with method) of an appointment' })
+  async getAppointmentPaymentSummary(@Param('id') id: string, @Request() req) {
+    await this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    return this.financialService.getAppointmentPaymentSummary(id);
   }
 
   @Get('appointments/:id/payments')
@@ -490,6 +578,9 @@ export class ClinicManagementController {
     @Query() query: { search?: string; limit?: number; offset?: number },
     @Request() req,
   ) {
+    if (isClinicAccount(req.user.role)) {
+      return this.clinicPatientsService.listPatients(req.user.id, req.user.role, query);
+    }
     return this.bookingsService.getClinicClients(req.user.id, req.user.role, query);
   }
 
@@ -498,6 +589,10 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get client details and history' })
   @ApiResponse({ status: 200, description: 'Client details retrieved successfully' })
   async getClientDetails(@Param('id') id: string, @Request() req) {
+    if (isClinicAccount(req.user.role)) {
+      // Throws unless this is a patient of the account's own clinic
+      await this.clinicPatientsService.getMedicalRecord(req.user.id, req.user.role, id);
+    }
     return this.bookingsService.getClientDetails(id, req.user.id, req.user.role);
   }
 
@@ -594,7 +689,8 @@ export class ClinicManagementController {
       notificationDto.type as any,
       notificationDto.title,
       notificationDto.message,
-      notificationDto.data,
+      // Tagged as a message so it appears in the client's inbox
+      { ...(notificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
   }
 
@@ -611,7 +707,7 @@ export class ClinicManagementController {
       bulkNotificationDto.type as any,
       bulkNotificationDto.title,
       bulkNotificationDto.message,
-      bulkNotificationDto.data,
+      { ...(bulkNotificationDto.data || {}), category: 'message', senderId: req.user.id },
     );
     return { message: 'Bulk notifications sent successfully' };
   }
@@ -689,16 +785,7 @@ export class ClinicManagementController {
     return this.clinicsService.respondToReview(req.user.id, id, body.response);
   }
 
-  @Patch('reviews/:id/toggle-visibility')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
-  @ApiOperation({ summary: 'Toggle review visibility' })
-  @ApiResponse({ status: 200, description: 'Review visibility toggled successfully' })
-  async toggleReviewVisibility(
-    @Param('id') id: string,
-    @Request() req,
-  ) {
-    return this.clinicsService.toggleReviewVisibility(req.user.id, id);
-  }
+  // Hiding/publishing reviews is an admin action only (see PATCH /clinics/reviews/:id/moderate).
 
   // Staff Management (Clinic Owners can manage their doctors/staff)
   @Get('staff')

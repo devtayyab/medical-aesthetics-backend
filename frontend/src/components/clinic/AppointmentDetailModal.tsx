@@ -2,6 +2,7 @@
 import React from 'react';
 import { Appointment, AppointmentStatus } from '../../types/clinic.types';
 import { X, User, Calendar, Clock, Euro, FileText, Shield, Info, ExternalLink, CheckCircle } from 'lucide-react';
+import { formatWeekdayDate, formatTime as formatAthensTime, formatDateTime } from "@/utils/formatters";
 
 interface AppointmentDetailModalProps {
  appointment: Appointment;
@@ -11,23 +12,9 @@ interface AppointmentDetailModalProps {
 const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appointment, onClose }) => {
  const isPlatform = appointment.appointmentSource === 'platform_broker';
  
- const formatDate = (dateStr: string) => {
- const date = new Date(dateStr);
- return date.toLocaleDateString([], { 
- weekday: 'long', 
- year: 'numeric', 
- month: 'long', 
- day: 'numeric' 
- });
- };
-
- const formatTime = (dateStr: string) => {
- return new Date(dateStr).toLocaleTimeString([], { 
- hour: '2-digit', 
- minute: '2-digit',
- hour12: false
- });
- };
+ // Athens time, dd/mm/yyyy, 24h
+ const formatDate = (dateStr: string) => formatWeekdayDate(dateStr);
+ const formatTime = (dateStr: string) => formatAthensTime(dateStr);
 
  return (
  <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-300">
@@ -364,7 +351,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
  <span className="text-[9px] font-black uppercase tracking-widest">Data Secure • E2E Encrypted</span>
  </div>
  <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
- Last Updated: {new Date(appointment.updatedAt).toLocaleString()}
+ Last Updated: {formatDateTime(appointment.updatedAt)}
  </div>
  </div>
  </div>

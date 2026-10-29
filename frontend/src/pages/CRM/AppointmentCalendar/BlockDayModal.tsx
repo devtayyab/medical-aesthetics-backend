@@ -9,6 +9,8 @@ import type { BlockDayFormData } from './types';
 interface BlockDayModalProps {
   isOpen: boolean;
   initialDate?: string;
+  /** Clinic currently viewed in the calendar; the modal opens on it. */
+  initialClinicId?: string;
   clinics: any[];
   onClose: () => void;
   onSuccess: () => void;
@@ -25,6 +27,7 @@ const BLOCK_DAY_REASONS = [
 export const BlockDayModal: React.FC<BlockDayModalProps> = ({
   isOpen,
   initialDate,
+  initialClinicId,
   clinics,
   onClose,
   onSuccess,
@@ -41,12 +44,12 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
     if (isOpen) {
       setForm(prev => ({
         ...prev,
-        clinicId: prev.clinicId || clinics[0]?.id || '',
+        clinicId: (initialClinicId && initialClinicId !== 'all' ? initialClinicId : '') || prev.clinicId || clinics[0]?.id || '',
         date: initialDate || format(new Date(), 'yyyy-MM-dd'),
       }));
       setCustomReason('');
     }
-  }, [isOpen, initialDate, clinics]);
+  }, [isOpen, initialDate, initialClinicId, clinics]);
 
   const handleSubmit = async () => {
     if (!form.clinicId) { toast.error('Please select a clinic.'); return; }

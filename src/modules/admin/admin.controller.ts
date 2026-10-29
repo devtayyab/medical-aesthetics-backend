@@ -138,9 +138,51 @@ export class AdminController {
 
   @Patch('users/:id/toggle-status')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Toggle user active status' })
-  toggleUserStatus(@Param('id') id: string) {
-    return this.adminService.toggleUserStatus(id);
+  @ApiOperation({ summary: 'Toggle user active status (prefer deactivate/reactivate)' })
+  toggleUserStatus(@Request() req, @Param('id') id: string) {
+    return this.adminService.toggleUserStatus(id, req.user?.id);
+  }
+
+  @Get('users/:id/open-work')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Open leads and tasks owned by a user (asked before deactivation)' })
+  getUserOpenWork(@Param('id') id: string) {
+    return this.adminService.getUserOpenWork(id);
+  }
+
+  @Post('users/:id/deactivate')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Deactivate a user: blocks login at once and hands open leads/tasks to another user' })
+  deactivateUser(@Request() req, @Param('id') id: string, @Body() body: { reassignToUserId?: string }) {
+    return this.adminService.deactivateUser(id, req.user?.id, body?.reassignToUserId);
+  }
+
+  @Post('users/:id/reactivate')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reactivate a user' })
+  reactivateUser(@Request() req, @Param('id') id: string) {
+    return this.adminService.reactivateUser(id, req.user?.id);
+  }
+
+  @Get('staff-requests')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Pending "Add staff" requests from clinics' })
+  getStaffRequests() {
+    return this.adminService.getPendingStaffRequests();
+  }
+
+  @Post('staff-requests/:id/approve')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve a staff request (sends a set-password link)' })
+  approveStaffRequest(@Request() req, @Param('id') id: string) {
+    return this.adminService.approveStaffRequest(id, req.user?.id);
+  }
+
+  @Post('staff-requests/:id/reject')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reject a staff request' })
+  rejectStaffRequest(@Request() req, @Param('id') id: string) {
+    return this.adminService.rejectStaffRequest(id, req.user?.id);
   }
 
   @Delete('users/:id')

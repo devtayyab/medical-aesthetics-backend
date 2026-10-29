@@ -231,6 +231,38 @@ export const clientsApi = {
  },
 };
 
+// Clinic patients (own clinic only; BD clients findable only by exact full phone)
+export interface ClinicPatientInput {
+ firstName: string;
+ lastName?: string;
+ phone: string;
+ email?: string;
+ clinicId?: string;
+}
+
+export const patientsApi = {
+ accessibleClinics: async (): Promise<any[]> => {
+ const response = await apiClient.get('/clinic/accessible-clinics');
+ return response.data;
+ },
+ search: async (q: string, clinicId?: string): Promise<any[]> => {
+ const response = await apiClient.get('/clinic/patients/search', { params: { q, clinicId } });
+ return response.data;
+ },
+ create: async (data: ClinicPatientInput): Promise<{ patient: any; linkedToExisting: boolean; isBeautyDoctorsClient: boolean }> => {
+ const response = await apiClient.post('/clinic/patients', data);
+ return response.data;
+ },
+ update: async (id: string, data: Partial<ClinicPatientInput>): Promise<any> => {
+ const response = await apiClient.patch(`/clinic/patients/${id}`, data);
+ return response.data;
+ },
+ medicalRecord: async (id: string): Promise<any> => {
+ const response = await apiClient.get(`/clinic/patients/${id}/medical-record`);
+ return response.data;
+ },
+};
+
 // Reviews API
 export const reviewsApi = {
  getAll: async (params?: { limit?: number; offset?: number }): Promise<{
@@ -250,11 +282,6 @@ export const reviewsApi = {
  respond: async (id: string, response: string): Promise<Review> => {
  const res = await apiClient.post(`/clinic/reviews/${id}/respond`, { response });
  return res.data;
- },
-
- toggleVisibility: async (id: string): Promise<Review> => {
- const response = await apiClient.patch(`/clinic/reviews/${id}/toggle-visibility`);
- return response.data;
  },
 };
 
@@ -392,6 +419,7 @@ export default {
  appointments: appointmentsApi,
  analytics: analyticsApi,
  clients: clientsApi,
+ patients: patientsApi,
  reviews: reviewsApi,
  notifications: notificationsApi,
  availability: availabilityApi,

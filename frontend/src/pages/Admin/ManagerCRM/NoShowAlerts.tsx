@@ -30,7 +30,8 @@ export const NoShowAlerts: React.FC = () => {
 
  try {
  const data = await fetchNoShowAlerts();
- setRows(data);
+ // Past no-shows only (a future appointment can never be a no-show).
+ setRows((data || []).filter((r: NoShowAlert) => (r.daysAgo ?? 0) >= 0));
  } catch (error) {
  console.error("Failed to fetch no-show alerts:", error);
  } finally {
@@ -202,9 +203,6 @@ export const NoShowAlerts: React.FC = () => {
  <RefreshCcw className={cn("h-4 w-4 mr-2", isRefreshing &&"animate-spin")} />
  Refresh
  </Button>
- <Button className="bg-[#CBFF38] text-gray-900 hover:bg-[#b8e632] font-bold">
- All Resolved
- </Button>
  </div>
  </div>
 
@@ -231,18 +229,18 @@ export const NoShowAlerts: React.FC = () => {
  </CardHeader>
  <CardContent>
  <div className="text-2xl font-bold">{highPriorityCount}</div>
- <p className="text-[10px] text-gray-500 mt-1">Patients likely to churn if not contacted</p>
+ <p className="text-[10px] text-gray-500 mt-1">{">"}3 days since the missed visit</p>
  </CardContent>
  </Card>
 
  <Card className="border-l-4 border-l-emerald-500">
  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-medium text-xs uppercase tracking-wider">
- Recovery Strategy
+ Next Step
  <Phone className="h-4 w-4 text-emerald-500" />
  </CardHeader>
  <CardContent>
- <div className="text-lg font-bold">Direct Call</div>
- <p className="text-[10px] text-gray-500 mt-1">"85% recovery rate via voice follow-up"</p>
+ <div className="text-lg font-bold">Call the client</div>
+ <p className="text-[10px] text-gray-500 mt-1">The client's salesperson calls to rebook.</p>
  </CardContent>
  </Card>
  </div>

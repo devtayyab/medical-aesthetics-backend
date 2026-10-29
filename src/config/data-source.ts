@@ -32,6 +32,8 @@ import { Conversation } from '../modules/messages/entities/conversation.entity';
 import { Message } from '../modules/messages/entities/message.entity';
 import { ConversationParticipant } from '../modules/messages/entities/conversation-participant.entity';
 import { ClinicCalendarConnection } from '../modules/google-calendar/entities/clinic-calendar-connection.entity';
+import { NotificationDispatch } from '../modules/notifications/entities/notification-dispatch.entity';
+import { ContactMessage } from '../modules/notifications/entities/contact-message.entity';
 import * as path from 'path';
 
 config();
@@ -80,6 +82,8 @@ const AppDataSource = new DataSource({
         PlatformSettings,
         PaymentRecord,
         ClinicCalendarConnection,
+        NotificationDispatch,
+        ContactMessage,
     ],
 
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],

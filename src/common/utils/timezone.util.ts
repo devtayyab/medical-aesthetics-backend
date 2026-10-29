@@ -1,4 +1,4 @@
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
 /**
  * Timezone conventions for the whole app:
@@ -44,4 +44,80 @@ export function formatTimeInTz(date: Date, timezone?: string | null): string {
 /** e.g. "29/05/2026, 14:30" in the clinic's timezone. */
 export function formatDateTimeInTz(date: Date, timezone?: string | null): string {
   return withFallback(timezone, (tz) => formatInTimeZone(date, tz, 'dd/MM/yyyy, HH:mm'));
+}
+
+/** Business timezone for CRM scheduling (tasks, confirmation calls). */
+export const BUSINESS_TIMEZONE = 'Europe/Athens';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Moves `workingDays` Mon-Fri days away from the calendar day `date` falls on in
+ * `timezone` (negative = backwards) and returns that day at `hour:minute` wall-clock
+ * time in `timezone`, as a UTC instant. DST is handled by date-fns-tz.
+ *
+ * e.g. appointment Monday 10:00 Athens, -2 -> previous Thursday 08:00 Athens.
+ */
+export function addWorkingDaysAt(
+  date: Date,
+  workingDays: number,
+  hour = 8,
+  minute = 0,
+  timezone: string = BUSINESS_TIMEZONE,
+): Date {
+  const [y, m, d] = formatInTimeZone(date, timezone, 'yyyy-MM-dd').split('-').map(Number);
+  // Walk on a pure calendar date (UTC noon keeps the arithmetic clear of DST edges)
+  const cursor = new Date(Date.UTC(y, m - 1, d, 12));
+  const step = workingDays < 0 ? -1 : 1;
+  let remaining = Math.abs(workingDays);
+  while (remaining > 0) {
+    cursor.setUTCDate(cursor.getUTCDate() + step);
+    const dow = cursor.getUTCDay();
+    if (dow !== 0 && dow !== 6) remaining--;
+  }
+  const local = `${cursor.getUTCFullYear()}-${pad2(cursor.getUTCMonth() + 1)}-${pad2(cursor.getUTCDate())}T${pad2(hour)}:${pad2(minute)}:00`;
+  return fromZonedTime(local, timezone);
+}
+
+/** Next working day (Mon-Fri) at 08:00 Athens, counted from `from`. */
+export function nextWorkingDayAt0800(from: Date = new Date()): Date {
+  return addWorkingDaysAt(from, 1, 8, 0, BUSINESS_TIMEZONE);
+}
+
+/** Due date of the automatic confirmation call: 2 working days before the appointment, 08:00 Athens. */
+export function confirmationCallDueDate(appointmentStart: Date): Date {
+  return addWorkingDaysAt(appointmentStart, -2, 8, 0, BUSINESS_TIMEZONE);
+}
+
+/**
+ * Parses a wall-clock date "dd/mm/yyyy" (or "yyyy-mm-dd") plus optional "HH:mm" or "h:mm AM/PM" in
+ * `timezone` into a UTC instant. Returns null when the input is not a valid date.
+ */
+export function parseWallClockInTz(
+  dateStr: string,
+  timeStr?: string | null,
+  timezone: string = BUSINESS_TIMEZONE,
+): Date | null {
+  const s = (dateStr || '').trim();
+  let y: number, m: number, d: number;
+  let match = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (match) {
+    d = Number(match[1]); m = Number(match[2]); y = Number(match[3]);
+    // US export ("10/27/2026"): only unambiguous when the second part cannot be a month
+    if (m > 12 && d <= 12) [d, m] = [m, d];
+  } else if ((match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) {
+    y = Number(match[1]); m = Number(match[2]); d = Number(match[3]);
+  } else {
+    return null;
+  }
+  // Time may be given separately or embedded after the date ("27/10/2026 14:30")
+  const t = (timeStr || s.slice(match[0].length) || '').trim().match(/(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?/i);
+  let hh = t ? Number(t[1]) : 8;
+  const mm = t ? Number(t[2]) : 0;
+  // 12-hour clock ("2:30 PM", "12:15 am")
+  const meridiem = t?.[3]?.toLowerCase().charAt(0);
+  if (meridiem && hh >= 1 && hh <= 12) hh = (hh % 12) + (meridiem === 'p' ? 12 : 0);
+  if (m < 1 || m > 12 || d < 1 || d > 31 || hh > 23 || mm > 59) return null;
+  const result = fromZonedTime(`${y}-${pad2(m)}-${pad2(d)}T${pad2(hh)}:${pad2(mm)}:00`, timezone);
+  return isNaN(result.getTime()) ? null : result;
 }

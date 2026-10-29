@@ -37,6 +37,8 @@ export const crmService = {
   getFacebookStats: (pageId?: string) => api.get('/crm/facebook/stats', { params: pageId ? { pageId } : undefined }),
   getWebhookLeads: (params?: { days?: number; page?: number; limit?: number }) => api.get('/crm/facebook/webhook-leads', { params }),
   testFacebookConnection: () => api.get('/crm/facebook/test'),
+  getFacebookHealth: (live?: boolean) => api.get('/crm/facebook/health', { params: live ? { live: 'true' } : undefined }),
+  getTreatmentCatalog: () => api.get('/crm/treatments'),
   assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
   bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
 
@@ -83,7 +85,14 @@ export const crmService = {
     status?: string;
     priority?: string;
     customerId?: string;
+    // Server-side paging (Tasks page): response is { data, total, page, limit, totalPages }
+    page?: number;
+    limit?: number;
+    search?: string;
+    actionType?: string;
+    dateRange?: string;
   }) => api.get('/crm/actions', { params: { ...filters, salespersonId } }),
+  importTasksCsv: (csv: string, dryRun = false) => api.post('/crm/actions/import-csv', { csv, dryRun }),
   getPendingActions: (salespersonId?: string) => api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) => api.get('/crm/tasks/overdue', { params: { salespersonId } }),
   getTaskKpis: (salespersonId?: string) => api.get('/crm/tasks/kpis', { params: { salespersonId } }),

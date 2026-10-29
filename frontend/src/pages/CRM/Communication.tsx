@@ -191,7 +191,7 @@ export const Communication: React.FC = () => {
  await fetchContacts(); // Refresh list to see them as Customer
  } catch (err) {
  console.error("Conversion failed:", err);
- toast.error("Failed to convert lead. Please check network logs.");
+ toast.error((err as any)?.response?.data?.message || "Failed to convert lead.");
  }
  };
 

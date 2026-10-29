@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
+import clinicApi from '@/services/api/clinicApi';
 import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
 import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
@@ -56,8 +57,26 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     existingAppointment &&
     ['COMPLETED', 'EXECUTED'].includes(String(existingAppointment.status || '').toUpperCase())
   );
+  // Arrived / completed / no-show and payments are only possible from the appointment start time.
+  const isFutureAppointment = Boolean(
+    existingAppointment && new Date(existingAppointment.startTime).getTime() > Date.now()
+  );
+  const STARTED_ONLY_STATUSES = ['ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW'];
+  const isCancelledOrClosed = Boolean(
+    existingAppointment &&
+    ['CANCELLED', 'NO_SHOW', 'DELETED'].includes(String(existingAppointment.status || '').toUpperCase())
+  );
 
   const { user } = useSelector((state: RootState) => state.auth);
+  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
+
+  // Partial payments: total / paid / balance and each payment with its method (from the server).
+  const [paymentSummary, setPaymentSummary] = useState<{
+    total: number;
+    paid: number;
+    balance: number;
+    payments: Array<{ id: string; amount: number; method: string; type: string; status: string; createdAt: string }>;
+  } | null>(null);
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
@@ -227,6 +246,34 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     setPatientResults([]);
   }, [isOpen, mode, existingAppointment, initialData, currentUserId, user]);
 
+  const loadPaymentSummary = useCallback(async () => {
+    if (!isOpen || mode !== 'edit' || !existingAppointment?.id) {
+      setPaymentSummary(null);
+      return;
+    }
+    try {
+      const res: any = await bookingAPI.getPaymentSummary(existingAppointment.id);
+      const sum = res?.data || null;
+      setPaymentSummary(sum);
+      if (sum) {
+        const balance = Number(sum.balance || 0);
+        const paid = Number(sum.paid || 0);
+        setForm(prev => ({
+          ...prev,
+          // Ask only for the open balance.
+          amount: balance > 0 ? balance : prev.amount,
+          paymentStatus: paid <= 0 ? 'UNPAID' : (balance > 0 ? 'PARTIALLY_PAID' : 'PAID'),
+        }));
+      }
+    } catch {
+      setPaymentSummary(null);
+    }
+  }, [isOpen, mode, existingAppointment?.id]);
+
+  useEffect(() => {
+    loadPaymentSummary();
+  }, [loadPaymentSummary]);
+
   // Fetch services when clinic changes
   useEffect(() => {
     if (!form.clinicId) return;
@@ -277,10 +324,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     setIsLoadingSlots(true);
     bookingAPI.getAvailability({
       clinicId: form.clinicId,
-      serviceId: form.serviceId,
+      // All selected treatments, so busy slots reflect the full duration (e.g. 60 + 30 = 90 min).
+      serviceId: [form.serviceId, ...(form.additionalServiceIds || [])].filter((id, i, arr) => !!id && arr.indexOf(id) === i),
       date: form.date,
       providerId: (existingAppointment?.providerId || existingAppointment?.provider?.id) || undefined,
-      allowPast: true,
+      // Past times: admins only (the server enforces this too).
+      allowPast: isAdmin,
       excludeAppointmentId: mode === 'edit' && existingAppointment ? existingAppointment.id : undefined,
     })
       .then((res: any) => {
@@ -299,7 +348,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       })
       .catch(() => setAvailableSlots([]))
       .finally(() => setIsLoadingSlots(false));
-  }, [form.clinicId, form.serviceId, form.date, form.salesPersonId, clinics, mode, existingAppointment]);
+  }, [form.clinicId, form.serviceId, form.additionalServiceIds, form.date, form.salesPersonId, clinics, mode, existingAppointment, isAdmin]);
 
   // Patient search
   useEffect(() => {
@@ -307,6 +356,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     const timer = setTimeout(async () => {
       setIsSearchingPatients(true);
       try {
+        // Clinic accounts never search the BeautyDoctors CRM: only their own
+        // patients, and a BD client only by the exact full phone number
+        const role = String(user?.role || '').toLowerCase();
+        if (['clinic_owner', 'doctor', 'secretariat'].includes(role)) {
+          const own = await clinicApi.patients.search(patientSearch, form.clinicId || undefined);
+          setPatientResults(own || []);
+          return;
+        }
+
         const [leadsRes, custRes] = await Promise.all([
           crmAPI.getLeads({ search: patientSearch }),
           crmAPI.getCustomers({ search: patientSearch })
@@ -339,7 +397,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [patientSearch]);
+  }, [patientSearch, user?.role, form.clinicId]);
 
   const handleServicesChange = (rawSelectedIds: string[]) => {
     // De-duplicate so the same service can't be counted twice (as primary + additional),
@@ -504,7 +562,32 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       toast.error(isGreek ? 'Το ολοκληρωμένο ραντεβού είναι κλειδωμένο και δεν μπορεί να τροποποιηθεί.' : 'Completed appointments are locked and cannot be modified.');
       return;
     }
-    const overrideStatus = typeof eOrOverrideStatus === 'string' ? eOrOverrideStatus : undefined;
+    const overrideStatus = typeof eOrOverrideStatus === 'string' ? eOrOverrideStatus.toUpperCase() : undefined;
+    const targetStatus = String(overrideStatus || form.status || '').toUpperCase();
+    const statusChanged = mode === 'create' || targetStatus !== String(existingAppointment?.status || '').toUpperCase();
+    if (statusChanged && STARTED_ONLY_STATUSES.includes(targetStatus)) {
+      const startMs = mode === 'edit' && existingAppointment
+        ? new Date(existingAppointment.startTime).getTime()
+        : createClinicUTCDateTime(new Date(form.date + 'T00:00:00'), form.startTime || '00:00', clinics.find(c => c.id === form.clinicId)?.timezone || 'Europe/Athens').getTime();
+      if (startMs > Date.now()) {
+        toast.error(isGreek ? 'Αυτή η κατάσταση επιτρέπεται μόνο από την ώρα έναρξης του ραντεβού.' : 'This status is only possible from the appointment start time.');
+        return;
+      }
+    }
+    // Cancelling a PAID appointment: payment stays as is; only an admin decides on a refund.
+    let refund = false;
+    const paidSoFar = Number(paymentSummary?.paid ?? existingAppointment?.amountPaid ?? 0);
+    if (mode === 'edit' && statusChanged && targetStatus === 'CANCELLED' && paidSoFar > 0) {
+      if (isAdmin) {
+        refund = window.confirm(isGreek
+          ? `Το ραντεβού έχει πληρωθεί (€${paidSoFar.toFixed(2)}). Επιστροφή χρημάτων;`
+          : `This appointment is paid (€${paidSoFar.toFixed(2)}). Refund?`);
+      } else if (!window.confirm(isGreek
+        ? 'Το ραντεβού έχει πληρωθεί. Η πληρωμή δεν αλλάζει, ο διαχειριστής αποφασίζει για επιστροφή. Ακύρωση;'
+        : 'This appointment is paid. The payment stays as is and an admin decides on a refund. Cancel it?')) {
+        return;
+      }
+    }
     if (!validateAndCheckConflict()) return;
     setIsSubmitting(true);
 
@@ -543,6 +626,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         toast.success('Appointment created successfully!');
       } else {
         await bookingAPI.updateAppointment(existingAppointment!.id, {
+          // Clinic changes are saved too; the server recalculates price and duration.
+          clinicId: form.clinicId,
           startTime: startUTC.toISOString(),
           endTime: endUTC.toISOString(),
           serviceId: form.serviceId,
@@ -552,9 +637,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           notes: form.notes,
         });
         // Update status separately if changed
-        const finalStatus = overrideStatus || form.status;
-        if (finalStatus !== existingAppointment?.status) {
-          await bookingAPI.updateStatus(existingAppointment!.id, finalStatus);
+        const finalStatus = targetStatus;
+        if (finalStatus !== String(existingAppointment?.status || '').toUpperCase()) {
+          await bookingAPI.updateStatus(existingAppointment!.id, finalStatus, refund ? { refund: true } : undefined);
         }
         toast.success('Appointment updated successfully!');
       }
@@ -611,15 +696,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
     try {
+      if (isFutureAppointment) {
+        toast.error(isGreek ? 'Η πληρωμή καταχωρείται από την ώρα έναρξης του ραντεβού.' : 'Payments can be recorded from the appointment start time.');
+        return;
+      }
       await bookingAPI.recordPayment(existingAppointment.id, {
         amount: chargeAmount,
         method: 'card',
         notes: 'Paid via Card',
       });
       toast.success('Card payment recorded!');
-      existingAppointment.amountPaid = chargeAmount;
+      existingAppointment.amountPaid = Number(existingAppointment.amountPaid || 0) + chargeAmount;
       existingAppointment.paymentMethod = 'CARD';
-      setForm(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod: 'card', amount: chargeAmount }));
+      setForm(prev => ({ ...prev, paymentMethod: 'card' }));
+      await loadPaymentSummary();
       onSuccess();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to record card payment.');
@@ -634,15 +724,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
     try {
+      if (isFutureAppointment) {
+        toast.error(isGreek ? 'Η πληρωμή καταχωρείται από την ώρα έναρξης του ραντεβού.' : 'Payments can be recorded from the appointment start time.');
+        return;
+      }
       await bookingAPI.recordPayment(existingAppointment.id, {
         amount: chargeAmount,
         method: 'cash',
         notes: 'Paid via Cash',
       });
       toast.success('Cash payment recorded!');
-      existingAppointment.amountPaid = chargeAmount;
+      existingAppointment.amountPaid = Number(existingAppointment.amountPaid || 0) + chargeAmount;
       existingAppointment.paymentMethod = 'CASH';
-      setForm(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod: 'cash', amount: chargeAmount }));
+      setForm(prev => ({ ...prev, paymentMethod: 'cash' }));
+      await loadPaymentSummary();
       onSuccess();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to record cash payment.');
@@ -770,7 +865,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       <p className="text-[10px] text-slate-400">{selectedPatient.phone}</p>
                     )}
                   </div>
-                  {(selectedPatient.id || form.patientId) && (
+                  {(selectedPatient.id || form.patientId) && !['clinic_owner', 'doctor', 'secretariat'].includes(String(user?.role || '').toLowerCase()) && (
                     <Link
                       to={`/crm/customer/${selectedPatient.id || form.patientId}`}
                       target="_blank"
@@ -1078,7 +1173,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 {isGreek ? 'Κατάσταση' : 'Status'}
               </label>
               <div className="grid grid-cols-3 gap-1.5">
-                {APPOINTMENT_STATUS_OPTIONS.map(opt => {
+                {APPOINTMENT_STATUS_OPTIONS.filter(opt =>
+                  // Arrived / completed / no-show only from the start time (still show the current one).
+                  // In create mode only an admin (entering a past visit) may pick them.
+                  !(STARTED_ONLY_STATUSES.includes(opt.value) && (mode === 'create' ? !isAdmin : isFutureAppointment) && form.status !== opt.value)
+                ).map(opt => {
                   const cfg = STATUS_CONFIG[opt.value] || STATUS_CONFIG.PENDING;
                   const isSelected = form.status === opt.value;
                   return (
@@ -1155,7 +1254,32 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             })()}
 
             {/* Payment status badge */}
-            {form.paymentStatus === 'PAID' ? (() => {
+            {mode === 'edit' && paymentSummary && paymentSummary.paid > 0 && (
+              <div className="mb-3 rounded-xl border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 text-[11px] font-black text-slate-700">
+                  {isGreek ? 'Σύνολο' : 'Total'} €{Number(paymentSummary.total || 0).toFixed(2)} - {isGreek ? 'Πληρώθηκαν' : 'Paid'} €{Number(paymentSummary.paid || 0).toFixed(2)} - {isGreek ? 'Υπόλοιπο' : 'Balance'} €{Number(paymentSummary.balance || 0).toFixed(2)}
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {paymentSummary.payments.map(pmt => (
+                    <div key={pmt.id} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
+                      <span className="text-slate-600">
+                        {new Date(pmt.createdAt).toLocaleString('el-GR', { timeZone: 'Europe/Athens', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
+                        {' · '}{String(pmt.method || '').toUpperCase()}{pmt.type !== 'payment' ? ` · ${pmt.type}` : ''}
+                      </span>
+                      <span className={`font-black ${pmt.type === 'refund' || pmt.type === 'void' ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {pmt.type === 'refund' || pmt.type === 'void' ? '-' : ''}€{Number(pmt.amount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mode === 'edit' && isFutureAppointment && form.paymentStatus !== 'PAID' ? (
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
+                {isGreek ? 'Η πληρωμή καταχωρείται από την ώρα έναρξης του ραντεβού.' : 'Payments can be recorded from the appointment start time.'}
+              </div>
+            ) : mode === 'edit' && isCancelledOrClosed && form.paymentStatus !== 'PAID' ? null : form.paymentStatus === 'PAID' ? (() => {
               const bookedByName = (existingAppointment as any)?.bookedByInfo?.name || 'System';
               const isOnline = existingAppointment?.appointmentSource === 'platform_broker' && existingAppointment?.paymentMethod === 'CARD';
               const paidAmt = parseFloat(String(existingAppointment?.amountPaid || form.amount || 0));
@@ -1193,10 +1317,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 </div>
 
                 <div className="px-4 py-4 space-y-4">
-                  {/* Editable Amount input */}
+                  {/* Editable Amount input (defaults to the open balance) */}
                   <div>
                     <label className="block text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">
-                      Amount (€) <span className="text-slate-400 font-medium normal-case tracking-normal">— editable</span>
+                      {form.paymentStatus === 'PARTIALLY_PAID'
+                        ? (isGreek ? 'Υπόλοιπο (€)' : 'Balance (€)')
+                        : 'Amount (€)'} <span className="text-slate-400 font-medium normal-case tracking-normal">— editable</span>
                     </label>
                     <input
                       type="number"
@@ -1269,7 +1395,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          {mode === 'edit' && form.paymentStatus === 'UNPAID' && !isCompleted ? (
+          {mode === 'edit' && !isCompleted && (form.paymentStatus === 'UNPAID' || isAdmin) ? (
             <button
               onClick={handleDelete}
               disabled={isDeleting}
@@ -1294,9 +1420,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <Lock className="w-3.5 h-3.5" />
                 {isGreek ? 'Ολοκληρωμένο & Κλειδωμένο' : 'Completed & Locked'}
               </div>
-            ) : mode === 'edit' && form.paymentStatus === 'PAID' && existingAppointment?.status !== 'completed' ? (
+            ) : mode === 'edit' && form.paymentStatus === 'PAID' && !isAdmin && !isFutureAppointment && !isCancelledOrClosed ? (
               <button
-                onClick={() => handleSave('completed')}
+                onClick={() => handleSave('COMPLETED')}
                 disabled={isSubmitting}
                 className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
@@ -1304,6 +1430,16 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 {isGreek ? 'Ολοκληρωμένο' : 'Complete Appointment'}
               </button>
             ) : (
+              <>
+              {mode === 'edit' && isAdmin && form.paymentStatus === 'PAID' && !isFutureAppointment && !isCancelledOrClosed && (
+                <button
+                  onClick={() => handleSave('COMPLETED')}
+                  disabled={isSubmitting}
+                  className="px-4 py-2.5 text-[12px] font-black bg-white border border-emerald-300 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isGreek ? 'Ολοκληρωμένο' : 'Complete Appointment'}
+                </button>
+              )}
               <button
                 onClick={handleSave}
                 disabled={isSubmitting}
@@ -1314,6 +1450,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   ? (isGreek ? 'Δημιουργία ραντεβού' : 'Create Appointment')
                   : (isGreek ? 'Αποθήκευση αλλαγών' : 'Save Changes')}
               </button>
+              </>
             )}
           </div>
         </div>

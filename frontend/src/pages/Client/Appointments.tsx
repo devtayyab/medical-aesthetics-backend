@@ -5,8 +5,9 @@ import { css } from "@emotion/css";
 import { 
   CalendarDays, Clock, MapPin, Shield, X, Edit3, 
   MessageSquare, Star, CreditCard, 
-  CheckCircle2, AlertCircle, Plus, ChevronRight, Sparkles
+  CheckCircle2, AlertCircle, Plus, ChevronRight, Sparkles, CalendarPlus
 } from "lucide-react";
+import { downloadIcs, googleCalendarUrl, formatClinicLocation, type CalendarEventInput } from "@/utils/calendarExport";
 import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
 import { bookingAPI } from "@/services/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,38 +19,14 @@ import { RescheduleModal } from "@/components/organisms/RescheduleModal";
 
 // Luxury Clinic Assets
 import HeroBg from "@/assets/Appointments_Hero.png";
+import { formatDate, formatTime, APP_TIMEZONE } from "@/utils/formatters";
 
-const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
-  const d = new Date(dateStr);
-  try {
-    if (!timezone) throw new Error("No timezone");
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    return formatter.format(d);
-  } catch {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-};
+// Clinic wall-clock time (Europe/Athens by default), 24h and dd/mm/yyyy
+const formatClinicTime = (dateStr: string | Date, timezone?: string) =>
+  formatTime(dateStr, timezone && timezone !== 'null' ? timezone : APP_TIMEZONE);
 
-const formatClinicDate = (dateStr: string | Date, timezone?: string) => {
-  const d = new Date(dateStr);
-  try {
-    if (!timezone) throw new Error("No timezone");
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-    return formatter.format(d);
-  } catch {
-    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
-  }
-};
+const formatClinicDate = (dateStr: string | Date, timezone?: string) =>
+  formatDate(dateStr, timezone && timezone !== 'null' ? timezone : APP_TIMEZONE);
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -178,7 +155,9 @@ const getAppointmentMeta = (apt: Appointment, isGreek: boolean) => {
   }
   return {
     isPast,
-    badgeText: isGreek ? (rawStatus === 'PENDING' ? 'ΣΕ ΑΝΑΜΟΝΗ' : rawStatus) : rawStatus,
+    badgeText: rawStatus === 'PENDING'
+      ? (isGreek ? 'ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ' : 'PENDING CONFIRMATION')
+      : rawStatus.replace(/_/g, ' '),
     badgeClass: 'bg-gray-100/80 text-gray-600 border-gray-200',
     icon: null,
   };
@@ -214,7 +193,14 @@ export const Appointments: React.FC = () => {
   }, [dispatch]);
 
   const handleCancelClick = async (apt: Appointment) => {
-    if (window.confirm("Are you sure you want to cancel this reservation?")) {
+    // Late cancellation: less than 24h before the start (the clinic sees it marked as such).
+    const isLate = new Date(apt.startTime).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+    const greek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+    const question = greek ? "Θέλετε σίγουρα να ακυρώσετε την κράτηση;" : "Are you sure you want to cancel this reservation?";
+    const lateWarning = greek
+      ? "Προσοχή: ακύρωση λιγότερο από 24 ώρες πριν το ραντεβού. Θα καταγραφεί ως καθυστερημένη ακύρωση."
+      : "Warning: this is less than 24 hours before your appointment. It will be recorded as a late cancellation.";
+    if (window.confirm(isLate ? `${lateWarning}\n\n${question}` : question)) {
       try {
         await dispatch(cancelAppointment(apt.id)).unwrap();
         toast.success("Appointment cancelled");
@@ -224,6 +210,24 @@ export const Appointments: React.FC = () => {
         dispatch(fetchUserAppointments());
       }
     }
+  };
+
+  const toCalendarEvent = (apt: Appointment): CalendarEventInput => {
+    const a = apt as any;
+    const names = (Array.isArray(a.services) ? a.services : [])
+      .map((s: any) => s?.treatment?.name || s?.name)
+      .filter(Boolean) as string[];
+    const treatments = names.length > 0
+      ? names.join(" + ")
+      : a.serviceName || apt.service?.treatment?.name || "Treatment";
+    return {
+      id: apt.id,
+      title: `${treatments} - ${apt.clinic?.name || "BeautyDoctors"}`,
+      start: apt.startTime,
+      end: a.endTime,
+      location: formatClinicLocation(apt.clinic as any),
+      description: `BeautyDoctors appointment\nTreatment: ${treatments}`,
+    };
   };
 
   const handleRescheduleClick = (apt: Appointment) => {
@@ -242,7 +246,9 @@ export const Appointments: React.FC = () => {
 
   const allAppointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
   const filteredAppointments = allAppointments.filter(apt => {
-    const status = apt.status.toLowerCase();
+    const status = (apt.status || '').toLowerCase();
+    // "All" really shows every appointment: past, cancelled and no-show included
+    if (activeFilter === 'all') return true;
     if (status === 'cancelled' || status === 'no_show') return false;
     
     const isPast = new Date(apt.startTime).getTime() < new Date().getTime();
@@ -254,7 +260,6 @@ export const Appointments: React.FC = () => {
       return ['confirmed', 'pending', 'pending_payment'].includes(status);
     }
 
-    if (activeFilter === 'all') return true;
     return status === activeFilter;
   }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
@@ -383,7 +388,7 @@ export const Appointments: React.FC = () => {
                         {isGreek ? "ΘΕΡΑΠΕΙΑ ΕΝΔΙΑΦΕΡΟΝΤΟΣ" : "TREATMENT OF INTEREST"}
                       </p>
                       <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tight leading-tight line-clamp-2">
-                        {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
+                        {(apt as any).treatmentLabel || (apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
                       </h3>
                     </div>
 
@@ -440,6 +445,22 @@ export const Appointments: React.FC = () => {
                             >
                               <Edit3 size={17} />
                             </button>
+                            <button
+                              onClick={() => downloadIcs(toCalendarEvent(apt))}
+                              className="size-10 sm:size-11 rounded-xl bg-white/70 backdrop-blur-sm text-gray-600 border border-white/80 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all min-h-[44px] min-w-[44px]"
+                              title={isGreek ? "Προσθήκη στο ημερολόγιο (.ics)" : "Add to calendar (.ics)"}
+                            >
+                              <CalendarPlus size={17} />
+                            </button>
+                            <a
+                              href={googleCalendarUrl(toCalendarEvent(apt))}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-10 sm:h-11 px-3 rounded-xl bg-white/70 backdrop-blur-sm text-gray-600 border border-white/80 flex items-center justify-center text-[9px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all min-h-[44px]"
+                              title={isGreek ? "Προσθήκη στο Google Calendar" : "Add to Google Calendar"}
+                            >
+                              Google
+                            </a>
                             <button 
                               onClick={() => handleCancelClick(apt)} 
                               className="size-10 sm:size-11 rounded-xl bg-white/70 backdrop-blur-sm text-gray-400 border border-white/80 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all min-h-[44px] min-w-[44px]" 

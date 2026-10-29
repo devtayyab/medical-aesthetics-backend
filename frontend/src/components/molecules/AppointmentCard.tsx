@@ -3,6 +3,7 @@ import { Card } from"@/components/atoms/Card/Card";
 import { Button } from"@/components/atoms/Button/Button";
 import type { Appointment } from"@/types";
 import { AppointmentStatus } from"@/types";
+import { formatDateTime } from "@/utils/formatters";
 
 interface AppointmentCardProps {
  appointment: Appointment;
@@ -21,7 +22,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
  <h3 className="text-lg font-semibold">{appointment.service.name}</h3>
  <p className="text-gray-600">Clinic: {appointment.clinic.name}</p>
  <p className="text-gray-600">
- Date: {new Date(appointment.startTime).toLocaleString()}
+ Date: {formatDateTime(appointment.startTime)}
  </p>
  <p className="text-gray-600">Status: {appointment.status}</p>
  <div className="flex gap-2">

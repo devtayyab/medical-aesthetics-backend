@@ -8,7 +8,7 @@ import {
  blockTimeSlot,
  unblockTimeSlot,
 } from"../../store/slices/clinicSlice";
-import { crmAPI } from"../../services/api";
+import clinicApi from"../../services/api/clinicApi";
 import { BusinessHours, BlockedSlot } from"../../types/clinic.types";
 import { Clock, Save, Calendar, Plus, Trash2 } from"lucide-react";
 
@@ -58,10 +58,22 @@ const AvailabilityPage: React.FC = () => {
  useEffect(() => {
  const loadClinics = async () => {
  try {
- const res = await crmAPI.getAccessibleClinics();
- setAvailableClinics(res.data || []);
- if (res.data?.length > 0) {
- setSelectedClinicId(res.data[0].id);
+ // Clinic-scoped list (the CRM API is for BeautyDoctors staff only)
+ const list = (await clinicApi.patients.accessibleClinics()) || [];
+ setAvailableClinics(list);
+ // Open the clinic being viewed (?clinicId=... or the clinic last selected in a calendar),
+ // falling back to the first accessible clinic.
+ let wanted: string | null = null;
+ try {
+ wanted = new URLSearchParams(window.location.search).get('clinicId') || sessionStorage.getItem('calendar.viewedClinicId');
+ } catch {
+ wanted = null;
+ }
+ const match = wanted ? list.find((c: any) => c.id === wanted) : null;
+ if (match) {
+ setSelectedClinicId(match.id);
+ } else if (list.length > 0) {
+ setSelectedClinicId(list[0].id);
  }
  } catch (err) {
  console.error("Failed to load clinics", err);

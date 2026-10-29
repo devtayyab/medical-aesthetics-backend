@@ -19,8 +19,13 @@ import { HoldSlotDto } from './dto/hold-slot.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Public } from '../../common/decorators/public.decorator';
+import { stripUserPersonalData, stripClinicBankData } from '../../common/utils/privacy.util';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { FinancialService } from '../payments/financial.service';
 
 const STAFF_ROLES = ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'];
+// BD sales staff: may not change or delete a confirmed/paid appointment (admins can).
+const SALES_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER].map(r => String(r).toLowerCase());
 
 @ApiTags('Bookings')
 @Controller()
@@ -30,7 +35,20 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly availabilityService: AvailabilityService,
+    private readonly financialService: FinancialService,
   ) { }
+
+  private isAdmin(user: any): boolean {
+    return this.bookingsService.isAdminRole(user?.role);
+  }
+
+  // Lock stays for salespeople: once paid, only an admin may change or delete the appointment.
+  private assertNotLockedForSales(appointment: any, user: any) {
+    const role = String(user?.role || '').toLowerCase();
+    if (SALES_ROLES.includes(role) && Number(appointment?.amountPaid || 0) > 0) {
+      throw new ForbiddenException('This appointment is paid. Only an admin can change or delete it.');
+    }
+  }
 
   private isStaff(user: any): boolean {
     return STAFF_ROLES.includes((user?.role || '').toLowerCase());
@@ -59,16 +77,26 @@ export class BookingsController {
   @ApiQuery({ name: 'serviceId', required: true })
   @ApiQuery({ name: 'providerId', required: false })
   @ApiQuery({ name: 'date', required: true, example: '2025-01-20' })
-  async getAvailability(@Query() query: any) {
+  async getAvailability(@Query() query: any, @Request() req: any) {
     try {
-      const result = await this.availabilityService.getAvailableSlots(
+      // Past slots: only ADMIN / SUPER_ADMIN may see (and book) times that already passed.
+      const wantsPast = query.allowPast === 'true' || query.allowPast === true;
+      const serviceIds = [
+        ...(Array.isArray(query.serviceId) ? query.serviceId : String(query.serviceId || '').split(',')),
+        ...(Array.isArray(query.additionalServiceIds) ? query.additionalServiceIds : String(query.additionalServiceIds || '').split(',')),
+      ].map((v: string) => String(v).trim()).filter(Boolean);
+      const result: any = await this.availabilityService.getAvailableSlots(
         query.clinicId,
-        query.serviceId,
+        serviceIds.length > 1 ? serviceIds : query.serviceId,
         query.providerId || null,
         query.date,
-        query.allowPast === 'true' || query.allowPast === true,
+        wantsPast && this.isAdmin(req?.user),
         query.excludeAppointmentId || null
       );
+      // Not logged in: no doctor names
+      if (!req?.user && Array.isArray(result?.slots)) {
+        result.slots = result.slots.map((slot: any) => ({ ...slot, providerName: null }));
+      }
       return result;
     } catch (error) {
       // Log error for debugging
@@ -106,7 +134,7 @@ export class BookingsController {
       if (!callerIsStaff && !createAppointmentDto.bookedById) {
         delete payload.status;
       }
-      return await this.bookingsService.createAppointment(payload);
+      return await this.bookingsService.createAppointment(payload, caller ? { id: caller.id, role: caller.role } : null);
     } catch (error) {
       console.error('❌ [BookingsController] Create Appointment Error:', {
         message: error.message,
@@ -173,33 +201,20 @@ export class BookingsController {
       }
     }
 
-    // Internal notes NEVER reach the client
-    // Doctor's personal email/phone never go to clients
-    // The doctor's IBAN is shown to the client ONLY at the payment step
+    // Internal notes NEVER reach the client.
+    // Staff personal email/phone/last login never go to clients.
+    // Clinic bank columns are select: false, so they are not loaded here at all;
+    // the client pays through Viva Wallet (redirectUrl) at the payment step.
     const callerIsStaff = this.isStaff(req.user);
     if (!callerIsStaff) {
       delete result.notes;
       delete result.clinicNotes;
       delete result.appointmentCompletionReport;
 
-      if (result.provider) {
-        result.provider = { ...result.provider };
-        delete result.provider.email;
-        delete result.provider.phone;
-        delete result.provider.lastLoginAt;
-        delete result.provider.password;
-        delete result.provider.refreshToken;
+      for (const key of ['provider', 'bookedBy', 'executedBy', 'representative']) {
+        if (result[key]) result[key] = stripUserPersonalData(result[key]);
       }
-      if (result.clinic) {
-        result.clinic = { ...result.clinic };
-        const isPaymentStep = result.status === AppointmentStatus.PENDING_PAYMENT;
-        if (!isPaymentStep) {
-          delete result.clinic.bankIban;
-          delete result.clinic.bankBic;
-          delete result.clinic.bankAccountHolder;
-          delete result.clinic.bankName;
-        }
-      }
+      if (result.clinic) result.clinic = stripClinicBankData(result.clinic);
     }
 
     return result;
@@ -236,12 +251,14 @@ export class BookingsController {
     }
 
     try {
+      if (!isClient) this.assertNotLockedForSales(appointment, req.user);
       return await this.bookingsService.reschedule(
         id,
         start,
         end,
         body.reason || body.notes,
         isClient,
+        { id: req.user?.id, role: req.user?.role },
       );
     } catch (error) {
       console.error('[Reschedule error in controller]:', error);
@@ -258,7 +275,8 @@ export class BookingsController {
   ) {
     // Editing appointment details (incl. price) is a staff action, and must be authorized.
     this.assertStaff(req.user);
-    await this.assertCanAccess(id, req.user);
+    const existing = await this.assertCanAccess(id, req.user);
+    this.assertNotLockedForSales(existing, req.user);
 
     // Explicit field whitelist — normalize empty-string ids to null so we never write '' to an FK.
     const updateData: any = {};
@@ -272,19 +290,29 @@ export class BookingsController {
     if (body.additionalServiceIds !== undefined) updateData.additionalServiceIds = body.additionalServiceIds;
     if (body.representativeId !== undefined) updateData.representativeId = body.representativeId || null;
     if (body.bookedById !== undefined) updateData.bookedById = body.bookedById || null;
-    return this.bookingsService.updateAppointmentDetails(id, updateData);
+    return this.bookingsService.updateAppointmentDetails(id, updateData, { id: req.user?.id, role: req.user?.role });
   }
 
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
-  async cancel(@Param('id') id: string, @Request() req) {
-    await this.assertCanAccess(id, req.user);
-    return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED, undefined, req.user?.id);
+  async cancel(@Param('id') id: string, @Body() body: { refund?: boolean }, @Request() req) {
+    const appointment = await this.assertCanAccess(id, req.user);
+    if (this.isStaff(req.user)) this.assertNotLockedForSales(appointment, req.user);
+    return this.bookingsService.updateStatus(
+      id,
+      AppointmentStatus.CANCELLED,
+      { refund: body?.refund === true },
+      req.user?.id,
+      { role: req.user?.role },
+    );
   }
 
   @Patch('appointments/:id/delete')
   @ApiOperation({ summary: 'Soft-delete appointment (status=DELETED, revenue voided)' })
-  softDelete(@Param('id') id: string, @Request() req) {
+  async softDelete(@Param('id') id: string, @Request() req) {
+    this.assertStaff(req.user);
+    const appointment = await this.bookingsService.findById(id);
+    this.assertNotLockedForSales(appointment, req.user);
     return this.bookingsService.softDeleteAppointment(id, req.user.id, req.user.role);
   }
 
@@ -293,7 +321,7 @@ export class BookingsController {
   async complete(@Param('id') id: string, @Body() data: any, @Request() req) {
     this.assertStaff(req.user);
     await this.assertCanAccess(id, req.user);
-    return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data, req.user?.id);
+    return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data, req.user?.id, { role: req.user?.role });
   }
 
   @Post('appointments/:id/payment')
@@ -308,10 +336,19 @@ export class BookingsController {
     return this.bookingsService.recordAppointmentPayment(id, body.amount, body.method, body.notes || '', req.user.id);
   }
 
+  @Get('appointments/:id/payment-summary')
+  @ApiOperation({ summary: 'Total, paid, balance and every payment (with method) of an appointment' })
+  async getPaymentSummary(@Param('id') id: string, @Request() req) {
+    this.assertStaff(req.user);
+    await this.assertCanAccess(id, req.user);
+    return this.financialService.getAppointmentPaymentSummary(id);
+  }
+
   @Post('appointments/:id/payment-url')
   @ApiOperation({ summary: 'Generate Viva Wallet payment URL for an existing appointment (card payment)' })
-  async generatePaymentUrl(@Param('id') id: string) {
-    const appointment = await this.bookingsService.findById(id);
+  async generatePaymentUrl(@Param('id') id: string, @Request() req) {
+    // Only the appointment's own client (or staff) may create its payment link
+    const appointment = await this.assertCanAccess(id, req.user);
     const redirectUrl = await this.bookingsService.generateVivaPaymentUrl(appointment);
     return { redirectUrl };
   }
@@ -320,12 +357,18 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment status' })
   async updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: AppointmentStatus },
+    @Body() body: { status: AppointmentStatus | string; refund?: boolean; notes?: string },
     @Request() req,
   ) {
     this.assertStaff(req.user);
-    await this.assertCanAccess(id, req.user);
-    return this.bookingsService.updateAppointmentStatus(id, body.status, req.user.id, req.user.role);
+    const appointment = await this.assertCanAccess(id, req.user);
+    this.assertNotLockedForSales(appointment, req.user);
+    // Status input is normalized server-side ('completed' -> 'COMPLETED'); unknown values are rejected.
+    const status = this.bookingsService.normalizeStatus(body.status);
+    return this.bookingsService.updateAppointmentStatus(id, status, req.user.id, req.user.role, {
+      refund: body.refund === true,
+      notes: body.notes,
+    });
   }
 
 
@@ -338,7 +381,7 @@ export class BookingsController {
   @Post('blocked-slots')
   @ApiOperation({ summary: 'Block a time slot' })
   createBlockedSlot(@Body() body: any, @Request() req) {
-    // Only staff may block a clinic's calendar (prevents any authenticated user blocking slots).
+    // Only staff (incl. salespeople) may block a clinic's calendar.
     this.assertStaff(req.user);
     return this.availabilityService.blockTimeSlot(
       body.clinicId,

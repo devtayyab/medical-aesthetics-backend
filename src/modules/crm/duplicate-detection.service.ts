@@ -6,6 +6,7 @@ import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { phoneMatchKey, phoneKeySql } from '../../common/utils/phone.util';
 
 export interface DuplicateCheckResult {
   isDuplicate: boolean;
@@ -51,13 +52,19 @@ export class DuplicateDetectionService {
     let confidence = 0;
     let existingCustomer: User | undefined;
     let existingLead: Lead | undefined;
+    const phoneKey = phoneMatchKey(phone);
+    const cleanEmail = email && email.trim() ? email.trim() : '';
+
+    // Only client accounts can be "the same customer"; staff/doctor accounts
+    // must never absorb a lead.
+    const clientQuery = () =>
+      this.usersRepository.createQueryBuilder('u').where('u.role = :clientRole', { clientRole: UserRole.CLIENT });
 
     // Check for exact email match (highest confidence). Case-insensitive so a submission of
     // "jane@x.com" still matches a stored "Jane@X.com" (records are not lowercased on write).
-    if (email) {
-      existingCustomer = await this.usersRepository
-        .createQueryBuilder('u')
-        .where('LOWER(u.email) = LOWER(:email)', { email })
+    if (cleanEmail) {
+      existingCustomer = await clientQuery()
+        .andWhere('LOWER(u.email) = LOWER(:email)', { email: cleanEmail })
         .getOne() || undefined;
 
       if (existingCustomer) {
@@ -75,11 +82,12 @@ export class DuplicateDetectionService {
       return a !== b && !a.includes(b) && !b.includes(a);
     };
 
-    // Check for phone match
-    if (phone && !existingCustomer) {
-      const phoneCustomer = await this.usersRepository.findOne({
-        where: { phone },
-      });
+    // Phone match on the normalised number ("+30 694..." == "694...")
+    if (phoneKey && !existingCustomer) {
+      const phoneCustomer = await clientQuery()
+        .andWhere(`${phoneKeySql('u.phone')} = :phoneKey`, { phoneKey })
+        .orderBy('u.createdAt', 'ASC')
+        .getOne();
 
       if (phoneCustomer) {
         if (nameConflicts(phoneCustomer)) {
@@ -93,46 +101,63 @@ export class DuplicateDetectionService {
       }
     }
 
-    // Check for name similarity if no exact matches
+    // Name similarity alone is only a hint for the UI; it never makes a record
+    // "the same person" (it used to hide the real lead match below).
     if (!existingCustomer && firstName && lastName) {
       const similarCustomers = await this.findSimilarCustomers(firstName, lastName);
       if (similarCustomers.length > 0) {
-        existingCustomer = similarCustomers[0];
         matchReasons.push('Name similarity');
-        confidence += 0.3;
       }
     }
 
-    // Check for existing leads if no customer match
-    if (!existingCustomer) {
-      if (email) {
-        existingLead = await this.leadsRepository
-          .createQueryBuilder('l')
-          .where('LOWER(l.email) = LOWER(:email)', { email })
-          .getOne() || undefined;
+    // The lead (CRM card) is looked up even when a client account matched, so a
+    // re-submission lands in the history of the existing card
+    if (cleanEmail) {
+      existingLead = await this.leadsRepository
+        .createQueryBuilder('l')
+        .where('LOWER(l.email) = LOWER(:email)', { email: cleanEmail })
+        .andWhere('l.status != :merged', { merged: LeadStatus.Merged })
+        .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
+        .getOne() || undefined;
 
-        if (existingLead) {
-          matchReasons.push('Lead email match');
-          confidence += 0.7;
+      if (existingLead) {
+        matchReasons.push('Lead email match');
+        confidence += 0.7;
+      }
+    }
+
+    if (phoneKey && !existingLead) {
+      const phoneLead = await this.leadsRepository
+        .createQueryBuilder('l')
+        .where(`${phoneKeySql('l.phone')} = :phoneKey`, { phoneKey })
+        .andWhere('l.status != :merged', { merged: LeadStatus.Merged })
+        .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
+        .getOne();
+
+      if (phoneLead) {
+        if (nameConflicts(phoneLead)) {
+          matchReasons.push('Lead phone match (different name — not treated as duplicate)');
+          confidence += 0.4;
+        } else {
+          existingLead = phoneLead;
+          matchReasons.push('Lead phone match');
+          confidence += 0.6;
         }
       }
+    }
 
-      if (phone && !existingLead) {
-        const phoneLead = await this.leadsRepository.findOne({
-          where: { phone },
-        });
-
-        if (phoneLead) {
-          if (nameConflicts(phoneLead)) {
-            matchReasons.push('Lead phone match (different name — not treated as duplicate)');
-            confidence += 0.4;
-          } else {
-            existingLead = phoneLead;
-            matchReasons.push('Lead phone match');
-            confidence += 0.6;
-          }
-        }
-      }
+    // A lead explicitly linked to the matched client account is the same card
+    if (existingCustomer && !existingLead) {
+      existingLead = await this.leadsRepository
+        .createQueryBuilder('l')
+        .where(
+          `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+          { uid: existingCustomer.id },
+        )
+        .andWhere('l.status != :merged', { merged: LeadStatus.Merged })
+        .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
+        .getOne() || undefined;
+      if (existingLead) matchReasons.push('Lead linked to customer');
     }
 
     return {

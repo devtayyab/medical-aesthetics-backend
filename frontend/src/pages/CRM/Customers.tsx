@@ -78,7 +78,7 @@ export const Customers: React.FC = () => {
  lastName:"",
  email:"",
  phone:"",
- status:"converted",
+ status:"new",
  notes:"",
  assignedSalesId: user?.id || null,
  metadata: {},
@@ -137,8 +137,10 @@ export const Customers: React.FC = () => {
  await dispatch(createLead(payload)).unwrap();
  setShowCreateForm(false);
  setFormData(initialFormState);
- } catch (error) {
+ toast.success('Contact added. It becomes a Converted customer after its first completed visit.');
+ } catch (error: any) {
  console.error('Failed to create customer:', error);
+ toast.error(error?.response?.data?.message || error?.message || 'Failed to add customer');
  }
  };
 
@@ -168,7 +170,7 @@ export const Customers: React.FC = () => {
  };
 
  const handleDeleteCustomer = async (id: string, name: string) => {
- if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
+ if (!window.confirm(`Delete 1 lead permanently? (${name})`)) return;
  try {
  await dispatch(deleteLead(id)).unwrap();
  dispatch(fetchLeads(leadFilters));
@@ -179,7 +181,7 @@ export const Customers: React.FC = () => {
  };
 
  const handleBulkDelete = async () => {
- if (!window.confirm(`Are you sure you want to delete ${selectedLeads.length} selected records?`)) return;
+ if (!window.confirm(`Delete ${selectedLeads.length} lead${selectedLeads.length === 1 ? '' : 's'} permanently?`)) return;
  try {
  await Promise.all(selectedLeads.map(id => dispatch(deleteLead(id)).unwrap()));
  setSelectedLeads([]);
@@ -195,7 +197,7 @@ export const Customers: React.FC = () => {
  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
  };
 
- const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
+ const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
 
  if (selectedCustomer) {
  return (

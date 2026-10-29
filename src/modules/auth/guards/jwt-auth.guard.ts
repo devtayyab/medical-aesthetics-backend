@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
+import { ACCESS_COOKIE, readCookie } from '../auth-cookies';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -20,7 +21,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) {
       const request = context.switchToHttp().getRequest();
       const authHeader = request.headers?.authorization;
-      if (!authHeader) {
+      if (!authHeader && !readCookie(request, ACCESS_COOKIE)) {
         return true;
       }
     }

@@ -82,6 +82,7 @@ const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-crm/reports", label: "CRM Reports", labelGr: "Αναφορές CRM", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
   { path: "/admin/manager-crm/advertising", label: "Advertising", labelGr: "Διαφημίσεις", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
   { path: "/admin/broadcast", label: "Broadcast", labelGr: "Μαζικές Ενημερώσεις", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
+  { path: "/admin/contact-messages", label: "Contact Messages", labelGr: "Μηνύματα Επικοινωνίας", icon: <MessageSquare className="w-5 h-5" />, group: "Marketing" },
   { path: "/crm/facebook-integration", label: "Facebook Integration", labelGr: "Σύνδεση με Facebook", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
 
   { path: "/admin/manager-crm/access", label: "Access Control", labelGr: "Διαχείριση Πρόσβασης", icon: <Shield className="w-5 h-5" />, group: "Management" },
@@ -104,7 +105,8 @@ const managerLinks: SidebarItem[] = [
 
 const getAdminLinks = (role: string): SidebarItem[] => {
  if (role === 'SUPER_ADMIN' || role === 'manager') {
- return managerLinks;
+ // The contact-form inbox is admin only
+ return role === 'manager' ? managerLinks.filter(l => l.path !== '/admin/contact-messages') : managerLinks;
  }
 
  // Fallback for regular `admin` 
@@ -119,6 +121,8 @@ const getAdminLinks = (role: string): SidebarItem[] => {
  { path:"/admin/gift-cards", label:"Gift Cards", icon: <Tag className="w-5 h-5" />, group:"Finance" },
  { path:"/crm/analytics", label:"Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group:"Intelligence" },
  { path:"/admin/clinic-analytics", label:"Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group:"Intelligence" },
+ { path:"/admin/broadcast", label:"Broadcast", icon: <Bell className="w-5 h-5" />, group:"Communication" },
+ { path:"/admin/contact-messages", label:"Contact Messages", icon: <MessageSquare className="w-5 h-5" />, group:"Communication" },
  { path:"/admin/notification-settings", label:"Notification Settings", icon: <Bell className="w-5 h-5" />, group:"System" },
  { path:"/admin/system-lists", label:"System Lists", icon: <ListChecks className="w-5 h-5" />, group:"System" },
  { path:"/admin/audit-logs", label:"Audit Logs", icon: <Shield className="w-5 h-5" />, group:"System" },

@@ -62,7 +62,7 @@ interface masterCategory {
 }
 
 export const TherapyCatalog: React.FC = () => {
- const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'approval' | 'service-approval'>('treatments');
+ const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'approval'>('treatments');
  const [treatments, setTreatments] = useState<masterTreatment[]>([]);
  const [categories, setCategories] = useState<masterCategory[]>([]);
  const [pendingItems, setPendingItems] = useState<masterTreatment[]>([]);
@@ -334,7 +334,7 @@ export const TherapyCatalog: React.FC = () => {
 
  {/* Tabs */}
  <div className="flex gap-1 bg-gray-100 p-1.5 rounded-2xl w-fit max-w-full overflow-x-auto">
-  {(['treatments', 'categories', 'approval', 'service-approval'] as const).map(tab => (
+  {(['treatments', 'categories', 'approval'] as const).map(tab => (
  <button
  key={tab}
  onClick={() => setActiveTab(tab)}
@@ -343,7 +343,7 @@ export const TherapyCatalog: React.FC = () => {
  :"text-gray-500 hover:text-gray-800"
  }`}
  >
- {tab}
+ {tab === 'treatments' ? (isEl ? 'Θεραπείες' : 'Treatments') : tab === 'categories' ? (isEl ? 'Κατηγορίες' : 'Categories') : (isEl ? 'Εγκρίσεις' : 'Approvals')}
  {tab === 'approval' && pendingItems.length > 0 && (
  <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px]">
  {pendingItems.length}
@@ -469,13 +469,14 @@ export const TherapyCatalog: React.FC = () => {
 
  {activeTab === 'approval' && (
  <div className="space-y-6">
- {pendingItems.length === 0 ? (
- <div className="bg-white rounded-[40px] p-20 text-center border-2 border-dashed border-gray-100">
- <CheckCircle2 size={64} className="mx-auto text-lime-500 mb-6 opacity-20" />
- <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Everything Approved</h3>
- <p className="text-gray-400 uppercase text-[10px] font-black tracking-widest mt-2">No pending therapy requests from clinics</p>
- </div>
- ) : (
+ {/* One approval flow: a clinic's new therapy + price is approved here, together. */}
+ <ServiceApproval />
+ {pendingItems.length > 0 && (
+ <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 px-1">
+ {isEl ? 'Νέες θεραπείες χωρίς προσφορά κλινικής' : 'New therapies without a clinic offer'}
+ </h3>
+ )}
+ {pendingItems.length === 0 ? null : (
  <div className="grid gap-6">
  {pendingItems.map(item => (
  <div key={item.id} className="bg-white rounded-[32px] p-4 md:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 md:gap-8 relative overflow-hidden">
@@ -532,10 +533,6 @@ export const TherapyCatalog: React.FC = () => {
  </div>
  )}
  </div>
- )}
-
- {activeTab === 'service-approval' && (
-   <ServiceApproval />
  )}
 
  {/* Treatment Modal */}

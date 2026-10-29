@@ -55,13 +55,10 @@ export function useConflictDetection(
         const aptEnd = new Date(apt.endTime).getTime();
 
         if (newStart < aptEnd && newEnd > aptStart) {
-          const clientName =
-            (apt as any).client?.firstName
-              ? `${(apt as any).client.firstName} ${(apt as any).client.lastName}`
-              : (apt as any).clientDetails?.fullName || 'Another client';
+          // GDPR: never show who holds the slot.
           return {
             hasConflict: true,
-            message: `Double booking detected! ${clientName} already has an appointment during this time.`,
+            message: 'This time is not available',
             conflictingAppointment: apt,
           };
         }

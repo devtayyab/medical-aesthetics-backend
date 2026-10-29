@@ -25,6 +25,7 @@ import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
+import { APPOINTMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 
@@ -33,6 +34,9 @@ import * as path from 'path';
 import { VivaWalletService } from '../payments/viva-wallet.service';
 import { FinancialService } from '../payments/financial.service';
 import { formatDateInTz, formatTimeInTz, formatDateTimeInTz } from '../../common/utils/timezone.util';
+import { formatInTimeZone } from 'date-fns-tz';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { RevenueFilters, buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -128,8 +132,16 @@ export class BookingsService {
    * 2. Walk-in details fuzzy match by email/phone.
    * 3. Robust "God Search" across CRM CustomerRecords and Leads.
    */
-  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
+  async createAppointment(
+    createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string },
+    actor?: { id?: string; role?: string } | null,
+  ): Promise<any> {
     let clientId = createAppointmentDto.clientId;
+
+    // Status input is normalized server-side (e.g. 'completed' -> 'COMPLETED').
+    if ((createAppointmentDto as any).status) {
+      (createAppointmentDto as any).status = this.normalizeStatus((createAppointmentDto as any).status);
+    }
 
     console.log('🚀 [BookingsService] createAppointment process started', {
       clientId,
@@ -152,12 +164,7 @@ export class BookingsService {
     // Lookup by Details if Walk-in or Not found as User
     if (!userExists && createAppointmentDto.clientDetails) {
       const { email, phone } = createAppointmentDto.clientDetails;
-      userExists = await this.usersRepository.findOne({
-        where: [
-          { email: email || 'never-match' },
-          { phone: phone || 'never-match' }
-        ]
-      });
+      userExists = await this.crmService.findClientUserByContact(email, phone);
       if (userExists) clientId = userExists.id;
     }
 
@@ -205,20 +212,12 @@ export class BookingsService {
         // 2. Try by phone/email from details if not found by ID
         if (!lead && createAppointmentDto.clientDetails) {
           const { email, phone } = createAppointmentDto.clientDetails;
-          const leads = await this.crmService.findAll({
-            search: email || phone
-          });
-          if (leads && leads.length > 0) {
-            // Find best match (exact email or phone)
-            lead = leads.find(l => l.email === email || l.phone === phone);
-          }
+          lead = await this.crmService.findLeadByContact(email, phone);
         }
 
         if (lead) {
           // Check if user with this email already exists (safety)
-          const existingUser = await this.usersRepository.findOne({
-            where: [{ email: lead.email }, { phone: lead.phone }]
-          });
+          const existingUser = await this.crmService.findClientUserByContact(lead.email, lead.phone);
 
           if (existingUser) {
             clientId = existingUser.id;
@@ -237,7 +236,8 @@ export class BookingsService {
               }
 
               const { user: savedUser } = await this.crmService.createCustomer({
-                email: lead.email || `temp-${lead.id}@example.com`,
+                // Real email only; no placeholder addresses (item 18)
+                email: lead.email || undefined,
                 firstName: lead.firstName || 'Unknown',
                 lastName: lead.lastName || 'Client',
                 phone: lead.phone || undefined,
@@ -248,7 +248,7 @@ export class BookingsService {
 
               // Link the lead to the new user so the CRM page can find its appointments
               await this.leadsRepository.update(lead.id, {
-                status: 'converted' as any,
+                status: LeadStatus.APPOINTMENT_SCHEDULED as any,
                 metadata: {
                   ...(lead.metadata || {}),
                   convertedToUserId: savedUser.id,
@@ -257,9 +257,7 @@ export class BookingsService {
               });
             } catch (createErr) {
               console.error('createCustomer failed during booking:', createErr);
-              const retryUser = await this.usersRepository.findOne({
-                where: [{ email: lead.email }, { phone: lead.phone }]
-              });
+              const retryUser = await this.crmService.findClientUserByContact(lead.email, lead.phone);
               if (retryUser) {
                 clientId = retryUser.id;
                 userExists = retryUser;
@@ -276,13 +274,22 @@ export class BookingsService {
               const nameParts = fullName.trim().split(/\s+/);
               const firstName = nameParts[0] || 'Unknown';
               const lastName = nameParts.slice(1).join(' ') || 'Client';
-              console.log('🔍 [BookingsService] Attempting to create new customer in CRM...');
-              const { user: savedUser } = await this.crmService.createCustomer({
-                email: createAppointmentDto.clientDetails.email || `guest-${Date.now()}@example.com`,
-                firstName,
-                lastName,
-                phone: createAppointmentDto.clientDetails.phone || undefined,
-              });
+              const isClinicOwnClient = createAppointmentDto.appointmentSource === 'clinic_own';
+              console.log(`🔍 [BookingsService] Attempting to create new ${isClinicOwnClient ? 'clinic-own client' : 'customer in CRM'}...`);
+              const { user: savedUser } = isClinicOwnClient
+                ? await this.crmService.createClinicOwnClient({
+                    email: createAppointmentDto.clientDetails.email || undefined,
+                    firstName,
+                    lastName,
+                    phone: createAppointmentDto.clientDetails.phone || undefined,
+                  }, createAppointmentDto.clinicId)
+                : await this.crmService.createCustomer({
+                    // Real email only; no placeholder addresses (item 18)
+                    email: createAppointmentDto.clientDetails.email || undefined,
+                    firstName,
+                    lastName,
+                    phone: createAppointmentDto.clientDetails.phone || undefined,
+                  });
               clientId = savedUser.id;
               userExists = savedUser;
               console.log('✅ [BookingsService] CRM Customer created:', { clientId: savedUser.id });
@@ -329,8 +336,9 @@ export class BookingsService {
 
     // Auto-assign to doctor if only one exists and none provided
     if (!providerId) {
+      // Only an ACTIVE doctor of the clinic can be auto-assigned (never a deactivated/test account).
       const clinicDoctors = await this.usersRepository.find({
-        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR }
+        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR, isActive: true } as any
       });
       if (clinicDoctors.length === 1) {
         providerId = clinicDoctors[0].id;
@@ -377,6 +385,30 @@ export class BookingsService {
       appointmentData.totalAmount = totalPrice;
     }
 
+    // Duration = sum of all treatments (e.g. 60 + 30 = 90 min), never just the first one.
+    const totalDurationMinutes = services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
+    if (totalDurationMinutes > 0) {
+      appointmentData.endTime = new Date(new Date(appointmentData.startTime).getTime() + totalDurationMinutes * 60000);
+      (createAppointmentDto as any).endTime = appointmentData.endTime.toISOString();
+    }
+
+    // Same rules as edit/reschedule: past times (admin only), opening hours, end by closing,
+    // blocked time. Appointment overlaps are checked just below (with the pending-payment rule).
+    await this.assertSlotBookable({
+      clinicId: createAppointmentDto.clinicId,
+      providerId: providerId ?? null,
+      representativeId,
+      startTime: appointmentData.startTime as Date,
+      endTime: appointmentData.endTime as Date,
+      actorRole: actor?.role,
+      skipAppointmentConflicts: true,
+    });
+
+    // Attendance / completion statuses only from the appointment start time.
+    if (appointmentData.status && BookingsService.STARTED_ONLY_STATUSES.includes(appointmentData.status as AppointmentStatus)) {
+      this.assertAppointmentStarted(appointmentData as Appointment, `Status ${appointmentData.status}`);
+    }
+
     // 🔴 GIFT CARDS — BACKEND HARD BLOCK
     if (createAppointmentDto.giftCardCode) {
       const hasIneligibleService = services.some(s => !s.giftCardEligible && !s.treatment?.giftCardEligible);
@@ -408,9 +440,9 @@ export class BookingsService {
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
 
-    // Only restrict to specific provider if one is assigned
+    // Only restrict to specific provider if one is assigned (unassigned appointments occupy the clinic)
     if (providerId) {
-      conflictQuery = conflictQuery.andWhere('apt.providerId = :providerId', { providerId });
+      conflictQuery = conflictQuery.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
     }
 
     const conflictingAppointments = await conflictQuery.getMany();
@@ -449,7 +481,8 @@ export class BookingsService {
             status: apt.status,
             requestedTime: { start: newStart, end: newEnd }
         });
-        throw new ConflictException('Time slot is already booked or pending payment');
+        // GDPR: never reveal who holds the slot.
+        throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
       }
     }
     console.log('✅ [BookingsService] No conflicting appointments found.');
@@ -533,77 +566,15 @@ export class BookingsService {
       }
     }
 
-    // Create a CRM Task for Salesperson to confirm the appointment (Call Center Workflow)
-    if (savedAppointment.status === AppointmentStatus.PENDING) {
-      try {
-        let taskOwnerId = representativeId || createAppointmentDto.bookedById;
-
-        // If no owner found, fallback to an Admin account to handle unassigned leads
-        if (!taskOwnerId) {
-          const defaultAdmin = await this.usersRepository.findOne({ where: { role: 'admin' as any } });
-          taskOwnerId = defaultAdmin?.id;
-        }
-
-        if (taskOwnerId) {
-          await this.crmService.createAction({
-            customerId: clientId,
-            salespersonId: taskOwnerId,
-            actionType: 'call',
-            title: 'Confirmation Call Reminder',
-            description: `New consumer booking #${savedAppointment.id.slice(-6).toUpperCase()}. Please call to confirm details and finalize.`,
-            status: 'pending',
-            priority: 'high',
-            dueDate: new Date(Date.now() + 30 * 60 * 1000), // 30 mins from now
-            reminderDate: new Date(Date.now() + 5 * 60 * 1000), // 5 mins reminder
-            metadata: {
-              appointmentId: savedAppointment.id,
-              autoGenerated: true,
-              workflow: 'call_center_confirmation'
-            }
-          });
-          console.log(`[CRM] Auto-task created for appointment confirmation: ${savedAppointment.id}`);
-        } else {
-          console.warn(`[CRM] Skipped auto-task creation for appointment ${savedAppointment.id}: No Admin or Salesperson found to assign task to.`);
-        }
-      } catch (crmErr) {
-        console.error('Failed to create internal CRM task for booking confirmation:', crmErr?.message || crmErr);
-      }
-    }
+    // The confirmation-call CRM task is created by the CRM listener on 'appointment.created'
+    // (TaskAutomationService.syncConfirmationTask): exactly one automatic task per booking.
 
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
+    const bookedTreatmentLabel = await this.getTreatmentLabel(appointmentWithRelations);
 
-    // Trigger Notification for Booked (Safe try/catch so notification failures never abort booking completion)
-    try {
-      const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
-      if (appointmentWithRelations.clientId && appointmentWithRelations.clientId !== WALK_IN_DUMMY_ID) {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
-          customerName: `${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Customer'}`,
-          serviceName: appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment',
-          appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-          appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
-          clinicName: appointmentWithRelations.clinic?.name,
-        });
-      }
-
-      // Notify Staff
-      await this.notificationsService.notifyAllStaff(
-        'New Appointment Booked',
-        `Client ${appointmentWithRelations.client?.firstName || createAppointmentDto.clientDetails?.fullName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || (appointmentWithRelations.service as any)?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-        { appointmentId: savedAppointment.id }
-      );
-
-      if (appointmentWithRelations.clinicId) {
-        await this.notificationsService.notifyClinicStaff(
-          appointmentWithRelations.clinicId,
-          'New Clinic Appointment',
-          `A new appointment has been scheduled for your clinic on ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-          { appointmentId: savedAppointment.id }
-        );
-      }
-    } catch (notifErr: any) {
-      console.warn('⚠️ [BookingsService] Non-blocking notification error during appointment creation:', notifErr?.message || notifErr);
-    }
+    // One notification event; recipients are decided in AppointmentNotificationsListener.
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
 
       // If card payment, generate Viva Wallet redirect URL
       // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
@@ -667,60 +638,6 @@ export class BookingsService {
       }
     }
 
-
-    // --- AUTOMATION: Create Confirmation Call Reminder Task ---
-    try {
-      // Find the salesperson related to this lead/customer or the creator
-      let salespersonId = (appointmentWithRelations as any).salespersonId || createAppointmentDto.bookedById;
-
-      // Fallback to provider or a default admin
-      if (!salespersonId) {
-        salespersonId = appointmentWithRelations.providerId;
-      }
-      if (!salespersonId) {
-        const defaultAdmin = await this.usersRepository.findOne({ where: { role: 'admin' as any } });
-        salespersonId = defaultAdmin?.id;
-      }
-
-      if (salespersonId && appointmentWithRelations.clientId) {
-        const dueDate = new Date(appointmentWithRelations.startTime);
-        dueDate.setDate(dueDate.getDate() - 1); // 1 day before
-        // Ensure reminder is not in the past
-        if (dueDate < new Date()) {
-          dueDate.setTime(new Date().getTime() + 1000 * 60 * 60); // 1 hour from now
-        }
-
-        const therapyName = appointmentWithRelations.service?.treatment?.name || 'Treatment';
-
-        await this.crmService.createAction({
-          customerId: (appointmentWithRelations as any).customerRecordId || appointmentWithRelations.clientId,
-          salespersonId,
-          actionType: 'confirmation_call_reminder',
-          title: `Confirmation Call: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
-          description: `Confirm attendance for appointment at ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-          status: 'pending',
-          priority: 'high',
-          dueDate: dueDate,
-          reminderDate: dueDate,
-          relatedAppointmentId: savedAppointment.id,
-        } as any);
-
-        await this.crmService.createAction({
-          customerId: (appointmentWithRelations as any).customerRecordId || appointmentWithRelations.clientId,
-          salespersonId,
-          actionType: 'appointment',
-          title: `Appointment: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
-          description: `Scheduled appointment at ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
-          status: 'pending',
-          priority: 'medium',
-          dueDate: new Date(appointmentWithRelations.startTime),
-          reminderDate: new Date(appointmentWithRelations.startTime),
-          relatedAppointmentId: savedAppointment.id,
-        } as any);
-      }
-    } catch (err) {
-      console.error('Task automation failed during appointment creation', err);
-    }
 
     // Emit event for notifications with full relations (safe try/catch)
     try {
@@ -791,18 +708,441 @@ export class BookingsService {
     );
   }
 
+  // ─── Shared booking rules (create, edit and reschedule use the SAME checks) ─────────────
+
+  static readonly ACTIVE_STATUSES: AppointmentStatus[] = [
+    AppointmentStatus.CONFIRMED,
+    AppointmentStatus.PENDING,
+    AppointmentStatus.PENDING_PAYMENT,
+    AppointmentStatus.ARRIVED,
+    AppointmentStatus.IN_PROGRESS,
+  ];
+
+  /** Statuses (and payments) that may only be recorded once the appointment has started. */
+  static readonly STARTED_ONLY_STATUSES: AppointmentStatus[] = [
+    AppointmentStatus.ARRIVED,
+    AppointmentStatus.IN_PROGRESS,
+    AppointmentStatus.COMPLETED,
+    AppointmentStatus.EXECUTED,
+    AppointmentStatus.NO_SHOW,
+  ];
+
+  static readonly SLOT_UNAVAILABLE_MESSAGE = 'This time is not available';
+
+  isAdminRole(role?: string | null): boolean {
+    const r = String(role || '').toLowerCase();
+    return r === String(UserRole.ADMIN).toLowerCase() || r === String(UserRole.SUPER_ADMIN).toLowerCase();
+  }
+
+  /**
+   * Normalizes any status input ('completed', 'Completed', ' COMPLETED ') to the canonical
+   * upper-case enum value. Unknown values are rejected so nothing but the enum is ever stored.
+   */
+  normalizeStatus(input: any): AppointmentStatus {
+    const value = String(input ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const match = (Object.values(AppointmentStatus) as string[]).find(v => v === value);
+    if (!match) {
+      throw new BadRequestException(`Invalid appointment status: ${input}`);
+    }
+    return match as AppointmentStatus;
+  }
+
+  /** Arrived / no-show / completed / payments are only possible from the appointment start time. */
+  assertAppointmentStarted(appointment: Pick<Appointment, 'startTime'>, action = 'This action'): void {
+    if (appointment?.startTime && new Date(appointment.startTime).getTime() > Date.now()) {
+      throw new BadRequestException(`${action} is only possible from the appointment start time.`);
+    }
+  }
+
+  /** Sum of the durations (minutes) of the primary + additional services. 0 when unknown. */
+  async computeServicesDuration(serviceIds: string[]): Promise<number> {
+    const ids = Array.from(new Set((serviceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    if (ids.length === 0) return 0;
+    const services = await this.servicesRepository.find({ where: { id: In(ids) } });
+    return services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
+  }
+
+  /** Sum of the prices of the primary + additional services. */
+  async computeServicesPrice(serviceIds: string[]): Promise<number> {
+    const ids = Array.from(new Set((serviceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    if (ids.length === 0) return 0;
+    const services = await this.servicesRepository.find({ where: { id: In(ids) } });
+    return services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  }
+
+  /** All treatment names of an appointment (primary first), e.g. "Mesotherapy + Skin Booster". */
+  async getTreatmentNames(appointment: Appointment): Promise<string[]> {
+    const names: string[] = [];
+    const primary = appointment?.service?.treatment?.name || (appointment?.service as any)?.name;
+    if (primary) names.push(primary);
+    const extraIds = (appointment?.additionalServiceIds || []).filter(id => !!id && UUID_REGEX.test(id) && id !== appointment.serviceId);
+    if (extraIds.length > 0) {
+      try {
+        const extra = await this.servicesRepository.find({ where: { id: In(extraIds) }, relations: ['treatment'] });
+        for (const id of extraIds) {
+          const svc: any = extra.find(e => e.id === id);
+          const name = svc?.treatment?.name || svc?.name;
+          if (name) names.push(name);
+        }
+      } catch {
+        // Display only, never fail the caller.
+      }
+    }
+    return names;
+  }
+
+  async getTreatmentLabel(appointment: Appointment): Promise<string> {
+    const names = await this.getTreatmentNames(appointment);
+    return names.length > 0 ? names.join(' + ') : 'Treatment';
+  }
+
+  /**
+   * Validates a (new) time window for an appointment. Used by create, edit and reschedule:
+   *  - start must be before end;
+   *  - not in the past (only ADMIN / SUPER_ADMIN may enter an appointment at a past time);
+   *  - the clinic must be open that day (clinic time, Europe/Athens by default) and the
+   *    appointment must start at or after opening and END by closing time;
+   *  - no overlap with a blocked slot (clinic-wide, or for the provider / representative);
+   *  - no overlap with another active appointment (same provider, or clinic-wide when no
+   *    provider is assigned).
+   * Conflict errors never reveal another patient's details.
+   */
+  async assertSlotBookable(params: {
+    clinicId: string;
+    providerId?: string | null;
+    representativeId?: string | null;
+    startTime: Date;
+    endTime: Date;
+    excludeAppointmentId?: string | null;
+    actorRole?: string | null;
+    skipAppointmentConflicts?: boolean;
+  }): Promise<void> {
+    const { clinicId, providerId, representativeId, excludeAppointmentId, actorRole } = params;
+    const start = new Date(params.startTime);
+    const end = new Date(params.endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date provided');
+    }
+    if (end.getTime() <= start.getTime()) {
+      throw new BadRequestException('The appointment end time must be after its start time.');
+    }
+
+    // Past times: admins only (1-minute grace for clock drift).
+    if (start.getTime() < Date.now() - 60 * 1000 && !this.isAdminRole(actorRole)) {
+      throw new BadRequestException('Appointments cannot be booked in the past.');
+    }
+
+    const clinic: any = await this.appointmentsRepository.manager.getRepository(Clinic).findOne({ where: { id: clinicId } });
+    if (!clinic) {
+      throw new NotFoundException('Clinic not found');
+    }
+
+    // Business hours in the clinic's timezone (Europe/Athens by default).
+    const tz = clinic.timezone && String(clinic.timezone).trim() ? clinic.timezone : 'Europe/Athens';
+    const hours = clinic.businessHours;
+    if (hours && typeof hours === 'object' && Object.keys(hours).length > 0) {
+      const dayName = formatInTimeZone(start, tz, 'EEEE').toLowerCase();
+      const day = hours[dayName];
+      if (!day || day.isOpen === false || !day.open || !day.close) {
+        throw new BadRequestException('The clinic is closed on the selected day.');
+      }
+      const pad = (v: string) => {
+        const [h, m] = String(v).split(':');
+        return `${String(h || '0').padStart(2, '0')}:${String(m || '0').padStart(2, '0')}`;
+      };
+      const startDay = formatInTimeZone(start, tz, 'yyyy-MM-dd');
+      const endDay = formatInTimeZone(end, tz, 'yyyy-MM-dd');
+      const startHm = formatInTimeZone(start, tz, 'HH:mm');
+      const endHm = formatInTimeZone(end, tz, 'HH:mm');
+      if (startDay !== endDay || startHm < pad(day.open) || endHm > pad(day.close)) {
+        throw new BadRequestException(`The appointment must be within opening hours (${pad(day.open)}-${pad(day.close)}) and end by closing time.`);
+      }
+    }
+
+    // Blocked time (clinic-wide, or for this provider / representative).
+    const blockQb = this.blockedTimeSlotsRepository.createQueryBuilder('b')
+      .where('b.clinicId = :clinicId', { clinicId })
+      .andWhere('b.startTime < :end', { end })
+      .andWhere('b.endTime > :start', { start });
+    const blockOwners = [providerId, representativeId].filter(Boolean) as string[];
+    if (blockOwners.length > 0) {
+      blockQb.andWhere('(b.providerId IS NULL OR b.providerId IN (:...blockOwners))', { blockOwners });
+    } else {
+      blockQb.andWhere('b.providerId IS NULL');
+    }
+    if (await blockQb.getCount() > 0) {
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+
+    if (params.skipAppointmentConflicts) return;
+
+    // Overlapping active appointments.
+    const aptQb = this.appointmentsRepository.createQueryBuilder('apt')
+      .where('apt.clinicId = :clinicId', { clinicId })
+      .andWhere('apt.status IN (:...statuses)', { statuses: BookingsService.ACTIVE_STATUSES })
+      .andWhere('apt.startTime < :end', { end })
+      .andWhere('apt.endTime > :start', { start });
+    if (providerId) {
+      // Same provider, or an unassigned appointment that occupies the clinic.
+      aptQb.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
+    }
+    if (excludeAppointmentId) {
+      aptQb.andWhere('apt.id != :excludeId', { excludeId: excludeAppointmentId });
+    }
+    if (await aptQb.getCount() > 0) {
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+  }
+
+  /** Rejects a payment larger than the open balance (total - paid). Unknown totals are not capped. */
+  async assertWithinBalance(appointmentId: string, amount: number): Promise<void> {
+    if (!(amount > 0)) {
+      throw new BadRequestException('The payment amount must be greater than 0.');
+    }
+    const summary = await this.financialService.getAppointmentPaymentSummary(appointmentId);
+    if (summary.total > 0 && amount - summary.balance > 0.009) {
+      throw new BadRequestException(
+        `Amount exceeds the open balance: Total €${summary.total.toFixed(2)} - Paid €${summary.paid.toFixed(2)} - Balance €${summary.balance.toFixed(2)}.`,
+      );
+    }
+  }
+
+  /** A cancellation less than 24 hours before the appointment start is a late cancellation. */
+  isLateCancellation(appointment: Pick<Appointment, 'startTime'>, at: Date = new Date()): boolean {
+    if (!appointment?.startTime) return false;
+    const msBefore = new Date(appointment.startTime).getTime() - at.getTime();
+    return msBefore < 24 * 60 * 60 * 1000;
+  }
+
+  /** Refunds every completed payment of an appointment (admin decision only). */
+  async refundAppointmentPayments(appointmentId: string, userId?: string, notes?: string): Promise<number> {
+    const summary = await this.financialService.getAppointmentPaymentSummary(appointmentId);
+    let refunded = 0;
+    for (const p of summary.payments) {
+      if ((p.type === PaymentType.PAYMENT || p.type === PaymentType.DEPOSIT) && p.status === 'completed') {
+        await this.financialService.refundPayment(p.id, notes, userId);
+        refunded += Number(p.amount || 0);
+      }
+    }
+    return refunded;
+  }
+
+  /**
+   * A PAID appointment was cancelled. Payment state is left untouched (unless an admin chose
+   * to refund); a domain event is emitted. The admins' "refund?" alert comes from the
+   * notification listener.
+   */
+  async handlePaidAppointmentCancelled(
+    appointment: Appointment,
+    info: { amountPaid: number; refunded: boolean; cancelledById?: string; cancelledByRole?: string },
+  ): Promise<void> {
+    this.eventEmitter.emit('appointment.paid_cancelled', {
+      appointment,
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      clinicName: appointment.clinic?.name || null,
+      amountPaid: info.amountPaid,
+      currency: 'EUR',
+      refunded: info.refunded,
+      cancelledById: info.cancelledById || null,
+      cancelledByRole: info.cancelledByRole || null,
+      isLateCancellation: !!(appointment as any).isLateCancellation,
+    });
+
+    // The "refund?" alert itself is sent once by AppointmentNotificationsListener (kind 'cancelled' with paidAmount).
+  }
+
   // Update whitelisted appointment detail fields (provider/time/service/price). Authorization
   // and field whitelisting are enforced by the controller; this replaces direct private-repo access.
-  async updateAppointmentDetails(id: string, updateData: any): Promise<Appointment> {
+  async updateAppointmentDetails(id: string, updateData: any, actor?: { id?: string; role?: string } | null): Promise<Appointment> {
     const appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
     }
-    await this.appointmentsRepository.update(id, updateData);
-    return this.findById(id);
+
+    const old = {
+      clinicId: appointment.clinicId,
+      clinicName: appointment.clinic?.name || null,
+      providerId: appointment.providerId || null,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      serviceId: appointment.serviceId,
+      additionalServiceIds: appointment.additionalServiceIds || [],
+      totalAmount: Number(appointment.totalAmount || 0),
+      representativeId: appointment.representativeId || null,
+    };
+
+    const next = {
+      clinicId: updateData.clinicId !== undefined ? updateData.clinicId : old.clinicId,
+      providerId: updateData.providerId !== undefined ? updateData.providerId : old.providerId,
+      startTime: updateData.startTime ? new Date(updateData.startTime) : new Date(old.startTime),
+      serviceId: updateData.serviceId !== undefined ? updateData.serviceId : old.serviceId,
+      additionalServiceIds: (updateData.additionalServiceIds !== undefined ? updateData.additionalServiceIds : old.additionalServiceIds) || [],
+      representativeId: updateData.representativeId !== undefined ? updateData.representativeId : old.representativeId,
+    };
+    if (!next.clinicId) throw new BadRequestException('clinicId is required');
+    if (!next.serviceId) throw new BadRequestException('serviceId is required');
+    next.additionalServiceIds = Array.from(new Set((next.additionalServiceIds as string[]).filter(sid => !!sid && sid !== next.serviceId)));
+
+    const serviceIds = [next.serviceId, ...next.additionalServiceIds];
+    const clinicChanged = String(next.clinicId) !== String(old.clinicId);
+    // The old clinic's doctor does not move with the client to another clinic.
+    if (clinicChanged && updateData.providerId === undefined) {
+      next.providerId = null;
+      updateData.providerId = null;
+    }
+    const servicesChanged =
+      String(next.serviceId) !== String(old.serviceId) ||
+      JSON.stringify([...next.additionalServiceIds].sort()) !== JSON.stringify([...old.additionalServiceIds].sort());
+
+    // Treatments must belong to the (new) clinic.
+    if (clinicChanged || servicesChanged) {
+      const services = await this.servicesRepository.find({ where: { id: In(serviceIds) } });
+      const foreign = services.some(s => String((s as any).clinicId) !== String(next.clinicId));
+      if (services.length !== new Set(serviceIds).size || foreign) {
+        throw new BadRequestException('The selected treatments are not offered by this clinic.');
+      }
+    }
+
+    // Duration = sum of treatments; otherwise keep the requested / existing end.
+    // Edits that touch neither the time nor the treatments keep the stored end, so e.g. changing the
+    // owner of an appointment with a custom length does not re-run the slot check or extend it.
+    const startMoved = next.startTime.getTime() !== new Date(old.startTime).getTime();
+    const totalDuration = startMoved || servicesChanged ? await this.computeServicesDuration(serviceIds) : 0;
+    let nextEnd: Date;
+    if (!startMoved && !servicesChanged && !updateData.endTime) {
+      nextEnd = new Date(old.endTime);
+    } else if (totalDuration > 0) {
+      nextEnd = new Date(next.startTime.getTime() + totalDuration * 60000);
+    } else if (updateData.endTime) {
+      nextEnd = new Date(updateData.endTime);
+    } else {
+      nextEnd = new Date(next.startTime.getTime() + (new Date(old.endTime).getTime() - new Date(old.startTime).getTime()));
+    }
+
+    const timeChanged =
+      next.startTime.getTime() !== new Date(old.startTime).getTime() ||
+      nextEnd.getTime() !== new Date(old.endTime).getTime();
+    const providerChanged = String(next.providerId || '') !== String(old.providerId || '');
+
+    // Same checks as booking whenever the slot changes (time, duration, clinic or provider).
+    if (timeChanged || clinicChanged || providerChanged) {
+      await this.assertSlotBookable({
+        clinicId: next.clinicId,
+        providerId: next.providerId,
+        representativeId: next.representativeId,
+        startTime: next.startTime,
+        endTime: nextEnd,
+        excludeAppointmentId: id,
+        actorRole: actor?.role,
+      });
+    }
+
+    const payload: any = { ...updateData };
+    payload.startTime = next.startTime;
+    payload.endTime = nextEnd;
+    if (updateData.additionalServiceIds !== undefined || servicesChanged) payload.additionalServiceIds = next.additionalServiceIds;
+
+    // Price follows the treatments/clinic: recalculate unless an explicit price was sent.
+    if ((clinicChanged || servicesChanged) && updateData.totalAmount === undefined) {
+      payload.totalAmount = await this.computeServicesPrice(serviceIds);
+    }
+
+    await this.appointmentsRepository.update(id, payload);
+    const updated = await this.findById(id);
+
+    const changes = {
+      appointmentId: id,
+      updatedById: actor?.id || null,
+      updatedByRole: actor?.role || null,
+      oldClinicId: old.clinicId,
+      oldClinicName: old.clinicName,
+      newClinicId: updated.clinicId,
+      newClinicName: updated.clinic?.name || null,
+      oldStartTime: old.startTime,
+      oldEndTime: old.endTime,
+      newStartTime: updated.startTime,
+      newEndTime: updated.endTime,
+      oldServiceIds: [old.serviceId, ...old.additionalServiceIds],
+      newServiceIds: [updated.serviceId, ...(updated.additionalServiceIds || [])],
+      oldProviderId: old.providerId,
+      newProviderId: updated.providerId || null,
+      oldTotalAmount: old.totalAmount,
+      newTotalAmount: Number(updated.totalAmount || 0),
+      oldRepresentativeId: old.representativeId,
+      newRepresentativeId: updated.representativeId || null,
+      clinicChanged,
+      timeChanged,
+      servicesChanged,
+      providerChanged,
+    };
+
+    // Domain events with the full before/after diff (user-facing notifications go through the
+    // single APPOINTMENT_NOTIFY_EVENT below):
+    //  - appointment.updated: every edit.
+    //  - appointment.clinic_changed: the client moved to another clinic.
+    //  - appointment.rescheduled: time moved (calendar sync and confirmation task follow it).
+    if (clinicChanged || timeChanged || servicesChanged || providerChanged || changes.oldRepresentativeId !== changes.newRepresentativeId) {
+      this.eventEmitter.emit('appointment.updated', { appointment: updated, changes });
+    }
+    if (clinicChanged) {
+      this.eventEmitter.emit('appointment.clinic_changed', { appointment: updated, changes });
+    }
+    if (timeChanged) {
+      this.eventEmitter.emit('appointment.rescheduled', {
+        appointment: updated,
+        oldStartTime: old.startTime,
+        newStartTime: updated.startTime,
+        oldClinicId: old.clinicId,
+        newClinicId: updated.clinicId,
+        changes,
+      });
+    }
+    if (clinicChanged || timeChanged || providerChanged) {
+      this.eventEmitter.emit('appointment.calendar.dirty', { appointmentId: id, previousClinicId: clinicChanged ? old.clinicId : undefined });
+    }
+
+    // One notification event; recipients are decided in AppointmentNotificationsListener.
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: id,
+      actorId: actor?.id,
+      previous: {
+        startTime: old.startTime,
+        clinicId: old.clinicId,
+        serviceId: old.serviceId,
+        additionalServiceIds: old.additionalServiceIds,
+        providerId: old.providerId,
+        bookedById: appointment.bookedById,
+        representativeId: old.representativeId,
+      },
+    });
+
+    return updated;
   }
 
-  async updateStatus(id: string, status: AppointmentStatus, data?: any, userId?: string): Promise<Appointment> {
+  /** Maps a status change to the single appointment notification event. */
+  private emitStatusNotification(appointmentId: string, status: AppointmentStatus, actorId?: string, paidAmount?: number) {
+    const s = String(status).toUpperCase();
+    const kind =
+      s === AppointmentStatus.CANCELLED ? 'cancelled' :
+      s === AppointmentStatus.CONFIRMED ? 'confirmed' :
+      s === AppointmentStatus.NO_SHOW ? 'no_show' :
+      (s === AppointmentStatus.COMPLETED || s === AppointmentStatus.EXECUTED) ? 'completed' :
+      null;
+    if (!kind) return;
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind, appointmentId, actorId, paidAmount });
+  }
+
+  async updateStatus(
+    id: string,
+    rawStatus: AppointmentStatus | string,
+    data?: any,
+    userId?: string,
+    actor?: { role?: string } | null,
+  ): Promise<Appointment> {
+    const status = this.normalizeStatus(rawStatus);
     const appointment = await this.findById(id);
     const oldStatus = appointment.status;
 
@@ -810,7 +1150,13 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
     }
 
+    // Completed / no-show / arrived only from the appointment start time.
+    if (BookingsService.STARTED_ONLY_STATUSES.includes(status)) {
+      this.assertAppointmentStarted(appointment, `Marking the appointment as ${status}`);
+    }
+
     const updateData: any = { status };
+    let paidCancellation: { amountPaid: number; refunded: boolean } | null = null;
 
     if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
       updateData.completedAt = new Date();
@@ -822,21 +1168,14 @@ export class BookingsService {
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
-      const resolvedTotal = data?.totalAmount !== undefined 
-        ? Number(data.totalAmount) 
+      const resolvedTotal = data?.totalAmount !== undefined
+        ? Number(data.totalAmount)
         : Number(appointment.totalAmount || appointment.service?.price || 0);
 
       if (data?.totalAmount !== undefined) {
         updateData.totalAmount = data.totalAmount;
       } else if (!appointment.totalAmount && resolvedTotal > 0) {
         updateData.totalAmount = resolvedTotal;
-      }
-
-      if (data?.amountPaid !== undefined) {
-        updateData.amountPaid = data.amountPaid;
-      } else if (resolvedTotal > 0 && (!appointment.amountPaid || Number(appointment.amountPaid) <= 0)) {
-        // Fallback to assume full amount was paid if amountPaid not explicitly provided but completion is triggered
-        updateData.amountPaid = resolvedTotal;
       }
 
       if (data?.paymentMethod) {
@@ -852,72 +1191,53 @@ export class BookingsService {
           : (appointment.notes || newNote);
       }
 
-      // Record payment in financial ledger if amountPaid > 0
-      const amountToRecord = updateData.amountPaid !== undefined ? Number(updateData.amountPaid) : Number(appointment.amountPaid || 0);
-      if (amountToRecord > 0) {
+      // Payments: `amountPaid` is the total the client has paid for this visit. Only the part
+      // not yet in the ledger is recorded as a NEW payment; earlier (partial) payments are
+      // never overwritten, so every payment keeps its own amount and method.
+      const targetPaid = data?.amountPaid !== undefined ? Number(data.amountPaid) : 0;
+      if (targetPaid > 0) {
         try {
-          const existingPayment = await this.financialService['paymentRecordsRepository']?.findOne({
-            where: { appointmentId: appointment.id, type: PaymentType.PAYMENT }
-          });
-          
-          if (!existingPayment) {
+          const summary = await this.financialService.getAppointmentPaymentSummary(appointment.id);
+          const toRecord = Math.round((targetPaid - summary.paid - summary.giftCardRedeemed) * 100) / 100;
+          if (toRecord > 0) {
             await this.financialService.recordPayment({
               appointmentId: appointment.id,
               clinicId: appointment.clinicId,
               clientId: appointment.clientId,
               providerId: appointment.providerId,
-              amount: amountToRecord,
-              method: (data?.paymentMethod || appointment.paymentMethod || 'cash') as any,
+              amount: toRecord,
+              method: (data?.paymentMethod || appointment.paymentMethod || 'cash').toLowerCase() as any,
               type: PaymentType.PAYMENT,
-              notes: data?.notes || `Payment recorded for completed appointment ${appointment.id}`,
+              notes: data?.notes || `Payment recorded at completion of appointment ${appointment.id}`,
               recordedById: userId,
             });
-          } else {
-            // Update existing payment if amount or method changed
-            await this.financialService['paymentRecordsRepository']?.update(existingPayment.id, {
-              amount: amountToRecord,
-              method: (data?.paymentMethod || existingPayment.method || 'cash') as any,
-              recordedById: userId,
+
+            this.eventEmitter.emit('appointment.paid', {
+              appointment: await this.findById(appointment.id).catch(() => appointment),
+              amountPaid: toRecord,
+              paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
+              markedById: userId,
             });
           }
         } catch (payErr) {
-          console.error('[BookingsService] Failed to auto-record payment on status update to COMPLETED:', payErr.message);
+          console.error('[BookingsService] Failed to record payment on completion:', payErr.message);
         }
-
-        // Emit appointment.paid event for notifications
-        this.eventEmitter.emit('appointment.paid', {
-          appointment: await this.findById(appointment.id).catch(() => appointment),
-          amountPaid: amountToRecord,
-          paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
-          markedById: userId,
-        });
       }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
+      updateData.isLateCancellation = this.isLateCancellation(appointment);
 
-      // Ensure ledger is updated with refund for cancellation
-      if (Number(appointment?.amountPaid || 0) > 0) {
-        try {
-          await this.financialService.recordPayment({
-            appointmentId: appointment.id,
-            clinicId: appointment.clinicId,
-            clientId: appointment.clientId,
-            providerId: appointment.providerId,
-            amount: Number(appointment.amountPaid),
-            method: (appointment.paymentMethod as any) || RecordPaymentMethod.VIVA_WALLET,
-            type: PaymentType.REFUND,
-            notes: `Auto-refund record: Cancelled`,
-            recordedById: userId,
-          });
-        } catch (e) {
-          console.error('[Financial] Refund logging failed', e.message);
+      // Payment state is NOT changed by a cancellation. Only an ADMIN may refund, explicitly.
+      const amountPaid = Number(appointment?.amountPaid || 0);
+      if (amountPaid > 0) {
+        const wantsRefund = data?.refund === true || data?.refund === 'true';
+        if (wantsRefund && !this.isAdminRole(actor?.role)) {
+          throw new ForbiddenException('Only an admin can refund a paid appointment.');
         }
+        // The refund itself is written only after the cancellation is saved (below)
+        paidCancellation = { amountPaid, refunded: wantsRefund };
       }
-
-      // Financial impact: Revenue becomes 0 for canceled appointments
-      updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
 
       // Release any active hold for this time slot immediately
       try {
@@ -931,47 +1251,30 @@ export class BookingsService {
     } else if (status === AppointmentStatus.NO_SHOW) {
       updateData.noShowMarkedAt = new Date();
       updateData.noShowMarkedById = userId;
-      // Financial impact: Revenue becomes 0 for no-shows (unless we implement no-show fee later)
-      updateData.amountPaid = 0;
-      updateData.totalAmount = 0;
+      // Amounts are kept: the price stays for history and amountPaid stays ledger-derived
+      // (revenue comes from payments only).
     }
 
     await this.appointmentsRepository.update(id, updateData);
 
+    if (paidCancellation?.refunded) {
+      await this.refundAppointmentPayments(id, userId, 'Refund on cancellation (admin decision)');
+    }
+
     const updatedAppointment = await this.findById(id);
+
+    if (paidCancellation) {
+      await this.handlePaidAppointmentCancelled(updatedAppointment, {
+        amountPaid: paidCancellation.amountPaid,
+        refunded: paidCancellation.refunded,
+        cancelledById: userId,
+        cancelledByRole: actor?.role,
+      });
+    }
 
     // Trigger Notification if status actually changed
     if (status !== oldStatus) {
-      let trigger: NotificationTrigger;
-      if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
-      else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-      else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
-
-      if (trigger && updatedAppointment.clientId) {
-        await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
-          customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
-          serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
-          appointmentDate: formatDateInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
-          appointmentTime: formatTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
-          clinicName: updatedAppointment.clinic?.name,
-        });
-      }
-
-      // Notify Staff about status change
-      await this.notificationsService.notifyAllStaff(
-        `Appointment ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
-        `Appointment for ${updatedAppointment.client?.firstName || 'Guest'} has been ${status.toLowerCase()} by ${userId ? 'staff' : 'system'}.`,
-        { appointmentId: id, status }
-      );
-
-      if (updatedAppointment.clinicId) {
-        await this.notificationsService.notifyClinicStaff(
-          updatedAppointment.clinicId,
-          `Appointment Status: ${status}`,
-          `Appointment on ${formatDateTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone)} is now ${status.toLowerCase()}.`,
-          { appointmentId: id, status }
-        );
-      }
+      this.emitStatusNotification(id, status, userId, Number(appointment.amountPaid || 0));
 
       // Emit events for status changes
       this.eventEmitter.emit('appointment.status.changed', {
@@ -1008,12 +1311,32 @@ export class BookingsService {
     newEndTime: Date,
     notes?: string,
     isClientReschedule: boolean = false,
+    actor?: { id?: string; role?: string } | null,
   ): Promise<Appointment> {
     let appointment = await this.findById(id);
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
-    
+
+    // Duration = sum of all treatments (a 2-treatment 60 min visit stays 60 min).
+    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+    if (durationMinutes > 0) {
+      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
+    }
+
+    // Same checks as on create.
+    await this.assertSlotBookable({
+      clinicId: appointment.clinicId,
+      providerId: appointment.providerId,
+      representativeId: appointment.representativeId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      excludeAppointmentId: id,
+      actorRole: actor?.role,
+    });
+
+    const oldStartTime = appointment.startTime;
+    const oldEndTime = appointment.endTime;
     const oldStatus = appointment.status;
     const updatePayload: any = {
       startTime: newStartTime,
@@ -1032,91 +1355,13 @@ export class BookingsService {
 
     appointment = await this.findById(id);
 
-    const formattedDate = formatDateInTz(appointment.startTime, appointment.clinic?.timezone);
-    const formattedTime = formatTimeInTz(appointment.startTime, appointment.clinic?.timezone);
-    const formattedDateTime = formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone);
-    const serviceName = appointment.service?.treatment?.name || 'Treatment';
-    const providerName = appointment.provider
-      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`.trim()
-      : '';
-    const clientName = appointment.client
-      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
-      : 'Client';
-
-    // 1. In-App Notification directly for the client (shows in notification bell dropdown)
-    if (appointment.clientId) {
-      try {
-        await this.notificationsService.sendAppointmentRescheduled(appointment.clientId, {
-          id: appointment.id,
-          serviceName,
-          providerName,
-          date: formattedDate,
-          time: formattedTime,
-          isPending: isClientReschedule,
-          status: appointment.status,
-        });
-      } catch (clientNotifErr) {
-        console.error('[BookingsService] Failed to send client reschedule push notification:', clientNotifErr);
-      }
-
-      // Also send template-based notifications (e.g. Email)
-      try {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
-          customerName: clientName,
-          serviceName,
-          appointmentDate: formattedDate,
-          appointmentTime: formattedTime,
-          clinicName: appointment.clinic?.name || 'Clinic',
-        });
-      } catch (error) {
-        console.error('[BookingsService] Failed to send triggered reschedule notification:', error);
-      }
-    }
-
-    // 2. Direct notification to assigned Provider (Doctor / Aesthetician)
-    if (appointment.providerId && appointment.providerId !== appointment.clientId) {
-      try {
-        await this.notificationsService.create(
-          appointment.providerId,
-          NotificationType.PUSH,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
-          {
-            appointmentId: id,
-            type: 'appointment_rescheduled',
-            status: appointment.status,
-          }
-        );
-      } catch (providerNotifErr) {
-        console.error('[BookingsService] Failed to send provider reschedule notification:', providerNotifErr);
-      }
-    }
-
-    // 3. Notify Clinic Staff & Owner
-    if (appointment.clinicId) {
-      try {
-        await this.notificationsService.notifyClinicStaff(
-          appointment.clinicId,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}${isClientReschedule ? ' (Status: Pending Confirmation)' : ''}.`,
-          { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status },
-          appointment.providerId ? [appointment.providerId] : []
-        );
-      } catch (clinicStaffErr) {
-        console.error('[BookingsService] Failed to notify clinic staff:', clinicStaffErr);
-      }
-    }
-
-    // 4. Notify Platform Staff / Admins
-    try {
-      await this.notificationsService.notifyAllStaff(
-        'Appointment Rescheduled',
-        `Appointment for ${clientName} moved to ${formattedDateTime}${isClientReschedule ? ' and requires re-confirmation (Status: PENDING).' : '.'}`,
-        { appointmentId: id, type: 'appointment_rescheduled', status: appointment.status }
-      );
-    } catch (allStaffErr) {
-      console.error('[BookingsService] Failed to notify all staff:', allStaffErr);
-    }
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: id,
+      actorId: actor?.id,
+      previous: { startTime: oldStartTime },
+      isClientReschedule,
+    });
 
     if (isClientReschedule && oldStatus !== AppointmentStatus.PENDING) {
       this.eventEmitter.emit('appointment.status.changed', {
@@ -1126,7 +1371,18 @@ export class BookingsService {
       });
     }
 
-    this.eventEmitter.emit('appointment.rescheduled', appointment);
+    this.eventEmitter.emit('appointment.rescheduled', {
+      appointment,
+      oldStartTime,
+      oldEndTime,
+      newStartTime: appointment.startTime,
+      newEndTime: appointment.endTime,
+      oldClinicId: appointment.clinicId,
+      newClinicId: appointment.clinicId,
+      reason: notes,
+      isClientReschedule,
+      rescheduledById: actor?.id || null,
+    });
 
     return appointment;
   }
@@ -1147,10 +1403,29 @@ export class BookingsService {
 
     const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
+    // Multi-treatment appointments: expose every treatment, not only the first.
+    const extraIds = Array.from(new Set(appointments.flatMap(a => a.additionalServiceIds || []).filter(id => !!id && UUID_REGEX.test(id))));
+    const extraById = new Map<string, any>();
+    if (extraIds.length > 0) {
+      const extra = await this.servicesRepository.find({ where: { id: In(extraIds) }, relations: ['treatment'] });
+      for (const svc of extra) extraById.set(svc.id, svc);
+    }
+
     // Add display name to each appointment and sanitize for client
     return appointments.map(apt => {
+      const additionalServices = (apt.additionalServiceIds || [])
+        .filter(id => id && id !== apt.serviceId && extraById.has(id))
+        .map(id => {
+          const svc = extraById.get(id);
+          return { id, name: svc?.treatment?.name || svc?.name || 'Treatment', price: Number(svc?.price || 0), durationMinutes: Number(svc?.durationMinutes || 0) };
+        });
+      const treatmentNames = [apt.service?.treatment?.name || (apt.service as any)?.name, ...additionalServices.map(s => s.name)].filter(Boolean);
       const item: any = {
         ...apt,
+        additionalServices,
+        treatmentNames,
+        treatmentLabel: treatmentNames.join(' + '),
+        durationMinutes: Math.round((new Date(apt.endTime).getTime() - new Date(apt.startTime).getTime()) / 60000),
         displayName: this.formatAppointmentDisplayName(apt),
         serviceName: apt.service?.treatment?.name,
         providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}`.trim() : null,
@@ -1487,16 +1762,36 @@ export class BookingsService {
 
   async updateAppointmentStatus(
     appointmentId: string,
-    status: AppointmentStatus,
+    rawStatus: AppointmentStatus | string,
     userId: string,
     userRole: string,
     updateData?: any,
   ): Promise<Appointment> {
+    // Normalize status input so only the canonical enum ('COMPLETED', never 'completed') is stored.
+    const status = this.normalizeStatus(rawStatus);
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     const oldStatus = appointment.status;
 
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and cannot be modified.');
+    }
+
+    // Arrived / no-show / completed only from the appointment start time.
+    if (BookingsService.STARTED_ONLY_STATUSES.includes(status)) {
+      this.assertAppointmentStarted(appointment, `Marking the appointment as ${status}`);
+    }
+
+    // Paid appointment cancelled: payment is NOT touched; only an admin may refund explicitly.
+    let paidCancellation: { amountPaid: number; refunded: boolean } | null = null;
+    if (status === AppointmentStatus.CANCELLED && oldStatus !== AppointmentStatus.CANCELLED && Number(appointment.amountPaid || 0) > 0) {
+      const wantsRefund = updateData?.refund === true || updateData?.refund === 'true';
+      if (wantsRefund && !this.isAdminRole(userRole)) {
+        throw new ForbiddenException('Only an admin can refund a paid appointment.');
+      }
+      const paidBefore = Number(appointment.amountPaid || 0);
+      // The refund itself is written only after the cancellation is saved (below), so a failed
+      // save never leaves refunded payments on an active appointment.
+      paidCancellation = { amountPaid: paidBefore, refunded: wantsRefund };
     }
 
     // 1. CONFIRMATION RESTRICTION: Clinique can confirm, sales and admin
@@ -1525,7 +1820,7 @@ export class BookingsService {
       // Update details shared during the execution phase
       if (updateData?.serviceId) appointment.serviceId = updateData.serviceId;
       if (updateData?.totalAmount !== undefined) appointment.totalAmount = Number(updateData.totalAmount);
-      if (updateData?.amountPaid !== undefined) appointment.amountPaid = Number(updateData.amountPaid);
+      // amountPaid is derived from the payment ledger only (recordPayment); never set it from input.
       if (updateData?.rewardPointsRedeemed) appointment.rewardPointsRedeemed = Number(updateData.rewardPointsRedeemed);
 
       // RULE: Persistence of isReturned flag
@@ -1551,11 +1846,11 @@ export class BookingsService {
     if (status === AppointmentStatus.CANCELLED) {
       appointment.cancelledAt = new Date();
       appointment.cancelledById = userId;
+      appointment.isLateCancellation = this.isLateCancellation(appointment);
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
-      appointment.amountPaid = 0;
-      appointment.totalAmount = 0;
+      // Amounts kept (price for history, amountPaid ledger-derived).
     }
 
     if (updateData?.notes && updateData.notes.trim()) {
@@ -1568,72 +1863,27 @@ export class BookingsService {
 
     appointment.status = status;
     const saved = await this.appointmentsRepository.save(appointment);
+    if (paidCancellation?.refunded) {
+      // recordPayment(REFUND) lowers amountPaid in the DB after the save, so nothing stale is written back
+      await this.refundAppointmentPayments(saved.id, userId, 'Refund on cancellation (admin decision)');
+    }
     const updated = await this.findById(saved.id);
 
-    // 3. TASK INTERACTION: Auto-complete / Cancel / Follow-up linked tasks
-    try {
-      const linkedTasks = await this.crmService['crmActionsRepository']?.find?.({
-        where: { relatedAppointmentId: appointmentId },
+    if (paidCancellation) {
+      await this.handlePaidAppointmentCancelled(updated, {
+        amountPaid: paidCancellation.amountPaid,
+        refunded: paidCancellation.refunded,
+        cancelledById: userId,
+        cancelledByRole: userRole,
       });
-      if (linkedTasks?.length) {
-        for (const task of linkedTasks) {
-          if ((status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) && task.status === 'pending') {
-            await this.crmService['crmActionsRepository'].update(task.id, { status: 'completed', completedAt: new Date() });
-          } else if (status === AppointmentStatus.CANCELLED && task.status === 'pending') {
-            await this.crmService['crmActionsRepository'].update(task.id, { status: 'cancelled' });
-          }
-        }
-      }
-
-      // Create Follow-up Satisfaction Call
-      const outcomeStatuses = [AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW];
-      if (outcomeStatuses.includes(status)) {
-        const salespersonId = updated.representativeId || (updated as any).salespersonId || updated.bookedById;
-        if (salespersonId && updated.clientId) {
-          const nextDay = new Date();
-          nextDay.setDate(nextDay.getDate() + 1);
-          nextDay.setHours(9, 0, 0, 0);
-
-          let taskTitle = `Outcome Follow-up: ${updated.client?.firstName || 'Client'}`;
-          let taskDesc = `Follow up on appointment outcome: ${status}`;
-
-          if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) {
-            taskTitle = `Satisfaction Check: ${updated.client?.firstName || 'Client'}`;
-            taskDesc = `Treatment performed at ${updated.clinic?.name}. Verify satisfaction and confirm successful execution.`;
-          }
-
-          await this.crmService.createAction({
-            customerId: updated.clientId,
-            salespersonId,
-            actionType: 'call',
-            title: taskTitle,
-            description: taskDesc,
-            status: 'pending',
-            priority: 'medium',
-            dueDate: nextDay,
-            reminderDate: nextDay,
-            relatedAppointmentId: updated.id,
-          } as any);
-        }
-      }
-    } catch (taskErr) {
-      console.error('[BookingsService] Task automation update failed:', taskErr.message);
     }
 
-    // 4. NOTIFICATION TRIGGERS
-    let trigger: NotificationTrigger;
-    if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
-    else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-    else if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
+    // 3. The linked confirmation-call task follows the appointment via the CRM listener
+    //    ('appointment.calendar.dirty' / 'appointment.executed'); no follow-up tasks are created.
 
-    if (trigger && updated.clientId) {
-      await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {
-        customerName: `${updated.client?.firstName || 'Customer'}`,
-        serviceName: updated.service?.treatment?.name || 'Treatment',
-        appointmentDate: formatDateInTz(updated.startTime, updated.clinic?.timezone),
-        appointmentTime: formatTimeInTz(updated.startTime, updated.clinic?.timezone),
-        clinicName: updated.clinic?.name,
-      });
+    // 4. NOTIFICATION (one event; recipients decided by the listener)
+    if (oldStatus !== status) {
+      this.emitStatusNotification(updated.id, status, userId, Number(appointment.amountPaid || 0));
     }
 
     // This clinic-scoped path previously only emitted `appointment.executed`. Emit a
@@ -1670,6 +1920,8 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('This appointment has already been completed and is locked.');
     }
+    // Completion and payments only from the appointment start time.
+    this.assertAppointmentStarted(appointment, 'Completing the appointment');
     const oldStatus = appointment.status;
     const oldTotal = Number(appointment.totalAmount ?? 0);
     const oldAdvance = Number(appointment.advancePaymentAmount ?? 0);
@@ -1691,6 +1943,9 @@ export class BookingsService {
     }
 
     if (paymentData) {
+      // For a normal (non-advance) payment `amount` is the visit total; only the open balance
+      // (total minus earlier partial payments) is recorded as a new payment below.
+      const visitTotal = Number(paymentData.amount || 0);
       appointment.paymentMethod = paymentData.paymentMethod;
       if (paymentData.isAdvancePayment) {
         appointment.advancePaymentAmount = paymentData.amount;
@@ -1747,46 +2002,30 @@ export class BookingsService {
         }
       }
 
-      // If there is still a remaining amount to be paid via other methods, or if we need to update an existing record
-      if (paymentData.amount > 0 || !giftCardCode) {
-        try {
+      // Record what is still open as a NEW payment. Earlier (partial) payments are never
+      // overwritten, so each payment keeps its own amount and method.
+      try {
         const type = paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT;
-        const existing = await this.financialService['paymentRecordsRepository'].findOne({
-          where: { appointmentId: appointment.id, type },
-        });
-
-        if (existing) {
-          console.log('[BookingsService] Updating existing PaymentRecord:', existing.id);
-          await this.financialService['paymentRecordsRepository'].update(existing.id, {
-            amount: paymentData.amount,
-            method: paymentData.paymentMethod as any,
-            notes: (paymentData.notes || '') + ' (Recalculated)',
-            recordedById: userId,
-          });
-
-          // Manually recalculate amountPaid on appointment via logic similar to recordPayment
-          const records = await this.financialService['paymentRecordsRepository'].find({ where: { appointmentId: appointment.id } });
-          const totalPaid = records.reduce((acc, r) => acc + (r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -Number(r.amount) : Number(r.amount)), 0);
-          appointment.amountPaid = totalPaid;
-        } else {
-          console.log('[BookingsService] Creating NEW PaymentRecord for amount:', paymentData.amount);
-          // Record new PaymentRecord
+        let toRecord = Number(paymentData.amount || 0);
+        if (!paymentData.isAdvancePayment) {
+          const summary = await this.financialService.getAppointmentPaymentSummary(appointment.id);
+          toRecord = Math.round((visitTotal - summary.paid - summary.giftCardRedeemed) * 100) / 100;
+        }
+        if (toRecord > 0) {
           await this.financialService.recordPayment({
             appointmentId: appointment.id,
             clinicId: appointment.clinicId,
             clientId: appointment.clientId,
             providerId: appointment.providerId,
-            amount: paymentData.amount,
-            method: paymentData.paymentMethod as any,
+            amount: toRecord,
+            method: String(paymentData.paymentMethod || 'cash').toLowerCase() as any,
             type,
             notes: paymentData.notes,
             recordedById: userId,
           });
-          console.log('[BookingsService] Successfully recorded PaymentRecord');
         }
-        } catch (fErr) {
-          console.error('[BookingsService] Revenue update failed:', fErr.message, fErr.stack);
-        }
+      } catch (fErr) {
+        console.error('[BookingsService] Revenue update failed:', fErr.message, fErr.stack);
       }
 
       // RULE: Always re-sync the in-memory appointment.amountPaid AFTER recording a payment 
@@ -1824,12 +2063,9 @@ export class BookingsService {
         recordedById: userId,
       };
 
-      // Update payment if provided in report
-      if (completionReport.amountPaid) {
+      // Price from the report; amountPaid stays ledger-derived (never set without a payment record).
+      if (completionReport.amountPaid && !paymentData) {
         appointment.totalAmount = completionReport.amountPaid;
-        if (!appointment.amountPaid || Number(appointment.amountPaid) <= 0) {
-          appointment.amountPaid = completionReport.amountPaid;
-        }
       }
     }
 
@@ -1890,6 +2126,7 @@ export class BookingsService {
       oldStatus,
       newStatus: AppointmentStatus.COMPLETED,
     });
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'completed', appointmentId: savedAppointment.id, actorId: userId });
 
     return savedAppointment;
   }
@@ -1906,6 +2143,8 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
     }
+    this.assertAppointmentStarted(appointment, 'Recording a payment');
+    await this.assertWithinBalance(appointmentId, Number(amount));
 
     // Normalize method to lowercase to match PaymentMethod enum (cash, card, pos, etc.)
     const normalizedMethod = method?.toLowerCase() as any;
@@ -1985,6 +2224,7 @@ export class BookingsService {
     // Dedicated calendar-sync signal (not the shared status.changed event, to avoid
     // altering existing notification/loyalty listeners) so Google Calendar removes the event.
     this.eventEmitter.emit('appointment.calendar.dirty', { appointmentId });
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'deleted', appointmentId, actorId: userId });
 
     return this.findById(appointmentId);
   }
@@ -1998,13 +2238,16 @@ export class BookingsService {
     if (this.isAppointmentCompleted(appointment)) {
       throw new BadRequestException('Completed appointments are locked and payments cannot be modified.');
     }
+    this.assertAppointmentStarted(appointment, 'Recording a payment');
     const beforeAdvance = Number(appointment.advancePaymentAmount ?? 0);
     const beforeTotal = Number(appointment.totalAmount ?? 0);
 
+    // `amount` is the money received now (partial payments allowed); it never replaces the
+    // appointment price. Only the open balance may be collected.
     if (paymentData.isAdvancePayment) {
-      appointment.advancePaymentAmount = paymentData.amount;
+      appointment.advancePaymentAmount = Number(appointment.advancePaymentAmount || 0) + Number(paymentData.amount || 0);
     } else {
-      appointment.totalAmount = paymentData.amount;
+      await this.assertWithinBalance(appointment.id, Number(paymentData.amount));
     }
 
     appointment.paymentMethod = paymentData.paymentMethod;
@@ -2127,8 +2370,10 @@ export class BookingsService {
     const completedAppointments = appointments.filter(a => a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.EXECUTED).length;
     const cancelledAppointments = appointments.filter(a => a.status === AppointmentStatus.CANCELLED || a.status === AppointmentStatus.DELETED).length;
     const noShows = appointments.filter(a => a.status === AppointmentStatus.NO_SHOW).length;
-    const totalRevenue = appointments.reduce((sum, a) => sum + (Number(a.amountPaid) || 0), 0);
-    const averageAppointmentValue = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+    // Revenue: ONE shared definition (payments received, EUR, net of refunds, by payment date).
+    const revenueFilters = await this.resolveRevenueScope(userId, userRole, query);
+    const totalRevenue = await getPaidRevenueTotal(this.appointmentsRepository.manager, revenueFilters);
+    const averageAppointmentValue = completedAppointments > 0 ? totalRevenue / completedAppointments : 0;
 
     return {
       totalAppointments,
@@ -2136,9 +2381,51 @@ export class BookingsService {
       cancelledAppointments,
       noShows,
       totalRevenue,
+      currency: 'EUR',
       averageAppointmentValue,
-      period: { startDate: query.startDate, endDate: query.endDate }
+      period: { startDate: query.startDate, endDate: query.endDate },
+      clinicId: query.clinicId || null,
     };
+  }
+
+  /**
+   * Revenue scope for clinic-side analytics: admins see everything (or one clinic), clinic
+   * staff only their own clinic(s), a doctor without a clinic only payments where they are
+   * the provider. Period = payment date.
+   */
+  private async resolveRevenueScope(
+    userId: string,
+    userRole: string,
+    query: { startDate?: string; endDate?: string; clinicId?: string },
+  ): Promise<RevenueFilters> {
+    const filters: RevenueFilters = {};
+    if (query.startDate) filters.startDate = new Date(query.startDate);
+    if (query.endDate) {
+      const end = new Date(query.endDate);
+      // A date-only end (yyyy-MM-dd) includes the whole day.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(query.endDate))) end.setUTCHours(23, 59, 59, 999);
+      filters.endDate = end;
+    }
+
+    const role = String(userRole || '').toLowerCase();
+    if (this.isAdminRole(role)) {
+      if (query.clinicId) filters.clinicId = query.clinicId;
+    } else if (role === 'clinic_owner' || role === 'secretariat' || role === 'doctor') {
+      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+      if (!user) throw new NotFoundException('User not found');
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+      if (clinicIds.length > 0) {
+        filters.clinicIds = query.clinicId ? clinicIds.filter(id => id === query.clinicId) : clinicIds;
+      } else {
+        filters.providerId = userId;
+      }
+    } else if (role === 'manager' && query.clinicId) {
+      filters.clinicId = query.clinicId;
+    } else {
+      filters.providerId = userId;
+    }
+    return filters;
   }
 
   async getClinicRevenueAnalytics(
@@ -2146,60 +2433,40 @@ export class BookingsService {
     userRole: string,
     query: { startDate?: string; endDate?: string; serviceId?: string; clinicId?: string },
   ): Promise<any> {
-    const qb = this.appointmentsRepository.createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.service', 'service')
-      .leftJoinAndSelect('service.treatment', 'treatment');
+    // ONE figure for every revenue page: payments received (EUR), net of refunds/voids,
+    // by payment date, scoped to the caller's clinic(s). Unpaid / future visits never count.
+    const filters = await this.resolveRevenueScope(userId, userRole, query);
+    const manager = this.appointmentsRepository.manager;
+    const totalRevenue = await getPaidRevenueTotal(manager, filters);
 
-    // Handle Auth
-    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      qb.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-      if (!user) throw new NotFoundException('User not found');
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-      if (clinicIds.length > 0) {
-        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
-      } else {
-        qb.andWhere('appointment.providerId = :userId', { userId });
-      }
-    } else if (userRole === 'manager' && query.clinicId) {
-      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
-    } else {
-      qb.where('appointment.providerId = :userId', { userId });
-    }
+    // Revenue by treatment (same rules, grouped by the appointment's primary treatment).
+    const rows = await buildPaidRevenueQuery(manager, filters, 'p')
+      .leftJoin('p_apt.service', 'svc')
+      .leftJoin('svc.treatment', 'tr')
+      .select(`COALESCE(tr.name, 'Other')`, 'serviceName')
+      .addSelect(netPaidExpression('p'), 'revenue')
+      .addSelect('COUNT(DISTINCT p.appointmentId)', 'count')
+      .groupBy('tr.name')
+      .getRawMany();
+    const revenueByService = rows
+      .map((r: any) => ({
+        serviceName: r.serviceName ?? r.servicename ?? 'Other',
+        revenue: Number(r.revenue || 0),
+        count: Number(r.count || 0),
+      }))
+      .filter(r => r.revenue !== 0)
+      .sort((a, b) => b.revenue - a.revenue);
 
-    if (query.startDate && query.endDate) {
-      qb.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      });
-    }
-
-    const appointments = await qb.getMany();
-
-    // Filter to ones with financial impact
-    const paidAppts = appointments.filter(a => (Number(a.amountPaid) || 0) > 0);
-    const totalRevenue = paidAppts.reduce((sum, a) => sum + Number(a.amountPaid), 0);
-    const averageAppointmentValue = paidAppts.length > 0 ? totalRevenue / paidAppts.length : 0;
-
-    // Revenue by service
-    const serviceMap = new Map<string, { serviceName: string, revenue: number, count: number }>();
-    paidAppts.forEach(a => {
-      const sName = a.service?.treatment?.name || 'Unknown';
-      const current = serviceMap.get(sName) || { serviceName: sName, revenue: 0, count: 0 };
-      current.revenue += Number(a.amountPaid);
-      current.count += 1;
-      serviceMap.set(sName, current);
-    });
-
-    const revenueByService = Array.from(serviceMap.values()).sort((a, b) => b.revenue - a.revenue);
+    const paidVisits = revenueByService.reduce((sum, r) => sum + r.count, 0);
+    const averageAppointmentValue = paidVisits > 0 ? totalRevenue / paidVisits : 0;
 
     return {
       totalRevenue,
+      currency: 'EUR',
       averageAppointmentValue,
       revenueByService,
-      period: { startDate: query.startDate, endDate: query.endDate }
+      period: { startDate: query.startDate, endDate: query.endDate },
+      clinicId: query.clinicId || null,
     };
   }
 
@@ -2381,6 +2648,7 @@ export class BookingsService {
       .leftJoinAndSelect('appointment.service', 'service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
+      .leftJoinAndSelect('appointment.executedBy', 'executedBy')
       .leftJoinAndSelect('appointment.client', 'client')
       .where('appointment.clientId = :clientId', { clientId });
 
@@ -2452,7 +2720,9 @@ export class BookingsService {
       appointments: appointments.map(apt => ({
         id: apt.id,
         serviceName: apt.service?.treatment?.name || 'Treatment',
-        providerName: apt.provider ? `${apt.provider.firstName || ''} ${apt.provider.lastName || ''}`.trim() : null,
+        // The real practitioner of THIS appointment: its provider, else the clinic staff
+        // member who performed it. Never a default/placeholder account.
+        providerName: this.practitionerName(apt),
         startTime: apt.startTime,
         status: apt.status,
         totalAmount: apt.totalAmount,
@@ -2464,6 +2734,15 @@ export class BookingsService {
         lastVisit: appointments[0]?.startTime || null,
       },
     };
+  }
+
+  private practitionerName(apt: Appointment): string | null {
+    const clinicRoles = [UserRole.DOCTOR, UserRole.CLINIC_OWNER].map(r => String(r).toLowerCase());
+    const person = apt.provider
+      || (apt.executedBy && clinicRoles.includes(String(apt.executedBy.role || '').toLowerCase()) ? apt.executedBy : null);
+    if (!person) return null;
+    const name = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+    return name || null;
   }
 
   async rescheduleAppointment(
@@ -2479,20 +2758,25 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
 
-    // Check for conflicts with the new time
-    const conflictingAppointment = await this.appointmentsRepository.findOne({
-      where: {
-        providerId: appointment.providerId,
-        startTime: Between(newStartTime, newEndTime),
-        status: AppointmentStatus.CONFIRMED,
-      },
-    });
-
-    if (conflictingAppointment && conflictingAppointment.id !== appointmentId) {
-      throw new ConflictException('Time slot is already booked');
+    // Duration = sum of all treatments.
+    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+    if (durationMinutes > 0) {
+      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
     }
 
+    // Same checks as on create (opening hours, closing time, blocks, overlaps, past times).
+    await this.assertSlotBookable({
+      clinicId: appointment.clinicId,
+      providerId: appointment.providerId,
+      representativeId: appointment.representativeId,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      excludeAppointmentId: appointmentId,
+      actorRole: userRole,
+    });
+
     const oldStartTime = appointment.startTime;
+    const oldEndTime = appointment.endTime;
     appointment.startTime = newStartTime;
     appointment.endTime = newEndTime;
 
@@ -2503,97 +2787,24 @@ export class BookingsService {
     const updatedAppointment = await this.appointmentsRepository.save(appointment);
     const fullAppointment = await this.findById(updatedAppointment.id);
 
-    const formattedDate = formatDateInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const formattedTime = formatTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const formattedDateTime = formatDateTimeInTz(fullAppointment.startTime, fullAppointment.clinic?.timezone);
-    const serviceName = fullAppointment.service?.treatment?.name || 'Treatment';
-    const providerName = fullAppointment.provider
-      ? `${fullAppointment.provider.firstName} ${fullAppointment.provider.lastName}`.trim()
-      : '';
-    const clientName = fullAppointment.client
-      ? `${fullAppointment.client.firstName} ${fullAppointment.client.lastName || ''}`.trim()
-      : 'Client';
-
-    // 1. Notify Client
-    if (fullAppointment.clientId) {
-      try {
-        await this.notificationsService.sendAppointmentRescheduled(fullAppointment.clientId, {
-          id: fullAppointment.id,
-          serviceName,
-          providerName,
-          date: formattedDate,
-          time: formattedTime,
-          isPending: false,
-          status: fullAppointment.status,
-        });
-      } catch (clientNotifErr) {
-        console.error('[BookingsService] Failed to send client reschedule notification:', clientNotifErr);
-      }
-
-      try {
-        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, fullAppointment.clientId, {
-          customerName: clientName,
-          serviceName,
-          appointmentDate: formattedDate,
-          appointmentTime: formattedTime,
-          clinicName: fullAppointment.clinic?.name || 'Clinic',
-        });
-      } catch (err) {
-        console.error('[BookingsService] Failed to send triggered notification:', err);
-      }
-    }
-
-    // 2. Direct notification to assigned Provider
-    if (fullAppointment.providerId && fullAppointment.providerId !== fullAppointment.clientId) {
-      try {
-        await this.notificationsService.create(
-          fullAppointment.providerId,
-          NotificationType.PUSH,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
-          {
-            appointmentId: fullAppointment.id,
-            type: 'appointment_rescheduled',
-            status: fullAppointment.status,
-          }
-        );
-      } catch (providerErr) {
-        console.error('[BookingsService] Failed to send provider reschedule notification:', providerErr);
-      }
-    }
-
-    // 3. Notify Clinic Staff & Owner
-    if (fullAppointment.clinicId) {
-      try {
-        await this.notificationsService.notifyClinicStaff(
-          fullAppointment.clinicId,
-          'Appointment Rescheduled',
-          `Appointment for ${clientName} (${serviceName}) moved to ${formattedDateTime}.`,
-          { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status },
-          fullAppointment.providerId ? [fullAppointment.providerId] : []
-        );
-      } catch (clinicErr) {
-        console.error('[BookingsService] Failed to notify clinic staff:', clinicErr);
-      }
-    }
-
-    // 4. Notify Platform Staff
-    try {
-      await this.notificationsService.notifyAllStaff(
-        'Appointment Rescheduled',
-        `Appointment for ${clientName} moved to ${formattedDateTime}.`,
-        { appointmentId: fullAppointment.id, type: 'appointment_rescheduled', status: fullAppointment.status }
-      );
-    } catch (staffErr) {
-      console.error('[BookingsService] Failed to notify all staff:', staffErr);
-    }
+    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+      kind: 'changed',
+      appointmentId: fullAppointment.id,
+      actorId: userId,
+      previous: { startTime: oldStartTime },
+    });
 
     // Emit event for notifications
     this.eventEmitter.emit('appointment.rescheduled', {
       appointment: fullAppointment,
       oldStartTime,
-      newStartTime,
+      oldEndTime,
+      newStartTime: fullAppointment.startTime,
+      newEndTime: fullAppointment.endTime,
+      oldClinicId: fullAppointment.clinicId,
+      newClinicId: fullAppointment.clinicId,
       reason,
+      rescheduledById: userId,
     });
 
     return fullAppointment;

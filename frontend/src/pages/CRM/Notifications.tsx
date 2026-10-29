@@ -1,6 +1,5 @@
 import React, { useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
-import { formatDistanceToNow } from"date-fns";
 import { Bell, CheckCircle, Clock, CheckCheck, Users } from"lucide-react";
 import { fetchNotifications, markAsRead, markAllAsRead } from"@/store/slices/notificationsSlice";
 import type { RootState, AppDispatch } from"@/store";
@@ -121,7 +120,7 @@ export const Notifications: React.FC = () => {
  {notif.title}
  </h3>
  <span className="text-[8px] font-bold text-gray-400 uppercase">
- {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+ {new Date(notif.createdAt).toLocaleString('el-GR', { timeZone: 'Europe/Athens', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
  </span>
  </div>
  <p className="text-[11px] font-bold text-gray-500 leading-relaxed uppercase opacity-70">

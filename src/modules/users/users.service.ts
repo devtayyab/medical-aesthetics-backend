@@ -11,6 +11,8 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { assertPasswordPolicy } from '../../common/utils/password-policy.util';
+import { normalizeEmail } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -24,9 +26,8 @@ export class UsersService {
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: createUserDto.email },
-    });
+    createUserDto = { ...createUserDto, email: normalizeEmail(createUserDto.email) };
+    const existingUser = createUserDto.email ? await this.findByEmail(createUserDto.email) : null;
 
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
@@ -68,11 +69,19 @@ export class UsersService {
     return savedUser;
   }
 
+  /** Case-insensitive lookup (emails are stored lowercase; old mixed-case duplicates still match). */
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    const normalized = normalizeEmail(email);
+    if (!normalized) return null;
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalized })
+      .orderBy('user.lastLoginAt', 'DESC', 'NULLS LAST')
+      .addOrderBy('user.createdAt', 'ASC')
+      .getOne();
   }
 
-  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number; search?: string; salespersonId?: string }): Promise<User[]> {
+  async findAll(query?: { role?: string; isActive?: boolean | string; includeInactive?: boolean | string; limit?: number; offset?: number; search?: string; salespersonId?: string }): Promise<User[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
     
     if (query?.salespersonId) {
@@ -84,8 +93,12 @@ export class UsersService {
       queryBuilder.andWhere('user.role = :role', { role: query.role });
     }
 
-    if (query?.isActive !== undefined) {
-      queryBuilder.andWhere('user.isActive = :isActive', { isActive: query.isActive });
+    if (query?.isActive !== undefined && query.isActive !== '') {
+      const isActive = query.isActive === true || query.isActive === 'true';
+      queryBuilder.andWhere('user.isActive = :isActive', { isActive });
+    } else if (!(query?.includeInactive === true || query?.includeInactive === 'true')) {
+      // Deactivated users disappear from pick lists unless explicitly requested.
+      queryBuilder.andWhere('user.isActive = true');
     }
 
     if (query?.search && query.search.trim()) {
@@ -145,8 +158,26 @@ export class UsersService {
       throw new UnauthorizedException('Invalid current password');
     }
 
-    const newPasswordHash = await bcrypt.hash(changePasswordDto.newPassword, 12);
-    await this.usersRepository.update(id, { passwordHash: newPasswordHash });
+    await this.setPassword(id, changePasswordDto.newPassword);
+  }
+
+  /**
+   * Single place that stores a new password. Hashes exactly once (repository.update does
+   * not run entity hooks), clears lockout and pending login codes, and ends other sessions.
+   */
+  async setPassword(id: string, newPassword: string, extra: Partial<User> = {}): Promise<void> {
+    assertPasswordPolicy(newPassword);
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersRepository.update(id, {
+      ...extra,
+      passwordHash,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      loginCodeHash: null,
+      loginCodeExpiresAt: null,
+      loginCodeAttempts: 0,
+      refreshToken: null,
+    } as any);
   }
 
   async updateRefreshToken(id: string, refreshToken: string): Promise<void> {
@@ -155,6 +186,21 @@ export class UsersService {
 
   async updateLastLogin(id: string): Promise<void> {
     await this.usersRepository.update(id, { lastLoginAt: new Date() });
+  }
+
+  /**
+   * Atomically counts one attempt against the user's current login code and returns the new count.
+   * Parallel requests each get their own number, so no more than the limit can be tried per code.
+   */
+  async incrementLoginCodeAttempts(id: string): Promise<number> {
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ loginCodeAttempts: () => 'COALESCE("loginCodeAttempts", 0) + 1' } as any)
+      .where('id = :id', { id })
+      .returning(['loginCodeAttempts'])
+      .execute();
+    return Number(result.raw?.[0]?.loginCodeAttempts ?? Number.MAX_SAFE_INTEGER);
   }
 
   async recordConsent(

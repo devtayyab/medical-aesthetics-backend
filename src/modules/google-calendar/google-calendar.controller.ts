@@ -25,12 +25,22 @@ import { GoogleCalendarConfig } from './google-calendar.config';
 import { ClinicsService } from '../clinics/clinics.service';
 import { SelectCalendarDto } from './dto/select-calendar.dto';
 
+// Platform staff plus the clinic portal roles. Clinic roles are further
+// restricted to clinics they belong to by assertClinicAccess().
 const CLINIC_MANAGER_ROLES = [
   UserRole.ADMIN,
   UserRole.SUPER_ADMIN,
   UserRole.MANAGER,
   UserRole.CLINIC_OWNER,
+  UserRole.DOCTOR,
+  UserRole.SECRETARIAT,
 ] as const;
+
+const CLINIC_PORTAL_ROLES: string[] = [
+  UserRole.CLINIC_OWNER,
+  UserRole.DOCTOR,
+  UserRole.SECRETARIAT,
+];
 
 @ApiTags('Google Calendar')
 @Controller('google-calendar')
@@ -43,15 +53,21 @@ export class GoogleCalendarController {
     private readonly clinicsService: ClinicsService,
   ) {}
 
-  /** Owner/admin gate: only clinic owners of THIS clinic (or platform staff) may manage it. */
+  /**
+   * Access gate: platform staff may manage any clinic; clinic portal users
+   * (owner, doctor, secretariat) only clinics they belong to (owner, ownership
+   * mapping, agent access or assigned clinic).
+   */
   private async assertClinicAccess(req: any, clinicId: string): Promise<void> {
     const role = String(req.user?.role || '').toLowerCase();
     const privileged = ['admin', 'super_admin', 'manager'];
     if (privileged.includes(role)) return;
 
-    if (role === UserRole.CLINIC_OWNER) {
-      const clinic = await this.clinicsService.findById(clinicId).catch(() => null);
-      if (clinic && clinic.ownerId === req.user.id) return;
+    if (CLINIC_PORTAL_ROLES.includes(role)) {
+      const clinics = await this.clinicsService
+        .findAllByOwner(req.user.id)
+        .catch(() => []);
+      if (clinics.some((c) => c?.id === clinicId)) return;
     }
     throw new ForbiddenException('You do not have access to this clinic');
   }
@@ -59,12 +75,7 @@ export class GoogleCalendarController {
   @Get('clinics/:clinicId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.SUPER_ADMIN,
-    UserRole.MANAGER,
-    UserRole.CLINIC_OWNER,
-  )
+  @Roles(...CLINIC_MANAGER_ROLES)
   @ApiOperation({ summary: 'Get the clinic Google Calendar connection status' })
   async getStatus(@Param('clinicId') clinicId: string, @Req() req: any) {
     await this.assertClinicAccess(req, clinicId);
@@ -74,12 +85,7 @@ export class GoogleCalendarController {
   @Get('clinics/:clinicId/connect')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.SUPER_ADMIN,
-    UserRole.MANAGER,
-    UserRole.CLINIC_OWNER,
-  )
+  @Roles(...CLINIC_MANAGER_ROLES)
   @ApiOperation({
     summary: 'Get the Google consent URL to connect this clinic calendar',
   })
@@ -125,12 +131,7 @@ export class GoogleCalendarController {
   @Delete('clinics/:clinicId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.SUPER_ADMIN,
-    UserRole.MANAGER,
-    UserRole.CLINIC_OWNER,
-  )
+  @Roles(...CLINIC_MANAGER_ROLES)
   @ApiOperation({ summary: 'Disconnect the clinic Google Calendar' })
   async disconnect(@Param('clinicId') clinicId: string, @Req() req: any) {
     await this.assertClinicAccess(req, clinicId);
@@ -152,13 +153,15 @@ export class GoogleCalendarController {
     @Res() res: Response,
   ) {
     const base = this.config.frontendUrl.replace(/\/$/, '');
+    // Return to the clinic portal Google Calendar page (all clinic roles can open it).
+    const page = `${base}/clinic/google-calendar`;
     if (error) {
       return res.redirect(
-        `${base}/clinic/settings?google=error&reason=${encodeURIComponent(error)}`,
+        `${page}?google=error&reason=${encodeURIComponent(error)}`,
       );
     }
     if (!code || !state) {
-      throw new BadRequestException('Missing code or state');
+      return res.redirect(`${page}?google=error&reason=missing_code`);
     }
     try {
       const { clinicId } = await this.googleCalendarService.handleOAuthCallback(
@@ -167,13 +170,13 @@ export class GoogleCalendarController {
       );
       // Connected, but the clinic must now pick which calendar to sync.
       return res.redirect(
-        `${base}/clinic/settings?google=connected&select=1&clinicId=${clinicId}`,
+        `${page}?google=connected&select=1&clinicId=${clinicId}`,
       );
     } catch (err) {
       // Log details server-side; never reflect raw internal error text into the URL.
       this.logger.error(`OAuth callback failed: ${err?.message}`);
       return res.redirect(
-        `${base}/clinic/settings?google=error&reason=connection_failed`,
+        `${page}?google=error&reason=connection_failed`,
       );
     }
   }

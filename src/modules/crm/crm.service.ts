@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal } from '../payments/revenue.util';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
+import { Brackets } from 'typeorm';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import { BUSINESS_TIMEZONE, formatDateTimeInTz, parseWallClockInTz } from '../../common/utils/timezone.util';
+import { TASK_OWNER_ROLES } from './task-automation.service';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { randomBytes } from 'crypto';
+import { USER_CREATED_BY_STAFF_EVENT } from '../users/account-setup.listener';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
@@ -26,6 +33,7 @@ import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { athensDateTime } from '../notifications/utils/notification-format.util';
 import { TaskAutomationService } from './task-automation.service';
 import { FacebookService, ParsedFacebookLead } from './facebook.service';
 import { QueueService } from '../queue/queue.service';
@@ -37,6 +45,14 @@ import { Service } from '../clinics/entities/service.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { BookingsService } from '../bookings/bookings.service';
 import { HubspotService } from '../hubspot/hubspot.service';
+import { PlatformSettings } from '../admin/entities/platform-settings.entity';
+import { phoneMatchKey, phoneKeySql } from '../../common/utils/phone.util';
+
+/** Roles a lead, customer or CRM task may be assigned to. */
+export const CRM_ASSIGNEE_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
+
+/** Business timezone for every human-readable date in CRM history entries. */
+const ATHENS_TZ = 'Europe/Athens';
 
 @Injectable()
 export class CrmService implements OnModuleInit {
@@ -238,18 +254,34 @@ export class CrmService implements OnModuleInit {
     );
 
     if (duplicateCheck.isDuplicate) {
+      // The existing lead IS the CRM card: a repeat submission goes into its
+      // history instead of creating the contact again
+      if (duplicateCheck.existingLead) {
+        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
+      }
+
       if (duplicateCheck.existingCustomer) {
         // Update existing customer record instead of creating duplicate lead
         return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
       }
-
-      if (duplicateCheck.existingLead) {
-        // Update existing lead instead of creating duplicate
-        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
-      }
     }
 
-    const { multiOwnerIds, clinicAffiliations, ...baseDto } = createLeadDto;
+    if (createLeadDto.assignedSalesId) {
+      await this.assertAssignableUser(createLeadDto.assignedSalesId);
+    }
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseDto } = createLeadDto;
+    // "Converted" is reached only through a completed visit, never on creation
+    if (baseDto.status === LeadStatus.CONVERTED) {
+      baseDto.status = LeadStatus.NEW;
+    }
+    if (treatmentInterest || lostReason) {
+      baseDto.metadata = {
+        ...(baseDto.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
+        ...(lostReason ? { lostReason, lostAt: new Date() } : {}),
+      };
+    }
     const lead = this.leadsRepository.create(baseDto);
     const savedLead = await this.leadsRepository.save(lead);
 
@@ -291,30 +323,225 @@ export class CrmService implements OnModuleInit {
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
 
+    if ((updateLeadDto as any).assignedSalesId === '') {
+      (updateLeadDto as any).assignedSalesId = null;
+    }
+    if (updateLeadDto.assignedSalesId && updateLeadDto.assignedSalesId !== lead.assignedSalesId) {
+      await this.assertAssignableUser(updateLeadDto.assignedSalesId);
+    }
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseUpdates } = updateLeadDto;
+
+    // "Converted" only after a completed visit. Booking an appointment makes the
+    // lead "Appointment booked" (APPOINTMENT_SCHEDULED) instead.
+    if (baseUpdates.status === LeadStatus.CONVERTED && lead.status !== LeadStatus.CONVERTED) {
+      const linkedUser = await this.findLinkedClientUser(lead);
+      const visits = linkedUser ? await this.countClientAppointments(linkedUser.id) : { completed: 0, active: 0 };
+      if (visits.completed === 0) {
+        if (visits.active > 0) {
+          baseUpdates.status = LeadStatus.APPOINTMENT_SCHEDULED;
+        } else {
+          throw new BadRequestException('A lead becomes Converted only after a completed visit. Book an appointment first.');
+        }
+      }
+    }
+
+    // Lost/treatment details live in metadata; merge so form history is never dropped
+    if (lostReason !== undefined || treatmentInterest !== undefined || baseUpdates.metadata) {
+      baseUpdates.metadata = {
+        ...(lead.metadata || {}),
+        ...(baseUpdates.metadata || {}),
+        ...(treatmentInterest !== undefined ? { treatmentInterest } : {}),
+        ...(lostReason !== undefined ? { lostReason, lostAt: new Date() } : {}),
+      };
+    }
+
     // Check for status changes
-    if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
-      if (updateLeadDto.status === LeadStatus.CONVERTED) {
-        updateLeadDto['convertedAt'] = new Date();
+    if (baseUpdates.status && baseUpdates.status !== lead.status) {
+      if (baseUpdates.status === LeadStatus.CONVERTED) {
+        baseUpdates['convertedAt'] = new Date();
       }
 
       this.eventEmitter.emit('lead.status.changed', {
         lead,
         oldStatus: lead.status,
-        newStatus: updateLeadDto.status,
+        newStatus: baseUpdates.status,
       });
     }
 
-    const { multiOwnerIds, clinicAffiliations, ...baseUpdates } = updateLeadDto;
-
     // Apply base updates
-    await this.leadsRepository.update(id, baseUpdates);
+    await this.leadsRepository.update(id, baseUpdates as any);
+    this.leadStatsCache = null;
+
+    // Name/phone/email edits must reach the client account and appointments too
+    const contactChanged = (['firstName', 'lastName', 'email', 'phone'] as const).some(
+      (k) => baseUpdates[k] !== undefined && baseUpdates[k] !== lead[k],
+    );
+    if (contactChanged) {
+      await this.propagateLeadContactDetails(lead, baseUpdates as Partial<Lead>).catch((err) =>
+        this.logger.warn(`[update] Could not sync contact details of lead ${id}: ${err.message}`),
+      );
+    }
 
     // Sync complex relations if provided
     if (multiOwnerIds !== undefined || clinicAffiliations !== undefined) {
       await this.syncLeadRelations(id, { multiOwnerIds, clinicAffiliations });
     }
 
-    return this.findById(id);
+    const updated = await this.findById(id);
+    if (baseUpdates.status === LeadStatus.LOST) {
+      // Open tasks are NOT closed automatically; the UI warns about them instead
+      (updated as any).openTasksCount = await this.countOpenTasksForLead(updated);
+    }
+    return updated;
+  }
+
+  /** Throws when the user may not own leads/tasks (only sales staff and admins). */
+  private async assertAssignableUser(userId: string): Promise<void> {
+    if (!isUuid(userId)) {
+      throw new BadRequestException('Invalid salesperson id');
+    }
+    const assignee = await this.usersRepository.findOne({ where: { id: userId }, select: ['id', 'role', 'isActive'] });
+    if (!assignee || !CRM_ASSIGNEE_ROLES.includes(assignee.role as UserRole)) {
+      throw new BadRequestException('Leads can only be assigned to salespeople or admins');
+    }
+  }
+
+  /**
+   * The client account (users row, role CLIENT) behind a lead: an explicit link
+   * stored at conversion/merge time first, then an exact email or phone match.
+   */
+  async findLinkedClientUser(lead: Lead): Promise<User | null> {
+    const meta: any = lead.metadata || {};
+    const linkedId = meta.convertedToUserId || meta.convertedToCustomerId || meta.existingCustomerId;
+    if (linkedId && isUuid(linkedId)) {
+      const linked = await this.usersRepository.findOne({ where: { id: linkedId } });
+      if (linked) return linked;
+    }
+    return this.findClientUserByContact(lead.email, lead.phone);
+  }
+
+  /** Client account matching an email (case-insensitive) or a full phone number. */
+  async findClientUserByContact(email?: string | null, phone?: string | null): Promise<User | null> {
+    const phoneKey = phoneMatchKey(phone);
+    const cleanEmail = email && email.trim() && !/@example\.com$/i.test(email.trim()) ? email.trim() : '';
+    if (!cleanEmail && !phoneKey) return null;
+
+    const conditions: string[] = [];
+    if (cleanEmail) conditions.push('LOWER(u.email) = LOWER(:email)');
+    if (phoneKey) conditions.push(`${phoneKeySql('u.phone')} = :phoneKey`);
+    const qb = this.usersRepository
+      .createQueryBuilder('u')
+      .where('u.role = :role', { role: UserRole.CLIENT })
+      .andWhere(`(${conditions.join(' OR ')})`, { email: cleanEmail, phoneKey });
+    // Prefer the email match, then the oldest account
+    if (cleanEmail) {
+      qb.orderBy('CASE WHEN LOWER(u.email) = LOWER(:email) THEN 0 ELSE 1 END', 'ASC').addOrderBy('u.createdAt', 'ASC');
+    } else {
+      qb.orderBy('u.createdAt', 'ASC');
+    }
+    return qb.getOne();
+  }
+
+  /** The CRM card (lead) for an email or full phone number, newest submission first. */
+  async findLeadByContact(email?: string | null, phone?: string | null, excludeLeadId?: string): Promise<Lead | null> {
+    const phoneKey = phoneMatchKey(phone);
+    const cleanEmail = email && email.trim() ? email.trim() : '';
+    if (!cleanEmail && !phoneKey) return null;
+
+    const conditions: string[] = [];
+    if (cleanEmail) conditions.push('LOWER(l.email) = LOWER(:email)');
+    if (phoneKey) conditions.push(`${phoneKeySql('l.phone')} = :phoneKey`);
+    const qb = this.leadsRepository
+      .createQueryBuilder('l')
+      .where(`(${conditions.join(' OR ')})`, { email: cleanEmail, phoneKey })
+      .andWhere('l.status != :merged', { merged: LeadStatus.Merged });
+    if (excludeLeadId) qb.andWhere('l.id != :excludeLeadId', { excludeLeadId });
+    return qb.orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC').getOne();
+  }
+
+  private async countClientAppointments(clientId: string): Promise<{ completed: number; active: number }> {
+    const row = await this.appointmentsRepository
+      .createQueryBuilder('a')
+      .select("SUM(CASE WHEN UPPER(a.status) IN ('COMPLETED', 'EXECUTED') THEN 1 ELSE 0 END)", 'completed')
+      .addSelect(
+        "SUM(CASE WHEN UPPER(a.status) IN ('PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS') THEN 1 ELSE 0 END)",
+        'active',
+      )
+      .where('a.clientId = :clientId', { clientId })
+      .getRawOne();
+    return { completed: Number(row?.completed || 0), active: Number(row?.active || 0) };
+  }
+
+  private async countOpenTasksForLead(lead: Lead): Promise<number> {
+    const ids = [lead.id];
+    const linkedUser = await this.findLinkedClientUser(lead).catch(() => null);
+    if (linkedUser) ids.push(linkedUser.id);
+    const record = linkedUser
+      ? await this.customerRecordsRepository.findOne({ where: { customerId: linkedUser.id }, select: ['id'] })
+      : null;
+    if (record) ids.push(record.id);
+    return this.crmActionsRepository.count({
+      where: { customerId: In(ids), status: In(['pending', 'in_progress']) as any },
+    });
+  }
+
+  /**
+   * Push the lead's current name/phone/email to the client account and the
+   * contact snapshot on that client's appointments, so every screen (CRM card,
+   * client account, calendar, clinic) shows the same details. Form history
+   * entries keep the details that were submitted at the time.
+   */
+  private async propagateLeadContactDetails(lead: Lead, updates: Partial<Lead>): Promise<void> {
+    const user = await this.findLinkedClientUser(lead);
+    if (!user) return;
+
+    await this.syncClientContactDetails(user, {
+      firstName: updates.firstName ?? lead.firstName,
+      lastName: updates.lastName ?? lead.lastName,
+      email: updates.email ?? lead.email,
+      phone: updates.phone ?? lead.phone,
+    });
+  }
+
+  /** Update a client account and the contact snapshot on its appointments. */
+  async syncClientContactDetails(
+    user: User,
+    next: { firstName?: string; lastName?: string; email?: string; phone?: string },
+  ): Promise<void> {
+    const userPatch: Partial<User> = {};
+    if (next.firstName && next.firstName !== user.firstName) userPatch.firstName = next.firstName;
+    if (next.lastName !== undefined && next.lastName !== null && next.lastName !== user.lastName) userPatch.lastName = next.lastName;
+    if (next.phone && next.phone !== user.phone) userPatch.phone = next.phone;
+    if (next.email && next.email.trim() && next.email.trim().toLowerCase() !== (user.email || '').toLowerCase()) {
+      // Email is unique: never take over another account's address
+      const taken = await this.usersRepository
+        .createQueryBuilder('u')
+        .where('LOWER(u.email) = LOWER(:email)', { email: next.email.trim() })
+        .andWhere('u.id != :id', { id: user.id })
+        .getCount();
+      if (!taken) userPatch.email = next.email.trim();
+    }
+    if (Object.keys(userPatch).length > 0) {
+      await this.usersRepository.update(user.id, userPatch);
+    }
+
+    const fullName = `${userPatch.firstName ?? user.firstName ?? ''} ${userPatch.lastName ?? user.lastName ?? ''}`.trim();
+    const appointments = await this.appointmentsRepository.find({
+      where: { clientId: user.id },
+      select: ['id', 'clientDetails'],
+    });
+    for (const apt of appointments) {
+      if (!apt.clientDetails) continue;
+      await this.appointmentsRepository.update(apt.id, {
+        clientDetails: {
+          ...apt.clientDetails,
+          fullName: fullName || apt.clientDetails.fullName,
+          email: userPatch.email ?? apt.clientDetails.email,
+          phone: userPatch.phone ?? apt.clientDetails.phone,
+        },
+      });
+    }
   }
 
   private async syncLeadRelations(
@@ -496,31 +723,15 @@ export class CrmService implements OnModuleInit {
         if (!leadgenId) continue;
 
         try {
-          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync)
-          const alreadyImported = await this.leadsRepository.findOne({
-            where: { facebookLeadId: leadgenId },
-            select: ['id'],
-          });
-          if (alreadyImported) continue;
+          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync),
+          // including submissions that were merged into an existing card's history
+          const processed = await this.findProcessedFacebookLeadIds([leadgenId]);
+          if (processed.has(leadgenId)) continue;
           // Get full lead data from Facebook using the lead ID from the webhook
           const leadData = await this.facebookService.getLead(leadgenId);
-          const parsedLead = this.facebookService.parseLeadData(leadData);
-
-          // Use enhanced duplicate detection
-          const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-            parsedLead.email,
-            parsedLead.phone,
-            parsedLead.firstName,
-            parsedLead.lastName,
-          );
-
-          if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-            await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, true);
-          } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
-            await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
-          } else {
-            await this.createLeadFromFacebook(parsedLead, leadData, true);
-          }
+          const formName = await this.facebookService.getFormName(leadData.form_id || change.value?.form_id);
+          const parsedLead = this.facebookService.parseLeadData(leadData, formName);
+          await this.ingestParsedFacebookLead(parsedLead, leadData, true);
         } catch (error) {
           this.logger.error(`Error processing Facebook lead ${leadgenId}: ${error.message}`);
           this.eventEmitter.emit('audit.log', {
@@ -565,6 +776,53 @@ export class CrmService implements OnModuleInit {
     }
   }
 
+  /**
+   * Facebook lead ids that are already in the CRM: as a card's current lead id,
+   * an archived earlier submission, or an entry of a card's form history.
+   * Soft-deleted cards count too, so leads an admin removed are not re-imported.
+   */
+  async findProcessedFacebookLeadIds(fbIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set((fbIds || []).filter(Boolean).map(String))];
+    if (ids.length === 0) return new Set();
+    const rows: Array<{ fb_id: string }> = await this.leadsRepository.query(
+      `SELECT "facebookLeadId" AS fb_id FROM leads WHERE "facebookLeadId" = ANY($1)
+       UNION
+       SELECT prev.fb_id FROM leads l,
+         LATERAL jsonb_array_elements_text(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'previousFacebookLeadIds') = 'array'
+                THEN l.metadata::jsonb -> 'previousFacebookLeadIds' ELSE '[]'::jsonb END
+         ) AS prev(fb_id)
+       WHERE prev.fb_id = ANY($1)
+       UNION
+       SELECT hist.entry ->> 'facebookLeadId' FROM leads l,
+         LATERAL jsonb_array_elements(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'formHistory') = 'array'
+                THEN l.metadata::jsonb -> 'formHistory' ELSE '[]'::jsonb END
+         ) AS hist(entry)
+       WHERE hist.entry ->> 'facebookLeadId' = ANY($1)`,
+      [ids],
+    );
+    return new Set(rows.map((r) => r.fb_id).filter(Boolean));
+  }
+
+  /** One parsed Facebook submission into the CRM: new card, or history entry of the existing card. */
+  private async ingestParsedFacebookLead(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean): Promise<Lead | null> {
+    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+      parsedLead.email,
+      parsedLead.phone,
+      parsedLead.firstName,
+      parsedLead.lastName,
+    );
+
+    if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
+      return this.updateExistingLead(duplicateCheck.existingLead, this.facebookLeadToDto(parsedLead, leadData, isWebhook));
+    }
+    if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+      return this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, isWebhook);
+    }
+    return this.createLeadFromFacebook(parsedLead, leadData, isWebhook);
+  }
+
   async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string, skipTokenResolution: boolean = false): Promise<Lead[]> {
     // Manual imports don't know which page the form belongs to — resolve the
     // page token so forms on secondary pages import correctly too
@@ -577,18 +835,19 @@ export class CrmService implements OnModuleInit {
       }
     }
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit, pageAccessToken);
+    const formName = await this.facebookService.getFormName(formId, pageAccessToken);
     const createdLeads: Lead[] = [];
 
-    // Dedup on the Facebook lead ID (not name/email heuristics) with one batched
-    // query instead of a findOne per lead
+    // Dedup on the Facebook lead ID (not name/email heuristics), including
+    // submissions already merged into another card's history
     const fbIds = leadsData.map((l) => l.id).filter(Boolean);
+    const alreadyImportedIds = await this.findProcessedFacebookLeadIds(fbIds);
     const existingRows = fbIds.length
       ? await this.leadsRepository.find({
           where: { facebookLeadId: In(fbIds) },
           select: ['id', 'facebookLeadId', 'metadata'],
         })
       : [];
-    const alreadyImportedIds = new Set(existingRows.map((r) => r.facebookLeadId));
     // Stubs persisted after a failed webhook fetch get healed with real data
     const stubsByFbId = new Map(
       existingRows
@@ -598,7 +857,7 @@ export class CrmService implements OnModuleInit {
 
     for (const leadData of leadsData) {
       try {
-        const parsedLead = this.facebookService.parseLeadData(leadData);
+        const parsedLead = this.facebookService.parseLeadData(leadData, formName);
 
         const stubId = stubsByFbId.get(parsedLead.facebookLeadId);
         if (stubId) {
@@ -613,7 +872,14 @@ export class CrmService implements OnModuleInit {
             facebookAdId: parsedLead.facebookAdId,
             facebookLeadData: parsedLead.facebookLeadData,
             notes: parsedLead.notes,
-            metadata: { importedFromFacebook: true, fromWebhook: true, fetchFailed: false, healedBySync: true } as any,
+            metadata: {
+              importedFromFacebook: true,
+              fromWebhook: true,
+              fetchFailed: false,
+              healedBySync: true,
+              formHistory: [this.buildFormHistoryEntry(parsedLead)],
+            } as any,
+            lastMetaFormName: parsedLead.lastMetaFormName,
             lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
           });
           // Count the healed stub as an import so logs/toasts reflect the recovery
@@ -623,26 +889,12 @@ export class CrmService implements OnModuleInit {
         }
         if (alreadyImportedIds.has(parsedLead.facebookLeadId)) continue;
 
-        // Use enhanced duplicate detection
-        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-          parsedLead.email,
-          parsedLead.phone,
-          parsedLead.firstName,
-          parsedLead.lastName,
-        );
-
-        if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          const mergedLead = await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
-          if (mergedLead) createdLeads.push(mergedLead);
-        } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
-          const updatedLead = await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
-          createdLeads.push(updatedLead);
-        } else {
-          const lead = await this.createLeadFromFacebook(parsedLead, leadData, false);
-          createdLeads.push(lead);
-        }
+        const lead = await this.ingestParsedFacebookLead(parsedLead, leadData, false);
+        if (lead) createdLeads.push(lead);
+        // Same id twice in one Graph API page must not be processed twice
+        alreadyImportedIds.add(parsedLead.facebookLeadId);
       } catch (error) {
-        console.error(`Error processing Facebook lead ${leadData.id}:`, error);
+        this.logger.error(`Error processing Facebook lead ${leadData.id}: ${error.message}`);
       }
     }
 
@@ -650,19 +902,62 @@ export class CrmService implements OnModuleInit {
   }
 
   private async findExistingCustomer(email?: string, phone?: string): Promise<User | null> {
-    if (!email && !phone) return null;
+    return this.findClientUserByContact(email, phone);
+  }
 
-    const query = this.usersRepository.createQueryBuilder('user');
+  /**
+   * One form submission as it appears in the card's history: the details the
+   * person entered THAT time (later edits of the card never change it).
+   */
+  private buildFormHistoryEntry(source: {
+    facebookFormId?: string;
+    lastMetaFormName?: string;
+    facebookAdName?: string;
+    facebookLeadId?: string;
+    lastMetaFormSubmittedAt?: Date | string;
+    facebookLeadData?: any;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+    source?: string;
+  }): any {
+    return {
+      formId: source.facebookFormId,
+      formName: source.lastMetaFormName || (source.facebookFormId ? `Facebook Form ${source.facebookFormId}` : 'Form submission'),
+      adName: source.facebookAdName,
+      facebookLeadId: source.facebookLeadId,
+      submittedAt: source.lastMetaFormSubmittedAt || new Date(),
+      firstName: source.firstName,
+      lastName: source.lastName,
+      email: source.email,
+      phone: source.phone,
+      answers: source.notes,
+      source: source.source,
+      leadData: source.facebookLeadData,
+    };
+  }
 
-    if (email) {
-      query.orWhere('user.email = :email', { email });
-    }
-
-    if (phone) {
-      query.orWhere('user.phone = :phone', { phone });
-    }
-
-    return query.getOne();
+  private facebookLeadToDto(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean): CreateLeadDto {
+    return {
+      source: 'facebook_ads',
+      firstName: parsedLead.firstName || '',
+      lastName: parsedLead.lastName || '',
+      email: parsedLead.email || undefined,
+      phone: parsedLead.phone,
+      facebookLeadId: parsedLead.facebookLeadId,
+      facebookFormId: parsedLead.facebookFormId,
+      facebookCampaignId: parsedLead.facebookCampaignId,
+      facebookAdSetId: parsedLead.facebookAdSetId,
+      facebookAdId: parsedLead.facebookAdId,
+      facebookLeadData: parsedLead.facebookLeadData,
+      facebookAdName: parsedLead.facebookAdName,
+      notes: parsedLead.notes,
+      lastMetaFormSubmittedAt: leadData?.created_time ? new Date(leadData.created_time) : new Date(),
+      lastMetaFormName: parsedLead.lastMetaFormName,
+      metadata: { importedFromFacebook: true, fromWebhook: isWebhook },
+    } as CreateLeadDto;
   }
 
   private async updateExistingCustomerWithNewLead(existingCustomer: User, leadDto: CreateLeadDto): Promise<Lead> {
@@ -671,18 +966,22 @@ export class CrmService implements OnModuleInit {
       where: { customerId: existingCustomer.id },
     });
 
-    // Create a new lead but link it to the existing customer
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...baseDto } = leadDto;
+
+    // Create the CRM card for this existing customer (no card existed yet)
     const lead = this.leadsRepository.create({
-      ...leadDto,
-      status: LeadStatus.CONTACTED, // Mark as contacted since they already exist
-      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt,
+      ...baseDto,
+      status: LeadStatus.NEW, // a new inquiry, shown at the top of the list
+      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
       lastMetaFormName: leadDto.lastMetaFormName,
       metadata: {
-        ...leadDto.metadata,
+        ...(leadDto.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
         existingCustomerId: existingCustomer.id,
         mergedLead: true,
+        formHistory: [this.buildFormHistoryEntry({ ...leadDto, lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date() } as any)],
       },
-    });
+    } as any) as unknown as Lead;
 
     const savedLead = await this.leadsRepository.save(lead);
 
@@ -715,65 +1014,92 @@ export class CrmService implements OnModuleInit {
     return savedLead;
   }
 
+  /**
+   * A repeat submission (new form, ad or manual entry) for an existing card:
+   * - the submission becomes its own entry in the card's form history,
+   * - the card takes the NEW email and phone (history keeps the old ones),
+   * - the card moves to the top as a new inquiry; Lost/Converted cards become active again,
+   * - the contact itself is never created again.
+   */
   private async updateExistingLead(existingLead: Lead, leadDto: CreateLeadDto): Promise<Lead> {
-    const submittedAt = leadDto.lastMetaFormSubmittedAt || new Date();
+    const submittedAt = leadDto.lastMetaFormSubmittedAt ? new Date(leadDto.lastMetaFormSubmittedAt) : new Date();
 
-    // Preserve previous form submission history so both old and new form data can be viewed
     const existingMeta = (existingLead.metadata || {}) as any;
-    const previousForms = Array.isArray(existingMeta.formHistory) ? [...existingMeta.formHistory] : [];
+    const previousForms: any[] = Array.isArray(existingMeta.formHistory) ? [...existingMeta.formHistory] : [];
 
-    // Capture initial/previous form if not already logged
-    if (existingLead.lastMetaFormName || existingLead.facebookFormId) {
-      const alreadyLogged = previousForms.some(
-        (f: any) => f.facebookLeadId === existingLead.facebookLeadId && f.formId === existingLead.facebookFormId
-      );
-      if (!alreadyLogged) {
-        previousForms.push({
-          formId: existingLead.facebookFormId,
-          formName: existingLead.lastMetaFormName || 'Initial Form',
-          adName: existingLead.facebookAdName,
-          facebookLeadId: existingLead.facebookLeadId,
-          submittedAt: existingLead.lastMetaFormSubmittedAt || existingLead.createdAt,
-          leadData: existingLead.facebookLeadData,
-        });
-      }
+    // Idempotent: the same Facebook submission is never added twice
+    if (leadDto.facebookLeadId && previousForms.some((f: any) => f?.facebookLeadId === leadDto.facebookLeadId)) {
+      return existingLead;
     }
 
-    // Append new form submission into history
-    previousForms.push({
-      formId: leadDto.facebookFormId,
-      formName: leadDto.lastMetaFormName || 'New Form Submission',
-      adName: leadDto.facebookAdName,
-      facebookLeadId: leadDto.facebookLeadId,
-      submittedAt: submittedAt,
-      leadData: (leadDto as any).facebookLeadData,
-    });
+    // Capture the card's first submission (with the details entered back then) if not logged yet
+    if (previousForms.length === 0) {
+      previousForms.push(
+        this.buildFormHistoryEntry({
+          ...existingLead,
+          lastMetaFormName: existingLead.lastMetaFormName || (existingLead.facebookFormId ? undefined : 'Initial entry'),
+          lastMetaFormSubmittedAt: existingLead.lastMetaFormSubmittedAt || existingLead.createdAt,
+          source: existingLead.source,
+        } as any),
+      );
+    }
+
+    // Append the new submission
+    previousForms.push(this.buildFormHistoryEntry({ ...leadDto, lastMetaFormSubmittedAt: submittedAt } as any));
 
     const initialFormName = existingMeta.initialFormName || existingLead.lastMetaFormName || leadDto.lastMetaFormName;
     const initialSubmittedAt = existingMeta.initialSubmittedAt || existingLead.lastMetaFormSubmittedAt || existingLead.createdAt;
 
-    // Update existing lead safely without overwriting core fields like createdAt, preserving existing status
+    // The card takes the newest email/phone. Leads.email is unique in the
+    // database, so an address already used by another card is kept in history only.
+    let nextEmail = existingLead.email;
+    if (leadDto.email && leadDto.email.trim() && leadDto.email.trim().toLowerCase() !== (existingLead.email || '').toLowerCase()) {
+      const taken = await this.leadsRepository
+        .createQueryBuilder('l')
+        .withDeleted()
+        .where('LOWER(l.email) = LOWER(:email)', { email: leadDto.email.trim() })
+        .andWhere('l.id != :id', { id: existingLead.id })
+        .getCount();
+      if (!taken) nextEmail = leadDto.email.trim();
+    }
+    const nextPhone = leadDto.phone && leadDto.phone.trim() ? leadDto.phone.trim() : existingLead.phone;
+
+    // Re-inquiry reactivates closed cards
+    const reactivate = [LeadStatus.LOST, LeadStatus.CONVERTED].includes(existingLead.status as LeadStatus);
+    const nextStatus = reactivate ? LeadStatus.NEW : existingLead.status;
+
+    const reInquiryStamp = formatDateTimeInTz(submittedAt, ATHENS_TZ);
+    const formLabel = leadDto.lastMetaFormName || 'another form';
+
+    const { multiOwnerIds, clinicAffiliations, lostReason, treatmentInterest, ...incoming } = leadDto;
+
     const updatedLead = await this.leadsRepository.save({
       ...existingLead, // Keep all existing data as base
       id: existingLead.id, // Ensure we are updating the correct record
-      status: existingLead.status, // Keep old status unchanged as requested
+      status: nextStatus,
+      firstName: existingLead.firstName && existingLead.firstName !== 'Facebook' ? existingLead.firstName : (incoming.firstName || existingLead.firstName),
+      lastName: existingLead.lastName || incoming.lastName || existingLead.lastName,
+      email: nextEmail,
+      phone: nextPhone,
       // Update tracking fields from new form submission
-      facebookLeadId: leadDto.facebookLeadId || existingLead.facebookLeadId,
-      facebookFormId: leadDto.facebookFormId || existingLead.facebookFormId,
-      facebookCampaignId: leadDto.facebookCampaignId || existingLead.facebookCampaignId,
-      facebookAdSetId: leadDto.facebookAdSetId || existingLead.facebookAdSetId,
-      facebookAdId: leadDto.facebookAdId || existingLead.facebookAdId,
-      facebookAdName: leadDto.facebookAdName || existingLead.facebookAdName,
-      facebookLeadData: (leadDto as any).facebookLeadData || existingLead.facebookLeadData,
+      facebookLeadId: incoming.facebookLeadId || existingLead.facebookLeadId,
+      facebookFormId: incoming.facebookFormId || existingLead.facebookFormId,
+      facebookCampaignId: incoming.facebookCampaignId || existingLead.facebookCampaignId,
+      facebookAdSetId: incoming.facebookAdSetId || existingLead.facebookAdSetId,
+      facebookAdId: incoming.facebookAdId || existingLead.facebookAdId,
+      facebookAdName: incoming.facebookAdName || existingLead.facebookAdName,
+      facebookLeadData: (incoming as any).facebookLeadData || existingLead.facebookLeadData,
       lastMetaFormSubmittedAt: submittedAt,
-      lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
-      source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (leadDto.source || existingLead.source),
+      lastMetaFormName: incoming.lastMetaFormName || existingLead.lastMetaFormName,
+      // Source never changes by itself
+      source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (incoming.source || existingLead.source),
       notes: existingLead.notes
-        ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'Filled another form'}`
-        : leadDto.notes,
+        ? `${existingLead.notes}\n\n[Re-inquiry ${reInquiryStamp} - ${formLabel}]: ${incoming.notes || 'Filled another form'}`
+        : incoming.notes,
       metadata: {
         ...existingMeta,
-        ...(leadDto.metadata || {}),
+        ...(incoming.metadata || {}),
+        ...(treatmentInterest ? { treatmentInterest } : {}),
         isRepeat: true,
         reInquiry: true,
         initialFormName,
@@ -781,15 +1107,32 @@ export class CrmService implements OnModuleInit {
         formHistory: previousForms,
         reInquiryCount: (existingMeta.reInquiryCount || 0) + 1,
         lastReInquiryDate: submittedAt,
+        ...(reactivate ? { reactivatedAt: new Date(), reactivatedFrom: existingLead.status } : {}),
         previousFacebookLeadIds: [
           ...(existingMeta.previousFacebookLeadIds || []),
           existingLead.facebookLeadId,
-        ].filter((id) => id && id !== leadDto.facebookLeadId),
+        ].filter((id) => id && id !== incoming.facebookLeadId),
       },
     });
 
+    // The newest contact details reach the client account and appointments too
+    if (nextEmail !== existingLead.email || nextPhone !== existingLead.phone) {
+      await this.propagateLeadContactDetails(existingLead, { email: nextEmail, phone: nextPhone }).catch((err) =>
+        this.logger.warn(`Could not sync contact details of lead ${existingLead.id}: ${err.message}`),
+      );
+    }
+
+    if (reactivate) {
+      this.eventEmitter.emit('lead.status.changed', {
+        lead: updatedLead,
+        oldStatus: existingLead.status,
+        newStatus: nextStatus,
+      });
+    }
+
     // Emit event for updates
     this.eventEmitter.emit('lead.updated', updatedLead);
+    this.leadStatsCache = null;
 
     return updatedLead;
   }
@@ -810,69 +1153,31 @@ export class CrmService implements OnModuleInit {
       lastContactDate: new Date(),
     });
 
-    // We must also update the Lead entity if there's an existing one to update the meta form details,
-    // or just rely on the new lead logic. Ah, wait. Over here we are merging with a User (Existing Customer).
-    // The Lead table needs to be updated. Since it's a Customer, maybe there is a Lead associated?
-    // Let's find an existing lead for this customer.
+    // The customer has no CRM card yet (an existing card would have been matched
+    // before reaching here): create one so the submission is visible in Leads,
+    // with this submission as the first entry of its history.
     let createdLeadRow: Lead | null = null;
-
-    // Guard against an undefined email: TypeORM drops undefined where-values,
-    // which would turn this into an unfiltered findOne returning an arbitrary lead
-    const existingLead = existingCustomer.email
-      ? await this.leadsRepository.findOne({ where: { email: existingCustomer.email } })
-      : null;
-    if (existingLead) {
-      // Always store the NEWEST facebookLeadId (older ones are archived in
-      // metadata). The sync's dedup keys on facebookLeadId — if the new id is
-      // never persisted, this submission is re-ingested on every cron run,
-      // creating a duplicate follow-up task and comm log every 30 minutes.
-      await this.leadsRepository.update(existingLead.id, {
-        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
-        facebookLeadId: parsedLead.facebookLeadId,
-        metadata: {
-          ...(existingLead.metadata || {}),
-          previousFacebookLeadIds: [
-            ...(((existingLead.metadata as any)?.previousFacebookLeadIds) || []),
-            existingLead.facebookLeadId,
-          ].filter((id) => id && id !== parsedLead.facebookLeadId),
-        } as any,
-      });
-      createdLeadRow = null;
-    } else {
-      // No Lead row exists for this customer — create one so the submission is
-      // visible in the Leads list instead of only in the communication log.
-      // Non-fatal: a unique-email collision (duplicate matched on phone while the
-      // email belongs to another lead) must not abort the comm log/action below.
-      try {
+    try {
+      const dto = this.facebookLeadToDto(parsedLead, leadData, isWebhook);
       const mergedLead: Lead = this.leadsRepository.create({
-        source: 'facebook_ads',
+        ...dto,
         firstName: parsedLead.firstName || existingCustomer.firstName || '',
         lastName: parsedLead.lastName || existingCustomer.lastName || '',
         // undefined, never '': email has a unique index and a second '' would collide
         email: parsedLead.email || existingCustomer.email || undefined,
         phone: parsedLead.phone || existingCustomer.phone,
-        facebookLeadId: parsedLead.facebookLeadId,
-        facebookFormId: parsedLead.facebookFormId,
-        facebookCampaignId: parsedLead.facebookCampaignId,
-        facebookAdSetId: parsedLead.facebookAdSetId,
-        facebookAdId: parsedLead.facebookAdId,
-        facebookLeadData: parsedLead.facebookLeadData,
-        notes: parsedLead.notes,
-        status: LeadStatus.CONTACTED,
-        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
+        status: LeadStatus.NEW,
         metadata: {
           importedFromFacebook: true,
           fromWebhook: isWebhook,
           existingCustomerId: existingCustomer.id,
           mergedLead: true,
+          formHistory: [this.buildFormHistoryEntry({ ...dto, source: 'facebook_ads' } as any)],
         },
-      });
+      } as any) as unknown as Lead;
       createdLeadRow = await this.leadsRepository.save(mergedLead);
-      } catch (err) {
-        this.logger.warn(`Could not create merged lead row for FB lead ${parsedLead.facebookLeadId}: ${err.message}`);
-      }
+    } catch (err) {
+      this.logger.warn(`Could not create merged lead row for FB lead ${parsedLead.facebookLeadId}: ${err.message}`);
     }
 
     // Create a communication log entry for the Facebook form submission
@@ -884,7 +1189,7 @@ export class CrmService implements OnModuleInit {
         direction: 'incoming',
         status: 'completed',
         subject: 'Facebook Lead Form Submission',
-        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.\n\nForm Answers:\n${parsedLead.notes || 'None'}`,
+        notes: `Form submitted via Facebook: ${parsedLead.lastMetaFormName || parsedLead.facebookFormId || 'Unknown form'}.\n\nForm Answers:\n${parsedLead.notes || 'None'}`,
         metadata: {
           facebookLeadId: parsedLead.facebookLeadId,
           facebookFormId: parsedLead.facebookFormId,
@@ -894,84 +1199,47 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    // Create an action for the salesperson to follow up
-    const action = this.crmActionsRepository.create({
-      customerId: customerRecord.id,
-      salespersonId: customerRecord?.assignedSalespersonId || null,
-      actionType: 'follow_up',
-      title: 'Facebook Form Submission - Follow Up',
-      description: `Customer submitted form via Facebook. Please contact them.`,
-      status: 'pending',
-      priority: 'high',
-      metadata: {
-        source: 'facebook',
-        facebookLeadId: parsedLead.facebookLeadId,
-        originalSubmission: true, // This is the original submission, not a duplicate
-      },
-    });
-
-    await this.crmActionsRepository.save(action);
+    // No "Facebook Form Submission - Follow Up" task here any more: the sync
+    // re-ran every 30 minutes and created one per run (~24,000 junk tasks).
+    // The new card shows at the top of Leads as a new inquiry instead.
 
     // Emit event for notifications
     this.eventEmitter.emit('facebook.lead.merged', {
       customer: existingCustomer,
       facebookLead: parsedLead,
-      action,
     });
 
+    this.leadStatsCache = null;
     return createdLeadRow;
   }
 
   private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean = false): Promise<Lead> {
-    // Extract Facebook Ad Name from form fields if available
+    // Ad name from the answers when the form carries it, otherwise the form name
     const facebookAdNameField = parsedLead.facebookLeadData?.field_data?.find(
       (f: any) => f && f.name && (f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign'))
     );
+    const facebookAdName =
+      (facebookAdNameField && Array.isArray(facebookAdNameField.values) && facebookAdNameField.values.length > 0
+        ? facebookAdNameField.values[0]
+        : facebookAdNameField?.values
+          ? String(facebookAdNameField.values)
+          : null) ||
+      parsedLead.facebookAdName ||
+      parsedLead.lastMetaFormName ||
+      'Facebook Ad';
 
-    // Try to get form name from Facebook API as fallback (better than "Unknown Ad")
-    let facebookAdName = (facebookAdNameField && Array.isArray(facebookAdNameField.values) && facebookAdNameField.values.length > 0)
-      ? facebookAdNameField.values[0]
-      : (facebookAdNameField?.values ? String(facebookAdNameField.values) : null);
-    if (!facebookAdName && parsedLead.facebookFormId) {
-      try {
-        const creds = await this.facebookService.getFacebookCredentials();
-        const { default: axios } = await import('axios');
-        const formRes = await axios.get(
-          `https://graph.facebook.com/v18.0/${parsedLead.facebookFormId}`,
-          { params: { access_token: creds.accessToken, fields: 'name' } }
-        );
-        facebookAdName = formRes.data?.name || null;
-      } catch (e) {
-        // ignore
-      }
-    }
-    facebookAdName = facebookAdName || 'Facebook Ad';
-
+    const dto = this.facebookLeadToDto({ ...parsedLead, facebookAdName }, leadData, isWebhook);
     const leadDto: CreateLeadDto = {
-      source: 'facebook_ads',
-      firstName: parsedLead.firstName || '',
-      lastName: parsedLead.lastName || '',
-      email: parsedLead.email || '',
-      phone: parsedLead.phone,
-      facebookLeadId: parsedLead.facebookLeadId,
-      facebookFormId: parsedLead.facebookFormId,
-      facebookCampaignId: parsedLead.facebookCampaignId,
-      facebookAdSetId: parsedLead.facebookAdSetId,
-      facebookAdId: parsedLead.facebookAdId,
-      facebookLeadData: parsedLead.facebookLeadData,
-      facebookAdName: facebookAdName, // Direct column
-      notes: parsedLead.notes,
+      ...dto,
       status: LeadStatus.NEW,
       metadata: {
         importedFromFacebook: true,
         importDate: new Date(),
         facebookAdName: facebookAdName, // Sourced from form submission as requested
         fromWebhook: isWebhook,
+        formHistory: [this.buildFormHistoryEntry({ ...dto, source: 'facebook_ads' } as any)],
       },
-      lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
-      lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
     };
-
 
     return this.create(leadDto);
   }
@@ -1338,9 +1606,11 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('Customer or Lead not found');
       }
 
-      const linkedCustomerId = (lead.metadata as any)?.convertedToCustomerId;
+      const linkMeta = (lead.metadata as any) || {};
+      const linkedCustomerIds = [linkMeta.convertedToCustomerId, linkMeta.convertedToUserId, linkMeta.existingCustomerId]
+        .filter((v, i, arr) => v && isUuid(v) && arr.indexOf(v) === i);
       const idMatchList = [lead.id];
-      if (linkedCustomerId) {
+      for (const linkedCustomerId of linkedCustomerIds) {
         idMatchList.push(linkedCustomerId);
         // Also add the CustomerRecord ID if it exists to catch post-conversion actions
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: linkedCustomerId } });
@@ -1356,19 +1626,10 @@ export class CrmService implements OnModuleInit {
         salespersonId,
       ).catch(e => this.logger.warn(`[HubSpot BG Sync] ${e.message}`));
 
-      const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
-        .leftJoinAndSelect('apt.service', 'service')
-        .leftJoinAndSelect('service.treatment', 'treatment')
-        .leftJoinAndSelect('apt.clinic', 'clinic')
-        .where('apt.clientId IN (:...ids)', { ids: idMatchList })
-        .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: lead.email })
-        .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: lead.phone })
-        .orderBy('apt.startTime', 'DESC')
-        .getMany();
-
-      const compApts = leadAppointments.filter(a => a.status === AppointmentStatus.COMPLETED);
-      const ltv = compApts.reduce((sum, apt) => sum + Number(apt.totalAmount || 0), 0);
-      const isRepeat = compApts.length > 1;
+      const leadAppointments = await this.findCardAppointments(idMatchList, lead.email, lead.phone);
+      const stats = this.computeCardStats(leadAppointments);
+      const ltv = stats.lifetimeValue;
+      const isRepeat = stats.completedAppointments > 1;
 
       // Return synthetic record for Lead
       return {
@@ -1387,8 +1648,11 @@ export class CrmService implements OnModuleInit {
           assignedSalespersonId: lead.assignedSalesId,
           assignedSalesperson: lead.assignedSales,
           lifetimeValue: ltv,
-          totalAppointments: leadAppointments.length,
-          completedAppointments: compApts.length,
+          totalAppointments: stats.totalAppointments,
+          completedAppointments: stats.completedAppointments,
+          cancelledAppointments: stats.cancelledAppointments,
+          lastAppointmentDate: stats.lastAppointment,
+          nextAppointmentDate: stats.nextAppointment,
           isRepeatCustomer: isRepeat,
           notes: lead.notes,
           source: lead.source,
@@ -1404,6 +1668,7 @@ export class CrmService implements OnModuleInit {
           startTime: apt.startTime,
           status: apt.status,
           totalAmount: apt.totalAmount,
+          amountPaid: apt.amountPaid,
           treatmentDetails: apt.treatmentDetails,
         })),
         communications: [
@@ -1441,10 +1706,8 @@ export class CrmService implements OnModuleInit {
         summary: {
           type: 'lead', // Frontend can use this to show specific badges
           status: lead.status,
-          totalAppointments: leadAppointments.length,
-          completedAppointments: compApts.length,
-          lifetimeValue: ltv,
-          repeatCount: isRepeat ? compApts.length : 0,
+          ...stats,
+          repeatCount: isRepeat ? stats.completedAppointments : 0,
         }
       };
     }
@@ -1479,21 +1742,17 @@ export class CrmService implements OnModuleInit {
 
     // Get appointments - include any booked while they were a lead
     const originalLead = await this.leadsRepository.createQueryBuilder('lead')
-      .where("lead.metadata->>'convertedToCustomerId' = :resolvedUserId", { resolvedUserId })
+      .where(
+        "(lead.metadata->>'convertedToCustomerId' = :resolvedUserId OR lead.metadata->>'convertedToUserId' = :resolvedUserId OR lead.metadata->>'existingCustomerId' = :resolvedUserId)",
+        { resolvedUserId },
+      )
       .getOne();
 
     const idMatchList = [resolvedUserId, record.id];
     if (originalLead) idMatchList.push(originalLead.id);
 
-    const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
-      .leftJoinAndSelect('apt.service', 'service')
-      .leftJoinAndSelect('service.treatment', 'treatment')
-      .leftJoinAndSelect('apt.clinic', 'clinic')
-      .where('apt.clientId IN (:...ids)', { ids: idMatchList })
-      .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: record.customer?.email })
-      .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: record.customer?.phone })
-      .orderBy('apt.startTime', 'DESC')
-      .getMany();
+    const appointments = await this.findCardAppointments(idMatchList, record.customer?.email, record.customer?.phone);
+    const stats = this.computeCardStats(appointments);
 
     // Get communication history - merge database logs and legacy metadata logs
     const dbLogs = await this.communicationLogsRepository.find({
@@ -1536,6 +1795,18 @@ export class CrmService implements OnModuleInit {
     const preferredClinic = await this.customerAffiliationService.getPreferredClinic(resolvedUserId);
     const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(resolvedUserId);
 
+    // Card numbers come from the appointments themselves, not from counters
+    // that drift (paid value, counts, next = the next ACTIVE appointment)
+    Object.assign(record, {
+      totalAppointments: stats.totalAppointments,
+      completedAppointments: stats.completedAppointments,
+      cancelledAppointments: stats.cancelledAppointments,
+      lifetimeValue: stats.lifetimeValue,
+      lastAppointmentDate: stats.lastAppointment,
+      nextAppointmentDate: stats.nextAppointment,
+      isRepeatCustomer: stats.completedAppointments > 1,
+    });
+
     return {
       record,
       appointments: appointments.map(apt => ({
@@ -1545,6 +1816,7 @@ export class CrmService implements OnModuleInit {
         startTime: apt.startTime,
         status: apt.status,
         totalAmount: apt.totalAmount,
+        amountPaid: apt.amountPaid,
         treatmentDetails: apt.treatmentDetails,
       })),
       communications,
@@ -1563,16 +1835,72 @@ export class CrmService implements OnModuleInit {
         preferredDoctor,
       },
       summary: {
-        totalAppointments: record.totalAppointments,
-        completedAppointments: record.completedAppointments,
-        lifetimeValue: record.lifetimeValue,
-        lastAppointment: record.lastAppointmentDate,
-        nextAppointment: record.nextAppointmentDate,
+        ...stats,
         isRepeatCustomer: record.isRepeatCustomer,
         repeatCount: record.repeatCount,
         preferredClinic: preferredClinic?.clinicName,
         preferredDoctor: preferredDoctor?.doctorName,
       },
+    };
+  }
+
+  /** Appointments that belong to a CRM card: by linked ids, email or full phone number. */
+  private async findCardAppointments(ids: string[], email?: string | null, phone?: string | null): Promise<Appointment[]> {
+    const qb = this.appointmentsRepository.createQueryBuilder('apt')
+      .leftJoinAndSelect('apt.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('apt.clinic', 'clinic')
+      .where('apt.clientId IN (:...ids)', { ids });
+    if (email && email.trim()) {
+      qb.orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: email.trim() });
+    }
+    const phoneKey = phoneMatchKey(phone);
+    if (phoneKey) {
+      qb.orWhere(`${phoneKeySql("apt.\"clientDetails\"->>'phone'")} = :phoneKey`, { phoneKey });
+    }
+    const rows = await qb.orderBy('apt.startTime', 'DESC').getMany();
+    return rows.filter((a) => String(a.status || '').toUpperCase() !== AppointmentStatus.DELETED);
+  }
+
+  /**
+   * Card statistics computed from the appointments:
+   * - lifetimeValue = money actually paid (amountPaid); a completed visit without
+   *   a recorded payment counts its price,
+   * - counts per outcome; cancelled/no-show appointments keep their amount,
+   * - nextAppointment = the next appointment that is still going to happen.
+   */
+  private computeCardStats(appointments: Appointment[]) {
+    const now = Date.now();
+    const status = (a: Appointment) => String(a.status || '').toUpperCase();
+    const isCompleted = (a: Appointment) => ['COMPLETED', 'EXECUTED'].includes(status(a));
+    const isActive = (a: Appointment) => ['PENDING', 'PENDING_PAYMENT', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status(a));
+
+    let lifetimeValue = 0;
+    let totalPaid = 0;
+    for (const a of appointments) {
+      const paid = Number(a.amountPaid || 0);
+      totalPaid += paid;
+      if (paid > 0) lifetimeValue += paid;
+      else if (isCompleted(a)) lifetimeValue += Number(a.totalAmount || 0);
+    }
+
+    const upcoming = appointments
+      .filter((a) => isActive(a) && new Date(a.startTime).getTime() >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const past = appointments
+      .filter((a) => isCompleted(a) || (new Date(a.startTime).getTime() < now && !['CANCELLED', 'NO_SHOW'].includes(status(a))))
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+    return {
+      totalAppointments: appointments.length,
+      completedAppointments: appointments.filter(isCompleted).length,
+      upcomingAppointments: upcoming.length,
+      cancelledAppointments: appointments.filter((a) => status(a) === 'CANCELLED').length,
+      noShowAppointments: appointments.filter((a) => status(a) === 'NO_SHOW').length,
+      lifetimeValue: Math.round(lifetimeValue * 100) / 100,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      lastAppointment: past[0]?.startTime || null,
+      nextAppointment: upcoming[0]?.startTime || null,
     };
   }
 
@@ -1591,11 +1919,17 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password: string }> {
+  async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password?: string }> {
+    // Keep the client's REAL email (lowercase); no placeholder addresses (item 18).
+    const realEmail = typeof data.email === 'string' && data.email.trim() !== '' && !/@example\.com$/i.test(data.email.trim())
+      ? data.email.trim().toLowerCase()
+      : null;
+    data = { ...data, email: realEmail };
+
     // Check if user already exists
     const whereConditions: any[] = [];
-    if (data.email && data.email.trim() !== '') {
-      whereConditions.push({ email: data.email });
+    if (realEmail) {
+      whereConditions.push({ email: realEmail });
     }
     if (data.phone) {
       whereConditions.push({ phone: data.phone });
@@ -1609,12 +1943,15 @@ export class CrmService implements OnModuleInit {
       throw new BadRequestException('Customer with this email or phone already exists');
     }
 
-    const password = Math.random().toString(36).slice(-10); // Random temporary password
+    // Unusable random password: the client sets their own through ONE emailed link
+    // (sent by AccountSetupListener). No plain-text password is mailed or returned.
     const newUser = this.usersRepository.create({
       ...data,
       role: UserRole.CLIENT,
       isActive: true,
-      passwordHash: password,
+      isEmailVerified: false,
+      accountSetupPending: true,
+      passwordHash: randomBytes(24).toString('hex'),
     } as Partial<User>);
 
     const savedUser = await this.usersRepository.save(newUser);
@@ -1622,6 +1959,44 @@ export class CrmService implements OnModuleInit {
     // Create customer record
     await this.createCustomerRecord(savedUser.id, salespersonId);
 
+    if (savedUser.email) {
+      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: savedUser.id });
+    }
+
+    return { user: savedUser };
+  }
+
+  /**
+   * Phone rule (item 25): a client the clinic brings in with a phone that is
+   * not known to BeautyDoctors is the doctor's OWN client. It gets a plain
+   * client account (no CRM customer record, so it is not a BD lead/customer
+   * and not in BD revenue), tagged with the clinic that owns it.
+   */
+  async createClinicOwnClient(
+    data: { firstName: string; lastName?: string; phone?: string; email?: string },
+    clinicId?: string,
+  ): Promise<{ user: User; password: string }> {
+    const existing = await this.findClientUserByContact(data.email, data.phone);
+    if (existing) {
+      throw new BadRequestException('A client with this email or phone already exists');
+    }
+    const password = Math.random().toString(36).slice(-10);
+    const newUser = this.usersRepository.create({
+      firstName: data.firstName,
+      lastName: data.lastName || '',
+      phone: data.phone || '',
+      // No placeholder addresses: the real email or none
+      email: data.email && data.email.trim() ? data.email.trim() : null,
+      role: UserRole.CLIENT,
+      isActive: true,
+      passwordHash: password,
+      profile: {
+        clinicOwnClient: true,
+        ownerClinicIds: clinicId ? [clinicId] : [],
+        createdAsClinicClientAt: new Date().toISOString(),
+      },
+    } as Partial<User>);
+    const savedUser = await this.usersRepository.save(newUser);
     return { user: savedUser, password };
   }
 
@@ -2145,7 +2520,7 @@ export class CrmService implements OnModuleInit {
         data.salespersonId,
         NotificationType.PUSH,
         isCallAction ? `📞 Call Back: ${customerName}` : 'New Task Created',
-        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate}`,
+        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Λήξη: ${athensDateTime(data.dueDate)}`,
         {
           actionId: savedAction.id,
           trigger: isCallAction ? 'DIALER_CALLBACK' : 'TASK_OPEN',
@@ -2159,11 +2534,28 @@ export class CrmService implements OnModuleInit {
     return savedAction;
   }
 
-  async updateAction(id: string, updateData: Partial<CrmAction>): Promise<CrmAction> {
+  async updateAction(id: string, updateData: Partial<CrmAction> & { callNote?: any }, actorId?: string): Promise<CrmAction> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
 
     if (!action) {
       throw new NotFoundException('Action not found');
+    }
+
+    // Call note: appended to the task (description + metadata.callNotes history), never overwritten
+    const callNote = updateData.callNote;
+    delete updateData.callNote;
+
+    // Reassignment: only to BD staff (salesperson/manager/admin); notify the new owner afterwards
+    const previousOwnerId = action.salespersonId;
+    const isReassigned = !!updateData.salespersonId && updateData.salespersonId !== previousOwnerId;
+    if (isReassigned) {
+      const newOwner = await this.usersRepository.findOne({ where: { id: updateData.salespersonId } });
+      if (!newOwner || !TASK_OWNER_ROLES.includes(newOwner.role)) {
+        throw new BadRequestException('Tasks can only be assigned to salespeople or admins.');
+      }
+    } else if (updateData.salespersonId === null || updateData.salespersonId === '') {
+      // Never drop the owner by accident (e.g. a form sending an empty owner)
+      delete updateData.salespersonId;
     }
 
     // Reminder validation and auto-fix
@@ -2206,6 +2598,47 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // Metadata updates are merged: a partial update must not wipe the call history or the
+    // appointment link of the confirmation task
+    // Outcome reported with THIS update (before merging): an older call's outcome must not decide completion
+    const requestOutcome = callNote?.outcome ?? updateData.metadata?.callOutcome;
+    if (updateData.metadata) {
+      updateData.metadata = { ...(action.metadata || {}), ...updateData.metadata };
+    }
+
+    // A moved task needs a fresh reminder
+    const dueChanged = updateData.dueDate && new Date(updateData.dueDate).getTime() !== new Date(action.dueDate || 0).getTime();
+    const reminderChanged = updateData.reminderDate && new Date(updateData.reminderDate).getTime() !== new Date(action.reminderDate || 0).getTime();
+    if (dueChanged || reminderChanged) {
+      const baseMeta = { ...(updateData.metadata || action.metadata || {}) };
+      delete baseMeta.reminderSent;
+      updateData.metadata = baseMeta;
+    }
+
+    if (callNote && (callNote.note || callNote.outcome || callNote.nextGoal)) {
+      const at = new Date();
+      const entry = {
+        at: at.toISOString(),
+        by: actorId || null,
+        outcome: callNote.outcome || null,
+        note: String(callNote.note || '').trim(),
+        nextGoal: callNote.nextGoal ? String(callNote.nextGoal).trim() : undefined,
+        nextCallAt: updateData.dueDate ? new Date(updateData.dueDate).toISOString() : undefined,
+      };
+      const meta = { ...(updateData.metadata || action.metadata || {}) };
+      meta.callNotes = [...(Array.isArray(action.metadata?.callNotes) ? action.metadata.callNotes : []), entry];
+      updateData.metadata = meta;
+
+      const line = [
+        `[${formatDateTimeInTz(at, BUSINESS_TIMEZONE)}]`,
+        entry.outcome ? `${String(entry.outcome).replace(/_/g, ' ')}:` : '',
+        entry.note,
+        entry.nextGoal ? `(Next: ${entry.nextGoal})` : '',
+      ].filter(Boolean).join(' ');
+      const baseDescription = updateData.description !== undefined ? updateData.description : action.description;
+      updateData.description = baseDescription ? `${baseDescription}\n${line}` : line;
+    }
+
     const wasCompleted = action.status === 'completed';
     const isNowCompleted = updateData.status === 'completed';
 
@@ -2213,12 +2646,14 @@ export class CrmService implements OnModuleInit {
       updateData.completedAt = new Date();
 
       // AUTO-CONFIRMATION FLOW: If this task was for an appointment confirmation, confirm the appointment
-      if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation') {
+      // (not when the call ended negatively, e.g. not interested / wrong number)
+      const negativeOutcome = ['not_interested', 'wrong_number', 'no_answer', 'call_later'].includes(requestOutcome);
+      if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation' && !negativeOutcome) {
         try {
           const appointmentId = action.metadata.appointmentId;
           const apt = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
-          const isCompleted = apt && ['COMPLETED', 'EXECUTED'].includes(String(apt.status || '').toUpperCase());
-          if (apt && !isCompleted) {
+          const isClosed = apt && ['COMPLETED', 'EXECUTED', 'CANCELLED', 'NO_SHOW', 'DELETED'].includes(String(apt.status || '').toUpperCase());
+          if (apt && !isClosed) {
             await this.appointmentsRepository.update(appointmentId, {
               status: AppointmentStatus.CONFIRMED,
               updatedAt: new Date()
@@ -2240,7 +2675,24 @@ export class CrmService implements OnModuleInit {
     }
 
     Object.assign(action, updateData);
-    return this.crmActionsRepository.save(action);
+    const saved = await this.crmActionsRepository.save(action);
+
+    if (isReassigned) {
+      try {
+        const due = saved.dueDate ? ` - due ${formatDateTimeInTz(saved.dueDate, BUSINESS_TIMEZONE)}` : '';
+        await this.notificationsService.create(
+          saved.salespersonId,
+          NotificationType.PUSH,
+          'Task assigned to you',
+          `Task assigned to you: ${saved.title}${due}`,
+          { actionId: saved.id, trigger: 'TASK_OPEN' },
+        );
+      } catch (e) {
+        this.logger.warn(`[updateAction] Failed to notify new task owner: ${e.message}`);
+      }
+    }
+
+    return saved;
   }
 
   async deleteAction(id: string): Promise<void> {
@@ -2298,8 +2750,12 @@ export class CrmService implements OnModuleInit {
 
   async getActions(
     requesterId: string,
-    filters?: { status?: string; priority?: string; customerId?: string; salespersonId?: string }
-  ): Promise<CrmAction[]> {
+    filters?: {
+      status?: string; priority?: string; customerId?: string; salespersonId?: string;
+      // Server-side paging for the Tasks page (returns { data, total, page, limit } when `page` is set)
+      page?: string | number; limit?: string | number; search?: string; actionType?: string; dateRange?: string;
+    }
+  ): Promise<any> {
     try {
       const user = await this.usersRepository.findOne({ where: { id: requesterId } });
       const qb = this.crmActionsRepository
@@ -2350,8 +2806,36 @@ export class CrmService implements OnModuleInit {
       }
 
       // 2. Additional Filters from Query Params
-      if (filters?.status) {
+      if (filters?.status === 'overdue') {
+        qb.andWhere("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+      } else if (filters?.status === 'pending') {
+        qb.andWhere("action.status = 'pending' AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP)");
+      } else if (filters?.status && filters.status !== 'all') {
         qb.andWhere('action.status = :status', { status: filters.status });
+      }
+
+      if (filters?.actionType && filters.actionType !== 'all') {
+        qb.andWhere('action.actionType = :actionType', { actionType: filters.actionType });
+      }
+
+      if (filters?.search && String(filters.search).trim()) {
+        qb.andWhere(new Brackets(w => {
+          w.where('action.title ILIKE :q')
+            .orWhere('action.description ILIKE :q')
+            .orWhere("CONCAT(clientUser.firstName, ' ', clientUser.lastName) ILIKE :q")
+            .orWhere("CONCAT(relatedLead.firstName, ' ', relatedLead.lastName) ILIKE :q")
+            .orWhere('clientUser.phone ILIKE :q')
+            .orWhere('relatedLead.phone ILIKE :q');
+        }), { q: `%${String(filters.search).trim()}%` });
+      }
+
+      if (filters?.dateRange && filters.dateRange !== 'all') {
+        const range = this.taskDateRange(filters.dateRange);
+        if (range === 'overdue') {
+          qb.andWhere("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+        } else if (range) {
+          qb.andWhere('action.dueDate >= :rangeStart AND action.dueDate < :rangeEnd', { rangeStart: range.start, rangeEnd: range.end });
+        }
       }
 
       if (filters?.priority) {
@@ -2379,22 +2863,36 @@ export class CrmService implements OnModuleInit {
 
       const now = new Date();
 
-      // Custom sorting: Overdue (pending + date < now) first, then upcoming
-      // In TypeORM QueryBuilder, we can use CASE in orderBy
-      return await qb
-        .orderBy(`CASE 
-          WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 0 
-          WHEN action.status = 'pending' AND action.dueDate >= CURRENT_TIMESTAMP THEN 1
-          ELSE 2 
-        END`, 'ASC')
-        .addOrderBy('action.dueDate', 'ASC')
-        .getMany();
+      // Custom sorting: Overdue (open + date < now) first, then upcoming.
+      // Sort by a selected alias: TypeORM cannot order a raw CASE expression when skip/take is combined with joins.
+      qb.addSelect(`CASE
+          WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 0
+          WHEN action.status IN ('pending', 'in_progress') THEN 1
+          ELSE 2
+        END`, 'sort_bucket')
+        .orderBy('sort_bucket', 'ASC')
+        .addOrderBy('action.dueDate', 'ASC', 'NULLS LAST');
+
+      if (filters?.page === undefined || filters?.page === null || filters?.page === '') {
+        return await qb.getMany();
+      }
+
+      const page = Math.max(1, parseInt(String(filters.page), 10) || 1);
+      const limit = Math.min(200, Math.max(1, parseInt(String(filters.limit ?? 50), 10) || 50));
+      const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+      return { data, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
     } catch (error) {
       this.logger.error(`Error in getActions: ${error.message}`, error.stack);
       throw error;
     }
   }
 
+  /**
+   * Task counters (same definitions as the Tasks page list):
+   *  - overdue: open (pending / in progress) and due before now
+   *  - pending: open and due now or later (or no due date)
+   *  - total:   all tasks except cancelled
+   */
   async getTaskKpis(salespersonId?: string): Promise<any> {
     const qb = this.crmActionsRepository.createQueryBuilder('action');
 
@@ -2403,9 +2901,9 @@ export class CrmService implements OnModuleInit {
     }
 
     const raw = await qb
-      .select('COUNT(action.id)', 'total')
-      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP) THEN 1 END)", 'pending')
-      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 1 END)", 'overdue')
+      .select("COUNT(CASE WHEN action.status <> 'cancelled' THEN 1 END)", 'total')
+      .addSelect("COUNT(CASE WHEN action.status IN ('pending', 'in_progress') AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP) THEN 1 END)", 'pending')
+      .addSelect("COUNT(CASE WHEN action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP THEN 1 END)", 'overdue')
       .addSelect("COUNT(CASE WHEN action.status = 'in_progress' THEN 1 END)", 'inProgress')
       .addSelect("COUNT(CASE WHEN action.status = 'completed' THEN 1 END)", 'completed')
       .getRawOne();
@@ -2417,6 +2915,32 @@ export class CrmService implements OnModuleInit {
       inProgress: parseInt(raw?.inProgress || '0', 10),
       completed: parseInt(raw?.completed || '0', 10),
     };
+  }
+
+  /** Due-date window (Europe/Athens calendar days) for the Tasks page "Timeline" filter. */
+  private taskDateRange(range: string): { start: Date; end: Date } | 'overdue' | null {
+    const tz = BUSINESS_TIMEZONE;
+    const [y, m, d] = formatInTimeZone(new Date(), tz, 'yyyy-MM-dd').split('-').map(Number);
+    const dayStart = (offset: number) => {
+      const c = new Date(Date.UTC(y, m - 1, d + offset, 12));
+      return fromZonedTime(`${c.toISOString().slice(0, 10)}T00:00:00`, tz);
+    };
+    const monthStart = (offset: number) => {
+      const c = new Date(Date.UTC(y, m - 1 + offset, 1, 12));
+      return fromZonedTime(`${c.toISOString().slice(0, 10)}T00:00:00`, tz);
+    };
+    switch (range) {
+      case 'today': return { start: dayStart(0), end: dayStart(1) };
+      case 'tomorrow': return { start: dayStart(1), end: dayStart(2) };
+      case 'next_7_days': return { start: dayStart(1), end: dayStart(8) };
+      case 'next_15_days': return { start: dayStart(1), end: dayStart(16) };
+      case 'next_month': return { start: monthStart(1), end: monthStart(2) };
+      case 'yesterday': return { start: dayStart(-1), end: dayStart(0) };
+      case 'previous_7_days': return { start: dayStart(-7), end: dayStart(0) };
+      case 'previous_month': return { start: monthStart(-1), end: monthStart(0) };
+      case 'overdue': return 'overdue';
+      default: return null;
+    }
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
@@ -2708,6 +3232,12 @@ export class CrmService implements OnModuleInit {
       ])
       .getRawOne();
 
+    // Overdue = open now and past due (not limited to tasks created inside the period)
+    const overdueQ = this.crmActionsRepository.createQueryBuilder('action')
+      .where("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
+    if (!isAll) overdueQ.andWhere('action.salespersonId = :salespersonId', { salespersonId });
+    const overdueTasks = await overdueQ.getCount();
+
     const tasksCompleted = parseInt(actionStats.completedActions || '0');
     const totalActions = parseInt(actionStats.totalActions || '0');
 
@@ -2733,8 +3263,8 @@ export class CrmService implements OnModuleInit {
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId');
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      aptBaseQ.where('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      aptBaseQ.where('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     } else {
       aptBaseQ.where('1=1');
     }
@@ -2836,8 +3366,8 @@ export class CrmService implements OnModuleInit {
       .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      mtdAptQ = mtdAptQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      mtdAptQ = mtdAptQ.andWhere('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     }
 
     // STRICTLY use MTD boundaries here
@@ -2875,8 +3405,8 @@ export class CrmService implements OnModuleInit {
       .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      // ATTRIBUTION RULE: Use the provider assigned (Professional)
-      timeSeriesQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: the salesperson who booked it or owns the contact (never the doctor)
+      timeSeriesQ.andWhere('(apt.bookedById = :salespersonId OR apt.representativeId = :salespersonId)', { salespersonId });
     }
 
     timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod });
@@ -2967,7 +3497,9 @@ export class CrmService implements OnModuleInit {
         pending: parseInt(actionStats?.pendingActions || 0),
         completed: tasksCompleted,
         missed: parseInt(actionStats?.missedActions || 0),
+        overdue: overdueTasks,
       },
+      overdueTasks,
       customerStats: {
         totalCustomers: parseInt(customerStats?.totalCustomers || 0),
         repeatCustomers: parseInt(customerStats?.repeatCustomers || 0),
@@ -3188,7 +3720,6 @@ export class CrmService implements OnModuleInit {
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completedAppointments')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShows')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancellations')
-      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .where('rec.assignedSalespersonId IS NOT NULL')
       .groupBy('rec.assignedSalespersonId, agent.firstName, agent.lastName');
 
@@ -3197,6 +3728,12 @@ export class CrmService implements OnModuleInit {
     }
 
     const aptStats = await aptQ.getRawMany();
+
+    // Revenue per salesperson: shared definition (payments received, EUR, net of refunds).
+    const agentRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'salespersonId', {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    });
 
     // Merge with appointment stats
     for (const apt of aptStats) {
@@ -3214,7 +3751,7 @@ export class CrmService implements OnModuleInit {
 
       const completedAppointments = parseInt(apt.completedAppointments, 10) || 0;
       const totalAppointments = parseInt(apt.totalAppointments, 10) || 0;
-      const totalRevenue = parseFloat(apt.totalRevenue) || 0;
+      const totalRevenue = agentRevenue.get(String(apt.agentId)) || 0;
 
       agentMap.set(apt.agentId, {
         ...existing,
@@ -3307,7 +3844,6 @@ export class CrmService implements OnModuleInit {
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completed')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancelled')
       .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShow')
-      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .groupBy('apt.clinicId');
 
     if (dateRange) {
@@ -3319,6 +3855,13 @@ export class CrmService implements OnModuleInit {
     }
 
     const stats = await qb.getRawMany();
+
+    // Revenue per clinic: shared definition (payments received, EUR, net of refunds).
+    const clinicRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'clinicId', {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+      clinicId,
+    });
 
     // 3. Merge stats with clinics
     return clinics.map((clinic) => {
@@ -3334,7 +3877,8 @@ export class CrmService implements OnModuleInit {
         completed: parseInt(clinicStats.completed) || 0,
         cancelled: parseInt(clinicStats.cancelled) || 0,
         noShow: parseInt(clinicStats.noShow || clinicStats.noshow) || 0,
-        totalRevenue: parseFloat(clinicStats.totalRevenue || clinicStats.totalrevenue) || 0,
+        totalRevenue: clinicRevenue.get(clinic.id) || 0,
+        currency: 'EUR',
       };
     });
   }
@@ -3454,12 +3998,15 @@ export class CrmService implements OnModuleInit {
       .leftJoin('apt.client', 'client')
       .leftJoin('apt.service', 'service')
       .leftJoin('service.treatment', 'treatment')
-      .leftJoin('users', 'agent', 'agent.id = apt.bookedById OR apt.providerId = agent.id')
+      .leftJoin('users', 'booker', 'booker.id = apt.bookedById')
+      // Booking belongs to the BD staff member who booked it, else the contact's owner (never the doctor)
+      .leftJoin('users', 'agent', `agent.id = CASE WHEN booker.role IN ('salesperson', 'manager', 'admin', 'SUPER_ADMIN') THEN apt.bookedById ELSE apt.representativeId END`)
       .select('apt.id', 'id')
       .addSelect('apt.startTime', 'date')
       .addSelect('treatment.name', 'eventType')
       .addSelect('apt.status', 'status')
-      .addSelect('apt.totalAmount', 'revenue')
+      // Row revenue = money actually paid for the visit (ledger-derived), never the price.
+      .addSelect('COALESCE(apt.amountPaid, 0)', 'revenue')
       .addSelect('apt.notes', 'notes')
       .addSelect("CONCAT(client.firstName, ' ', client.lastName)", 'clientName')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
@@ -3605,6 +4152,21 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // Revenue per salesperson / per day / total: shared definition (payments received, EUR).
+    const revenueManager = this.appointmentsRepository.manager;
+    const revenueRange = { startDate: defaultDateRange.startDate, endDate: defaultDateRange.endDate };
+    const revenueBySalesperson = await getPaidRevenueBy(revenueManager, 'salespersonId', { ...revenueRange, salespersonId, clinicId });
+    for (const sp of salesPersonsMap.values()) {
+      sp.revenue = revenueBySalesperson.get(sp.id) || 0;
+    }
+    const revenueByDay = await getPaidRevenueByDay(revenueManager, { ...revenueRange, salespersonId, clinicId });
+    for (const [day, m] of dateMap.entries()) {
+      m.revenue = revenueByDay.get(day) || 0;
+      dateMap.set(day, m);
+    }
+    dailyStats.revenue = revenueByDay.get(formatInTimeZone(new Date(), 'Europe/Athens', 'yyyy-MM-dd')) || 0;
+    const totalPaidRevenue = await getPaidRevenueTotal(revenueManager, { ...revenueRange, salespersonId, clinicId });
+
     const performanceReport = Array.from(salesPersonsMap.values()).map(sp => {
       const conversionRate = sp.leads > 0 ? (sp.confirmedBookings / sp.leads) * 100 : (sp.confirmedBookings > 0 ? 100 : 0);
       const taskCompletionRate = sp.assignedTasks > 0 ? (sp.completedTasks / sp.assignedTasks) * 100 : 100;
@@ -3615,6 +4177,7 @@ export class CrmService implements OnModuleInit {
         leads: sp.leads,
         confirmedBookings: sp.confirmedBookings,
         revenue: sp.revenue,
+        totalRevenue: sp.revenue,
         conversionRate: conversionRate.toFixed(1),
         taskCompletionRate: taskCompletionRate.toFixed(1),
         bookingExecutionRate: bookingExecutionRate.toFixed(1),
@@ -3639,7 +4202,9 @@ export class CrmService implements OnModuleInit {
     const totals = {
       leads: performanceReport.reduce((sum, r) => sum + r.leads, 0),
       confirmedBookings: performanceReport.reduce((sum, r) => sum + r.confirmedBookings, 0),
-      revenue: performanceReport.reduce((sum, r) => sum + r.revenue, 0),
+      revenue: totalPaidRevenue,
+      totalRevenue: totalPaidRevenue,
+      currency: 'EUR',
       assignedTasks: performanceReport.reduce((sum, r) => sum + r.assignedTasks, 0),
       completedTasks: performanceReport.reduce((sum, r) => sum + r.completedTasks, 0),
       totalBookings: performanceReport.reduce((sum, r) => sum + r.totalBookings, 0)
@@ -3697,15 +4262,16 @@ export class CrmService implements OnModuleInit {
       .groupBy('l.source')
       .getRawMany();
 
-    const clinicPerformance = await this.appointmentsRepository.createQueryBuilder('apt')
+    const clinicPerformanceRows = await this.appointmentsRepository.createQueryBuilder('apt')
       .innerJoin('apt.clinic', 'clinic')
       .select('clinic.name', 'name')
       .addSelect('clinic.id', 'id')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
       .addSelect('COUNT(apt.id)', 'appointments')
       .where('apt.startTime BETWEEN :startDate AND :endDate', defaultDateRange)
       .groupBy('clinic.id, clinic.name')
       .getRawMany();
+    const revenueByClinic = await getPaidRevenueBy(revenueManager, 'clinicId', { ...revenueRange, salespersonId, clinicId });
+    const clinicPerformance = clinicPerformanceRows.map((c: any) => ({ ...c, revenue: revenueByClinic.get(String(c.id)) || 0 }));
 
     return {
       reportTable: activities,
@@ -3872,29 +4438,34 @@ export class CrmService implements OnModuleInit {
   }
 
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
-    let query = this.appointmentsRepository
-      .createQueryBuilder('apt')
-      .leftJoin('apt.bookedBy', 'agent')
-      .select('apt.bookedById', 'agentId')
+    // Shared revenue definition (payments received, EUR) grouped by the payment's salesperson.
+    const rows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, {
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+    }, 'p')
+      .leftJoin('users', 'agent', 'agent.id = p.salespersonId')
+      .andWhere('p.salespersonId IS NOT NULL')
+      .select('p.salespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
-      .addSelect("COALESCE(SUM(CASE WHEN apt.status = 'CANCELLED' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)", 'refunds')
-      .where('apt.bookedById IS NOT NULL');
+      .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('payment', 'deposit') THEN p.amount ELSE 0 END), 0)`, 'revenue')
+      .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('refund', 'void') THEN p.amount ELSE 0 END), 0)`, 'refunds')
+      .groupBy('p.salespersonId')
+      .addGroupBy('agent.firstName')
+      .addGroupBy('agent.lastName')
+      .getRawMany();
 
-    if (dateRange) {
-      query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
-    }
-
-    query = query.groupBy('apt.bookedById, agent.firstName, agent.lastName');
-
-    const results = await query.getRawMany();
-    return results.map(row => ({
-      agentId: row.agentId,
-      agentName: row.agentName || 'Unknown Agent',
-      revenue: parseFloat(row.revenue) || 0,
-      refunds: parseFloat(row.refunds) || 0,
-      net: (parseFloat(row.revenue) || 0) - (parseFloat(row.refunds) || 0)
-    }));
+    return rows.map(row => {
+      const revenue = parseFloat(row.revenue ?? row.Revenue) || 0;
+      const refunds = parseFloat(row.refunds) || 0;
+      return {
+        agentId: row.agentId ?? row.agentid,
+        agentName: row.agentName ?? row.agentname ?? 'Unknown Agent',
+        revenue,
+        refunds,
+        net: revenue - refunds,
+        currency: 'EUR',
+      };
+    });
   }
 
   // Access Control Methods
@@ -4013,39 +4584,55 @@ export class CrmService implements OnModuleInit {
 
   // No-Show Management Methods
   async getNoShowAlerts(query: { daysAgo?: number; status?: 'pending' | 'resolved' }) {
-    const daysAgo = query.daysAgo || 7;
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() - daysAgo);
+    const daysAgo = Number(query.daysAgo) || 7;
+    const now = new Date();
+    const thresholdDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+    const salesRoles = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
-    let qb = this.appointmentsRepository
+    // Past no-shows only. The agent is the CLIENT's salesperson (customer record owner), else
+    // the appointment's sales representative; never the doctor / clinic account.
+    const qb = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.representative', 'rep')
-      .leftJoin('apt.bookedBy', 'agent')
       .leftJoin('apt.clinic', 'clinic')
       .leftJoin('apt.client', 'client')
+      .leftJoin(
+        'customer_records',
+        'cr',
+        `cr.id = (SELECT r.id FROM customer_records r WHERE r."customerId" = apt."clientId" AND r."assignedSalespersonId" IS NOT NULL ORDER BY r."createdAt" DESC LIMIT 1)`,
+      )
+      .leftJoin('users', 'sp', 'sp.id = cr.assignedSalespersonId AND sp.role IN (:...salesRoles)', { salesRoles })
+      .leftJoin('users', 'rep', 'rep.id = apt.representativeId AND rep.role IN (:...salesRoles)', { salesRoles })
       .select('apt.id', 'appointmentId')
       .addSelect('apt.clientId', 'patientId')
-      .addSelect("COALESCE(CONCAT(rep.firstName, ' ', rep.lastName), CONCAT(agent.firstName, ' ', agent.lastName))", 'agentName')
+      .addSelect(
+        `COALESCE(NULLIF(TRIM(CONCAT(sp.firstName, ' ', sp.lastName)), ''), NULLIF(TRIM(CONCAT(rep.firstName, ' ', rep.lastName)), ''))`,
+        'agentName',
+      )
+      .addSelect('COALESCE(sp.id, rep.id)', 'agentId')
       .addSelect('clinic.name', 'clinicName')
       .addSelect('apt.startTime', 'date')
-      .addSelect('EXTRACT(DAY FROM CURRENT_DATE - apt.startTime)', 'daysAgo')
       .addSelect("CONCAT(COALESCE(client.firstName, ''), ' ', COALESCE(client.lastName, ''))", 'patientName')
       .where('apt.status = :status', { status: AppointmentStatus.NO_SHOW })
-      .andWhere('apt.startTime >= :thresholdDate', { thresholdDate });
+      .andWhere('apt.startTime >= :thresholdDate', { thresholdDate })
+      .andWhere('apt.startTime <= :now', { now })
+      .orderBy('apt.startTime', 'DESC');
 
-    // Note: Since Appointment doesn't have metadata field, we'll return all no-shows
-    // In a real implementation, you might add a separate table for tracking no-show resolutions
     const results = await qb.getRawMany();
-    return results.map(row => ({
-      appointmentId: row.appointmentId,
-      patientId: row.patientId,
-      patientName: row.patientName?.trim() || 'Unknown',
-      agentName: row.agentName || 'Unassigned',
-      clinicName: row.clinicName,
-      date: row.date.toISOString().split('T')[0],
-      daysAgo: parseInt(row.daysAgo) || 0,
-      actionRecommended: 'Call patient to reschedule'
-    }));
+    return results.map(row => {
+      const start = new Date(row.date);
+      return {
+        appointmentId: row.appointmentId ?? row.appointmentid,
+        patientId: row.patientId ?? row.patientid,
+        patientName: (row.patientName ?? row.patientname)?.trim() || 'Unknown',
+        agentName: row.agentName ?? row.agentname ?? 'Unassigned',
+        agentId: row.agentId ?? row.agentid ?? null,
+        clinicName: row.clinicName ?? row.clinicname,
+        // Athens calendar date of the visit
+        date: formatInTimeZone(start, 'Europe/Athens', 'yyyy-MM-dd'),
+        daysAgo: Math.max(0, Math.floor((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))),
+        actionRecommended: 'Call patient to reschedule',
+      };
+    });
   }
 
   async resolveNoShowAlert(appointmentId: string, resolutionNote: string, salespersonId?: string) {
@@ -4335,9 +4922,11 @@ export class CrmService implements OnModuleInit {
   }
 
   async getSalespersons(): Promise<any[]> {
+    // Assignment lists (Assign Owner, Quick Assign, Lead Owner) must only offer
+    // BeautyDoctors sales staff and admins, never clinic/doctor accounts.
     const users = await this.usersRepository.find({
       where: {
-        role: In([UserRole.SALESPERSON, UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER]),
+        role: In(CRM_ASSIGNEE_ROLES),
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
@@ -4456,47 +5045,65 @@ export class CrmService implements OnModuleInit {
   async handleAppointmentCreated(appointment: Appointment) {
     if (!appointment || !appointment.clientId) return;
 
-    // 1. Handle Lead Conversion Visibility
-    let lead = await this.leadsRepository.findOne({
-      where: { id: appointment.clientId },
-    });
+    const clientEmail = appointment.client?.email || appointment.clientDetails?.email;
+    const clientPhone = appointment.client?.phone || appointment.clientDetails?.phone;
 
-    if (!lead && (appointment.client?.email || appointment.clientDetails?.email)) {
-      const email = appointment.client?.email || appointment.clientDetails?.email;
-      lead = await this.leadsRepository.findOne({
-        where: { email },
-      });
+    // 1. Find the existing CRM card (lead) of this client: by id, by an explicit
+    //    link to the client account, then by email or full phone number
+    let lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+    if (!lead) {
+      lead = await this.leadsRepository
+        .createQueryBuilder('l')
+        .where(
+          `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+          { uid: appointment.clientId },
+        )
+        .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
+        .getOne();
+    }
+    if (!lead) {
+      lead = await this.findLeadByContact(clientEmail, clientPhone);
     }
 
-    if (lead && lead.status !== LeadStatus.CONVERTED) {
+    // 2. Booking => "Appointment booked". "Converted" only after a completed visit.
+    if (lead) {
       const oldStatus = lead.status;
-      lead.status = LeadStatus.CONVERTED;
-      lead.convertedAt = new Date();
-      await this.leadsRepository.save(lead);
-
-      this.eventEmitter.emit('lead.status.changed', {
-        lead: lead,
-        oldStatus: oldStatus,
-        newStatus: LeadStatus.CONVERTED,
-      });
-
-      this.logger.log(`Changed lead status for ${lead.id} from ${oldStatus} to ${LeadStatus.CONVERTED} due to appointment created`);
+      const keepStatus = [LeadStatus.CONVERTED, LeadStatus.APPOINTMENT_SCHEDULED].includes(lead.status as LeadStatus);
+      const meta: any = lead.metadata || {};
+      const needsLink = !meta.convertedToUserId && lead.id !== appointment.clientId;
+      if (!keepStatus || needsLink) {
+        if (!keepStatus) lead.status = LeadStatus.APPOINTMENT_SCHEDULED;
+        if (needsLink) lead.metadata = { ...meta, convertedToUserId: appointment.clientId };
+        await this.leadsRepository.save(lead);
+        this.leadStatsCache = null;
+      }
+      if (!keepStatus) {
+        this.eventEmitter.emit('lead.status.changed', { lead, oldStatus, newStatus: LeadStatus.APPOINTMENT_SCHEDULED });
+        this.logger.log(`Lead ${lead.id}: ${oldStatus} -> ${LeadStatus.APPOINTMENT_SCHEDULED} (appointment booked)`);
+      }
     }
 
-    // 2. Update Customer Record Summary
+    // 2b. Online booking by the client: link it to the existing card (never a new
+    //     contact, no automatic salesperson), log it in the card history and tell
+    //     admin + the salesperson who had the lead
+    const isOnlineBooking =
+      appointment.appointmentSource !== 'clinic_own' &&
+      (!appointment.bookedById || appointment.bookedById === appointment.clientId);
+    const existingRecord = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
+    if (isOnlineBooking && (lead || existingRecord)) {
+      await this.recordOnlineBookingOfExistingContact(appointment, lead, existingRecord).catch((err) =>
+        this.logger.warn(`Could not record online booking ${appointment.id} on the CRM card: ${err.message}`),
+      );
+    }
+
+    // 3. Update Customer Record Summary
     // Note: Booked appointments should be "supposed" / credited to the client record immediately
     const customerId = appointment.clientId;
-    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+    let record = existingRecord;
 
     // If no record found (likely a new guest), search by phone/email to avoid duplicates
-    if (!record && (appointment.client?.phone || appointment.clientDetails?.phone)) {
-      const email = appointment.client?.email || appointment.clientDetails?.email;
-      const phone = appointment.client?.phone || appointment.clientDetails?.phone;
-
-      const existingUser = await this.usersRepository.findOne({
-        where: [{ email }, { phone }]
-      });
-
+    if (!record && (clientEmail || clientPhone)) {
+      const existingUser = await this.findClientUserByContact(clientEmail, clientPhone);
       if (existingUser) {
         record = await this.customerRecordsRepository.findOne({ where: { customerId: existingUser.id } });
       }
@@ -4529,6 +5136,72 @@ export class CrmService implements OnModuleInit {
     }
   }
 
+  private async recordOnlineBookingOfExistingContact(
+    appointment: Appointment,
+    lead: Lead | null,
+    record: CustomerRecord | null,
+  ): Promise<void> {
+    const salespersonId = lead?.assignedSalesId || record?.assignedSalespersonId || null;
+    const clientName =
+      `${appointment.client?.firstName || lead?.firstName || ''} ${appointment.client?.lastName || lead?.lastName || ''}`.trim() ||
+      appointment.clientDetails?.fullName ||
+      'Client';
+    const treatment = appointment.service?.treatment?.name || (appointment.service as any)?.name || 'Treatment';
+    const clinicName = appointment.clinic?.name || 'Clinic';
+    const when = formatDateTimeInTz(new Date(appointment.startTime), ATHENS_TZ);
+    const line = `Online booking - ${when}, ${treatment}, ${clinicName}`;
+
+    // History entry on the card (communication timeline)
+    const admins = await this.usersRepository.find({
+      where: { role: In([UserRole.ADMIN, UserRole.SUPER_ADMIN]), isActive: true },
+      select: ['id'],
+    });
+    const logOwnerId = salespersonId || admins[0]?.id;
+    if (logOwnerId) {
+      await this.communicationLogsRepository.save(
+        this.communicationLogsRepository.create({
+          customerId: appointment.clientId,
+          relatedLeadId: lead?.id || null,
+          salespersonId: logOwnerId,
+          type: 'note',
+          direction: 'incoming',
+          status: 'completed',
+          subject: 'Online booking',
+          notes: line,
+          metadata: { appointmentId: appointment.id, onlineBooking: true },
+        } as Partial<CommunicationLog>),
+      );
+    }
+    if (lead) {
+      const meta: any = lead.metadata || {};
+      const bookingHistory = Array.isArray(meta.bookingHistory) ? meta.bookingHistory : [];
+      if (!bookingHistory.some((b: any) => b?.appointmentId === appointment.id)) {
+        await this.leadsRepository.update(lead.id, {
+          metadata: {
+            ...meta,
+            bookingHistory: [
+              ...bookingHistory,
+              { appointmentId: appointment.id, channel: 'online', startTime: appointment.startTime, treatment, clinic: clinicName, recordedAt: new Date() },
+            ],
+          },
+        } as any);
+      }
+    }
+
+    // Notify admin + the salesperson who had the lead (no automatic assignment)
+    const recipients = new Set<string>(admins.map((a) => a.id));
+    if (salespersonId) recipients.add(salespersonId);
+    if (recipients.size > 0) {
+      await this.notificationsService.sendBulk(
+        [...recipients],
+        NotificationType.PUSH,
+        'Existing client booked online',
+        `Existing client ${clientName} booked online: ${when}, ${treatment}, ${clinicName}.`,
+        { appointmentId: appointment.id, leadId: lead?.id, customerId: appointment.clientId, type: 'existing_client_online_booking' },
+      );
+    }
+  }
+
   @OnEvent('appointment.status.changed')
   async handleAppointmentStatusChanged(eventData: any) {
     const { appointment, newStatus, oldStatus } = eventData;
@@ -4538,12 +5211,25 @@ export class CrmService implements OnModuleInit {
     if (newStatus === oldStatus) return;
 
     if (newStatus === AppointmentStatus.COMPLETED && oldStatus !== AppointmentStatus.COMPLETED) {
-      // 1. Conversion check (redundant but safe)
-      const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+      // 1. Completed visit => the lead becomes Converted
+      let lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+      if (!lead) {
+        lead = await this.leadsRepository
+          .createQueryBuilder('l')
+          .where(
+            `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+            { uid: appointment.clientId },
+          )
+          .getOne();
+      }
+      if (!lead) {
+        lead = await this.findLeadByContact(appointment.client?.email || appointment.clientDetails?.email, appointment.client?.phone || appointment.clientDetails?.phone);
+      }
       if (lead && lead.status !== LeadStatus.CONVERTED) {
         lead.status = LeadStatus.CONVERTED;
         lead.convertedAt = new Date();
         await this.leadsRepository.save(lead);
+        this.leadStatsCache = null;
       }
 
       // 2. Update Customer Record execution stats
@@ -4634,108 +5320,20 @@ export class CrmService implements OnModuleInit {
   }
 
   /**
-   * CRON: Inject "Confirmation Call Reminder" for upcoming appointments
-   * Runs daily at midnight. Finds appointments happening in 24-48 hours.
+   * CRON / manual trigger: make sure every upcoming booking has its one confirmation-call
+   * task (2 working days before, 08:00 Athens) and that it follows reschedules/cancellations.
    */
   async scheduledInjectConfirmationTask(): Promise<{ injected: number }> {
-    const tomorrowStart = new Date();
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
-
-    const dayAfterTomorrowEnd = new Date();
-    dayAfterTomorrowEnd.setDate(dayAfterTomorrowEnd.getDate() + 2);
-    dayAfterTomorrowEnd.setHours(23, 59, 59, 999);
-
-    const upcomingAppointments = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(tomorrowStart, dayAfterTomorrowEnd),
-        status: In([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
-      },
-      relations: ['service', 'service.treatment']
-    });
-
-    let injected = 0;
-    for (const apt of upcomingAppointments) {
-      // Check if task already exists
-      const existing = await this.crmActionsRepository.findOne({
-        where: {
-          relatedAppointmentId: apt.id,
-          actionType: 'confirmation_call_reminder'
-        }
-      });
-
-      if (!existing) {
-        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-
-        await this.crmActionsRepository.save({
-          title: `Confirm Appointment: ${apt.service?.treatment?.name || 'Treatment'}`,
-          actionType: 'confirmation_call_reminder',
-          status: 'pending',
-          priority: 'high',
-          dueDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000), // 24h before
-          reminderDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000 - 30 * 60 * 1000), // 30m before due
-          customerId: record?.id,
-          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
-          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
-          relatedAppointmentId: apt.id,
-          description: `Call client to confirm appointment at ${apt.startTime.toLocaleString()}`
-        });
-        injected++;
-      }
-    }
-    return { injected };
+    const { synced } = await this.taskAutomationService.reconcileConfirmationTasks();
+    return { injected: synced };
   }
 
   /**
-   * CRON: Inject "Next Day Follow-up" for completed appointments
-   * Runs daily. Finds appointments completed yesterday.
+   * Post-treatment follow-up tasks are no longer created automatically: the only automatic
+   * task is the confirmation call. Kept for the manual endpoint's API compatibility.
    */
   async scheduledInjectNextDayFollowUp(): Promise<{ injected: number }> {
-    const yesterdayStart = new Date();
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    yesterdayStart.setHours(0, 0, 0, 0);
-
-    const yesterdayEnd = new Date();
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-    yesterdayEnd.setHours(23, 59, 59, 999);
-
-    const finishedAppointments = await this.appointmentsRepository.find({
-      where: {
-        startTime: Between(yesterdayStart, yesterdayEnd),
-        status: AppointmentStatus.COMPLETED
-      },
-      relations: ['service', 'service.treatment']
-    });
-
-    let injected = 0;
-    for (const apt of finishedAppointments) {
-      const existing = await this.crmActionsRepository.findOne({
-        where: {
-          relatedAppointmentId: apt.id,
-          actionType: 'follow_up_call' as 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder' | 'satisfaction_check' | 'complaint'
-        }
-      });
-
-      if (!existing) {
-        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-
-        await this.crmActionsRepository.save({
-          title: `Post-Treatment Follow-up: ${apt.service?.treatment?.name || 'Treatment'}`,
-          actionType: 'follow_up_call',
-          status: 'pending',
-          priority: 'medium',
-          dueDate: new Date(), // Due today
-          reminderDate: new Date(),
-          customerId: record?.id,
-          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
-          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
-          relatedAppointmentId: apt.id,
-          description: `Follow up after ${apt.service?.treatment?.name} appointment on ${apt.startTime.toDateString()}`
-        });
-        injected++;
-      }
-    }
-    return { injected };
+    return { injected: 0 };
   }
 
   async seedMockCrmData(): Promise<any> {
@@ -4835,6 +5433,177 @@ export class CrmService implements OnModuleInit {
       message: `Successfully seeded ${seeded} test leads with Facebook form names`,
       forms: testForms
     };
+  }
+
+  /**
+   * Admin import of open HubSpot tasks from a CSV export (item 63).
+   * Columns (header names, case-insensitive, EN/GR/HubSpot): client/contact name, phone,
+   * email, due date (dd/mm/yyyy or yyyy-mm-dd), time (HH:mm, Athens), salesperson (email or
+   * full name), title, notes. Client and salesperson must match existing records.
+   * Re-importing the same file does not create duplicates. `dryRun` validates only.
+   */
+  async importTasksFromCsv(csv: string, dryRun = false, importedBy?: string): Promise<{
+    dryRun: boolean; total: number; created: number; skipped: number; errors: { row: number; reason: string }[];
+  }> {
+    const rows = this.parseCsv(csv || '');
+    if (rows.length < 2) throw new BadRequestException('The CSV file has no data rows.');
+
+    const norm = (h: string) => h.toLowerCase().replace(/^﻿/, '').replace(/[^a-z0-9Ͱ-Ͽἀ-῿]+/g, ' ').trim();
+    const header = rows[0].map(norm);
+    const col = (...names: string[]) => header.findIndex(h => names.includes(h));
+    const idx = {
+      client: col('client', 'contact', 'associated contact', 'contact name', 'name', 'client name', 'customer', 'πελάτης', 'όνομα'),
+      phone: col('phone', 'phone number', 'mobile', 'mobile phone number', 'τηλέφωνο', 'κινητό'),
+      email: col('email', 'contact email', 'e mail'),
+      date: col('due date', 'date', 'due', 'ημερομηνία', 'προθεσμία'),
+      time: col('time', 'due time', 'ώρα'),
+      owner: col('salesperson', 'assigned to', 'task owner', 'owner', 'agent', 'πωλητής'),
+      title: col('title', 'task title', 'subject', 'task', 'τίτλος'),
+      notes: col('notes', 'task notes', 'body', 'description', 'σημειώσεις'),
+    };
+    if (idx.date < 0 || idx.owner < 0 || (idx.client < 0 && idx.phone < 0 && idx.email < 0)) {
+      throw new BadRequestException('Required columns: client (or phone/email), due date, salesperson. Optional: time, title, notes.');
+    }
+
+    const staff = await this.usersRepository.find({ where: { role: In(TASK_OWNER_ROLES as UserRole[]) } });
+    const findOwner = (value: string) => {
+      const v = (value || '').trim().toLowerCase();
+      if (!v) return null;
+      return staff.find(u => (u.email || '').toLowerCase() === v)
+        || staff.find(u => `${u.firstName || ''} ${u.lastName || ''}`.trim().toLowerCase() === v)
+        || null;
+    };
+
+    const result = { dryRun, total: rows.length - 1, created: 0, skipped: 0, errors: [] as { row: number; reason: string }[] };
+    const cell = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const rowNo = i + 1;
+      if (r.every(c => !c || !c.trim())) { result.total--; continue; }
+      try {
+        const dueDate = parseWallClockInTz(cell(r, idx.date), cell(r, idx.time) || null, BUSINESS_TIMEZONE);
+        if (!dueDate) { result.errors.push({ row: rowNo, reason: `Invalid due date "${cell(r, idx.date)}"` }); continue; }
+
+        const owner = findOwner(cell(r, idx.owner));
+        if (!owner) { result.errors.push({ row: rowNo, reason: `Salesperson "${cell(r, idx.owner)}" not found` }); continue; }
+
+        const contact = await this.findContactForImport(cell(r, idx.client), cell(r, idx.phone), cell(r, idx.email), !dryRun);
+        if (!contact) {
+          result.errors.push({ row: rowNo, reason: `Client "${cell(r, idx.client) || cell(r, idx.phone) || cell(r, idx.email)}" not found` });
+          continue;
+        }
+
+        const title = cell(r, idx.title) || 'Follow-up call (HubSpot)';
+        const importKey = `${contact.contactKey}|${dueDate.toISOString()}|${title.toLowerCase()}`;
+        const exists = await this.crmActionsRepository
+          .createQueryBuilder('action')
+          .where("action.metadata->>'importKey' = :importKey", { importKey })
+          .getCount();
+        if (exists) { result.skipped++; continue; }
+
+        if (!dryRun) {
+          await this.crmActionsRepository.save(this.crmActionsRepository.create({
+            customerId: contact.customerId,
+            relatedLeadId: contact.relatedLeadId,
+            salespersonId: owner.id,
+            actionType: 'call',
+            title,
+            description: cell(r, idx.notes) || null,
+            status: 'pending',
+            priority: 'medium',
+            dueDate,
+            reminderDate: dueDate,
+            metadata: { importSource: 'hubspot_csv', importKey, importedBy: importedBy || null, importedAt: new Date().toISOString() },
+          }));
+        }
+        result.created++;
+      } catch (e) {
+        result.errors.push({ row: rowNo, reason: e?.message || 'Unknown error' });
+      }
+    }
+    return result;
+  }
+
+  /** Finds a lead or customer for a CSV row: phone (last 10 digits), then email, then unique full name. */
+  private async findContactForImport(
+    name: string, phone: string, email: string, createRecord: boolean,
+  ): Promise<{ customerId?: string; relatedLeadId?: string; contactKey: string } | null> {
+    const toContact = async (userId?: string, leadId?: string) => {
+      if (userId) {
+        let record = await this.customerRecordsRepository.findOne({ where: { customerId: userId } });
+        if (!record && createRecord) record = await this.createCustomerRecord(userId);
+        return { customerId: record?.id, contactKey: userId };
+      }
+      return leadId ? { relatedLeadId: leadId, contactKey: leadId } : null;
+    };
+    const digitsSql = "regexp_replace(COALESCE(%s.phone, ''), '[^0-9]', '', 'g') LIKE :tail";
+
+    const digits = (phone || '').replace(/\D/g, '');
+    if (digits.length >= 8) {
+      const tail = `%${digits.slice(-10)}`;
+      const user = await this.usersRepository.createQueryBuilder('u')
+        .where(digitsSql.replace('%s', 'u'), { tail })
+        .andWhere('u.role = :role', { role: UserRole.CLIENT })
+        .getOne();
+      if (user) return toContact(user.id);
+      const lead = await this.leadsRepository.createQueryBuilder('l')
+        .where(digitsSql.replace('%s', 'l'), { tail })
+        .orderBy('l.createdAt', 'DESC')
+        .getOne();
+      if (lead) return toContact(undefined, lead.id);
+    }
+
+    const mail = (email || '').trim().toLowerCase();
+    if (mail.includes('@')) {
+      const user = await this.usersRepository.createQueryBuilder('u')
+        .where('LOWER(u.email) = :mail', { mail }).andWhere('u.role = :role', { role: UserRole.CLIENT }).getOne();
+      if (user) return toContact(user.id);
+      const lead = await this.leadsRepository.createQueryBuilder('l')
+        .where('LOWER(l.email) = :mail', { mail }).orderBy('l.createdAt', 'DESC').getOne();
+      if (lead) return toContact(undefined, lead.id);
+    }
+
+    const full = (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    if (full) {
+      const users = await this.usersRepository.createQueryBuilder('u')
+        .where("LOWER(TRIM(CONCAT(u.firstName, ' ', u.lastName))) = :full", { full })
+        .andWhere('u.role = :role', { role: UserRole.CLIENT }).take(2).getMany();
+      if (users.length === 1) return toContact(users[0].id);
+      const leads = await this.leadsRepository.createQueryBuilder('l')
+        .where("LOWER(TRIM(CONCAT(l.firstName, ' ', l.lastName))) = :full", { full }).take(2).getMany();
+      if (leads.length === 1) return toContact(undefined, leads[0].id);
+    }
+    return null;
+  }
+
+  /** Minimal RFC 4180 CSV parser (quotes, escaped quotes, CRLF); auto-detects ',' or ';'. */
+  private parseCsv(text: string): string[][] {
+    const firstLine = text.split(/\r?\n/, 1)[0] || '';
+    const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') inQuotes = false;
+        else field += ch;
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        row.push(field); field = '';
+      } else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = '';
+      } else {
+        field += ch;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
   }
 
   async bulkCreateActions(leadIds: string[], taskData: Partial<CrmAction>): Promise<any> {
@@ -4997,6 +5766,233 @@ export class CrmService implements OnModuleInit {
       webhookLeads: webhookLeadsCount,
       manualLeads: totalCrmLeads - webhookLeadsCount
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Facebook lead sync: one entry point for the 30-min cron and "Import all",
+  // with a persisted health status and admin alerts when leads stop arriving.
+  // ---------------------------------------------------------------------------
+
+  private static readonly FB_STATUS_KEY = 'facebook_sync_status';
+
+  /**
+   * Import every live form. Already-known Facebook lead ids are skipped, so
+   * running it after an outage re-imports the missed leads without duplicates.
+   */
+  async runFacebookSync(trigger: 'cron' | 'manual' | 'startup' = 'cron'): Promise<{ formsChecked: number; imported: number; errors: string[] }> {
+    this.facebookService.clearApiErrors();
+    const errors: string[] = [];
+    let formsChecked = 0;
+    let imported = 0;
+
+    let liveForms: any[] = [];
+    try {
+      const forms = await this.facebookService.getAllForms();
+      // DB-only pseudo forms (id: 'db_<name>') have no Facebook form to fetch from
+      liveForms = (forms || []).filter((f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED');
+    } catch (err) {
+      errors.push(`Could not list Facebook forms: ${err.message}`);
+    }
+
+    for (const form of liveForms) {
+      formsChecked++;
+      try {
+        const leads = await this.importFacebookLeads(form.id, 10000, form.page_access_token, true);
+        imported += leads.length;
+      } catch (err) {
+        // One failing form must not abort the sync of the remaining forms
+        errors.push(`Form ${form.name || form.id}: ${err.message}`);
+      }
+    }
+
+    // getForms() swallows API errors and returns []: surface them here
+    for (const apiErr of this.facebookService.getLastApiErrors()) {
+      const line = `${apiErr.context}: ${apiErr.message}`;
+      if (!errors.includes(line)) errors.push(line);
+    }
+    if (liveForms.length === 0 && errors.length === 0) {
+      errors.push('Facebook returned no lead forms. Check the access token, its permissions and the page ID.');
+    }
+
+    // An expired token is the usual reason leads stop: check it explicitly
+    let token: { valid: boolean; message: string; expiresAt?: Date | null } | null = null;
+    try {
+      token = await this.facebookService.checkTokenValidity();
+    } catch (err) {
+      token = { valid: false, message: err.message };
+    }
+    if (token && !token.valid) {
+      errors.unshift(`Access token invalid: ${token.message}`);
+    }
+
+    await this.recordFacebookSyncResult({ trigger, formsChecked, imported, errors, token }).catch((err) =>
+      this.logger.error(`Could not record Facebook sync status: ${err.message}`),
+    );
+
+    this.logger.log(`Facebook sync (${trigger}): forms ${formsChecked}, imported ${imported}, errors ${errors.length}`);
+    return { formsChecked, imported, errors };
+  }
+
+  private async readFacebookSyncStatus(): Promise<any> {
+    const repo = this.dataSource.getRepository(PlatformSettings);
+    const row = await repo.findOne({ where: { key: CrmService.FB_STATUS_KEY } });
+    if (!row?.value) return null;
+    if (typeof row.value === 'string') {
+      try { return JSON.parse(row.value); } catch { return null; }
+    }
+    return row.value;
+  }
+
+  private async writeFacebookSyncStatus(value: any): Promise<void> {
+    const repo = this.dataSource.getRepository(PlatformSettings);
+    const row = await repo.findOne({ where: { key: CrmService.FB_STATUS_KEY } });
+    if (row) {
+      row.value = value;
+      await repo.save(row);
+    } else {
+      await repo.save(
+        repo.create({
+          key: CrmService.FB_STATUS_KEY,
+          value,
+          category: 'integrations',
+          description: 'Facebook lead sync health (written by the sync job, read-only)',
+        }),
+      );
+    }
+  }
+
+  private async recordFacebookSyncResult(result: {
+    trigger: string;
+    formsChecked: number;
+    imported: number;
+    errors: string[];
+    token: { valid: boolean; message: string; expiresAt?: Date | null } | null;
+  }): Promise<void> {
+    const now = new Date();
+    const previous = (await this.readFacebookSyncStatus()) || {};
+    const ok = result.errors.length === 0;
+
+    const lastLeadRow = await this.leadsRepository
+      .createQueryBuilder('lead')
+      .select('MAX(COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt))', 'last')
+      .where("lead.source = 'facebook_ads'")
+      .getRawOne();
+    const lastLeadAt = lastLeadRow?.last ? new Date(lastLeadRow.last) : null;
+
+    const staleHours = Number(this.configService.get('FACEBOOK_LEADS_STALE_HOURS') || 48);
+    const leadsStale = !!lastLeadAt && now.getTime() - lastLeadAt.getTime() > staleHours * 3600 * 1000;
+
+    const status = {
+      status: ok ? (leadsStale ? 'warning' : 'ok') : 'error',
+      trigger: result.trigger,
+      lastRunAt: now,
+      lastSuccessAt: ok ? now : previous.lastSuccessAt || null,
+      lastErrorAt: ok ? previous.lastErrorAt || null : now,
+      lastError: ok ? null : result.errors.slice(0, 5).join(' | '),
+      formsChecked: result.formsChecked,
+      imported: result.imported,
+      tokenValid: result.token ? result.token.valid : null,
+      tokenMessage: result.token?.message || null,
+      tokenExpiresAt: result.token?.expiresAt || null,
+      lastLeadAt,
+      leadsStale,
+      staleHours,
+      lastAlertAt: previous.lastAlertAt || null,
+      lastStaleAlertAt: previous.lastStaleAlertAt || null,
+    };
+
+    // Alert admins: on the first failure, then at most every 6 hours while it stays broken
+    const alertEveryMs = 6 * 3600 * 1000;
+    const lastAlert = previous.lastAlertAt ? new Date(previous.lastAlertAt).getTime() : 0;
+    if (!ok && (previous.status !== 'error' || now.getTime() - lastAlert > alertEveryMs)) {
+      const tokenProblem = result.token && !result.token.valid;
+      await this.alertAdmins(
+        tokenProblem ? 'Facebook leads stopped: access token invalid' : 'Facebook lead sync failed',
+        `New Facebook leads are not being imported. ${status.lastError}. Renew the token under Integrations; missed leads are re-imported automatically on the next successful sync.`,
+        { type: 'facebook_sync_error' },
+      );
+      status.lastAlertAt = now;
+      this.eventEmitter.emit('audit.log', {
+        action: 'META_SYNC_ERROR',
+        resource: 'integrations',
+        resourceId: 'facebook',
+        data: { errors: result.errors.slice(0, 10), tokenValid: status.tokenValid },
+      });
+    }
+
+    // Recovered after an outage
+    if (ok && previous.status === 'error') {
+      await this.alertAdmins(
+        'Facebook lead sync working again',
+        `The Facebook lead sync is working again. Leads imported in this run: ${result.imported}.`,
+        { type: 'facebook_sync_recovered' },
+      );
+      this.eventEmitter.emit('audit.log', {
+        action: 'META_SYNC_RECOVERED',
+        resource: 'integrations',
+        resourceId: 'facebook',
+        data: { imported: result.imported },
+      });
+    }
+
+    // Token fine but no leads for a long time: warn once a day
+    const lastStale = previous.lastStaleAlertAt ? new Date(previous.lastStaleAlertAt).getTime() : 0;
+    if (ok && leadsStale && now.getTime() - lastStale > 24 * 3600 * 1000) {
+      await this.alertAdmins(
+        'No new Facebook leads',
+        `No Facebook lead has arrived since ${formatDateTimeInTz(lastLeadAt as Date, ATHENS_TZ)} (more than ${staleHours} hours). Check that the ads are running and the forms are connected.`,
+        { type: 'facebook_leads_stale' },
+      );
+      status.lastStaleAlertAt = now;
+    }
+
+    await this.writeFacebookSyncStatus(status);
+  }
+
+  private async alertAdmins(title: string, message: string, data?: any): Promise<void> {
+    try {
+      const admins = await this.usersRepository.find({
+        where: { role: In([UserRole.ADMIN, UserRole.SUPER_ADMIN]), isActive: true },
+        select: ['id'],
+      });
+      if (admins.length === 0) return;
+      await this.notificationsService.sendBulk(admins.map((a) => a.id), NotificationType.PUSH, title, message, data);
+    } catch (err) {
+      this.logger.error(`Could not alert admins (${title}): ${err.message}`);
+    }
+  }
+
+  /** Real Facebook status for the Integrations page (not just "enabled"). */
+  async getFacebookHealth(live: boolean = false): Promise<any> {
+    const stored = (await this.readFacebookSyncStatus()) || null;
+    let token: { valid: boolean; message: string; expiresAt?: Date | null } | null = null;
+    if (live) {
+      token = await this.facebookService.checkTokenValidity().catch((err) => ({ valid: false, message: err.message }));
+    }
+    let status: string = stored?.status || 'unknown';
+    if (token && !token.valid) status = 'error';
+    return {
+      status,
+      lastRunAt: stored?.lastRunAt || null,
+      lastSuccessAt: stored?.lastSuccessAt || null,
+      lastErrorAt: stored?.lastErrorAt || null,
+      lastError: token && !token.valid ? `Access token invalid: ${token.message}` : stored?.lastError || null,
+      tokenValid: token ? token.valid : stored?.tokenValid ?? null,
+      tokenMessage: token ? token.message : stored?.tokenMessage || null,
+      tokenExpiresAt: token?.expiresAt || stored?.tokenExpiresAt || null,
+      formsChecked: stored?.formsChecked ?? null,
+      imported: stored?.imported ?? null,
+      lastLeadAt: stored?.lastLeadAt || null,
+      leadsStale: stored?.leadsStale ?? null,
+    };
+  }
+
+  /** Therapy catalog for the "Treatment" field of lead forms. */
+  async getTreatmentCatalog(): Promise<Array<{ id: string; name: string }>> {
+    const rows = await this.dataSource.query(
+      `SELECT id, name FROM treatments WHERE "isActive" IS DISTINCT FROM false AND (status IS NULL OR LOWER(status::text) = 'approved') ORDER BY name ASC`,
+    );
+    return rows.map((r: any) => ({ id: r.id, name: r.name }));
   }
 
   async getWebhookLeads({ days = 30, page = 1, limit = 50 }: { days?: number; page?: number; limit?: number }) {

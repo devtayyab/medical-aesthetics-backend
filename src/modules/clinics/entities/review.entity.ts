@@ -54,6 +54,10 @@ export class Review {
   @Column({ nullable: true })
   respondedAt: Date;
 
+  /** Admin can hide the clinic's reply without hiding the review itself. */
+  @Column({ default: false })
+  responseHidden: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

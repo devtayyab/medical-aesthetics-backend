@@ -53,6 +53,15 @@ export const AppointmentCalendar: React.FC = () => {
   const [blockInitialDate, setBlockInitialDate] = useState<string | undefined>();
   const [blockInitialTime, setBlockInitialTime] = useState<string | undefined>();
 
+  // Remember the clinic being viewed so Availability opens on it too.
+  React.useEffect(() => {
+    try {
+      if (filters.clinicId && filters.clinicId !== 'all') sessionStorage.setItem('calendar.viewedClinicId', filters.clinicId);
+    } catch {
+      // storage unavailable: nothing to remember
+    }
+  }, [filters.clinicId]);
+
   // ── Data ────────────────────────────────────────────────────────────────────
   const filtersWithSalesPerson = useMemo(
     () => ({
@@ -290,6 +299,7 @@ export const AppointmentCalendar: React.FC = () => {
         isOpen={isBlockSlotOpen}
         initialDate={blockInitialDate}
         initialTime={blockInitialTime}
+        initialClinicId={filters.clinicId}
         clinics={clinics}
         salespersons={salespersons}
         onClose={() => setIsBlockSlotOpen(false)}
@@ -299,6 +309,7 @@ export const AppointmentCalendar: React.FC = () => {
       <BlockDayModal
         isOpen={isBlockDayOpen}
         initialDate={blockInitialDate}
+        initialClinicId={filters.clinicId}
         clinics={clinics}
         onClose={() => setIsBlockDayOpen(false)}
         onSuccess={handleModalSuccess}

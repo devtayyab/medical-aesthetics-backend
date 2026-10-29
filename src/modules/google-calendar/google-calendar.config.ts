@@ -50,6 +50,7 @@ export class GoogleCalendarConfig {
   get frontendUrl(): string {
     return (
       this.configService.get<string>('APP_FRONTEND_URL') ||
+      this.configService.get<string>('FRONTEND_URL') ||
       this.configService.get<string>('API_BASE_URL') ||
       'http://localhost:3001'
     );

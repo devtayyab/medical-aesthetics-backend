@@ -54,7 +54,9 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   const isOnlineCardPaid = appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD' && Number(appointment.amountPaid || appointment.totalAmount || 0) > 0;
   
   // An appointment is only already paid if money was actually paid online or recorded, NOT if it was booked to pay at venue
-  const isAlreadyPaid = !isVenuePayment && (hasActualPayment || isOnlineCardPaid);
+  // Completion / no-show / payment only from the appointment start time.
+ const notStarted = new Date(appointment.startTime).getTime() > Date.now();
+ const isAlreadyPaid = !isVenuePayment && (hasActualPayment || isOnlineCardPaid);
   const bookedByName = (appointment as any).bookedByInfo?.name || 'System';
   const isOnline = appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD';
 
@@ -323,6 +325,11 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  />
  </div>
 
+ {notStarted && (
+ <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+ Completion, no-show and payment are possible from the appointment start time.
+ </p>
+ )}
  {/* Actions */}
  <div className="flex gap-4 pt-4">
  <button
@@ -336,15 +343,15 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  <button
  type="button"
  onClick={(e) => handleSubmit(e, AppointmentStatus.NO_SHOW)}
- className="px-6 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold flex items-center gap-2"
- disabled={isSubmitting}
+ className="px-6 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+ disabled={isSubmitting || notStarted}
  >
  <AlertTriangle size={16} /> No Show
  </button>
  <button
  type="submit"
- className="flex-1 px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group"
- disabled={isSubmitting}
+ className="flex-1 px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed"
+ disabled={isSubmitting || notStarted}
  >
  {isSubmitting ? 'Finalizing...' : (
  <>

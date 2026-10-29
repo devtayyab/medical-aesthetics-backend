@@ -9,7 +9,6 @@ import {
 import { ServiceCard } from "@/components/molecules/ServiceCard/ServiceCard";
 import type { RootState, AppDispatch } from "@/store";
 import { clinicsAPI } from "@/services/api";
-import { format } from "date-fns";
 import type { Service } from "@/types";
 import { css } from "@emotion/css";
 import { Star, MapPin, Clock, Shield, Award, Info, Search, ShoppingBag, ArrowRight, X } from "lucide-react";
@@ -17,6 +16,7 @@ import BotoxImg from "@/assets/Botox.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { getImageUrl } from "@/utils/imageUrl";
+import { formatDate } from "@/utils/formatters";
 
 const heroSection = css`
   height: 320px;
@@ -82,7 +82,7 @@ export const ClinicDetails: React.FC = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      navigate(`/login?redirect=${encodeURIComponent(`/clinic/${id}`)}`);
       return;
     }
     if (id) {
@@ -110,11 +110,13 @@ export const ClinicDetails: React.FC = () => {
   if (!clinicData) return <div className="p-12 sm:p-20 text-center text-red-500 font-bold text-sm">Vector not found.</div>;
 
   const handleBookService = (service: Service) => {
+    const bookingPath = `/appointment/booking?clinicId=${clinicData.id}&serviceIds=${service.id}`;
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      // Return to the booking she started after login
+      navigate(`/login?redirect=${encodeURIComponent(bookingPath)}`);
       return;
     }
-    navigate(`/appointment/booking?clinicId=${clinicData.id}&serviceIds=${service.id}`);
+    navigate(bookingPath);
   };
 
   const toggleServiceSelection = (service: Service) => {
@@ -126,12 +128,13 @@ export const ClinicDetails: React.FC = () => {
   };
 
   const handleBulkBooking = () => {
+    const serviceIds = selectedServices.map(s => s.id).join(',');
+    const bookingPath = `/appointment/booking?clinicId=${clinicData.id}&serviceIds=${serviceIds}`;
     if (!isAuthenticated) {
-      navigate(`/login?redirect=/clinic/${id}`);
+      navigate(`/login?redirect=${encodeURIComponent(bookingPath)}`);
       return;
     }
-    const serviceIds = selectedServices.map(s => s.id).join(',');
-    navigate(`/appointment/booking?clinicId=${clinicData.id}&serviceIds=${serviceIds}`);
+    navigate(bookingPath);
   };
 
   return (
@@ -287,7 +290,7 @@ export const ClinicDetails: React.FC = () => {
                               </div>
                             </div>
                             <span className="text-[9px] sm:text-[10px] font-black text-gray-300 uppercase tracking-widest">
-                              {format(new Date(review.createdAt), "MMM d, yyyy")}
+                              {formatDate(review.createdAt)}
                             </span>
                           </div>
                           <p className="text-gray-600 leading-relaxed border-l-4 border-[#CBFF38] pl-4 py-1 text-sm sm:text-base font-medium">"{review.comment}"</p>

@@ -91,6 +91,10 @@ export class Appointment {
   @Column({ type: 'uuid', nullable: true })
   cancelledById: string;
 
+  // Cancelled less than 24h before the start; shown to the clinic as "late cancellation".
+  @Column({ type: 'boolean', default: false })
+  isLateCancellation: boolean;
+
   @Column({ type: 'timestamptz', nullable: true })
   noShowMarkedAt: Date;
 

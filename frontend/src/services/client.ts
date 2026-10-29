@@ -9,6 +9,8 @@ export const API_BASE_URL = ENV.API_BASE_URL;
  */
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
+  // Session tokens live in httpOnly cookies set by the API; send them on every request.
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,6 +32,27 @@ export const setupAxiosInterceptors = (
   logoutAction = _actions.logout;
 };
 
+/** Short-lived access token kept in memory only (never in localStorage). Used for sockets. */
+export const getAccessToken = (): string | null => {
+  if (!store) return null;
+  return store.getState()?.auth?.accessToken || null;
+};
+
+/** Same-path check used for redirects after login: only relative app paths are allowed. */
+export const isSafeRedirect = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\');
+
+/** Sends the user to the login page with "Please log in again" and a way back. */
+export const redirectToLoginAfterExpiry = () => {
+  if (typeof window === 'undefined') return;
+  const { pathname, search } = window.location;
+  if (pathname.startsWith('/login')) return;
+  const params = new URLSearchParams({ reason: 'session_expired' });
+  const current = pathname + search;
+  if (isSafeRedirect(current) && current !== '/') params.set('redirect', current);
+  window.location.href = `/login?${params.toString()}`;
+};
+
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null, error?: any) => void)[] = [];
 
@@ -47,23 +70,26 @@ const onRefreshFailed = (error: any) => {
   refreshSubscribers = [];
 };
 
-// Request Interceptor: Attach Bearer token from Redux store or localStorage
+// Request Interceptor: the httpOnly cookie authenticates the request. The in-memory access
+// token is also sent as a Bearer header so cross-site setups and the app WebView keep working.
 api.interceptors.request.use((config) => {
-  let token = null;
-  if (store) {
-    const state = store.getState();
-    token = state?.auth?.accessToken;
-  }
-  if (!token) {
-    token = localStorage.getItem('accessToken');
-  }
-  if (token) {
+  const token = getAccessToken();
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response Interceptor: Automatic JWT token refresh on 401 Unauthorized
+const retryWithToken = (originalRequest: any, token: string | null) => {
+  if (originalRequest.headers) {
+    delete originalRequest.headers.authorization;
+    delete originalRequest.headers.Authorization;
+    if (token) originalRequest.headers.Authorization = `Bearer ${token}`;
+  }
+  return api(originalRequest);
+};
+
+// Response Interceptor: refresh the session once on 401, otherwise ask to log in again.
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -74,23 +100,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Handle token expiration: queue concurrent requests while single refresh is active
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (!store) return Promise.reject(error);
 
-      // If already refreshing, queue this request callback until the new token arrives
+      // If already refreshing, queue this request until the new session arrives
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           subscribeTokenRefresh((token, refreshError) => {
             if (refreshError) {
               reject(refreshError);
-            } else if (token) {
-              if (originalRequest.headers) {
-                delete originalRequest.headers.authorization;
-                delete originalRequest.headers.Authorization;
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              resolve(api(originalRequest));
+            } else {
+              resolve(retryWithToken(originalRequest, token));
             }
           });
         });
@@ -99,79 +119,27 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const state = store.getState();
-      const refreshToken =
-        localStorage.getItem('refreshToken') ||
-        state?.auth?.refreshToken ||
-        sessionStorage.getItem('refreshToken');
+      try {
+        // The refresh token is sent as an httpOnly cookie.
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+        const { accessToken, user } = response.data;
 
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          const { accessToken, refreshToken: newRefreshToken, user } = response.data;
-
-          if (accessToken) {
-            localStorage.setItem('accessToken', accessToken);
-          }
-          if (newRefreshToken) {
-            localStorage.setItem('refreshToken', newRefreshToken);
-          }
-          if (user) {
-            localStorage.setItem('user', JSON.stringify(user));
-            if (user.role) localStorage.setItem('userRole', user.role);
-          }
-
-          if (store && setTokensAction) {
-            store.dispatch(
-              setTokensAction({ accessToken, refreshToken: newRefreshToken, user })
-            );
-          }
-
-          isRefreshing = false;
-          onRefreshed(accessToken);
-
-          if (originalRequest.headers) {
-            delete originalRequest.headers.authorization;
-            delete originalRequest.headers.Authorization;
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          }
-
-          return api(originalRequest);
-        } catch (refreshError: any) {
-          console.error('Refresh failed:', {
-            message: refreshError.response?.data || refreshError.message,
-            status: refreshError.response?.status,
-          });
-
-          isRefreshing = false;
-          onRefreshFailed(refreshError);
-
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          localStorage.removeItem('userRole');
-          sessionStorage.removeItem('refreshToken');
-
-          if (store && logoutAction) {
-            store.dispatch(logoutAction());
-          }
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
+        if (store && setTokensAction) {
+          store.dispatch(setTokensAction({ accessToken, user }));
         }
-      } else {
-        console.warn('No refresh token found, logging out');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('userRole');
-        sessionStorage.removeItem('refreshToken');
+
+        isRefreshing = false;
+        onRefreshed(accessToken);
+        return retryWithToken(originalRequest, accessToken);
+      } catch (refreshError: any) {
+        isRefreshing = false;
+        onRefreshFailed(refreshError);
 
         if (store && logoutAction) {
-          store.dispatch(logoutAction());
+          await store.dispatch(logoutAction());
         }
-        window.location.href = '/login';
+        redirectToLoginAfterExpiry();
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);

@@ -27,6 +27,7 @@ import type { RootState, AppDispatch } from "@/store";
 
 // Luxury clinic background
 import NotificationsBg from "@/assets/notifications_bg.png";
+import { formatDateTime } from "@/utils/formatters";
 
 export interface ClientNotificationItem {
   id: string;
@@ -38,151 +39,6 @@ export interface ClientNotificationItem {
   link?: string;
 }
 
-// Fallback high-end notifications matching the design mockup 1:1
-const DEFAULT_MOCKUP_NOTIFICATIONS: ClientNotificationItem[] = [
-  {
-    id: "notif-1",
-    type: "appointments",
-    title: "Appointment Reminder",
-    message: "Your appointment with Dr. Papadopoulos is tomorrow at 11:00.",
-    createdAt: "2 hours ago",
-    isRead: false,
-    link: "/appointments"
-  },
-  {
-    id: "notif-2",
-    type: "appointments",
-    title: "Booking Confirmed",
-    message: "Your appointment on 12 Apr 2024 at 10:30 has been confirmed.",
-    createdAt: "1 day ago",
-    isRead: true,
-    link: "/appointments"
-  },
-  {
-    id: "notif-3",
-    type: "payments",
-    title: "Payment Receipt",
-    message: "Your payment of €120.00 for HydraFacial® has been completed.",
-    createdAt: "3 days ago",
-    isRead: true,
-    link: "/payments"
-  },
-  {
-    id: "notif-4",
-    type: "reviews",
-    title: "Share Your Experience",
-    message: "How was your treatment? Leave a review and help others.",
-    createdAt: "5 days ago",
-    isRead: true,
-    link: "/reviews"
-  },
-  {
-    id: "notif-5",
-    type: "account",
-    title: "Account Updated",
-    message: "Your personal details have been successfully updated.",
-    createdAt: "1 week ago",
-    isRead: true,
-    link: "/personal-details"
-  },
-  {
-    id: "notif-6",
-    type: "appointments",
-    title: "Aftercare Guidelines Available",
-    message: "Clinical post-procedure recommendations have been added to your diary.",
-    createdAt: "1 week ago",
-    isRead: true,
-    link: "/appointments"
-  },
-  {
-    id: "notif-7",
-    type: "payments",
-    title: "Invoice #INV-2024-041",
-    message: "Official tax invoice for aesthetic consultation is ready for download.",
-    createdAt: "2 weeks ago",
-    isRead: true,
-    link: "/payments"
-  },
-  {
-    id: "notif-8",
-    type: "account",
-    title: "Security Verification",
-    message: "Your contact preferences and phone verification were confirmed.",
-    createdAt: "3 weeks ago",
-    isRead: true,
-    link: "/settings"
-  },
-  {
-    id: "notif-9",
-    type: "appointments",
-    title: "Pre-Treatment Preparation Notice",
-    message: "Please avoid direct UV sunlight and retinoids 48 hours before your laser session.",
-    createdAt: "3 weeks ago",
-    isRead: true,
-    link: "/appointments"
-  },
-  {
-    id: "notif-10",
-    type: "payments",
-    title: "Deposit Received",
-    message: "Your €50.00 reservation deposit for Laser Hair Removal course was received.",
-    createdAt: "4 weeks ago",
-    isRead: true,
-    link: "/payments"
-  },
-  {
-    id: "notif-11",
-    type: "reviews",
-    title: "Loyalty Points Awarded",
-    message: "+50 beauty credits have been credited to your wallet for reviewing your Botox consultation.",
-    createdAt: "1 month ago",
-    isRead: true,
-    link: "/reviews"
-  },
-  {
-    id: "notif-12",
-    type: "system",
-    title: "Platform Maintenance",
-    message: "System core updates completed smoothly with enhanced booking security.",
-    createdAt: "1 month ago",
-    isRead: true
-  },
-  {
-    id: "notif-13",
-    type: "appointments",
-    title: "Clinical Follow-up Assessment",
-    message: "Dr. Papadopoulos invited you to complete your 14-day recovery questionnaire.",
-    createdAt: "1 month ago",
-    isRead: true,
-    link: "/appointments"
-  },
-  {
-    id: "notif-14",
-    type: "account",
-    title: "VIP Tier Activated",
-    message: "Congratulations! You have reached Silver Tier with complimentary clinic perks.",
-    createdAt: "2 months ago",
-    isRead: true,
-    link: "/my-account"
-  },
-  {
-    id: "notif-15",
-    type: "payments",
-    title: "Package Balance Updated",
-    message: "4 sessions remaining in your 6-session Dermal Infusion package.",
-    createdAt: "2 months ago",
-    isRead: true,
-    link: "/payments"
-  },
-  {
-    id: "notif-16",
-    type: "system",
-    title: "Glyfada Branch Grand Opening",
-    message: "New clinic location in Glyfada is now open for bookings and consultations.",
-    createdAt: "2 months ago",
-    isRead: true
-  }
-];
 
 export const ClientNotifications: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -214,7 +70,7 @@ export const ClientNotifications: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(5);
 
-  // Format notifications or fallback to mockups if empty
+  // Format notifications (empty list when there are none)
   const allNotifications: ClientNotificationItem[] = useMemo(() => {
     if (rawNotifications && rawNotifications.length > 0) {
       return rawNotifications.map((n: any) => {
@@ -230,13 +86,14 @@ export const ClientNotifications: React.FC = () => {
           type: catType,
           title: n.title || "Notification",
           message: n.message || n.body || "",
-          createdAt: n.createdAt ? new Date(n.createdAt).toLocaleDateString() : "Recently",
+          createdAt: n.createdAt ? formatDateTime(n.createdAt) : "Recently",
           isRead: !!n.isRead,
           link: n.data?.link || (catType === "appointments" ? "/appointments" : undefined)
         };
       });
     }
-    return DEFAULT_MOCKUP_NOTIFICATIONS;
+    // No fake placeholder notifications: an empty list shows the empty state.
+    return [];
   }, [rawNotifications]);
 
   // Reset page when filter or search changes

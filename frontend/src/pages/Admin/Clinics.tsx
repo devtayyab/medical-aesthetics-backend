@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { fetchAdminClinics, createAdminClinic, updateAdminClinic, fetchUsers } from "@/store/slices/adminSlice";
 import { adminAPI } from "@/services/api";
+import clinicApi from "@/services/api/clinicApi";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 import ImageUpload from "@/components/atoms/ImageUpload";
@@ -110,15 +111,38 @@ export const Clinics: React.FC = () => {
   const [clinicServices, setClinicServices] = useState<any[]>([]);
   const [isAddingService, setIsAddingService] = useState(false);
   const [editingService, setEditingService] = useState<any | null>(null);
-  const [serviceForm, setServiceForm] = useState({
+  const emptyServiceForm = {
     name: "",
-    category: "Dermal Fillers",
-    price: 350,
+    category: "",
+    categoryId: "",
+    treatmentId: "",
+    price: 0,
     durationMinutes: 45,
     shortDescription: "",
     fullDescription: "",
     imageUrl: ""
-  });
+  };
+  const [serviceForm, setServiceForm] = useState(emptyServiceForm);
+  // Therapy Catalog (same categories and therapies as everywhere else)
+  const [catalogCategories, setCatalogCategories] = useState<any[]>([]);
+  const [catalogTreatments, setCatalogTreatments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isAddingService || catalogCategories.length > 0) return;
+    clinicApi.services.getCategories()
+      .then((cats) => setCatalogCategories(Array.isArray(cats) ? cats : []))
+      .catch((err) => console.error("Failed to load therapy categories", err));
+  }, [isAddingService, catalogCategories.length]);
+
+  useEffect(() => {
+    if (!serviceForm.categoryId) {
+      setCatalogTreatments([]);
+      return;
+    }
+    clinicApi.services.getTreatmentsByCategory(serviceForm.categoryId)
+      .then((ts) => setCatalogTreatments(Array.isArray(ts) ? ts : []))
+      .catch((err) => console.error("Failed to load therapies", err));
+  }, [serviceForm.categoryId]);
   const [isBlocking, setIsBlocking] = useState(false);
   const [editingBlockedSlot, setEditingBlockedSlot] = useState<any | null>(null);
   const [blockForm, setBlockForm] = useState({
@@ -201,26 +225,30 @@ export const Clinics: React.FC = () => {
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClinic) return;
+    if (!(Number(serviceForm.price) > 0)) {
+      toast.error(isGreek ? "Ορίστε τιμή μεγαλύτερη από €0." : "Please set a price greater than €0.");
+      return;
+    }
+    if (!serviceForm.treatmentId && !serviceForm.name.trim()) {
+      toast.error(isGreek ? "Επιλέξτε θεραπεία από τον κατάλογο." : "Please choose a therapy from the catalog.");
+      return;
+    }
+    const { categoryId, ...rest } = serviceForm;
+    const payload: any = { ...rest, clinicId: editingClinic.id };
+    if (!payload.treatmentId) delete payload.treatmentId;
     try {
       if (editingService) {
-        await adminAPI.updateClinicService(editingService.id, { ...serviceForm, clinicId: editingClinic.id });
+        await adminAPI.updateClinicService(editingService.id, payload);
       } else {
-        await adminAPI.createClinicService({ ...serviceForm, clinicId: editingClinic.id });
+        await adminAPI.createClinicService(payload);
       }
       setIsAddingService(false);
       setEditingService(null);
-      setServiceForm({
-        name: "",
-        category: "Dermal Fillers",
-        price: 350,
-        durationMinutes: 45,
-        shortDescription: "",
-        fullDescription: "",
-        imageUrl: ""
-      });
+      setServiceForm(emptyServiceForm);
       fetchClinicServices(editingClinic.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save service", err);
+      toast.error(err?.response?.data?.message || (isGreek ? "Η αποθήκευση απέτυχε." : "Failed to save service."));
     }
   };
 
@@ -229,7 +257,9 @@ export const Clinics: React.FC = () => {
     setServiceForm({
       name: service.treatment?.name || service.name || "",
       category: service.treatment?.category || service.category || "",
-      price: service.price,
+      categoryId: service.treatment?.categoryId || "",
+      treatmentId: service.treatmentId || service.treatment?.id || "",
+      price: Number(service.price) || 0,
       durationMinutes: service.durationMinutes,
       shortDescription: service.treatment?.shortDescription || service.description || "",
       fullDescription: service.treatment?.fullDescription || "",
@@ -959,10 +989,7 @@ export const Clinics: React.FC = () => {
                         setIsAddingService(!isAddingService);
                         if (!isAddingService) {
                           setEditingService(null);
-                          setServiceForm({
-                            name: "", category: "Dermal Fillers", price: 350, durationMinutes: 45,
-                            shortDescription: "", fullDescription: "", imageUrl: ""
-                          });
+                          setServiceForm(emptyServiceForm);
                         }
                       }}
                       className="px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-xl flex items-center gap-2 hover:shadow-lg transition-all"
@@ -1009,17 +1036,43 @@ export const Clinics: React.FC = () => {
                         </div>
                         <div className="space-y-4">
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{isGreek ? 'Κατηγορία' : 'Category'}</label>
                             <select
                               className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none"
-                              value={serviceForm.category}
-                              onChange={e => setServiceForm({ ...serviceForm, category: e.target.value })}
+                              value={serviceForm.categoryId}
+                              disabled={!!editingService}
+                              onChange={e => {
+                                const cat = catalogCategories.find((c: any) => c.id === e.target.value);
+                                setServiceForm({ ...serviceForm, categoryId: e.target.value, category: cat?.name || "", treatmentId: "", name: "" });
+                              }}
                             >
-                              <option>Dermal Fillers</option>
-                              <option>Facial Treatments</option>
-                              <option>Laser Therapy</option>
-                              <option>Skin Boosters</option>
-                              <option>Anti-Aging</option>
+                              <option value="">{isGreek ? 'Επιλέξτε κατηγορία...' : 'Select category...'}</option>
+                              {serviceForm.categoryId && !catalogCategories.some((c: any) => c.id === serviceForm.categoryId) && (
+                                <option value={serviceForm.categoryId}>{serviceForm.category}</option>
+                              )}
+                              {catalogCategories.map((cat: any) => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{isGreek ? 'Θεραπεία (Κατάλογος)' : 'Therapy (Catalog)'}</label>
+                            <select
+                              className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none"
+                              value={serviceForm.treatmentId}
+                              disabled={!!editingService || !serviceForm.categoryId}
+                              onChange={e => {
+                                const t = catalogTreatments.find((x: any) => x.id === e.target.value);
+                                setServiceForm({ ...serviceForm, treatmentId: e.target.value, name: t?.name || "" });
+                              }}
+                            >
+                              <option value="">{serviceForm.categoryId ? (isGreek ? 'Επιλέξτε θεραπεία...' : 'Choose therapy...') : (isGreek ? 'Πρώτα επιλέξτε κατηγορία' : 'Select a category first')}</option>
+                              {serviceForm.treatmentId && !catalogTreatments.some((t: any) => t.id === serviceForm.treatmentId) && (
+                                <option value={serviceForm.treatmentId}>{serviceForm.name}</option>
+                              )}
+                              {catalogTreatments.map((t: any) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="space-y-1">

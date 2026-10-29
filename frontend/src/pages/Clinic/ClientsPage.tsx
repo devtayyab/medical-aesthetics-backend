@@ -6,6 +6,7 @@ import clinicApi from"../../services/api/clinicApi";
 import { Users, Search, Calendar, Euro, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from"lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
 import ClinicBookingModal from"../../components/clinic/ClinicBookingModal";
+import toast from"react-hot-toast";
 
 const ClientsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -18,6 +19,7 @@ const ClientsPage: React.FC = () => {
  const [showDetailsModal, setShowDetailsModal] = useState(false);
  const [showBookingModal, setShowBookingModal] = useState(false);
  const [prefillForBooking, setPrefillForBooking] = useState<any>(null);
+ const [showAddPatient, setShowAddPatient] = useState(false);
 
   const [isGreek, setIsGreek] = useState<boolean>(
     () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
@@ -90,6 +92,13 @@ const ClientsPage: React.FC = () => {
  </div>
  </div>
  
+ <div className="flex w-full md:w-auto items-center gap-3">
+ <button
+ onClick={() => setShowAddPatient(true)}
+ className="h-11 px-5 shrink-0 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:bg-gray-900 transition-all"
+ >
+ <Plus size={14} /> {isGreek ? 'Νέος ασθενής' : 'Add patient'}
+ </button>
  <div className="relative w-full md:w-96">
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
  <input
@@ -103,14 +112,15 @@ const ClientsPage: React.FC = () => {
  </div>
  </div>
  </div>
+ </div>
 
  <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
  {/* Stats Grid */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
- <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} trend="+12%" highlight />
- <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} trend="+5.4%" />
- <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} trend="+18%" />
- <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} trend="+2.1%" />
+ <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} highlight />
+ <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} />
+ <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} />
+ <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} />
  </div>
 
  {/* Clients Table/Grid */}
@@ -201,6 +211,18 @@ const ClientsPage: React.FC = () => {
  )}
  </AnimatePresence>
 
+ {showAddPatient && (
+ <AddPatientModal
+ clinicId={activeClinicId || undefined}
+ isGreek={isGreek}
+ onClose={() => setShowAddPatient(false)}
+ onSaved={() => {
+ setShowAddPatient(false);
+ dispatch(fetchClients({}));
+ }}
+ />
+ )}
+
  {showBookingModal && activeClinicId && (
  <ClinicBookingModal
  isOpen={showBookingModal}
@@ -221,6 +243,151 @@ const ClientsPage: React.FC = () => {
  );
 };
 
+
+// ---------------------------------------------------------------------------
+// Medical record export: own-clinic appointments only (server-scoped), rendered
+// as a printable document; the browser's print dialog saves it as a PDF.
+// ---------------------------------------------------------------------------
+const ATHENS_TZ = 'Europe/Athens';
+const fmtAthensDateTime = (d: string | Date) =>
+ new Intl.DateTimeFormat('en-GB', { timeZone: ATHENS_TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+ .format(new Date(d))
+ .replace(',', '');
+const escapeHtml = (v: any) =>
+ String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
+const fmtEuro = (n: any) => (n === null || n === undefined || n === '' ? '-' : `€${Number(n).toFixed(2)}`);
+
+const exportMedicalRecordPdf = async (clientId: string) => {
+ const record = await clinicApi.patients.medicalRecord(clientId);
+ const p = record.patient || {};
+ const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Patient';
+ const rows = (record.appointments || []).map((a: any) => `
+ <tr>
+ <td>${escapeHtml(fmtAthensDateTime(a.startTime))}</td>
+ <td>${escapeHtml(a.treatment)}</td>
+ <td>${escapeHtml(a.clinicName || '')}</td>
+ <td class="num">${escapeHtml(fmtEuro(a.price))}</td>
+ <td>${escapeHtml(a.status)}</td>
+ <td class="notes">${escapeHtml(a.clinicNotes || '')}</td>
+ </tr>`).join('');
+ const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(`Medical record - ${name}`)}</title>
+ <style>
+ body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:32px;font-size:12px}
+ h1{font-size:20px;margin:0 0 4px} .muted{color:#555}
+ .card{border:1px solid #ddd;border-radius:8px;padding:12px 16px;margin:16px 0}
+ table{width:100%;border-collapse:collapse;margin-top:8px} th,td{border-bottom:1px solid #e5e5e5;text-align:left;padding:6px 8px;vertical-align:top}
+ th{background:#f5f5f5;font-size:11px;text-transform:uppercase} .num{text-align:right;white-space:nowrap} .notes{white-space:pre-wrap;max-width:260px}
+ @page{size:A4;margin:16mm}
+ </style></head><body>
+ <h1>Medical record</h1>
+ <div class="muted">${escapeHtml((record.clinics || []).join(', '))} · Generated ${escapeHtml(fmtAthensDateTime(record.generatedAt || new Date()))} (Athens time)</div>
+ <div class="card">
+ <div><strong>Name:</strong> ${escapeHtml(name)}</div>
+ <div><strong>Phone:</strong> ${escapeHtml(p.phone || '-')}</div>
+ <div><strong>Email:</strong> ${escapeHtml(p.email || '-')}</div>
+ </div>
+ <h2 style="font-size:14px">Appointment history (${(record.appointments || []).length})</h2>
+ <table><thead><tr><th>Date</th><th>Treatment</th><th>Clinic</th><th class="num">Price</th><th>Status</th><th>Clinic notes</th></tr></thead>
+ <tbody>${rows || '<tr><td colspan="6">No appointments at this clinic.</td></tr>'}</tbody></table>
+ </body></html>`;
+
+ const iframe = document.createElement('iframe');
+ iframe.style.position = 'fixed';
+ iframe.style.right = '0';
+ iframe.style.bottom = '0';
+ iframe.style.width = '0';
+ iframe.style.height = '0';
+ iframe.style.border = '0';
+ document.body.appendChild(iframe);
+ const doc = iframe.contentWindow?.document;
+ if (!doc || !iframe.contentWindow) {
+ document.body.removeChild(iframe);
+ throw new Error('Could not open the print view');
+ }
+ doc.open();
+ doc.write(html);
+ doc.close();
+ const previousTitle = document.title;
+ // The PDF file name defaults to the document title
+ document.title = `Medical record - ${name}`;
+ setTimeout(() => {
+ iframe.contentWindow?.focus();
+ iframe.contentWindow?.print();
+ setTimeout(() => {
+ document.title = previousTitle;
+ if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+ }, 1000);
+ }, 250);
+};
+
+// "Add patient" (phone rule): a phone BeautyDoctors already knows is linked to
+// that contact; a new phone becomes the clinic's own patient.
+const AddPatientModal = ({ clinicId, isGreek, onClose, onSaved }: { clinicId?: string; isGreek: boolean; onClose: () => void; onSaved: () => void }) => {
+ const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+ const [saving, setSaving] = useState(false);
+ const [error, setError] = useState<string | null>(null);
+
+ const submit = async (e: React.FormEvent) => {
+ e.preventDefault();
+ setError(null);
+ const digits = form.phone.replace(/\D/g, '');
+ if (!form.firstName.trim()) return setError(isGreek ? 'Το όνομα είναι υποχρεωτικό' : 'First name is required');
+ if (digits.length < 10) return setError(isGreek ? 'Συμπληρώστε ολόκληρο τον αριθμό κινητού' : 'Enter the full mobile number');
+ setSaving(true);
+ try {
+ const res = await clinicApi.patients.create({ ...form, clinicId });
+ toast.success(res.linkedToExisting
+ ? (isGreek ? 'Ο αριθμός υπάρχει ήδη: ο ασθενής συνδέθηκε με την υπάρχουσα επαφή' : 'Phone already known: linked to the existing contact')
+ : (isGreek ? 'Ο ασθενής προστέθηκε' : 'Patient added'));
+ onSaved();
+ } catch (err: any) {
+ setError(err?.response?.data?.message || err?.message || 'Failed to add patient');
+ } finally {
+ setSaving(false);
+ }
+ };
+
+ const field = (key: keyof typeof form, label: string, type = 'text') => (
+ <label className="block">
+ <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</span>
+ <input
+ type={type}
+ name={`patient-${key}`}
+ autoComplete="off"
+ value={form[key]}
+ onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+ className="mt-1 w-full h-11 px-4 bg-gray-50 rounded-xl text-sm font-semibold text-gray-900 outline-none focus:ring-1 focus:ring-black"
+ />
+ </label>
+ );
+
+ return (
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1002] p-4">
+ <form onSubmit={submit} autoComplete="off" className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4">
+ <div className="flex items-center justify-between">
+ <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900">{isGreek ? 'Νέος ασθενής' : 'Add patient'}</h2>
+ <button type="button" onClick={onClose} className="size-9 rounded-xl bg-gray-50 flex items-center justify-center"><X size={18} /></button>
+ </div>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+ {field('firstName', isGreek ? 'Όνομα' : 'First name')}
+ {field('lastName', isGreek ? 'Επώνυμο' : 'Last name')}
+ </div>
+ {field('phone', isGreek ? 'Κινητό (ολόκληρο)' : 'Mobile (full number)', 'tel')}
+ {field('email', 'Email', 'email')}
+ <p className="text-[11px] text-gray-500">
+ {isGreek
+ ? 'Αν ο αριθμός υπάρχει ήδη, ο ασθενής συνδέεται με την υπάρχουσα επαφή. Νέος αριθμός = δικός σας ασθενής.'
+ : 'If the phone already exists, the patient is linked to that contact. A new phone becomes your own patient.'}
+ </p>
+ {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+ <button type="submit" disabled={saving} className="w-full h-11 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[11px] tracking-widest disabled:opacity-50">
+ {saving ? '...' : (isGreek ? 'Αποθήκευση' : 'Save patient')}
+ </button>
+ </form>
+ </div>
+ );
+};
+
 const StatCard = ({ title, value, icon, trend, highlight }: any) => (
  <div className={`bg-white p-5 rounded-2xl border transition-all duration-300 group relative overflow-hidden ${
  highlight ? 'border-[#CBFF38] shadow-sm shadow-lime-500/5' : 'border-gray-100 hover:border-gray-200'
@@ -229,7 +396,7 @@ const StatCard = ({ title, value, icon, trend, highlight }: any) => (
  <div className={`size-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
  {icon}
  </div>
- <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>
+ {trend && <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>}
  </div>
  <div>
  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5">{title}</p>
@@ -324,7 +491,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
  <div>
  <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||"Clinical Service"}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "Assigned Practitioner"}</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "-"}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">
@@ -390,7 +557,13 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  Patient exhibits high retention velocity. Recommended protocol: VIP Loyalty Provisioning Level 2.
  </p>
  <button 
- onClick={() => alert("Medical Record Export is being generated. You will be notified when the PDF is ready.")}
+ onClick={async () => {
+ try {
+ await exportMedicalRecordPdf(innerClient.id);
+ } catch (err: any) {
+ toast.error(err?.response?.data?.message || err?.message || 'Could not export the medical record');
+ }
+ }}
  className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all"
  >
  Export Medical Record

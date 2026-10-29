@@ -519,7 +519,7 @@ const mainCategories = [
  </>
  ) : !isAuthenticated ? (
  <span 
- onClick={(e) => { e.stopPropagation(); navigate('/login'); }}
+ onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
  className="text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-widest flex items-center gap-1 cursor-pointer transition-colors"
  title={isGreek ? "Σύνδεση για εμφάνιση τιμής" : "Login to view price"}
  >
@@ -846,36 +846,35 @@ const mainCategories = [
       </p>
 
       <div className="flex flex-wrap justify-center lg:justify-start gap-4">
-        <a
-          href="https://apps.apple.com/app/beauty-doctor/id6470000000"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
-          aria-label="Download on App Store"
+        {/* Apps are not published yet: buttons stay visible but are disabled with "coming soon" */}
+        <div
+          className="relative bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 opacity-60 cursor-not-allowed shadow-lg select-none"
+          aria-disabled="true"
+          aria-label={isGreek ? 'App Store: έρχεται σύντομα' : 'App Store: coming soon'}
+          title={isGreek ? 'Έρχεται σύντομα' : 'Coming soon'}
         >
           <FaApple size={32} />
           <span className="text-left leading-none">
             <span className="text-[10px] uppercase tracking-wider block mb-1">
-              {isGreek ? 'Λήψη στο' : 'Download on the'}
+              {isGreek ? 'Έρχεται σύντομα στο' : 'Coming soon on the'}
             </span>
             <span className="font-bold text-lg">App Store</span>
           </span>
-        </a>
-        <a
-          href="https://play.google.com/store/apps/details?id=com.beautydoctor.clientapp"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
-          aria-label="Get it on Google Play"
+        </div>
+        <div
+          className="relative bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 opacity-60 cursor-not-allowed shadow-lg select-none"
+          aria-disabled="true"
+          aria-label={isGreek ? 'Google Play: έρχεται σύντομα' : 'Google Play: coming soon'}
+          title={isGreek ? 'Έρχεται σύντομα' : 'Coming soon'}
         >
           <FaGooglePlay size={28} />
           <span className="text-left leading-none">
             <span className="text-[10px] uppercase tracking-wider block mb-1">
-              {isGreek ? 'Αποκτήστε το στο' : 'GET IT ON'}
+              {isGreek ? 'Έρχεται σύντομα στο' : 'Coming soon on'}
             </span>
             <span className="font-bold text-lg">Google Play</span>
           </span>
-        </a>
+        </div>
       </div>
     </div>
 

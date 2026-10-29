@@ -164,7 +164,7 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {
-    return appointments.map((apt: any) => {
+    return appointments.filter((apt: any) => !apt.isBlocked).map((apt: any) => {
       const primaryPrice = parseFloat(String(apt.service?.price || 0));
       const additionalServicesTotal = (apt.additionalServices || []).reduce(
         (sum: number, s: any) => sum + parseFloat(String(s.price || 0)),

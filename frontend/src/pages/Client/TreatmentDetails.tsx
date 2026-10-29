@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from"react";
+import React, { useEffect, useState } from"react";
 import type { Treatment } from"@/types";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -6,7 +6,7 @@ import type { RootState } from "@/store";
 import { clinicsAPI } from "@/services/api";
 import { Button } from "@/components/atoms/Button/Button";
 import { css } from "@emotion/css";
-import { MapPin, ChevronRight, Info, Shield, Award, Sparkles, Star, Check, Euro, Clock, Map as MapIcon, Layout, Maximize2, Settings2, Lock } from "lucide-react";
+import { MapPin, ChevronRight, Info, Shield, Award, Sparkles, Check, Euro, Clock, Map as MapIcon, Layout, Maximize2, Settings2, Lock } from "lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
 import { ClinicMap } from"@/components/organisms/ClinicMap/ClinicMap";
 import { SearchBar } from"@/components/organisms/SearchBar";
@@ -137,14 +137,6 @@ export const TreatmentDetails: React.FC = () => {
  window.scrollTo(0, 0);
  }, [id]);
 
- const mapCenter = useMemo(() => {
- if (treatment?.offerings && treatment.offerings.length > 0) {
- const lat = treatment.offerings.reduce((sum, o) => sum + Number(o.latitude || 0), 0) / treatment.offerings.length;
- const lng = treatment.offerings.reduce((sum, o) => sum + Number(o.longitude || 0), 0) / treatment.offerings.length;
- return [lat || 37.9838, lng || 23.7275] as [number, number];
- }
- return [37.9838, 23.7275] as [number, number];
- }, [treatment]);
 
  const handleSearch = (filters: any) => {
  const params = new URLSearchParams();
@@ -205,14 +197,6 @@ export const TreatmentDetails: React.FC = () => {
  </button>
  </div>
 
- <div className="flex items-center gap-3 mb-6">
- <div className="flex text-[#CBFF38] gap-0.5">
- {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
- </div>
- <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">
- Verified Excellence • 384 Reports
- </span>
- </div>
 
  <p className="text-[11px] md:text-xs text-gray-400 leading-relaxed mb-6 max-w-lg">
  {treatment.shortDescription ||"Precision clinical implementation with results optimized for individual anatomical structures."}
@@ -260,8 +244,6 @@ export const TreatmentDetails: React.FC = () => {
  latitude: o.latitude,
  longitude: o.longitude
  })) || []} 
- center={mapCenter} 
- zoom={13} 
  />
  </motion.div>
  )}
@@ -290,7 +272,7 @@ export const TreatmentDetails: React.FC = () => {
                 To access verified aesthetic clinics, expert practitioners, and real-time treatment prices, please log in.
               </p>
               <button
-                onClick={() => navigate(`/login?redirect=/treatment/${id}`)}
+                onClick={() => navigate(`/login?redirect=${encodeURIComponent(`/treatment/${id}`)}`)}
                 className="px-8 py-3.5 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-white transition-all shadow-lg inline-flex items-center gap-2"
               >
                 Log In / Register <ChevronRight size={14} />
