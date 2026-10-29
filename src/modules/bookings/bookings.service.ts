@@ -469,6 +469,13 @@ export class BookingsService {
 
           if (isSameClient) {
             console.log(`🔄 [BookingsService] Removing previous pending payment appointment (${apt.id}) for same client so they can re-book.`);
+            // Give back the gift card the abandoned booking had claimed, or the client loses it
+            if (apt.giftCardId) {
+              await this.releaseGiftCardClaim(apt.id, {
+                id: apt.giftCardId,
+                balance: Number(apt.giftCardBalanceBefore ?? apt.giftCardAmountRedeemed ?? 0),
+              });
+            }
             await this.appointmentsRepository.remove(apt);
             continue;
           }
@@ -510,6 +517,7 @@ export class BookingsService {
       validGiftCard = await this.financialService.validateGiftCard(createAppointmentDto.giftCardCode);
       if (validGiftCard && validGiftCard.valid) {
         appointmentData.giftCardId = validGiftCard.id;
+        appointmentData.giftCardBalanceBefore = validGiftCard.balance;
         
         const discount = Math.min(validGiftCard.balance, appointmentData.totalAmount);
         appointmentData.giftCardAmountRedeemed = discount;
@@ -582,7 +590,10 @@ export class BookingsService {
     const bookedTreatmentLabel = await this.getTreatmentLabel(appointmentWithRelations);
 
     // One notification event; recipients are decided in AppointmentNotificationsListener.
-    this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
+    // Sent only once the booking is final: a card booking whose payment order fails is deleted
+    // again, and must not have announced itself to staff, the clinic and the client.
+    const notifyCreated = () =>
+      this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
 
       // If card payment, generate Viva Wallet redirect URL
       // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
@@ -617,6 +628,7 @@ export class BookingsService {
           await this.appointmentsRepository.update(savedAppointment.id, {
             status: AppointmentStatus.CONFIRMED,
           });
+          notifyCreated();
           return {
             ...appointmentWithRelations,
             redirectUrl: demoRedirectUrl,
@@ -636,6 +648,7 @@ export class BookingsService {
         });
 
         console.log(`[Viva Wallet] Payment order created. Redirect URL: ${redirectUrl}`);
+        notifyCreated();
 
         return {
           ...appointmentWithRelations,
@@ -654,6 +667,8 @@ export class BookingsService {
       }
     }
 
+
+    notifyCreated();
 
     // Emit event for notifications with full relations (safe try/catch)
     try {
@@ -773,13 +788,29 @@ export class BookingsService {
     return r === UserRole.CLINIC_OWNER || r === UserRole.DOCTOR || r === UserRole.SECRETARIAT;
   }
 
+  /**
+   * Clinic ids a clinic account works for: its assigned clinic, clinics it owns, and (for owners)
+   * co-owned clinics from clinic_ownership. Same rule as ClinicPatientsService.resolveClinicIds.
+   */
+  async clinicIdsForAccount(userId: string, role?: string | null): Promise<string[]> {
+    const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+    if (!user) return [];
+    const ids = new Set<string>((user.ownedClinics || []).map(c => String(c.id)));
+    if (user.assignedClinicId) ids.add(String(user.assignedClinicId));
+    if (String(role || user.role || '').toLowerCase() === UserRole.CLINIC_OWNER) {
+      const rows: { clinicId: string }[] = await this.usersRepository.manager.query(
+        'SELECT "clinicId" FROM clinic_ownership WHERE "ownerUserId" = $1',
+        [userId],
+      );
+      rows.forEach(r => ids.add(String(r.clinicId)));
+    }
+    return [...ids];
+  }
+
   /** Throws unless a clinic account works for this clinic. Other roles are not limited here. */
   async assertClinicAccountCanUseClinic(userId: string, role: string, clinicId?: string | null): Promise<void> {
     if (!this.isClinicAccountRole(role)) return;
-    const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-    const clinicIds = [...(user?.ownedClinics || []).map(c => c.id), user?.assignedClinicId]
-      .filter(Boolean)
-      .map(String);
+    const clinicIds = await this.clinicIdsForAccount(userId, role);
     if (!clinicId || !clinicIds.includes(String(clinicId))) {
       throw new ForbiddenException('You do not have access to this clinic');
     }
@@ -1541,10 +1572,9 @@ export class BookingsService {
       if (normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'manager') {
         queryBuilder.where('1=1');
       } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
-        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+        const user = await this.usersRepository.findOne({ where: { id: userId }, select: ['id'] });
         if (!user) throw new NotFoundException('User not found');
-        const clinicIds = (user.ownedClinics || []).map(c => c.id);
-        if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+        const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
 
         if (clinicIds.length > 0) {
           queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
@@ -1732,14 +1762,9 @@ export class BookingsService {
       }
 
       if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
-        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-        if (user) {
-          const clinicIds = (user.ownedClinics || []).map(c => c.id);
-          if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-
-          if (clinicIds.length > 0) {
-            blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
-          }
+        const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
+        if (clinicIds.length > 0) {
+          blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
         }
       }
 
@@ -1787,11 +1812,7 @@ export class BookingsService {
 
     // Add role-based filtering
     if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-      const availableClinicIds = [
-        ...(user?.ownedClinics || []).map(c => c.id),
-        user?.assignedClinicId
-      ].filter(Boolean);
+      const availableClinicIds = await this.clinicIdsForAccount(userId, userRole);
 
       if (availableClinicIds.length > 0) {
         queryBuilder.andWhere('appointment.clinicId IN (:...availableClinicIds)', { availableClinicIds });

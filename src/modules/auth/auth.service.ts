@@ -23,6 +23,8 @@ const LOCK_MINUTES = 15;
 const LOGIN_CODE_TTL_MINUTES = 10;
 const LOGIN_CODE_MAX_ATTEMPTS = 5;
 const LOGIN_CODE_RESEND_SECONDS = 60;
+// An already-rotated refresh token still returns the session it produced for this long
+const REFRESH_GRACE_SECONDS = 30;
 // Compared against when the email is unknown, so timing does not reveal which accounts exist.
 const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 12);
 
@@ -251,7 +253,37 @@ export class AuthService {
     return userData;
   }
 
+  /**
+   * Refresh tokens rotate on every refresh. Two tabs (or a tab's restore + another tab's 401 retry)
+   * often refresh with the same token at once: the second would fail and log the user out everywhere.
+   * So the same old token gets the same new session for a short grace period (per server process).
+   */
+  private readonly recentRefreshes = new Map<string, { userId?: string; session: Promise<IssuedSession>; expiresAt: number }>();
+
+  private forgetRecentRefreshes(userId: string) {
+    for (const [token, entry] of this.recentRefreshes) {
+      if (entry.userId === userId) this.recentRefreshes.delete(token);
+    }
+  }
+
   async refreshToken(refreshToken: string): Promise<IssuedSession> {
+    const now = Date.now();
+    for (const [token, entry] of this.recentRefreshes) {
+      if (entry.expiresAt <= now) this.recentRefreshes.delete(token);
+    }
+    const recent = refreshToken ? this.recentRefreshes.get(refreshToken) : undefined;
+    if (recent) return recent.session;
+
+    const session = this.rotateRefreshToken(refreshToken);
+    if (refreshToken) {
+      const userId = (this.jwtService.decode(refreshToken) as any)?.sub;
+      this.recentRefreshes.set(refreshToken, { userId, session, expiresAt: now + REFRESH_GRACE_SECONDS * 1000 });
+      session.catch(() => this.recentRefreshes.delete(refreshToken));
+    }
+    return session;
+  }
+
+  private async rotateRefreshToken(refreshToken: string): Promise<IssuedSession> {
     if (!refreshToken) {
       throw new UnauthorizedException("Session expired. Please log in again.");
     }
@@ -391,6 +423,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
+    this.forgetRecentRefreshes(userId);
     await this.usersService.updateRefreshToken(userId, null);
   }
 
@@ -400,6 +433,7 @@ export class AuthService {
       const payload: any = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
       });
+      this.forgetRecentRefreshes(payload.sub);
       const user = await this.usersService.findById(payload.sub);
       if (user && user.refreshToken === refreshToken) {
         await this.usersService.updateRefreshToken(user.id, null);

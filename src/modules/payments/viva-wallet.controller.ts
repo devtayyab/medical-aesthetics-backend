@@ -10,6 +10,11 @@ import { VivaWalletService } from './viva-wallet.service';
 import { FinancialService } from './financial.service';
 import { PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
 import { GiftCard } from '../clinics/entities/gift-card.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+
+// Payments processed at once under the advisory lock. Each holds one pool connection while its
+// queries need another, so this must stay well below the DB pool size (default 10).
+const MAX_CONCURRENT_PAYMENT_LOCKS = 3;
 
 /**
  * Viva Wallet Webhook & Redirect Handler
@@ -37,7 +42,11 @@ export class VivaWalletController {
         private clinicsRepository: Repository<Clinic>,
         private vivaWalletService: VivaWalletService,
         private financialService: FinancialService,
+        private notificationsService: NotificationsService,
     ) { }
+
+    private activePaymentLocks = 0;
+    private paymentLockWaiters: (() => void)[] = [];
 
     /**
      * Viva Wallet calls this URL after a SUCCESSFUL payment.
@@ -119,10 +128,14 @@ export class VivaWalletController {
             // Try Appointment
             const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns } });
             if (appointment) {
-                const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(appointment.status || '').toUpperCase());
+                const currentStatus = String(appointment.status || '').toUpperCase();
+                const isCompleted = ['COMPLETED', 'EXECUTED'].includes(currentStatus);
+                // Paid after it was cancelled / marked no-show / deleted (e.g. checkout tab left open):
+                // the money is recorded, but the booking is not revived and the clinic is not paid out.
+                const isClosed = ['CANCELLED', 'NO_SHOW', 'DELETED'].includes(currentStatus);
                 // NOTE: do not set amountPaid here — recordPayment() is the single source of
                 // truth and increments amountPaid, otherwise the amount is counted twice.
-                if (!isCompleted) {
+                if (!isCompleted && !isClosed) {
                     await this.appointmentsRepository.update(merchantTrns, {
                         status: AppointmentStatus.CONFIRMED,
                         paymentMethod: PaymentMethod.VIVA_WALLET,
@@ -141,6 +154,15 @@ export class VivaWalletController {
                     transactionReference: transactionId,
                     notes: `Paid online via Viva Wallet${suffix}`,
                 });
+                if (isClosed) {
+                    console.warn(`[Viva Wallet] Payment received for ${currentStatus} appointment ${merchantTrns}${suffix}. Not confirmed, no payout.`);
+                    await this.notificationsService.notifyAdmins(
+                        'Πληρωμή για ακυρωμένο ραντεβού - επιστροφή;',
+                        `Λήφθηκε πληρωμή €${Number(amount).toFixed(2)} μέσω Viva για ραντεβού σε κατάσταση ${currentStatus}. Δεν έγινε επιβεβαίωση ούτε απόδοση στην κλινική. Αποφασίστε για επιστροφή χρημάτων.`,
+                        { appointmentId: merchantTrns, type: 'refund_decision', paidAmount: amount },
+                    ).catch((err) => console.error('[Viva Wallet] Admin alert failed:', err?.message));
+                    return { kind: 'appointment' as const, id: merchantTrns };
+                }
                 console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed after payment${suffix}. TransactionId: ${transactionId}`);
 
                 // ─── AUTO PAYOUT TO CLINIC IBAN ──────────────────────────────
@@ -205,6 +227,23 @@ export class VivaWalletController {
 
     /** Cross-instance mutex keyed on a Viva transaction id (Postgres session advisory lock). */
     private async withTransactionLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+        // Cap how many lock holders exist at once: each keeps a connection while fn() needs another,
+        // so without a cap a burst of payments can take every pool connection and hang.
+        if (this.activePaymentLocks < MAX_CONCURRENT_PAYMENT_LOCKS) {
+            this.activePaymentLocks++;
+        } else {
+            await new Promise<void>((resolve) => this.paymentLockWaiters.push(resolve));
+        }
+        try {
+            return await this.withAdvisoryLock(key, fn);
+        } finally {
+            const next = this.paymentLockWaiters.shift();
+            if (next) next(); // hand the slot over
+            else this.activePaymentLocks--;
+        }
+    }
+
+    private async withAdvisoryLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
         const queryRunner = this.appointmentsRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
         try {
@@ -300,6 +339,10 @@ export class VivaWalletController {
                     status: AppointmentStatus.CANCELLED,
                 });
                 console.log(`[Viva Wallet] Appointment ${original.appointmentId} cancelled due to refund.`);
+            } else if (original.metadata?.giftCardCode) {
+                // A refunded gift card purchase must not stay spendable
+                await this.giftCardRepository.update({ code: original.metadata.giftCardCode }, { isActive: false, balance: 0 });
+                console.log('[Viva Wallet] Gift card deactivated due to refund of its purchase.');
             }
         }
 

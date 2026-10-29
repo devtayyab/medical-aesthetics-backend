@@ -144,7 +144,7 @@ export class AccountLinksService {
     const token = this.signPasswordToken(user, 'password_reset', '1h');
     const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
     await this.mailService.sendPasswordResetEmail(user.email, url, user.firstName).catch((err: any) => {
-      this.logger.error(`Failed to send password reset email to ${user.email}: ${err?.message}`);
+      this.logger.error(`Failed to send password reset email to user ${user.id}: ${err?.message}`);
     });
   }
 
@@ -190,7 +190,8 @@ export class AccountLinksService {
     try {
       await this.mailService.sendMail(to, subject, text, html);
     } catch (err: any) {
-      this.logger.error(`Failed to send "${subject}" to ${to}: ${err?.message}`);
+      // No subject or address in logs: the login-code subject contains the code itself.
+      this.logger.error(`Failed to send an account email: ${err?.message}`);
     }
   }
 }

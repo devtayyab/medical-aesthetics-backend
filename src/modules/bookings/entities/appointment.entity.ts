@@ -79,6 +79,10 @@ export class Appointment {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   giftCardAmountRedeemed: number;
 
+  // Card balance before this booking claimed it, so the claim can be undone exactly
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  giftCardBalanceBefore: number;
+
   @Column('json', { nullable: true })
   treatmentDetails: any;
 

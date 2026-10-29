@@ -143,6 +143,10 @@ export class BookingsController {
       if (caller && String(caller.role || '').toLowerCase() === UserRole.CLIENT) {
         payload.clientId = caller.id;
       }
+      // Clinic accounts only book into their own clinic(s).
+      if (caller) {
+        await this.bookingsService.assertClinicAccountCanUseClinic(caller.id, caller.role, payload.clinicId);
+      }
       return await this.bookingsService.createAppointment(payload, caller ? { id: caller.id, role: caller.role } : null);
     } catch (error) {
       console.error('❌ [BookingsController] Create Appointment Error:', {
@@ -293,7 +297,11 @@ export class BookingsController {
     if (body.startTime) updateData.startTime = new Date(body.startTime);
     if (body.endTime) updateData.endTime = new Date(body.endTime);
     if (body.providerId !== undefined) updateData.providerId = body.providerId || null;
-    if (body.clinicId !== undefined) updateData.clinicId = body.clinicId || null;
+    if (body.clinicId !== undefined) {
+      // Clinic accounts cannot move an appointment to a clinic they don't work for.
+      await this.bookingsService.assertClinicAccountCanUseClinic(req.user.id, req.user.role, body.clinicId);
+      updateData.clinicId = body.clinicId || null;
+    }
     if (body.serviceId !== undefined) updateData.serviceId = body.serviceId || null;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.totalAmount !== undefined) updateData.totalAmount = body.totalAmount;
