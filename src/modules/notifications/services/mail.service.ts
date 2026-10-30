@@ -173,7 +173,14 @@ export class MailService {
       ${bodyHtml}
       ${buttonHtml}
     </div>
-    <div class="footer">&copy; ${new Date().getFullYear()} ${BRAND} · info@beautydoctors.gr</div>
+    <div class="footer">
+      <div>&copy; ${new Date().getFullYear()} ${BRAND} · info@beautydoctors.gr</div>
+      <div style="margin-top: 8px; font-size: 10px; color: #94a3b8; line-height: 1.4;">
+        Λαμβάνετε αυτό το email επειδή εγγραφήκατε στο newsletter της BeautyDoctors. <a href="https://beautydoctors.gr/my-account" style="color: #64748b; text-decoration: underline;">Διαγραφή</a>
+        &nbsp;|&nbsp;
+        You are receiving this email because you subscribed to the BeautyDoctors newsletter. <a href="https://beautydoctors.gr/my-account" style="color: #64748b; text-decoration: underline;">Unsubscribe</a>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;

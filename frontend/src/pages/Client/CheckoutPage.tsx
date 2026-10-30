@@ -4,7 +4,7 @@ import VISA from"@/assets/Visa.png";
 import AMEX from"@/assets/Amex.png";
 import { Button } from"@/components/atoms/Button/Button";
 import { FaCheckCircle, FaShieldAlt, FaChevronLeft, FaInfoCircle, FaLock } from"react-icons/fa";
-import { useNavigate, useLocation } from"react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from"react-redux";
 import { createAppointment, clearBooking } from"@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from"@/store";
@@ -241,18 +241,51 @@ export const CheckoutPage: React.FC = () => {
   className="rounded-xl sm:rounded-2xl h-11 sm:h-14"
   />
 
- <label className="flex items-start gap-3 cursor-pointer mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors group">
- <input
- type="checkbox"
- required
- checked={hasConsented}
- onChange={(e) => setHasConsented(e.target.checked)}
- className="mt-1 size-5 rounded border-gray-300 text-lime-500 focus:ring-lime-500 shrink-0"
- />
- <span className="text-xs text-gray-600 leading-relaxed group-hover:text-black">
- I consent to receiving booking confirmations, reminders, and updates via email and SMS. I also agree to the <a href="#" className="underline font-bold">Terms of Service</a> and <a href="#" className="underline font-bold">Privacy Policy</a>.
- </span>
- </label>
+  <div className="space-y-3 mt-4">
+    <label className="flex items-start gap-3 cursor-pointer p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors group">
+      <input
+        type="checkbox"
+        required
+        checked={hasConsented}
+        onChange={(e) => setHasConsented(e.target.checked)}
+        className="mt-1 size-5 rounded border-gray-300 text-lime-500 focus:ring-lime-500 shrink-0"
+      />
+      <span className="text-xs text-gray-700 leading-relaxed group-hover:text-black">
+        {isGreek ? (
+          <>
+            <span className="font-bold text-gray-900">(υποχρεωτικό για online κράτηση)</span> Συναινώ ρητά να επεξεργαστεί η BeautyDoctors τα στοιχεία του ραντεβού μου (γιατρός, θεραπεία ενδιαφέροντος, ημερομηνία), τα οποία μπορεί να σχετίζονται με την υγεία μου, μόνο για να οργανώσει το ραντεβού και να τα δώσει στον γιατρό που επέλεξα. Μπορώ να ανακαλέσω τη συγκατάθεση από τις Ρυθμίσεις. Αποδέχομαι τους{" "}
+            <Link to="/terms-of-use" target="_blank" className="underline font-bold hover:text-black">
+              Όρους Χρήσης
+            </Link>{" "}
+            και την{" "}
+            <Link to="/privacy-policy" target="_blank" className="underline font-bold hover:text-black">
+              Πολιτική Απορρήτου
+            </Link>.
+          </>
+        ) : (
+          <>
+            <span className="font-bold text-gray-900">(required for online booking)</span> I explicitly consent to BeautyDoctors processing my appointment details (doctor, treatment of interest, date), which may relate to my health, solely in order to organise the appointment and pass them to the doctor I have chosen. I can withdraw my consent from Settings. I accept the{" "}
+            <Link to="/terms-of-use" target="_blank" className="underline font-bold hover:text-black">
+              Terms of Use
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy-policy" target="_blank" className="underline font-bold hover:text-black">
+              Privacy Policy
+            </Link>.
+          </>
+        )}
+      </span>
+    </label>
+
+    <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-start gap-2.5 text-blue-950 text-xs">
+      <FaInfoCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
+      <p>
+        {isGreek
+          ? "Αν δεν επιθυμείτε να δώσετε συγκατάθεση, μπορείτε να επικοινωνήσετε απευθείας με τον γιατρό."
+          : "If you do not wish to give your consent, you can contact the doctor directly."}
+      </p>
+    </div>
+  </div>
  </div>
  </div>
  </div>
@@ -420,23 +453,41 @@ export const CheckoutPage: React.FC = () => {
  </div>
  </div>
 
- {/* Medical Assessment Notice */}
+            {/* Medical Assessment Notice */}
             <div className="mb-6 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3">
               <FaShieldAlt className="text-amber-600 shrink-0 mt-0.5" size={16} />
-              <p className="text-[11px] text-amber-900 font-semibold leading-relaxed">
-                Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment.
-              </p>
+              <div className="text-[11px] text-amber-900 font-semibold leading-relaxed space-y-1">
+                <p>
+                  {isGreek
+                    ? "Η επιβεβαίωση αφορά την ώρα του ραντεβού. Αν η θεραπεία είναι κατάλληλη για εσάς το κρίνει ο γιατρός κατά την εξέταση."
+                    : "The confirmation concerns the appointment time. Whether the treatment is suitable for you will be decided by the doctor during the examination."}
+                </p>
+                <p className="text-[10px] text-amber-800">
+                  {isGreek
+                    ? "Μετά την αποστολή: «Το αίτημά σας στάλθηκε» → και μόνο μετά την επιβεβαίωση: «Το ραντεβού επιβεβαιώθηκε»."
+                    : "After submission: “Your request has been sent” → and only after confirmation: “Your appointment has been confirmed”."}
+                </p>
+              </div>
             </div>
 
             {/* Direct Clinic / Doctor Payment Disclosure */}
             <div className="mb-6 p-4 rounded-2xl bg-blue-50/80 border border-blue-200/80 flex items-start gap-3 text-left">
               <FaInfoCircle className="text-blue-600 shrink-0 mt-0.5" size={16} />
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <p className="text-[11px] text-blue-950 font-bold leading-relaxed">
-                  Payment is made directly to the clinic or doctor providing the service. Beauty Doctors does not receive or hold your payment.
-                </p>
-                <p className="text-[10px] text-blue-800 font-medium leading-relaxed italic">
-                  «Η πληρωμή πραγματοποιείται απευθείας προς την κλινική ή τον ιατρό που παρέχει την υπηρεσία. Η Beauty Doctors δεν εισπράττει ούτε διατηρεί τα χρήματα της πληρωμής.»
+                  {isGreek ? (
+                    <>
+                      Η πληρωμή γίνεται μέσω Viva απευθείας στον/στην{" "}
+                      <span className="font-black underline">{selectedClinic?.name || "πάροχο"}</span>
+                      . Η BeautyDoctors δεν εισπράττει το ποσό. Την απόδειξη την εκδίδει ο γιατρός.
+                    </>
+                  ) : (
+                    <>
+                      Payment is made through Viva directly to{" "}
+                      <span className="font-black underline">{selectedClinic?.name || "the clinic/doctor"}</span>
+                      . BeautyDoctors does not collect the amount. The receipt is issued by the doctor.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

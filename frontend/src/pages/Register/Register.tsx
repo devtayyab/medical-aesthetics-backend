@@ -85,6 +85,7 @@ export const Register: React.FC = () => {
  const [agreedTerms, setAgreedTerms] = useState(false);
  const [termsError, setTermsError] = useState("");
  const [marketingConsent, setMarketingConsent] = useState(false);
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
 
  // After registering: "check your email" screen (verification link)
  const [verificationStep, setVerificationStep] = useState(false);
@@ -282,17 +283,25 @@ export const Register: React.FC = () => {
  style={{ marginTop: "3px", cursor: "pointer" }}
  />
  <span>
- I confirm that I am at least 18 years old and accept the{" "}
- <Link to="/terms-of-use" target="_blank" className={linkStyle}>Terms of Use</Link>
- . <span style={{ color: "var(--color-error)" }}>*</span>
+ {isGreek ? (
+   <>
+     <span style={{ fontWeight: 700 }}>(υποχρεωτικό)</span> Είμαι 18 ετών και άνω και αποδέχομαι τους{" "}
+     <Link to="/terms-of-use" target="_blank" className={linkStyle}>Όρους Χρήσης</Link>
+     . Έχω διαβάσει την{" "}
+     <Link to="/privacy-policy" target="_blank" className={linkStyle}>Πολιτική Απορρήτου</Link>
+     . <span style={{ color: "var(--color-error)" }}>*</span>
+   </>
+ ) : (
+   <>
+     <span style={{ fontWeight: 700 }}>(required)</span> I am 18 years of age or over and I accept the{" "}
+     <Link to="/terms-of-use" target="_blank" className={linkStyle}>Terms of Use</Link>
+     . I have read the{" "}
+     <Link to="/privacy-policy" target="_blank" className={linkStyle}>Privacy Policy</Link>
+     . <span style={{ color: "var(--color-error)" }}>*</span>
+   </>
+ )}
  </span>
  </label>
- <div style={{ fontSize: "12px", color: "var(--color-text-secondary, #666)", marginLeft: "24px", lineHeight: "1.4" }}>
- By continuing, you acknowledge our{" "}
- <Link to="/privacy-policy" target="_blank" className={linkStyle}>Privacy Policy</Link>
- {" "}and{" "}
- <Link to="/medical-disclaimer" target="_blank" className={linkStyle}>Medical Disclaimer</Link>.
- </div>
  {termsError && <p style={{ color: "var(--color-error)", fontSize: "12px", margin: "-4px 0 0 24px" }}>{termsError}</p>}
 
  <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-text-secondary, #666)", cursor: "pointer", lineHeight: "1.4" }}>
@@ -303,7 +312,15 @@ export const Register: React.FC = () => {
  style={{ marginTop: "3px", cursor: "pointer" }}
  />
  <span>
- I agree to receive news, clinical articles, and promotional updates from Beauty Doctors (optional).
+ {isGreek ? (
+   <>
+     <span style={{ fontWeight: 700 }}>(προαιρετικό)</span> Θέλω να λαμβάνω το newsletter της BeautyDoctors με νέα και ενημερώσεις με email. Μπορώ να διαγραφώ οποτεδήποτε.
+   </>
+ ) : (
+   <>
+     <span style={{ fontWeight: 700 }}>(optional)</span> I would like to receive the BeautyDoctors newsletter with news and updates by email. I can unsubscribe at any time.
+   </>
+ )}
  </span>
  </label>
  </div>
