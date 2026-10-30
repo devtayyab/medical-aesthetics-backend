@@ -127,9 +127,9 @@ export class TaskAutomationService {
       .where(
         `(
           (action.relatedAppointmentId = :aid AND action.actionType IN ('confirmation_call_reminder', 'appointment'))
-          OR (action.metadata->>'appointmentId' = :aid AND action.metadata->>'workflow' = 'call_center_confirmation')
+          OR (action.metadata->>'appointmentId' = :aidText AND action.metadata->>'workflow' = 'call_center_confirmation')
         )`,
-        { aid: appointmentId },
+        { aid: appointmentId, aidText: String(appointmentId) },
       )
       .orderBy(`CASE WHEN action.metadata->>'automationRule' = '${CONFIRMATION_RULE_ID}' THEN 0 WHEN action.actionType = 'confirmation_call_reminder' THEN 1 ELSE 2 END`, 'ASC')
       .addOrderBy('action.createdAt', 'ASC')

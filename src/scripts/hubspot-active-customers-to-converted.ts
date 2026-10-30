@@ -59,26 +59,48 @@ async function main() {
       console.warn('HUBSPOT_API_TOKEN not set: using only the "completed visit" rule.');
     }
 
+    const completedClients: any[] = await AppDataSource.query(
+      `SELECT DISTINCT
+              u.id::text AS uid,
+              LOWER(TRIM(COALESCE(u.email, ''))) AS email,
+              regexp_replace(COALESCE(u.phone, ''), '[^0-9]', '', 'g') AS digits
+         FROM appointments a
+         JOIN users u ON u.id = a."clientId"
+        WHERE UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED')`,
+    );
+    const completedUserIds = new Set<string>();
+    const completedEmails = new Set<string>();
+    const completedPhones10 = new Set<string>();
+    for (const c of completedClients) {
+      if (c.uid) completedUserIds.add(String(c.uid));
+      if (c.email) completedEmails.add(String(c.email));
+      if (c.digits && c.digits.length >= 10) completedPhones10.add(String(c.digits).slice(-10));
+    }
+
     const excluded = includeLost ? ['converted', 'merged'] : ['converted', 'merged', 'lost'];
-    const leads: any[] = await AppDataSource.query(
-      `SELECT l.id, l."firstName", l."lastName", l.status, l.metadata::jsonb ->> 'hubspotId' AS hubspot_id,
-              EXISTS (
-                SELECT 1 FROM appointments a
-                  JOIN users u ON u.id = a."clientId"
-                 WHERE UPPER(a.status) IN ('COMPLETED', 'EXECUTED')
-                   AND (
-                     u.id::text IN (l.metadata::jsonb ->> 'convertedToUserId', l.metadata::jsonb ->> 'convertedToCustomerId', l.metadata::jsonb ->> 'existingCustomerId')
-                     OR (COALESCE(l.email, '') <> '' AND LOWER(u.email) = LOWER(l.email))
-                     OR (LENGTH(regexp_replace(COALESCE(l.phone, ''), '[^0-9]', '', 'g')) >= 10
-                         AND RIGHT(regexp_replace(COALESCE(u.phone, ''), '[^0-9]', '', 'g'), 10) = RIGHT(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10))
-                   )
-              ) AS has_completed_visit
+    const rawLeads: any[] = await AppDataSource.query(
+      `SELECT l.id, l."firstName", l."lastName", l.status, l.email, l.phone,
+              l.metadata::jsonb ->> 'hubspotId' AS hubspot_id,
+              l.metadata::jsonb ->> 'convertedToUserId' AS conv_uid,
+              l.metadata::jsonb ->> 'convertedToCustomerId' AS conv_cid,
+              l.metadata::jsonb ->> 'existingCustomerId' AS exist_cid
          FROM leads l
         WHERE l."deletedAt" IS NULL
           AND l.metadata::jsonb ->> 'hubspotId' IS NOT NULL
           AND l.status NOT IN (${excluded.map((_, i) => `$${i + 1}`).join(', ')})`,
       excluded,
     );
+    const leads = rawLeads.map((l) => {
+      const email = String(l.email || '').trim().toLowerCase();
+      const digits = String(l.phone || '').replace(/[^0-9]/g, '');
+      const hasCompletedVisit =
+        (l.conv_uid && completedUserIds.has(String(l.conv_uid))) ||
+        (l.conv_cid && completedUserIds.has(String(l.conv_cid))) ||
+        (l.exist_cid && completedUserIds.has(String(l.exist_cid))) ||
+        (email !== '' && completedEmails.has(email)) ||
+        (digits.length >= 10 && completedPhones10.has(digits.slice(-10)));
+      return { ...l, has_completed_visit: Boolean(hasCompletedVisit) };
+    });
     console.log(`HubSpot-imported leads not yet converted: ${leads.length}`);
 
     const toConvert = leads.filter((l) => l.has_completed_visit || hubspotCustomers.has(String(l.hubspot_id)));
@@ -98,7 +120,7 @@ async function main() {
     const ids = toConvert.map((l) => l.id);
     for (let i = 0; i < ids.length; i += 1000) {
       await AppDataSource.query(
-        `UPDATE leads SET status = 'converted', "convertedAt" = COALESCE("convertedAt", NOW()), "updatedAt" = NOW() WHERE id = ANY($1)`,
+        `UPDATE leads SET status = 'converted', "convertedAt" = COALESCE("convertedAt", NOW()), "updatedAt" = NOW() WHERE id = ANY($1::uuid[])`,
         [ids.slice(i, i + 1000)],
       );
     }
