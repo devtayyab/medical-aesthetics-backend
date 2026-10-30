@@ -269,7 +269,9 @@ export const Reviews: React.FC = () => {
                           <div className="text-right">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-500/15 border border-emerald-500/30 mb-1.5">
                               <CheckCircle size={10} className="text-emerald-600" />
-                              {isGreek ? "ΕΠΙΒΕΒΑΙΩΜΕΝΟ" : "STATUS VERIFIED"}
+                              {isGreek
+                                ? "ΕΠΑΛΗΘΕΥΜΕΝΟ ΡΑΝΤΕΒΟΥ BEAUTYDOCTORS"
+                                : "VERIFIED BEAUTYDOCTORS APPOINTMENT"}
                             </span>
                             <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                               {formatDate(apt.startTime)}

@@ -352,6 +352,25 @@ export const GiftCard: React.FC = () => {
                         </button>
                       </form>
                     )}
+                    <p className="text-[11px] text-gray-500 mt-2.5 leading-relaxed">
+                      {isGreek ? (
+                        <>
+                          Θα λάβετε ένα email όταν ξεκινήσουν οι δωροκάρτες. Δείτε την{" "}
+                          <Link to="/privacy-policy" className="underline font-bold text-gray-800 hover:text-black">
+                            Πολιτική Απορρήτου
+                          </Link>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          You will receive one email when Gift Cards launch. See our{" "}
+                          <Link to="/privacy-policy" className="underline font-bold text-gray-800 hover:text-black">
+                            Privacy Policy
+                          </Link>
+                          .
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
 

@@ -97,9 +97,23 @@ const ClinicDashboard: React.FC = () => {
 
  const stats = useMemo(() => {
  const today = new Date().toISOString().split("T")[0];
+ const now = new Date();
+ const currentYear = now.getFullYear();
+ const currentMonth = now.getMonth();
+
  const todayAppointments = appointments.filter(
  (apt) => apt.startTime.split("T")[0] === today
  );
+
+ const mtdAppointments = appointments.filter((apt) => {
+ const d = new Date(apt.startTime);
+ return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+ });
+
+ const ytdAppointments = appointments.filter((apt) => {
+ const d = new Date(apt.startTime);
+ return d.getFullYear() === currentYear;
+ });
 
  return {
  totalToday: todayAppointments.length,
@@ -113,6 +127,8 @@ const ClinicDashboard: React.FC = () => {
  (apt) => apt.status === AppointmentStatus.COMPLETED
  ).length,
  totalRevenue: paidRevenueMtd,
+ mtdTotal: mtdAppointments.length,
+ ytdTotal: ytdAppointments.length,
  };
  }, [appointments, paidRevenueMtd]);
 
@@ -158,6 +174,12 @@ const ClinicDashboard: React.FC = () => {
  >
  {isGreek ? "Επισκόπηση της δραστηριότητας της κλινικής σας." : "Your clinic overview."} ({stats.totalToday} {isGreek ? "σημερινά ραντεβού" : "appointments today"})
  </motion.p>
+ <div className="inline-flex items-center gap-2 px-3 py-1 bg-lime-50 rounded-xl border border-lime-200 mt-2">
+ <BarChart3 size={12} className="text-lime-700" />
+ <span className="text-[10px] font-black uppercase tracking-wider text-lime-900">
+ {isGreek ? `Μηνιαίες κρατήσεις: ${stats.mtdTotal} · Έτος (YTD): ${stats.ytdTotal}` : `Monthly Bookings: ${stats.mtdTotal} · Year-to-date (YTD): ${stats.ytdTotal}`}
+ </span>
+ </div>
  </div>
  </div>
 
@@ -211,7 +233,7 @@ const ClinicDashboard: React.FC = () => {
  <StatCard
  title={isGreek ? "Ολοκληρωμένα Ραντεβού" : "Completed Appointments"}
  value={stats.completed}
- percentage={null}
+ percentage={isGreek ? `Μήνας: ${stats.mtdTotal} | Έτος: ${stats.ytdTotal}` : `MTD: ${stats.mtdTotal} | YTD: ${stats.ytdTotal}`}
  trend="neutral"
  icon={<CheckCircle size={24} />}
  delay={0.2}

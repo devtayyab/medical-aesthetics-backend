@@ -293,9 +293,13 @@ export class ClinicsService {
     } else if (params.sortBy === 'rating') {
       clinicQb.orderBy('clinic.rating', 'DESC');
       serviceQb.orderBy('clinic.rating', 'DESC');
+    } else if (params.sortBy === 'alphabetical') {
+      clinicQb.orderBy('clinic.name', 'ASC');
+      serviceQb.orderBy('clinic.name', 'ASC');
     } else {
-      clinicQb.orderBy('clinic.createdAt', 'DESC');
-      serviceQb.orderBy('service.createdAt', 'DESC');
+      // Default per lawyer terms: alphabetical order with no paid placement
+      clinicQb.orderBy('clinic.name', 'ASC');
+      serviceQb.orderBy('clinic.name', 'ASC');
     }
 
     try {

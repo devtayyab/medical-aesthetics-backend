@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FaChevronRight } from "react-icons/fa6";
-import { Sparkles, Stethoscope, ArrowRight, HeartHandshake } from "lucide-react";
+import { Sparkles, Stethoscope, ArrowRight, HeartHandshake, Building2 } from "lucide-react";
 import LayeredBG from "@/assets/LayeredBg.svg";
 
 export const AboutUs: React.FC = () => {
@@ -78,6 +78,42 @@ export const AboutUs: React.FC = () => {
                 <p className="text-[11px] text-gray-500 mt-2">{item.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Official Legal & Company Identity Card */}
+        <div className="bg-white p-6 sm:p-8 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-lime-800 bg-lime-50 px-3.5 py-1.5 rounded-full w-fit border border-lime-200">
+            <Building2 size={14} className="text-lime-600" /> Legal Entity & Operator
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-gray-900">
+            Beautydoctors O.E.
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">Registered Address</span>
+              <p className="text-xs font-bold text-gray-900">23 Xanthippou St.</p>
+              <p className="text-xs text-gray-600">Pikermi 19009, Greece</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">Registration & Tax</span>
+              <p className="text-xs font-bold text-gray-900">Tax ID (ΑΦΜ): 803040724</p>
+              <p className="text-xs text-gray-600">GEMI (ΓΕΜΗ): 188015103000</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">Direct Email</span>
+              <a href="mailto:info@beautydoctors.gr" className="text-xs font-bold text-lime-700 hover:underline">
+                info@beautydoctors.gr
+              </a>
+              <p className="text-[11px] text-gray-500">Official Communication</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">Telephone Contact</span>
+              <a href="tel:2112184564" className="text-xs font-bold text-gray-900 hover:text-lime-700">
+                211 218 4564
+              </a>
+              <p className="text-[11px] text-gray-500">+30 211 218 4564</p>
+            </div>
           </div>
         </div>
 

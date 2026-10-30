@@ -129,8 +129,10 @@ export const Search: React.FC = () => {
  setSearchTimeWindow(searchParams.get("search_time_window") || null);
  }, [searchParams]);
 
- // Filter states
- const [sortBy, setSortBy] = useState<'recommended' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+
+ // Filter states: Default per platform rules & lawyer terms is Alphabetical (A-Z) with no paid placement
+ const [sortBy, setSortBy] = useState<'alphabetical' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('alphabetical');
  const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');
  const [salonsFilter, setSalonsFilter] = useState<string | null>(null);
  const [openDropdown, setOpenDropdown] = useState<'sort' | 'rating' | 'salons' | null>(null);
@@ -264,7 +266,7 @@ export const Search: React.FC = () => {
  <div className="flex-shrink-0">
  <button 
  onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
- className={filterPill(sortBy !== 'recommended')}
+ className={filterPill(sortBy !== 'alphabetical')}
  >
  <List size={12} className="text-gray-400" /> Sort
  <ChevronDown size={12} />
@@ -294,13 +296,13 @@ export const Search: React.FC = () => {
  className="absolute top-full left-8 mt-2 w-64 bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-gray-100 p-3 z-20"
  >
  {openDropdown === 'sort' && [
-  { id: 'recommended', label: 'Recommended' },
-  { id: 'distance', label: 'Distance' },
+  { id: 'alphabetical', label: isGreek ? 'Αλφαβητικά (A-Z)' : 'Alphabetical (A-Z)' },
+  { id: 'distance', label: isGreek ? 'Απόσταση' : 'Distance' },
   ...(isAuthenticated ? [
-    { id: 'price-asc', label: 'Price: Low to High' },
-    { id: 'price-desc', label: 'Price: High to Low' },
+    { id: 'price-asc', label: isGreek ? 'Τιμή: Χαμηλή σε Υψηλή' : 'Price: Low to High' },
+    { id: 'price-desc', label: isGreek ? 'Τιμή: Υψηλή σε Χαμηλή' : 'Price: High to Low' },
   ] : []),
-  { id: 'rating', label: 'Top Rated' }
+  { id: 'rating', label: isGreek ? 'Κορυφαία Βαθμολογία' : 'Top Rated' }
  ].map(opt => (
  <button 
  key={opt.id}

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
-import { updateProfile } from "@/store/slices/authSlice";
-import { motion } from "framer-motion";
-import { User, Mail, Phone, Lock, ChevronRight, Edit3, ShieldCheck, Sparkles } from "lucide-react";
+import { updateProfile, logout } from "@/store/slices/authSlice";
+import { fetchUserAppointments } from "@/store/slices/clientSlice";
+import { userService } from "@/services/features/user.service";
+import { motion, AnimatePresence } from "framer-motion";
+import { User, Mail, Phone, Lock, ChevronRight, Edit3, ShieldCheck, Sparkles, Trash2, AlertTriangle, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 // High-clarity hero portrait
@@ -145,13 +147,47 @@ export const PersonalDetails: React.FC = () => {
   }, []);
 
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { appointments } = useSelector((state: RootState) => state.client);
 
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [isLoading, setIsLoading] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchUserAppointments());
+  }, [dispatch]);
+
+  const pendingAppointments = (appointments || []).filter((a) => {
+    const s = String(a.status || "").toUpperCase();
+    return !["COMPLETED", "CANCELLED", "EXECUTED"].includes(s);
+  });
+  const pendingCount = pendingAppointments.length;
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await userService.permanentDelete();
+      toast.success(
+        isGreek
+          ? "Ο λογαριασμός σας διαγράφηκε επιτυχώς"
+          : "Your account has been deleted"
+      );
+      await dispatch(logout());
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -382,7 +418,85 @@ export const PersonalDetails: React.FC = () => {
               </div>
             </div>
           </form>
+
+          {/* Account Deletion / GDPR Rights Section */}
+          <div className="mt-8 pt-8 border-t border-red-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-red-600 flex items-center gap-2">
+                <Trash2 size={14} />
+                {isGreek ? "Διαγραφή Λογαριασμού" : "Delete Account"}
+              </h4>
+              <p className="text-[11px] text-gray-500 mt-1 max-w-md">
+                {isGreek
+                  ? "Οριστική διαγραφή του λογαριασμού και ανωνυμοποίηση των προσωπικών δεδομένων σας (ΓΚΠΔ)."
+                  : "Permanently delete your account and anonymize your personal data under GDPR."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold uppercase tracking-wider transition-colors shrink-0"
+            >
+              {isGreek ? "Διαγραφή" : "Delete"}
+            </button>
+          </div>
         </motion.div>
+
+        {/* Lawyer-Approved Account Deletion Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-[28px] max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 relative space-y-5"
+              >
+                <div className="size-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                  <AlertTriangle size={24} />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-black uppercase text-gray-900 tracking-tight">
+                    {isGreek ? "Οριστική Διαγραφή Λογαριασμού" : "Permanent Account Deletion"}
+                  </h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {isGreek ? (
+                      <>
+                        Η διαγραφή είναι οριστική. Έχετε <strong className="text-red-600">{pendingCount}</strong> εκκρεμή ραντεβού, τα οποία θα ακυρωθούν. Ο γιατρός διατηρεί το δικό του ιατρικό αρχείο όπως ορίζει ο νόμος.
+                      </>
+                    ) : (
+                      <>
+                        Deletion is permanent. You have <strong className="text-red-600">{pendingCount}</strong> pending appointment(s), which will be cancelled. The doctor retains their own medical records as required by law.
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                    className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-bold uppercase tracking-wider transition-colors"
+                  >
+                    {isGreek ? "Ακύρωση" : "Cancel"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting}
+                    className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-md disabled:opacity-50"
+                  >
+                    {isDeleting
+                      ? isGreek ? "Διαγραφή..." : "Deleting..."
+                      : isGreek ? "Διαγραφή" : "Delete"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

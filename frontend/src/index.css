@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+@import '@fontsource/manrope';
 
 :root {
   font-family: 'Manrope', system-ui, sans-serif;
