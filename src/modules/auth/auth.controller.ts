@@ -30,11 +30,16 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login step 1: check password, email a 6-digit code' })
-  async login(@Body() loginDto: LoginDto) {
+  @ApiOperation({ summary: 'Login: check password, issue session (or email code if ENABLE_LOGIN_CODE=true)' })
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(loginDto.email, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    const requireCode = process.env.ENABLE_LOGIN_CODE === 'true';
+    if (!requireCode) {
+      const session = await this.authService.login(user);
+      return this.withCookies(res, session);
     }
     return this.authService.startLogin(user);
   }
