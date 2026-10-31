@@ -306,10 +306,21 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(login.fulfilled, (state) => {
-        // Not authenticated yet: waiting for the emailed code.
-        state.isLoading = false;
-        state.error = null;
+      .addCase(login.fulfilled, (state, action) => {
+        if ((action.payload as any).accessToken) {
+          state.isLoading = false;
+          state.user = (action.payload as any).user;
+          state.accessToken = (action.payload as any).accessToken || null;
+          state.isAuthenticated = true;
+          state.error = null;
+          clearLegacyTokens();
+          storeUser((action.payload as any).user);
+          broadcastAuthEvent("login");
+        } else {
+          // Not authenticated yet: waiting for the emailed code.
+          state.isLoading = false;
+          state.error = null;
+        }
       })
       .addCase(login.rejected, (state) => {
         // Login page shows the message inline.

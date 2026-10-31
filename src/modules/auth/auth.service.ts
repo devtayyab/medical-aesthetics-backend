@@ -70,7 +70,7 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException("This account has been deactivated.");
     }
-    if (!user.isEmailVerified) {
+    if (!user.isEmailVerified && process.env.ENABLE_EMAIL_VERIFICATION === "true") {
       throw new UnauthorizedException({
         statusCode: 401,
         code: "EMAIL_NOT_VERIFIED",
