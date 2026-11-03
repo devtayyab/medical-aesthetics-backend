@@ -71,17 +71,26 @@ export class FacebookService {
         settingsMap[row.key] = row.value;
       }
 
+      const cleanVal = (val: any) => {
+        if (!val) return '';
+        let s = typeof val === 'string' ? val : String(val);
+        if (s.startsWith('"') && s.endsWith('"')) {
+          try { s = JSON.parse(s); } catch {}
+        }
+        return s.trim();
+      };
+
       if (settingsMap['facebook_access_token']) {
-        accessToken = settingsMap['facebook_access_token'];
+        accessToken = cleanVal(settingsMap['facebook_access_token']);
       }
       if (settingsMap['facebook_app_secret']) {
-        appSecret = settingsMap['facebook_app_secret'];
+        appSecret = cleanVal(settingsMap['facebook_app_secret']);
       }
       if (settingsMap['facebook_app_id']) {
-        appId = settingsMap['facebook_app_id'];
+        appId = cleanVal(settingsMap['facebook_app_id']);
       }
       if (settingsMap['facebook_page_id']) {
-        pageId = settingsMap['facebook_page_id'];
+        pageId = cleanVal(settingsMap['facebook_page_id']);
       }
     } catch (err) {
       this.logger.error('Failed to load facebook settings from DB, falling back to env', err.stack);
@@ -431,11 +440,12 @@ export class FacebookService {
       for (const r of rows) map[r.key] = r.value;
       (map['facebook_page_ids'] || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((id) => configuredIds.add(id));
       if (map['facebook_page_id']) configuredIds.add(map['facebook_page_id'].trim());
-      // A stored page token belongs to the configured primary page
-      if (map['facebook_page_id'] && map['facebook_page_access_token'] && !pages.has(map['facebook_page_id'].trim())) {
+      // A stored page token belongs to the configured primary page (fallback to accessToken)
+      const pageToken = (map['facebook_page_access_token'] ? String(map['facebook_page_access_token']).replace(/^"|"$/g, '').trim() : '') || creds.accessToken;
+      if (map['facebook_page_id'] && pageToken && !pages.has(map['facebook_page_id'].trim())) {
         pages.set(map['facebook_page_id'].trim(), {
           id: map['facebook_page_id'].trim(),
-          access_token: map['facebook_page_access_token'],
+          access_token: pageToken,
         });
       }
     } catch { /* settings table unavailable — fall through */ }

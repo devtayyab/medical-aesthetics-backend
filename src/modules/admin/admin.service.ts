@@ -176,6 +176,23 @@ export class AdminService {
         });
       }
       await this.settingsRepository.save(setting);
+
+      // If updating Facebook access token, also keep facebook_page_access_token in sync
+      if (key === 'facebook_access_token') {
+        let pageTokenSetting = await this.settingsRepository.findOne({ where: { key: 'facebook_page_access_token' } });
+        if (pageTokenSetting) {
+          pageTokenSetting.value = value;
+          await this.settingsRepository.save(pageTokenSetting);
+        } else {
+          await this.settingsRepository.save(
+            this.settingsRepository.create({
+              key: 'facebook_page_access_token',
+              value,
+              category: 'system',
+            }),
+          );
+        }
+      }
     }
     return this.getSettings();
   }
