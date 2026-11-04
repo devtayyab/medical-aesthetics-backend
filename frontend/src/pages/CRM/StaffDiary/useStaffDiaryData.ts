@@ -147,8 +147,13 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
   // Build fetch params from view + filters
   const fetchParams = useMemo(() => {
     const params: any = {};
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
     if (filters.clinicId && filters.clinicId !== 'all') params.clinicId = filters.clinicId;
-    if (filters.providerId && filters.providerId !== 'all') params.providerId = filters.providerId;
+    if (isDoctor && user?.id) {
+      params.providerId = user.id;
+    } else if (filters.providerId && filters.providerId !== 'all') {
+      params.providerId = filters.providerId;
+    }
     if (filters.status && filters.status !== 'all') params.status = filters.status;
 
     if (viewMode === 'month-list') {
@@ -187,7 +192,16 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {
-    return appointments.filter((apt: any) => !apt.isBlocked).map((apt: any) => {
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
+    return appointments.filter((apt: any) => {
+      if (apt.isBlocked) return false;
+      if (isDoctor && user?.id) {
+        const pId = apt.providerId || apt.provider?.id;
+        const eId = apt.executedById || apt.executedBy?.id;
+        return pId === user.id || eId === user.id;
+      }
+      return true;
+    }).map((apt: any) => {
       const primaryPrice = parseFloat(String(apt.service?.price || 0));
       const additionalServicesTotal = (apt.additionalServices || []).reduce(
         (sum: number, s: any) => sum + parseFloat(String(s.price || 0)),
