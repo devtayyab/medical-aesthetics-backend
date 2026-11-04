@@ -5,7 +5,7 @@ import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import { logout } from"@/store/slices/authSlice";
 import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices } from '@/store/slices/clinicSlice';
-import { ChevronDown, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import {
  LayoutDashboard,
  Calendar,
@@ -53,6 +53,17 @@ const ClinicLayout: React.FC = () => {
  const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
  const { unreadCount } = useSelector((state: RootState) => state.notifications);
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('clinic_sidebar_collapsed') === 'true';
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('clinic_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
  React.useEffect(() => {
  dispatch(fetchMyClinics());
@@ -117,160 +128,240 @@ const ClinicLayout: React.FC = () => {
 
   {/* Sidebar */}
   <aside
-    className={`fixed lg:static top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full
-    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+    className={`fixed lg:static top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 bg-white flex flex-col transition-all duration-300 ease-in-out border-r border-gray-100 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full
+    ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
+    ${isCollapsed ? 'lg:w-[68px]' : 'lg:w-64'}
     `}
   >
     {/* Branding */}
-    <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
-      <div className="flex items-center gap-2.5">
-        <div className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38] shrink-0">
-          <LayoutDashboard size={17} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-sm font-black uppercase tracking-tight text-gray-900 truncate notranslate" title={profile?.name || 'Clinic Portal'}>
-            {profile?.name || 'Clinic Portal'}
-          </h1>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <div className="size-1.5 rounded-full bg-green-500 shrink-0" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+    <div className={`pt-4 pb-3 border-b border-gray-100 shrink-0 ${isCollapsed ? 'px-2 flex flex-col items-center' : 'px-4'}`}>
+      <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38] shrink-0 cursor-pointer shadow-xs"
+            onClick={() => isCollapsed && toggleCollapse()}
+            title={profile?.name || 'Clinic Portal'}
+          >
+            <LayoutDashboard size={17} />
           </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-black uppercase tracking-tight text-gray-900 truncate notranslate" title={profile?.name || 'Clinic Portal'}>
+                {profile?.name || 'Clinic Portal'}
+              </h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="size-1.5 rounded-full bg-green-500 shrink-0" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Desktop Collapse / Expand Toggle Button */}
+        <button
+          onClick={toggleCollapse}
+          className="hidden lg:flex size-7 rounded-lg bg-gray-50 hover:bg-black hover:text-[#CBFF38] text-gray-400 items-center justify-center transition-colors shrink-0 shadow-xs"
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+        </button>
       </div>
 
       {/* Multi-Clinic Switcher Dropdown */}
       {((myClinics && myClinics.length > 0) || profile) && (
-        <div className="mt-2.5 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[9px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-[#CBFF38]" />
-              {myClinics && myClinics.length > 1 ? 'Switch Clinic' : 'Active Clinic'}
-            </label>
-            {myClinics && myClinics.length > 1 && (
-              <span className="text-[8px] font-bold bg-[#CBFF38]/20 text-[#0B1120] px-1.5 py-0.2 rounded">
-                {myClinics.length}
-              </span>
-            )}
-          </div>
-          <div className="relative">
-            <select
-              value={profile?.id || (myClinics[0]?.id) || ''}
-              onChange={(e) => handleClinicChange(e.target.value)}
-              disabled={!myClinics || myClinics.length <= 1}
-              className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-black text-gray-900 appearance-none pr-7 outline-none truncate transition-colors ${
-                myClinics && myClinics.length > 1
-                  ? 'cursor-pointer hover:bg-gray-100 focus:ring-1 focus:ring-[#CBFF38]'
-                  : 'cursor-default opacity-90'
-              }`}
+        isCollapsed ? (
+          <div className="mt-2.5 flex justify-center">
+            <button
+              onClick={toggleCollapse}
+              className="size-7 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 transition-colors shadow-xs"
+              title={`Active Clinic: ${profile?.name || myClinics?.[0]?.name || 'Clinic'} (Click to switch)`}
             >
-              {(myClinics && myClinics.length > 0 ? myClinics : (profile ? [profile] : [])).map((c) => (
-                <option key={c.id} value={c.id}>
-                  🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
-                </option>
-              ))}
-            </select>
-            {myClinics && myClinics.length > 1 && (
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-            )}
+              <Building2 className="w-3.5 h-3.5 text-[#CBFF38]" />
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="mt-2.5 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[9px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-[#CBFF38]" />
+                {myClinics && myClinics.length > 1 ? 'Switch Clinic' : 'Active Clinic'}
+              </label>
+              {myClinics && myClinics.length > 1 && (
+                <span className="text-[8px] font-bold bg-[#CBFF38]/20 text-[#0B1120] px-1.5 py-0.2 rounded">
+                  {myClinics.length}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <select
+                value={profile?.id || (myClinics[0]?.id) || ''}
+                onChange={(e) => handleClinicChange(e.target.value)}
+                disabled={!myClinics || myClinics.length <= 1}
+                className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-black text-gray-900 appearance-none pr-7 outline-none truncate transition-colors ${
+                  myClinics && myClinics.length > 1
+                    ? 'cursor-pointer hover:bg-gray-100 focus:ring-1 focus:ring-[#CBFF38]'
+                    : 'cursor-default opacity-90'
+                }`}
+              >
+                {(myClinics && myClinics.length > 0 ? myClinics : (profile ? [profile] : [])).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
+                  </option>
+                ))}
+              </select>
+              {myClinics && myClinics.length > 1 && (
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              )}
+            </div>
+          </div>
+        )
       )}
     </div>
 
     {/* Navigation */}
-    <nav className="flex-1 min-h-0 px-3 py-2 overflow-y-auto custom-scrollbar">
+    <nav className={`flex-1 min-h-0 py-2 overflow-y-auto custom-scrollbar ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
       <div className="space-y-0.5">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.id}
-            to={item.path}
-            onClick={closeSidebar}
-            className={({ isActive }) =>
-              `group flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-black text-[#CBFF38] shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900'
-              }`
-            }
-          >
-            <div className="transition-transform duration-200 group-hover:scale-105 shrink-0">
-              {iconMap[item.icon]}
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-wider truncate">
-              {currentLang === 'el' && (item as any).labelGr ? (item as any).labelGr : item.label}
-            </span>
-            {item.id === 'appointments' && (
-              <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm shrink-0">
-                !
+        {menuItems.map((item) => {
+          const label = currentLang === 'el' && (item as any).labelGr ? (item as any).labelGr : item.label;
+          return (
+            <NavLink
+              key={item.id}
+              to={item.path}
+              onClick={closeSidebar}
+              title={label}
+              className={({ isActive }) =>
+                `group relative flex items-center rounded-xl transition-all duration-200 ${
+                  isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2'
+                } ${
+                  isActive
+                    ? 'bg-black text-[#CBFF38] shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900'
+                }`
+              }
+            >
+              <div className="transition-transform duration-200 group-hover:scale-105 shrink-0 relative">
+                {iconMap[item.icon]}
+                {isCollapsed && item.id === 'appointments' && (
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-white" />
+                )}
+                {isCollapsed && item.id === 'my-notifications' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-black" />
+                )}
               </div>
-            )}
-            {item.id === 'my-notifications' && unreadCount > 0 && (
-              <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </div>
-            )}
-          </NavLink>
-        ))}
+              {!isCollapsed && (
+                <>
+                  <span className="text-[10px] font-black uppercase tracking-wider truncate">
+                    {label}
+                  </span>
+                  {item.id === 'appointments' && (
+                    <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm shrink-0">
+                      !
+                    </div>
+                  )}
+                  {item.id === 'my-notifications' && unreadCount > 0 && (
+                    <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </div>
+                  )}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
       </div>
     </nav>
 
     {/* User Profile & Logout */}
-    <div className="p-3 m-3 mt-1 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-2 shrink-0">
-      {/* Language Switcher */}
-      <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-lg border border-gray-100">
-        <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Language</span>
-        <div className="flex items-center rounded-md overflow-hidden border border-gray-200 bg-white">
+    <div className={`m-2 mt-1 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-2 shrink-0 ${isCollapsed ? 'p-1.5 items-center' : 'p-3'}`}>
+      {isCollapsed ? (
+        <>
+          {/* Mini language toggle */}
           <button
-            onClick={() => handleLanguageSwitch('en')}
-            className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
-              currentLang === 'en'
-                ? 'bg-[#CBFF38] text-black shadow-xs'
-                : 'text-gray-500 hover:text-black'
-            }`}
-            title="Switch to English"
+            onClick={() => handleLanguageSwitch(currentLang === 'en' ? 'el' : 'en')}
+            className="size-7 rounded-lg bg-white border border-gray-200 text-[9px] font-black uppercase text-gray-700 hover:bg-[#CBFF38] hover:text-black transition-all flex items-center justify-center shadow-xs"
+            title={`Language: ${currentLang.toUpperCase()} (Click to toggle)`}
           >
-            EN
+            {currentLang.toUpperCase()}
           </button>
-          <div className="w-px h-3 bg-gray-200" />
-          <button
-            onClick={() => handleLanguageSwitch('el')}
-            className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
-              currentLang === 'el'
-                ? 'bg-[#CBFF38] text-black shadow-xs'
-                : 'text-gray-500 hover:text-black'
-            }`}
-            title="Switch to Greek"
-          >
-            ΕΛ
-          </button>
-        </div>
-      </div>
 
-      {/* User Info & Sign Out */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center shrink-0 notranslate">
+          {/* Mini Avatar */}
+          <div
+            className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center notranslate cursor-pointer"
+            title={`${user?.firstName} ${user?.lastName} (${user?.role?.replace('_', ' ')})`}
+          >
             <span className="text-black font-black text-[10px]">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-black text-[10px] uppercase tracking-tight text-gray-900 truncate notranslate">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none notranslate">
-              {user?.role?.replace('_', ' ')}
-            </p>
+
+          {/* Mini Logout */}
+          <button
+            onClick={handleLogout}
+            title="Sign Out"
+            className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </>
+      ) : (
+        <>
+          {/* Language Switcher */}
+          <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-lg border border-gray-100">
+            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Language</span>
+            <div className="flex items-center rounded-md overflow-hidden border border-gray-200 bg-white">
+              <button
+                onClick={() => handleLanguageSwitch('en')}
+                className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
+                  currentLang === 'en'
+                    ? 'bg-[#CBFF38] text-black shadow-xs'
+                    : 'text-gray-500 hover:text-black'
+                }`}
+                title="Switch to English"
+              >
+                EN
+              </button>
+              <div className="w-px h-3 bg-gray-200" />
+              <button
+                onClick={() => handleLanguageSwitch('el')}
+                className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
+                  currentLang === 'el'
+                    ? 'bg-[#CBFF38] text-black shadow-xs'
+                    : 'text-gray-500 hover:text-black'
+                }`}
+                title="Switch to Greek"
+              >
+                ΕΛ
+              </button>
+            </div>
           </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          title="Sign Out"
-          className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs shrink-0"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-        </button>
-      </div>
+
+          {/* User Info & Sign Out */}
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center shrink-0 notranslate">
+                <span className="text-black font-black text-[10px]">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-black text-[10px] uppercase tracking-tight text-gray-900 truncate notranslate">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none notranslate">
+                  {user?.role?.replace('_', ' ')}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   </aside>
 

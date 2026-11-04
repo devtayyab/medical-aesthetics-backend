@@ -10,7 +10,8 @@ import {
  Building2,
  Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
  ClipboardList, Repeat, UserCog, ListChecks, Clock,
- Phone, Search, LogOut, MessageSquare, Archive, Bell, Key, UserX
+ Phone, Search, LogOut, MessageSquare, Archive, Bell, Key, UserX,
+ ChevronLeft, ChevronRight
 } from"lucide-react";
 
 interface SidebarItem {
@@ -132,9 +133,11 @@ const getAdminLinks = (role: string): SidebarItem[] => {
 
 interface SidebarProps {
  onNavigate?: () => void;
+ isCollapsed?: boolean;
+ onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, isCollapsed = false, onToggleCollapse }) => {
  const location = useLocation();
  const navigate = useNavigate();
  const dispatch = useAppDispatch();
@@ -205,92 +208,169 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  };
 
  return (
- <aside className="w-64 lg:w-72 bg-white text-gray-900 flex flex-col border-r border-gray-100 shadow-sm h-full overflow-hidden shrink-0">
- <Link to={getHomePath(role)} className="p-6 border-b border-gray-50 bg-gradient-to-tr from-white to-gray-50/50 block hover:bg-gray-50/80 transition-all group">
- <div className="flex items-center gap-4">
- <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38] shadow-xl shadow-lime-500/10 font-black text-xl border border-white/10 group-hover:rotate-6 transition-transform notranslate">
- {user.firstName?.substring(0, 1).toUpperCase() || 'U'}
- </div>
- <div className="flex-1 min-w-0">
- <h2 className="text-sm font-black text-black uppercase tracking-tighter leading-tight truncate notranslate">
- {user?.firstName} {user?.lastName}
- </h2>
- <div className="flex items-center gap-1.5 mt-0.5">
- <div className="size-1.5 bg-[#CBFF38] rounded-full animate-pulse shadow-[0_0_5px_#CBFF38]" />
- <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">
- {role.replace('_', ' ')}
- </span>
- </div>
- </div>
- </div>
- </Link>
+  <aside className={`${isCollapsed ? 'w-16 lg:w-[68px]' : 'w-64 lg:w-72'} bg-white text-gray-900 flex flex-col border-r border-gray-100 shadow-sm h-full overflow-hidden shrink-0 transition-all duration-300 ease-in-out`}>
+  {/* Header */}
+  <div className={`border-b border-gray-100 bg-gradient-to-tr from-white to-gray-50/50 flex items-center transition-all ${
+    isCollapsed ? 'p-3 flex-col gap-2' : 'p-4 justify-between'
+  }`}>
+    <Link to={getHomePath(role)} className="flex items-center gap-3 min-w-0 group" title={`${user?.firstName} ${user?.lastName} (${role.replace('_', ' ')})`}>
+      <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38] shadow-md shadow-lime-500/10 font-black text-lg border border-white/10 group-hover:rotate-6 transition-transform notranslate shrink-0">
+        {user?.firstName?.substring(0, 1).toUpperCase() || 'U'}
+      </div>
+      {!isCollapsed && (
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-black text-black uppercase tracking-tight leading-tight truncate notranslate">
+            {user?.firstName} {user?.lastName}
+          </h2>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="size-1.5 bg-[#CBFF38] rounded-full animate-pulse shadow-[0_0_5px_#CBFF38]" />
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 truncate">
+              {role.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
+      )}
+    </Link>
 
- <nav className="flex-1 overflow-y-auto py-8 px-5 no-scrollbar space-y-8">
- {Object.entries(groupedLinks).map(([group, groupLinks]) => (
- <div key={group}>
- {group !== 'General' && (
- <h3 className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] px-4 mb-4">
- {group}
- </h3>
- )}
- <ul className="space-y-1.5">
- {groupLinks.map((link) => {
- const isActive = link.path.includes('?')
- ? location.pathname + (location.search || '') === link.path
- : location.pathname === link.path;
- return (
- <li key={link.path}>
- <Link
- to={link.path}
- onClick={(e) => {
- if (onNavigate) onNavigate();
- const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
- const isRestrictedRole = role === 'doctor' || role === 'secretariat';
- if (isRestrictedRole && restrictedPaths.includes(link.path)) {
- e.preventDefault();
- return;
- }
- }}
- className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${isActive
- ? 'text-black bg-[#CBFF38] shadow-lg shadow-lime-500/10'
- : 'text-gray-500 hover:text-black hover:bg-gray-50'
- }`}
- >
- <div className={`transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
- {React.cloneElement(link.icon as React.ReactElement, { size: 18, strokeWidth: isActive ? 3 : 2 })}
- </div>
- <span className={`text-[10px] font-black uppercase tracking-widest flex-1 ${isActive ? 'text-black' : 'text-gray-500 group-hover:text-black'}`}>
-                    {(currentLang === 'el' && link.labelGr) ? link.labelGr : link.label}
-                  </span>
+    {/* Toggle Collapse Button for Desktop */}
+    {onToggleCollapse && (
+      <button
+        onClick={onToggleCollapse}
+        className="hidden lg:flex size-7 rounded-lg bg-gray-50 hover:bg-black hover:text-[#CBFF38] text-gray-400 items-center justify-center transition-colors shrink-0 shadow-xs"
+        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+      </button>
+    )}
+  </div>
 
- {link.path === '/messages' && totalUnread > 0 && (
- <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
- {totalUnread > 99 ? '99+' : totalUnread}
- </div>
- )}
+  <nav className={`flex-1 overflow-y-auto py-4 custom-scrollbar space-y-4 ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
+  {Object.entries(groupedLinks).map(([group, groupLinks]) => (
+    <div key={group}>
+      {group !== 'General' && !isCollapsed && (
+        <h3 className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] px-3 mb-2">
+          {group}
+        </h3>
+      )}
+      <ul className="space-y-1">
+        {groupLinks.map((link) => {
+          const isActive = link.path.includes('?')
+            ? location.pathname + (location.search || '') === link.path
+            : location.pathname === link.path;
+          const label = (currentLang === 'el' && link.labelGr) ? link.labelGr : link.label;
 
- {link.path === '/clinic/my-notifications' && unreadCount > 0 && (
- <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
- {unreadCount > 99 ? '99+' : unreadCount}
- </div>
- )}
- </Link>
- </li>
- );
- })}
- </ul>
- </div>
- ))}
- </nav>
+          return (
+            <li key={link.path}>
+              <Link
+                to={link.path}
+                title={label}
+                onClick={(e) => {
+                  if (onNavigate) onNavigate();
+                  const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
+                  const isRestrictedRole = role === 'doctor' || role === 'secretariat';
+                  if (isRestrictedRole && restrictedPaths.includes(link.path)) {
+                    e.preventDefault();
+                    return;
+                  }
+                }}
+                className={`flex items-center rounded-xl transition-all duration-200 group relative ${
+                  isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'
+                } ${
+                  isActive
+                    ? 'text-black bg-[#CBFF38] shadow-sm font-black'
+                    : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                }`}
+              >
+                <div className={`transition-transform duration-300 relative shrink-0 ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}>
+                  {React.cloneElement(link.icon as React.ReactElement, { size: 18, strokeWidth: isActive ? 2.5 : 2 })}
+                  {isCollapsed && link.path === '/messages' && totalUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-black ring-2 ring-[#CBFF38]" />
+                  )}
+                  {isCollapsed && link.path === '/clinic/my-notifications' && unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-black ring-2 ring-[#CBFF38]" />
+                  )}
+                </div>
+                {!isCollapsed && (
+                  <>
+                    <span className={`text-[10px] font-black uppercase tracking-wider flex-1 truncate ${isActive ? 'text-black' : 'text-gray-600 group-hover:text-black'}`}>
+                      {label}
+                    </span>
 
- <div className="p-4 border-t border-gray-100 bg-white flex flex-col gap-3">
+                    {link.path === '/messages' && totalUnread > 0 && (
+                      <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </div>
+                    )}
+
+                    {link.path === '/clinic/my-notifications' && unreadCount > 0 && (
+                      <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </div>
+                    )}
+                  </>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  ))}
+  </nav>
+
+  {/* Footer */}
+  <div className={`border-t border-gray-100 bg-white flex flex-col gap-2 shrink-0 ${isCollapsed ? 'p-2 items-center' : 'p-3'}`}>
+    {isCollapsed ? (
+      <>
+        {/* Mini language switcher */}
+        <button
+          onClick={() => handleLanguageSwitch(currentLang === 'en' ? 'el' : 'en')}
+          className="size-8 rounded-lg bg-gray-50 border border-gray-200 text-[9px] font-black uppercase text-gray-700 hover:bg-[#CBFF38] hover:text-black transition-all flex items-center justify-center shadow-xs"
+          title={`Language: ${currentLang.toUpperCase()} (Click to toggle)`}
+        >
+          {currentLang.toUpperCase()}
+        </button>
+
+        {/* Settings icon button */}
+        <button
+          onClick={() => {
+            const routes: Record<string, string> = {
+              'salesperson': '/crm/settings',
+              'clinic_owner': '/clinic/settings',
+              'manager': '/crm/settings',
+              'admin': '/crm/settings',
+              'super_admin': '/crm/settings',
+              'doctor': '/change-password',
+              'secretariat': '/change-password',
+              'client': '/settings'
+            };
+            if (routes[role]) navigate(routes[role]);
+            else navigate('/crm/settings');
+          }}
+          className="size-8 bg-gray-50 text-gray-400 rounded-lg flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 shadow-xs"
+          title="Account Settings"
+        >
+          <Settings size={16} />
+        </button>
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          title="Sign Out"
+          className="size-8 flex items-center justify-center bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-lg border border-red-100 transition-all shadow-xs"
+        >
+          <LogOut size={16} />
+        </button>
+      </>
+    ) : (
+      <>
         {/* Language Switcher for SuperAdmin / Admin / Clinic / CRM / Staff */}
-        <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Language</span>
-          <div className="flex items-center rounded-lg overflow-hidden border border-gray-200 bg-white shadow-xs">
+        <div className="flex items-center justify-between px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
+          <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Language</span>
+          <div className="flex items-center rounded-md overflow-hidden border border-gray-200 bg-white shadow-xs">
             <button
               onClick={() => handleLanguageSwitch('en')}
-              className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all ${
+              className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
                 currentLang === 'en'
                   ? 'bg-[#CBFF38] text-black shadow-xs'
                   : 'text-gray-500 hover:text-black'
@@ -299,10 +379,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
             >
               EN
             </button>
-            <div className="w-px h-3.5 bg-gray-200" />
+            <div className="w-px h-3 bg-gray-200" />
             <button
               onClick={() => handleLanguageSwitch('el')}
-              className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all ${
+              className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
                 currentLang === 'el'
                   ? 'bg-[#CBFF38] text-black shadow-xs'
                   : 'text-gray-500 hover:text-black'
@@ -314,36 +394,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
           </div>
         </div>
 
- <div className="flex gap-3">
- <button
- onClick={() => {
- const routes: Record<string, string> = {
- 'salesperson': '/crm/settings',
- 'clinic_owner': '/clinic/settings',
- 'manager': '/crm/settings',
- 'admin': '/crm/settings',
- 'super_admin': '/crm/settings',
- 'doctor': '/change-password',
- 'secretariat': '/change-password',
- 'client': '/settings'
- };
- if (routes[role]) navigate(routes[role]);
- else navigate('/crm/settings'); // Default fallback for other staff
- }}
- className="size-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 shadow-sm active:scale-95 group"
- title="Account Settings"
- >
- <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
- </button>
- <button
- onClick={handleLogout}
- className="flex-1 h-12 flex items-center justify-center gap-3 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-95 group"
- >
- <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
- Sign Out
- </button>
- </div>
- </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              const routes: Record<string, string> = {
+                'salesperson': '/crm/settings',
+                'clinic_owner': '/clinic/settings',
+                'manager': '/crm/settings',
+                'admin': '/crm/settings',
+                'super_admin': '/crm/settings',
+                'doctor': '/change-password',
+                'secretariat': '/change-password',
+                'client': '/settings'
+              };
+              if (routes[role]) navigate(routes[role]);
+              else navigate('/crm/settings');
+            }}
+            className="size-9 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 shadow-xs active:scale-95 group shrink-0"
+            title="Account Settings"
+          >
+            <Settings size={16} className="group-hover:rotate-90 transition-transform duration-500" />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex-1 h-9 flex items-center justify-center gap-2 bg-red-500 text-white rounded-xl font-black uppercase tracking-wider text-[9px] hover:bg-red-600 transition-all shadow-md shadow-red-500/20 active:scale-95 group"
+          >
+            <LogOut size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            Sign Out
+          </button>
+        </div>
+      </>
+    )}
+  </div>
  </aside>
  );
 };
