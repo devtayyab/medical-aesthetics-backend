@@ -37,11 +37,12 @@ interface StaffDiaryProps {
 export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
   const { user } = useSelector((state: RootState) => state.auth);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
   // ── View State ──────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>(() => (user?.role?.toLowerCase() === 'doctor' && user?.id ? user.id : 'all'));
   const [filters, setFilters] = useState<StaffCalendarFilters>({
     ...DEFAULT_FILTERS,
     clinicId: clinicId || 'all'
@@ -73,9 +74,9 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   const filtersWithProvider = useMemo(
     () => ({
       ...filters,
-      providerId: selectedProviderId !== 'all' ? selectedProviderId : filters.providerId,
+      providerId: isDoctor && user?.id ? user.id : (selectedProviderId !== 'all' ? selectedProviderId : filters.providerId),
     }),
-    [filters, selectedProviderId],
+    [filters, selectedProviderId, isDoctor, user?.id],
   );
 
   const { appointments, clinics, providers, blockedSlots, isLoading, refreshAppointments } =
@@ -89,10 +90,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
   useEffect(() => {
     if (clinicId && clinicId !== 'all') {
       setFilters(prev => ({ ...prev, clinicId }));
-      // A doctor of the previous clinic would filter the new clinic's calendar to nothing.
-      setSelectedProviderId('all');
+      // For doctor, always keep doctor selected. For others, default to 'all'
+      setSelectedProviderId(isDoctor && user?.id ? user.id : 'all');
     }
-  }, [clinicId]);
+  }, [clinicId, isDoctor, user?.id]);
 
   // Set default clinic when clinics load if not yet selected
   useEffect(() => {
@@ -199,18 +200,19 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
       {/* Provider / Clinic Sidebar */}
       <StaffSidebar
         providers={providers}
-        selectedId={selectedProviderId}
+        selectedId={isDoctor && user?.id ? user.id : selectedProviderId}
         currentUserId={user?.id}
         currentUserName={
           user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : undefined
         }
         isManager={isSuperAdmin}
-        onSelect={setSelectedProviderId}
+        userRole={user?.role}
+        onSelect={isDoctor ? () => {} : setSelectedProviderId}
         clinics={clinics}
         selectedClinicId={filters.clinicId}
         onClinicChange={(clinicId) => {
            setFilters(prev => ({ ...prev, clinicId }));
-           setSelectedProviderId('all');
+           setSelectedProviderId(isDoctor && user?.id ? user.id : 'all');
         }}
       />
 

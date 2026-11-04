@@ -1571,7 +1571,7 @@ export class BookingsService {
       // 1. Role-based visibility
       if (normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'manager') {
         queryBuilder.where('1=1');
-      } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
+      } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat') {
         const user = await this.usersRepository.findOne({ where: { id: userId }, select: ['id'] });
         if (!user) throw new NotFoundException('User not found');
         const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
@@ -1581,6 +1581,9 @@ export class BookingsService {
         } else {
           queryBuilder.where('(appointment.providerId = :userId OR appointment.bookedById = :userId)', { userId });
         }
+      } else if (normalizedRole === 'doctor') {
+        // Doctor only sees their own appointments
+        queryBuilder.where('(appointment.providerId = :userId OR appointment.executedById = :userId)', { userId });
       } else if (normalizedRole === 'salesperson') {
         // Sales team view: User requested that sales people should see ALL appointments
         queryBuilder.where('1=1');
@@ -1761,11 +1764,13 @@ export class BookingsService {
         blockedQb.andWhere('blocked.providerId = :providerId', { providerId: query.providerId });
       }
 
-      if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
+      if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat') {
         const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
         if (clinicIds.length > 0) {
           blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
         }
+      } else if (normalizedRole === 'doctor') {
+        blockedQb.andWhere('(blocked.providerId = :userId OR blocked.providerId IS NULL)', { userId });
       }
 
       const blockedSlots = await blockedQb.orderBy('blocked.startTime', 'ASC').getMany();
@@ -1811,7 +1816,7 @@ export class BookingsService {
       .where('appointment.id = :appointmentId', { appointmentId });
 
     // Add role-based filtering
-    if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       const availableClinicIds = await this.clinicIdsForAccount(userId, userRole);
 
       if (availableClinicIds.length > 0) {
@@ -1819,6 +1824,8 @@ export class BookingsService {
       } else {
         queryBuilder.andWhere('appointment.providerId = :userId', { userId });
       }
+    } else if (userRole === 'doctor') {
+      queryBuilder.andWhere('(appointment.providerId = :userId OR appointment.executedById = :userId)', { userId });
     }
     // Managers can access appointments if they know the ID (and potentially we should check clinic association)
     // For now, we allow access by ID for managers.

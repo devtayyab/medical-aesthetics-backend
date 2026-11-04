@@ -9,6 +9,7 @@ interface StaffSidebarProps {
   currentUserId?: string;
   currentUserName?: string;
   isManager: boolean;
+  userRole?: string;
   onSelect: (id: string) => void;
   // Clinic selector props
   clinics: any[];
@@ -22,11 +23,29 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({
   currentUserId,
   currentUserName,
   isManager,
+  userRole,
   onSelect,
   clinics,
   selectedClinicId,
   onClinicChange,
 }) => {
+  const isDoctor = userRole?.toLowerCase() === 'doctor';
+
+  const displayedProviders = React.useMemo(() => {
+    if (!isDoctor) return providers;
+    const me = providers.filter(p => p.id === currentUserId);
+    if (me.length > 0) return me;
+    if (currentUserId) {
+      return [{
+        id: currentUserId,
+        name: currentUserName || 'Doctor',
+        initials: (currentUserName ? currentUserName.split(' ').map(n => n[0]).join('') : 'DR').toUpperCase(),
+        role: 'doctor',
+        colorIndex: 0,
+      }];
+    }
+    return providers;
+  }, [isDoctor, providers, currentUserId, currentUserName]);
   return (
     <div className="hidden lg:flex w-52 flex-shrink-0 bg-white border-r border-gray-100 flex-col h-full">
       {/* Clinic Selector Header */}
@@ -53,57 +72,59 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({
           Clinic Staff
         </h3>
         <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">
-          {providers.length} Active
+          {displayedProviders.length} Active
         </p>
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-        {/* All Staff */}
-        <button
-          onClick={() => onSelect('all')}
-          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${
-            selectedId === 'all'
-              ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
+        {/* All Staff - Only for Non-Doctor Roles */}
+        {!isDoctor && (
+          <button
+            onClick={() => onSelect('all')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${
+              selectedId === 'all'
+                ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <Users
-              className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
-            />
-          </div>
-          <div className="min-w-0">
-            <p
-              className={`text-[11px] font-bold truncate ${
-                selectedId === 'all' ? 'text-white' : 'text-slate-700'
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
               }`}
             >
-              All Staff
-            </p>
-            <p
-              className={`text-[9px] ${
-                selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
-              }`}
-            >
-              Full roster
-            </p>
-          </div>
-        </button>
+              <Users
+                className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
+              />
+            </div>
+            <div className="min-w-0">
+              <p
+                className={`text-[11px] font-bold truncate ${
+                  selectedId === 'all' ? 'text-white' : 'text-slate-700'
+                }`}
+              >
+                All Staff
+              </p>
+              <p
+                className={`text-[9px] ${
+                  selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
+                }`}
+              >
+                Full roster
+              </p>
+            </div>
+          </button>
+        )}
 
         {/* Divider */}
-        {providers.length > 0 && (
+        {!isDoctor && displayedProviders.length > 0 && (
           <div className="h-px bg-slate-100 my-2 mx-1" />
         )}
 
         {/* Providers */}
-        {providers.map(provider => {
+        {displayedProviders.map(provider => {
           const colors = PROVIDER_COLORS[provider.colorIndex % PROVIDER_COLORS.length];
-          const isSelected = selectedId === provider.id;
+          const isSelected = isDoctor || selectedId === provider.id;
           const isMe = provider.id === currentUserId;
 
           return (
