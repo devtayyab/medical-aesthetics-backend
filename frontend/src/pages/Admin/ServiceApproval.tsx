@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import React, { useEffect, useState } from "react";
 import clinicApi from "@/services/api/clinicApi";
 import { Button } from "@/components/atoms/Button/Button";
@@ -30,7 +31,7 @@ export const ServiceApproval: React.FC = () => {
       await clinicApi.services.setServiceApprovalStatus(serviceId, status);
       setServices(services.filter(s => s.id !== serviceId));
     } catch (err: any) {
-      alert(err.response?.data?.message || `Failed to ${status.toLowerCase()} service`);
+      toast.error(err.response?.data?.message || `Failed to ${status.toLowerCase()} service`);
     }
   };
 

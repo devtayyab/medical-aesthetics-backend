@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { X, MapPin, ChevronRight, ChevronLeft, Search, User as UserIcon } from 'lucide-react';
@@ -278,7 +279,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
   if (initialAppointment?.id) {
     const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(initialAppointment.status || '').toUpperCase());
     if (isCompleted) {
-      alert("Completed appointments are locked and cannot be modified.");
+      toast.error("Completed appointments are locked and cannot be modified.");
       return;
     }
     // UPDATE branch
@@ -303,7 +304,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  onClose();
  } catch (err) {
  console.error("Booking failed", err);
- alert("Failed to process appointment. Slot might be taken or invalid.");
+ toast.error("Failed to process appointment. Slot might be taken or invalid.");
  } finally {
  setIsLoading(false);
  }

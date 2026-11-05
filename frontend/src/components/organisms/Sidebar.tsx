@@ -10,7 +10,7 @@ import {
  Building2,
  Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
  ClipboardList, Repeat, UserCog, ListChecks, Clock,
- Phone, Search, LogOut, MessageSquare, Archive, Bell, Key, UserX,
+ Phone, Search, LogOut, MessageSquare, Bell, Key, UserX,
  ChevronLeft, ChevronRight
 } from"lucide-react";
 
@@ -55,7 +55,6 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/customers", label: "Customers", labelGr: "Πελάτες", icon: <Users className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/calendar", label: "Sales Calendar", labelGr: "Ημερολόγιο Πωλήσεων", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/repeat-management", label: "Repeat Management", labelGr: "Διαχείριση επαναληπτικών επαφών", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
-  { path: "/crm/archive", label: "Archive", labelGr: "Αρχείο", icon: <Archive className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/tag", label: "Tags", labelGr: "Ετικέτες", icon: <Tag className="w-5 h-5" />, group: "Operations" },
 
   { path: "/crm/communication", label: "Communication Flow", labelGr: "Ιστορικό Επικοινωνίας", icon: <Phone className="w-5 h-5" />, group: "Performance" },

@@ -280,7 +280,7 @@ const authSlice = createSlice({
     },
     setTokens: (
       state,
-      action: PayloadAction<{ accessToken: string; refreshToken?: string; user?: User }>
+      action: PayloadAction<{ accessToken?: string | null; refreshToken?: string; user?: User }>
     ) => {
       state.accessToken = action.payload.accessToken || null;
       if (action.payload.user) {
@@ -307,7 +307,7 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
-        if ((action.payload as any).accessToken) {
+        if (!(action.payload as any).requiresCode && (action.payload as any).user) {
           state.isLoading = false;
           state.user = (action.payload as any).user;
           state.accessToken = (action.payload as any).accessToken || null;

@@ -6,7 +6,6 @@ import { TasksService } from '../tasks/tasks.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { QueueService } from '../queue/queue.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
-import { TaskType } from '../../common/enums/task-type.enum';
 import { athensDate, athensTime, athensDateTime } from '../notifications/utils/notification-format.util';
 
 @Injectable()
@@ -25,17 +24,8 @@ export class EventHandlersService {
   async handleLeadCreated(lead: any) {
     this.logger.log(`Handling lead created event for lead ${lead.id}`);
 
-    // Create follow-up task
-    const followUpDue = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-    await this.tasksService.create({
-      title: `Initial contact with ${lead.fullName}`,
-      description: `New lead from ${lead.source}. Contact within 24 hours.`,
-      type: TaskType.FOLLOW_UP_CALL,
-      customerId: lead.id,
-      assigneeId: lead.assignedSalesId,
-      reminderAt: followUpDue.toISOString(),
-      dueDate: followUpDue.toISOString(),
-    });
+    // No automatic "Initial contact" task (QA #36): the only automatic task is the
+    // appointment confirmation call. New leads show at the top of Leads instead.
 
     // Send notification to assigned salesperson
     if (lead.assignedSalesId) {
@@ -47,12 +37,6 @@ export class EventHandlersService {
         { leadId: lead.id },
       );
     }
-
-    // Schedule follow-up reminder
-    await this.queueService.scheduleLeadFollowUp(
-      lead.id,
-      followUpDue,
-    );
 
     // Notify associated clinics if any
     if (lead.clinics && Array.isArray(lead.clinics)) {
@@ -90,19 +74,8 @@ export class EventHandlersService {
         appointment.id,
       );
 
-      // Create follow-up task for after-care
-      if (appointment.client) {
-        const afterCareDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days later
-        await this.tasksService.create({
-          title: `Follow-up call for ${appointment.client.fullName || 'Client'}`,
-          description: `Check on client satisfaction and recovery after ${serviceName}`,
-          type: TaskType.TREATMENT_FOLLOW_UP,
-          customerId: appointment.clientId,
-          assigneeId: appointment.providerId,
-          reminderAt: afterCareDue.toISOString(),
-          dueDate: afterCareDue.toISOString(),
-        });
-      }
+      // No automatic post-treatment follow-up task (QA #36): the only automatic task is
+      // the appointment confirmation call.
 
     }
     // Notifications for status changes are sent once by AppointmentNotificationsListener.

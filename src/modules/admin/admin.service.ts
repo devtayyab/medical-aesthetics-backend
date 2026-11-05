@@ -201,7 +201,7 @@ export class AdminService {
   async getAllUsers(query?: { role?: string; isActive?: boolean; search?: string; limit?: number; offset?: number }): Promise<any> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
     // Pending clinic staff requests are listed separately (GET /admin/staff-requests).
-    queryBuilder.andWhere(`COALESCE(user.profile::jsonb #>> '{staffRequest,status}', '') <> 'pending'`);
+    queryBuilder.andWhere(`COALESCE("user"."profile"::jsonb #>> '{staffRequest,status}', '') <> 'pending'`);
 
     if (query?.role) {
       queryBuilder.andWhere('user.role = :role', { role: query.role });
@@ -528,7 +528,7 @@ export class AdminService {
     const users = await this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.assignedClinic', 'clinic')
-      .where(`(user.profile::jsonb #>> '{staffRequest,status}') = 'pending'`)
+      .where(`("user"."profile"::jsonb #>> '{staffRequest,status}') = 'pending'`)
       .orderBy('user.createdAt', 'ASC')
       .getMany();
     return users.map((u) => ({

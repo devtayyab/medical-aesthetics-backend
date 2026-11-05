@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
@@ -47,10 +48,10 @@ export const NoShowAlerts: React.FC = () => {
  const handleResolve = async (id: string, agentName: string) => {
  try {
  await resolveNoShowAlert(id, `Manager resolved no-show, assigned to ${agentName}`);
- alert(`No-show resolved. Follow-up task has been assigned to ${agentName}.`);
+ toast.success(`No-show resolved. Follow-up task has been assigned to ${agentName}.`);
  loadData(true);
  } catch (error) {
- alert("Failed to resolve alert");
+ toast.error("Failed to resolve alert");
  }
  };
 
@@ -60,7 +61,7 @@ export const NoShowAlerts: React.FC = () => {
  const sanitizedId = patientId.split(':')[0];
  navigate(`/crm/customer/${sanitizedId}`);
  } else {
- alert("No patient ID available for this record.");
+ toast.error("No patient ID available for this record.");
  }
  };
 

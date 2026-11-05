@@ -25,7 +25,7 @@ const sampleClinic: Clinic = {
  zipCode: '10001',
  country: 'USA',
  },
- phone: '+1 (555) 123-4567',
+ phone: '+30 2101234567',
  email: 'info@glamourbeauty.com',
  businessHours: {
  monday: { open: '09:00', close: '18:00', isOpen: true },

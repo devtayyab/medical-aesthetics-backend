@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { Bell, Mail, Send, Users, ShieldCheck } from 'lucide-react';
 import api from '@/services/api';
 
@@ -28,7 +29,7 @@ const BroadcastPage: React.FC = () => {
   const handleSend = async () => {
     if (!canSend) return;
     const channels = [push ? 'push' : null, email ? 'email' : null].filter(Boolean).join(' + ');
-    if (!window.confirm(`Αποστολή (${channels}) σε ${audience} πελάτες με συναίνεση marketing;`)) return;
+    if (!(await confirmDialog({ message: `Αποστολή (${channels}) σε ${audience} πελάτες με συναίνεση marketing;` }))) return;
 
     setIsSending(true);
     setError(null);

@@ -7,9 +7,17 @@ import { crmAPI, adminAPI, clinicsAPI } from '@/services/api';
 import clinicApi from '@/services/api/clinicApi';
 import type { CalendarView, StaffCalendarFilters, ProviderResource } from './types';
 
+// Platform timezone: a missing or invalid clinic timezone falls back to Athens, never UTC
+// (UTC would draw every appointment 2-3 hours early).
+const DEFAULT_TZ = 'Europe/Athens';
 const sanitizeTz = (tz?: string | null): string => {
-  if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
-  return tz;
+  if (!tz || tz === 'null' || tz.trim() === '') return DEFAULT_TZ;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return DEFAULT_TZ;
+  }
 };
 
 export const getClinicLocalTime = (dateStr: string, timezone?: string) => {
@@ -169,8 +177,13 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
   }, [viewDate, viewMode, filters]);
 
   // Fetch appointments whenever params change
+  // Bumped on every refresh so blocked slots reload too: a block saved from the Block dialog
+  // must appear without changing clinic or reloading the page (QA NEW-5).
+  const [blocksVersion, setBlocksVersion] = useState(0);
+
   const refreshAppointments = useCallback(() => {
     dispatch(fetchClinicAppointments(fetchParams));
+    setBlocksVersion((v) => v + 1);
   }, [dispatch, fetchParams]);
 
   useEffect(() => {
@@ -188,17 +201,23 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
         adminAPI.getBlockedSlots(id).then((r: any) => r.data || []).catch(() => [])
       )
     ).then((results) => setBlockedSlots(results.flat()));
-  }, [filters.clinicId, clinics]);
+  }, [filters.clinicId, clinics, blocksVersion]);
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {
     const isDoctor = user?.role?.toLowerCase() === 'doctor';
+    const selectedClinicId = filters.clinicId && filters.clinicId !== 'all' ? filters.clinicId : null;
     return appointments.filter((apt: any) => {
       if (apt.isBlocked) return false;
+      // A clinic's diary only shows that clinic's appointments (QA #29): never another
+      // clinic's appointment of a doctor who works at both.
+      const aptClinicId = apt.clinicId || apt.clinic?.id;
+      if (selectedClinicId && aptClinicId && aptClinicId !== selectedClinicId) return false;
       if (isDoctor && user?.id) {
         const pId = apt.providerId || apt.provider?.id;
         const eId = apt.executedById || apt.executedBy?.id;
-        return pId === user.id || eId === user.id;
+        // doctorId: the server-resolved doctor (e.g. the clinic's only doctor when none was chosen)
+        return pId === user.id || eId === user.id || apt.doctorId === user.id;
       }
       return true;
     }).map((apt: any) => {
@@ -240,7 +259,7 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
       const spIdx = providers.findIndex(p => p.id === (apt.providerId || apt.provider?.id));
       return { ...apt, computedPaymentStatus, colorIndex: spIdx >= 0 ? spIdx : 0 };
     });
-  }, [appointments, providers]);
+  }, [appointments, providers, filters.clinicId, user?.id, user?.role]);
 
   return {
     appointments: enrichedAppointments,

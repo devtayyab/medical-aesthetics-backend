@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
  Users,
@@ -372,7 +373,7 @@ export const CRM: React.FC = () => {
  setShowQuickBooking(false);
  }}
  onSuccess={() => {
- alert('Booking completed!');
+ toast.success('Booking completed!');
  }}
  />
  )

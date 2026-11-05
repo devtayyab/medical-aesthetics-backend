@@ -334,7 +334,7 @@ const ClinicDashboard: React.FC = () => {
  onClick={() => navigate('/clinic/appointments')}
  className="w-full mt-6 py-3 border-2 border-dashed border-gray-100 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 hover:border-black hover:text-black transition-all"
  >
- Expand Operations Intelligence
+ {isGreek ? "ΟΛΑ ΤΑ ΡΑΝΤΕΒΟΥ" : "All Appointments"}
  </button>
  </section>
 
@@ -350,11 +350,11 @@ const ClinicDashboard: React.FC = () => {
  <div className="space-y-3">
  <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-[#CBFF38]/10 rounded-full">
  <TrendingUp size={10} className="text-[#CBFF38]" />
- <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Performance Index</span>
+ <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">{isGreek ? "ΑΝΑΦΟΡΕΣ" : "Reports"}</span>
  </div>
  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white">{isGreek ? "Αναλυτικές αναφορές" : "Detailed Reports"}</h3>
  <p className="text-gray-400 text-[11px] max-w-xs font-medium leading-relaxed">
- Analyze conversion funnels, churn velocity, and clinical resource allocation with our proprietary data engine.
+ {isGreek ? "Ραντεβού, έσοδα και θεραπείες της κλινικής σας ανά περίοδο." : "Appointments, revenue and treatments of your clinic by period."}
  </p>
  </div>
  <button
@@ -376,28 +376,28 @@ const ClinicDashboard: React.FC = () => {
  <ModernQuickAction
  icon={<Users size={22} />}
  label={isGreek ? "Ασθενείς" : "Patients"}
- desc="Client CRM"
+ desc={isGreek ? "Πελατολόγιο" : "Client list"}
  onClick={() => navigate('/clinic/clients')}
  color="#CBFF38"
  />
  <ModernQuickAction
  icon={<FileText size={22} />}
  label={isGreek ? "Θεραπείες" : "Treatments"}
- desc="Catalog"
+ desc={isGreek ? "Κατάλογος" : "Catalog"}
  onClick={() => navigate('/clinic/services')}
  color="#FFD700"
  />
  <ModernQuickAction
  icon={<UserCog size={22} />}
  label={isGreek ? "Προσωπικό" : "Staff"}
- desc="Staffing"
+ desc={isGreek ? "Ομάδα" : "Team"}
  onClick={() => navigate('/clinic/staff')}
  color="#00E5FF"
  />
  <ModernQuickAction
  icon={<Star size={22} />}
  label={isGreek ? "Αξιολογήσεις" : "Reviews"}
- desc="Reviews"
+ desc={isGreek ? "Κριτικές" : "Reviews"}
  onClick={() => navigate('/clinic/reviews')}
  color="#FF4081"
  />
@@ -423,7 +423,7 @@ const ClinicDashboard: React.FC = () => {
  {stats.pending} {isGreek ? "ραντεβού αναμένουν επιβεβαίωση" : "appointments awaiting confirmation"}
  </h4>
  <p className="text-gray-400 text-[11px] font-medium leading-relaxed">
- Confirm pending appointments to optimize resource utilization.
+ {isGreek ? "Επιβεβαιώστε τα εκκρεμή ραντεβού." : "Please confirm the pending appointments."}
  </p>
  <button
  onClick={() => navigate("/clinic/appointments?status=pending")}

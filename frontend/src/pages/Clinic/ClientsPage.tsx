@@ -7,6 +7,7 @@ import { Users, Search, Calendar, Euro, TrendingUp, X, Mail, Phone, ArrowUpRight
 import { motion, AnimatePresence } from"framer-motion";
 import ClinicBookingModal from"../../components/clinic/ClinicBookingModal";
 import toast from"react-hot-toast";
+import { exportMedicalRecordPdf } from"../../utils/medicalRecordPdf";
 
 const ClientsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -199,6 +200,7 @@ const ClientsPage: React.FC = () => {
  {showDetailsModal && selectedClient && (
  <ClientDetailsModal
  client={selectedClient}
+ isGreek={isGreek}
  onClose={() => {
  setShowDetailsModal(false);
  setSelectedClient(null);
@@ -244,80 +246,11 @@ const ClientsPage: React.FC = () => {
 };
 
 
-// ---------------------------------------------------------------------------
-// Medical record export: own-clinic appointments only (server-scoped), rendered
-// as a printable document; the browser's print dialog saves it as a PDF.
-// ---------------------------------------------------------------------------
-const ATHENS_TZ = 'Europe/Athens';
-const fmtAthensDateTime = (d: string | Date) =>
- new Intl.DateTimeFormat('en-GB', { timeZone: ATHENS_TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
- .format(new Date(d))
- .replace(',', '');
-const escapeHtml = (v: any) =>
- String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
-const fmtEuro = (n: any) => (n === null || n === undefined || n === '' ? '-' : `€${Number(n).toFixed(2)}`);
-
-const exportMedicalRecordPdf = async (clientId: string) => {
+// Medical record export: own-clinic appointments only (server-scoped),
+// downloaded as a real PDF file (see utils/medicalRecordPdf).
+const exportMedicalRecord = async (clientId: string, isGreek: boolean) => {
  const record = await clinicApi.patients.medicalRecord(clientId);
- const p = record.patient || {};
- const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Patient';
- const rows = (record.appointments || []).map((a: any) => `
- <tr>
- <td>${escapeHtml(fmtAthensDateTime(a.startTime))}</td>
- <td>${escapeHtml(a.treatment)}</td>
- <td>${escapeHtml(a.clinicName || '')}</td>
- <td class="num">${escapeHtml(fmtEuro(a.price))}</td>
- <td>${escapeHtml(a.status)}</td>
- <td class="notes">${escapeHtml(a.clinicNotes || '')}</td>
- </tr>`).join('');
- const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(`Medical record - ${name}`)}</title>
- <style>
- body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:32px;font-size:12px}
- h1{font-size:20px;margin:0 0 4px} .muted{color:#555}
- .card{border:1px solid #ddd;border-radius:8px;padding:12px 16px;margin:16px 0}
- table{width:100%;border-collapse:collapse;margin-top:8px} th,td{border-bottom:1px solid #e5e5e5;text-align:left;padding:6px 8px;vertical-align:top}
- th{background:#f5f5f5;font-size:11px;text-transform:uppercase} .num{text-align:right;white-space:nowrap} .notes{white-space:pre-wrap;max-width:260px}
- @page{size:A4;margin:16mm}
- </style></head><body>
- <h1>Medical record</h1>
- <div class="muted">${escapeHtml((record.clinics || []).join(', '))} · Generated ${escapeHtml(fmtAthensDateTime(record.generatedAt || new Date()))} (Athens time)</div>
- <div class="card">
- <div><strong>Name:</strong> ${escapeHtml(name)}</div>
- <div><strong>Phone:</strong> ${escapeHtml(p.phone || '-')}</div>
- <div><strong>Email:</strong> ${escapeHtml(p.email || '-')}</div>
- </div>
- <h2 style="font-size:14px">Appointment history (${(record.appointments || []).length})</h2>
- <table><thead><tr><th>Date</th><th>Treatment</th><th>Clinic</th><th class="num">Price</th><th>Status</th><th>Clinic notes</th></tr></thead>
- <tbody>${rows || '<tr><td colspan="6">No appointments at this clinic.</td></tr>'}</tbody></table>
- </body></html>`;
-
- const iframe = document.createElement('iframe');
- iframe.style.position = 'fixed';
- iframe.style.right = '0';
- iframe.style.bottom = '0';
- iframe.style.width = '0';
- iframe.style.height = '0';
- iframe.style.border = '0';
- document.body.appendChild(iframe);
- const doc = iframe.contentWindow?.document;
- if (!doc || !iframe.contentWindow) {
- document.body.removeChild(iframe);
- throw new Error('Could not open the print view');
- }
- doc.open();
- doc.write(html);
- doc.close();
- const previousTitle = document.title;
- // The PDF file name defaults to the document title
- document.title = `Medical record - ${name}`;
- setTimeout(() => {
- iframe.contentWindow?.focus();
- iframe.contentWindow?.print();
- setTimeout(() => {
- document.title = previousTitle;
- if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
- }, 1000);
- }, 250);
+ await exportMedicalRecordPdf(record, isGreek);
 };
 
 // "Add patient" (phone rule): a phone BeautyDoctors already knows is linked to
@@ -405,13 +338,13 @@ const StatCard = ({ title, value, icon, trend, highlight }: any) => (
  </div>
 );
 
-const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
+const ClientDetailsModal = ({ client, onClose, onBookAppointment, isGreek }: any) => {
  const innerClient = client.client || client;
  const firstName = innerClient.firstName ||"";
  const lastName = innerClient.lastName ||"";
  const clientName = (firstName || lastName) 
  ? `${firstName} ${lastName}`.trim() 
- : (innerClient.email ||"Patient Registry Detail");
+ : (innerClient.email ||(isGreek ? "Ασθενής" : "Patient"));
  const appointments = client.appointments || [];
 
  const handleBook = () => {
@@ -463,7 +396,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  onClick={handleBook}
  className="px-4 md:px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
  >
- <Plus size={14} /> New Appointment
+ <Plus size={14} /> {isGreek ? "ΝΕΟ ΡΑΝΤΕΒΟΥ" : "New Appointment"}
  </button>
  <button onClick={onClose} className="size-11 md:size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
  <X size={24} />
@@ -476,8 +409,8 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  <div className="lg:col-span-2 space-y-8">
  <section>
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
- <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4">Treatment History</h3>
- <div className="px-4 py-1.5 bg-gray-50 rounded-full font-black text-[10px] uppercase tracking-widest">{appointments.length} Total Procedures</div>
+ <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4">{isGreek ? "ΙΣΤΟΡΙΚΟ ΘΕΡΑΠΕΙΩΝ" : "Treatment History"}</h3>
+ <div className="px-4 py-1.5 bg-gray-50 rounded-full font-black text-[10px] uppercase tracking-widest">{appointments.length} {isGreek ? "ΘΕΡΑΠΕΙΕΣ" : "Total Procedures"}</div>
  </div>
  
  <div className="space-y-4">
@@ -490,8 +423,8 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  <span className="text-xl font-black leading-none">{new Date(apt.startTime).getDate()}</span>
  </div>
  <div>
- <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||"Clinical Service"}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: {apt.providerName || "-"}</p>
+ <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||(isGreek ? "Θεραπεία" : "Treatment")}</h4>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΙΑΤΡΟΣ" : "Practitioner"}: {apt.providerName || "-"}{apt.durationMinutes ? ` · ${apt.durationMinutes} ${isGreek ? 'ΛΕΠΤΑ' : 'MIN'}` : ''}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">
@@ -506,7 +439,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  <button 
  onClick={handleBook}
  className="size-10 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center hover:scale-110 transition-transform"
- title="Rebook / Follow-up"
+ title={isGreek ? "Νέο ραντεβού" : "Rebook / Follow-up"}
  >
  <Plus size={18} />
  </button>
@@ -515,7 +448,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
  )) : (
  <div className="py-20 text-center bg-gray-50/30 rounded-[32px] border border-dashed border-gray-100">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">No historical data records found.</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΔΕΝ ΥΠΑΡΧΟΥΝ ΡΑΝΤΕΒΟΥ" : "No appointments yet."}</p>
  </div>
  )}
  </div>
@@ -524,49 +457,46 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
 
  <div className="space-y-8">
  <section className="bg-gray-50 rounded-[32px] p-5 md:p-8 border border-gray-100">
- <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Financial Metrics</h4>
+ <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">{isGreek ? "ΟΙΚΟΝΟΜΙΚΑ ΣΤΟΙΧΕΙΑ" : "Financials"}</h4>
  <div className="space-y-6">
  <div>
  <p className="text-3xl font-black tracking-tighter text-gray-900 leading-none mb-2">
  €{(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
  </p>
- <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Lifetime Investment</p>
+ <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΣΥΝΟΛΙΚΕΣ ΠΛΗΡΩΜΕΣ" : "Total spent"}</p>
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div className="p-4 bg-white rounded-2xl shadow-sm">
  <p className="text-xl font-black text-gray-900 leading-none mb-1">{appointments.length}</p>
- <p className="text-[8px] font-black uppercase text-gray-400">Total Logistics</p>
+ <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΡΑΝΤΕΒΟΥ" : "Appointments"}</p>
  </div>
  <div className="p-4 bg-white rounded-2xl shadow-sm">
  <p className="text-xl font-black text-[#CBFF38] bg-black inline-block px-1 rounded leading-none mb-1">
  {appointments.length > 0 ? `€${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : `€0`}
  </p>
- <p className="text-[8px] font-black uppercase text-gray-400">Average Unit</p>
+ <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΜΕΣΗ ΑΞΙΑ" : "Average per visit"}</p>
  </div>
  </div>
  </div>
  </section>
 
  <section className="bg-black text-white rounded-[32px] p-8 relative overflow-hidden">
- <div className="absolute top-0 right-0 p-4 opacity-10">
- <TrendingUp size={60} className="text-[#CBFF38]" />
- </div>
  <div className="relative z-10">
- <h4 className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-4">Actionable Insight</h4>
+ <h4 className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-4">{isGreek ? "ΙΑΤΡΙΚΟ ΙΣΤΟΡΙΚΟ" : "Medical Record"}</h4>
  <p className="text-xs font-bold leading-relaxed opacity-60">
- Patient exhibits high retention velocity. Recommended protocol: VIP Loyalty Provisioning Level 2.
+ {isGreek ? "Λήψη PDF με τα ραντεβού του ασθενή στην κλινική σας." : "Download a PDF with this patient's appointments at your clinic."}
  </p>
  <button 
  onClick={async () => {
  try {
- await exportMedicalRecordPdf(innerClient.id);
+ await exportMedicalRecord(innerClient.id, isGreek);
  } catch (err: any) {
- toast.error(err?.response?.data?.message || err?.message || 'Could not export the medical record');
+ toast.error(err?.response?.data?.message || err?.message || (isGreek ? 'Δεν ήταν δυνατή η εξαγωγή του ιατρικού ιστορικού' : 'Could not export the medical record'));
  }
  }}
  className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all"
  >
- Export Medical Record
+ {isGreek ? "ΕΞΑΓΩΓΗ PDF" : "Export Medical Record"}
  </button>
  </div>
  </section>

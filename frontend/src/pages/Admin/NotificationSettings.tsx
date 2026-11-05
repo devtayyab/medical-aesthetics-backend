@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from"react";
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { notificationsAPI } from"@/services/api";
 import { Bell, Mail, Smartphone, Edit2, RefreshCcw, Save, X, Plus, Info } from"lucide-react";
 import { toast } from"react-hot-toast";
@@ -90,7 +91,7 @@ export const NotificationSettings: React.FC = () => {
  };
 
  const handleReset = async () => {
- if (!window.confirm("Are you sure you want to reset templates to defaults? This will not delete your custom templates but will add missing defaults.")) return;
+ if (!(await confirmDialog({ message: "Are you sure you want to reset templates to defaults? This will not delete your custom templates but will add missing defaults." }))) return;
  try {
  await notificationsAPI.resetDefaultTemplates();
  toast.success("Templates reset/seeded successfully");

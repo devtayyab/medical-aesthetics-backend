@@ -48,13 +48,17 @@ export const adminService = {
   createManualPayment: (data: {
     amount: number;
     method: string;
-    type: string;
     notes: string;
     clinicId: string;
     clientId: string;
+    appointmentId?: string;
     providerId?: string;
     salespersonId?: string;
   }) => api.post('/admin/payments/manual', data),
+  searchPaymentClients: (search?: string, limit?: number) =>
+    api.get('/admin/payments/clients', { params: { search: search || undefined, limit } }),
+  getPaymentClientAppointments: (clientId: string) =>
+    api.get(`/admin/payments/clients/${clientId}/appointments`),
   getGiftCardsSummary: () => api.get('/admin/gift-cards/summary'),
   getGiftCards: (search?: string) => api.get('/admin/gift-cards', { params: { search } }),
   generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>

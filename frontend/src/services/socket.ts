@@ -8,13 +8,15 @@ class SocketService {
  // (and any on() called before connect() would no-op).
  private listeners: Array<{ event: string; callback: (...args: any[]) => void }> = [];
 
- connect(token: string, namespace: string) {
+ connect(token: string | null, namespace: string) {
  if (this.socket) {
  this.socket.disconnect();
  }
 
  this.socket = io(`${ENV.SOCKET_URL}${namespace}`, {
- auth: { token },
+ // Browsers authenticate with the httpOnly cookie; a token is only passed by native shells.
+ ...(token ? { auth: { token } } : {}),
+ withCredentials: true,
  transports: ['websocket'],
  });
 

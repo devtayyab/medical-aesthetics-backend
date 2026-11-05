@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
@@ -43,7 +44,7 @@ import type { Lead } from '@/types/crm.types';
 export const Customers: React.FC = () => {
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
- const { leads, leadFilters, isLoading, salespersons, stats } = useSelector((state: RootState) => state.crm);
+ const { leads, leadsPage, leadFilters, isLoading, salespersons, stats } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
 
  const [searchTerm, setSearchTerm] = useState('');
@@ -91,10 +92,14 @@ export const Customers: React.FC = () => {
  dispatch(fetchLeadStats({}));
  }, [dispatch]);
 
+ // Converted customers are paged on the server (QA NEW-2): one page per request.
+ const reloadCustomers = () =>
+ dispatch(fetchLeads({ ...leadFilters, status: 'converted', page: currentPage, limit: customersPerPage, withTotal: 'true' }));
+
  useEffect(() => {
- // Keep the 'converted' constraint local to this page with high limit to get all converted customers
- dispatch(fetchLeads({ ...leadFilters, status: 'converted', limit: 10000 }));
- }, [dispatch, leadFilters]);
+ reloadCustomers();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [dispatch, leadFilters, currentPage, customersPerPage]);
 
  // Handlers
  const handleFilterChange = (key: string, value: string | string[]) => {
@@ -163,32 +168,32 @@ export const Customers: React.FC = () => {
  await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
  setShowModal(false);
  setEditingLead(null);
- dispatch(fetchLeads(leadFilters));
+ reloadCustomers();
  } catch (error) {
  console.error("Update failed:", error);
  }
  };
 
  const handleDeleteCustomer = async (id: string, name: string) => {
- if (!window.confirm(`Delete 1 lead permanently? (${name})`)) return;
+ if (!(await confirmDialog({ message: `Delete 1 lead permanently? (${name})`, danger: true }))) return;
  try {
  await dispatch(deleteLead(id)).unwrap();
- dispatch(fetchLeads(leadFilters));
+ reloadCustomers();
  } catch (error) {
  console.error("Delete failed:", error);
- alert("Failed to delete customer.");
+ toast.error("Failed to delete customer.");
  }
  };
 
  const handleBulkDelete = async () => {
- if (!window.confirm(`Delete ${selectedLeads.length} lead${selectedLeads.length === 1 ? '' : 's'} permanently?`)) return;
+ if (!(await confirmDialog({ message: `Delete ${selectedLeads.length} lead${selectedLeads.length === 1 ? '' : 's'} permanently?`, danger: true }))) return;
  try {
  await Promise.all(selectedLeads.map(id => dispatch(deleteLead(id)).unwrap()));
  setSelectedLeads([]);
- dispatch(fetchLeads(leadFilters));
+ reloadCustomers();
  } catch (error) {
  console.error("Bulk delete failed:", error);
- alert("Failed to delete some records.");
+ toast.error("Failed to delete some records.");
  }
  };
 
@@ -642,11 +647,11 @@ export const Customers: React.FC = () => {
  </div>
  ) : (
  (() => {
- const customersList = leads.filter(l => l.status === 'converted');
- const indexOfLastCustomer = currentPage * customersPerPage;
- const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
- const currentCustomers = customersList.slice(indexOfFirstCustomer, indexOfLastCustomer);
- const totalPages = Math.ceil(customersList.length / customersPerPage);
+ const currentCustomers = leads.filter(l => l.status === 'converted');
+ const totalCustomers = leadsPage?.total ?? currentCustomers.length;
+ const indexOfFirstCustomer = (currentPage - 1) * customersPerPage;
+ const indexOfLastCustomer = indexOfFirstCustomer + currentCustomers.length;
+ const totalPages = leadsPage?.totalPages ?? 1;
 
  return (
  <div className="flex flex-col">
@@ -756,7 +761,7 @@ export const Customers: React.FC = () => {
  </Table>
 
  {/* Pagination Controls */}
- {customersList.length > 0 && (
+ {totalCustomers > 0 && (
  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-white">
  <div className="flex items-center gap-2">
  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Customers per page:</span>
@@ -773,7 +778,7 @@ export const Customers: React.FC = () => {
  <option value={100}>100</option>
  </select>
  <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
- Showing {indexOfFirstCustomer + 1} to {Math.min(indexOfLastCustomer, customersList.length)} of {customersList.length}
+ Showing {indexOfFirstCustomer + 1} to {indexOfLastCustomer} of {totalCustomers.toLocaleString()}
  </span>
  </div>
  <div className="flex items-center gap-1.5">

@@ -45,7 +45,6 @@ import SettingsPage from"@/pages/Clinic/SettingsPage";
 import GoogleCalendarPage from"@/pages/Clinic/GoogleCalendarPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
-import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
 import { LostLeadsPage } from "@/pages/CRM/LostLeads";
 import { CustomerDetails } from"@/pages/CRM/CustomerDetails";
 import { Tasks } from"@/pages/CRM/Tasks";
@@ -55,7 +54,7 @@ import { Dashboard as AdminDashboard } from"@/pages/Admin/Dashboard";
 import { ManagerDashboard } from"./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from"@/pages/Admin/Users";
 import { Clinics as AdminClinics } from"@/pages/Admin/Clinics";
-import { LoyaltyManagement } from"@/pages/Admin/LoyaltyManagement";
+import { NotFound } from"@/pages/NotFound/NotFound";
 import { ReviewModeration } from"@/pages/Admin/ReviewModeration";
 import { TherapyCatalog as AdminTherapyCatalog } from"@/pages/Admin/TherapyCatalog";
 import { Monitor } from"@/pages/Admin/Monitor";
@@ -118,6 +117,7 @@ import { SalesAnalyticsDashboard } from"./pages/CRM/SalesAnalyticsDashboard";
 import ClinicAnalyticsPage from"./pages/Admin/ClinicAnalyticsPage";
 import { ChangePassword } from"@/pages/Account/ChangePassword";
 import { Toaster } from"react-hot-toast";
+import { ConfirmDialogHost } from "@/components/molecules/ConfirmDialog";
 import { MessagesPage } from"@/pages/Messages/MessagesPage";
 import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
@@ -614,6 +614,10 @@ function AppContent() {
  }
  />
  <Route path="clients" element={<ClientsPage />} />
+ {/* Legacy / guessed clinic links */}
+ <Route path="patients" element={<Navigate to="/clinic/clients" replace />} />
+ <Route path="calendar" element={<Navigate to="/clinic/diary" replace />} />
+ <Route path="*" element={<NotFound homePath="/clinic" />} />
  <Route
  path="reviews"
  element={
@@ -723,16 +727,8 @@ function AppContent() {
  </ProtectedLayout>
  }
  />
- <Route
- path="/crm/archive"
- element={
- <ProtectedLayout allowedRoles={["salesperson","manager","admin","SUPER_ADMIN"]}>
- <AdminLayout>
- <ArchivedLeads />
- </AdminLayout>
- </ProtectedLayout>
- }
- />
+ {/* One Lost Leads page (QA Y12): the old Archive page redirects there */}
+ <Route path="/crm/archive" element={<Navigate to="/crm/lost-leads" replace />} />
  <Route
  path="/crm/customer/:id"
  element={
@@ -1067,16 +1063,9 @@ function AppContent() {
  </ProtectedLayout>
  }
  />
- <Route
- path="/admin/loyalty-management"
- element={
- <ProtectedLayout allowedRoles={["admin"]}>
- <AdminLayout>
- <LoyaltyManagement />
- </AdminLayout>
- </ProtectedLayout>
- }
- />
+ {/* Loyalty lives on the "Loyalty & Wallet" page; the old tier editor was backed by mock data */}
+ <Route path="/admin/loyalty" element={<Navigate to="/admin/wallet" replace />} />
+ <Route path="/admin/loyalty-management" element={<Navigate to="/admin/wallet" replace />} />
  <Route
  path="/admin/monitor"
  element={
@@ -1209,6 +1198,8 @@ function AppContent() {
  </ProtectedLayout>
  }
  />
+ {/* Unknown routes: friendly Greek/English 404 instead of a blank page */}
+ <Route path="*" element={<NotFound />} />
  </Routes>
  </main>
  {!isAuthPage && (
@@ -1222,6 +1213,7 @@ function App() {
  return (
  <Provider store={store}>
  <Toaster position="top-right" reverseOrder={false} containerStyle={{ zIndex: 999999 }} />
+ <ConfirmDialogHost />
  <GlobalDialer />
  <Router>
  <AppContent />

@@ -22,16 +22,23 @@ import { REFRESH_COOKIE, clearAuthCookies, readCookie, setAuthCookies } from './
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  /** Sets the httpOnly cookies. Tokens stay in the body during the transition (mobile app, sockets). */
-  private withCookies(res: Response, session: IssuedSession) {
+  /**
+   * Sets the httpOnly cookies. Browsers get only the user in the body (QA NEW-7): a token in
+   * a JSON body is readable by page scripts, which defeats the httpOnly cookie.
+   * Native clients that cannot keep cookies opt in with `X-Auth-Transport: bearer`.
+   */
+  private withCookies(req: any, res: Response, session: IssuedSession) {
     setAuthCookies(res, session.accessToken, session.refreshToken);
-    return session;
+    const transport = String(req?.headers?.['x-auth-transport'] || '').toLowerCase();
+    if (transport === 'bearer') return session;
+    const { accessToken: _a, refreshToken: _r, ...rest } = session;
+    return rest;
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login: check password, issue session (or email code if ENABLE_LOGIN_CODE=true)' })
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Request() req, @Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(loginDto.email, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -39,7 +46,7 @@ export class AuthController {
     const requireCode = process.env.ENABLE_LOGIN_CODE === 'true';
     if (!requireCode) {
       const session = await this.authService.login(user);
-      return this.withCookies(res, session);
+      return this.withCookies(req, res, session);
     }
     return this.authService.startLogin(user);
   }
@@ -47,9 +54,9 @@ export class AuthController {
   @Post('login/verify-code')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login step 2: verify the emailed code and start the session' })
-  async verifyLoginCode(@Body() body: VerifyLoginCodeDto, @Res({ passthrough: true }) res: Response) {
+  async verifyLoginCode(@Request() req, @Body() body: VerifyLoginCodeDto, @Res({ passthrough: true }) res: Response) {
     const session = await this.authService.verifyLoginCode(body.challengeToken, body.code);
-    return this.withCookies(res, session);
+    return this.withCookies(req, res, session);
   }
 
   @Post('login/resend-code')
@@ -90,7 +97,7 @@ export class AuthController {
     const refreshToken = bodyToken || readCookie(req, REFRESH_COOKIE);
     try {
       const session = await this.authService.refreshToken(refreshToken);
-      return this.withCookies(res, session);
+      return this.withCookies(req, res, session);
     } catch (err) {
       clearAuthCookies(res);
       throw err;

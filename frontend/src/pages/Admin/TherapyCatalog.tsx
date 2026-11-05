@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from"react";
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { adminAPI } from"@/services/api";
 import {
  Tag,
@@ -198,7 +199,7 @@ export const TherapyCatalog: React.FC = () => {
  };
 
  const handleDeleteTreatment = async (id: string) => {
- if (!confirm("Are you sure you want to delete this therapy? If it has historical booking records, it will be safely archived (deactivated) instead of hard-deleted to preserve history.")) return;
+ if (!(await confirmDialog({ message: "Are you sure you want to delete this therapy? If it has historical booking records, it will be safely archived (deactivated) instead of hard-deleted to preserve history.", danger: true }))) return;
  try {
  await adminAPI.deleteMasterTreatment(id);
  toast.success("Therapy deleted");
@@ -210,7 +211,7 @@ export const TherapyCatalog: React.FC = () => {
  };
 
  const handleDeleteCategory = async (cat: masterCategory) => {
- if (!confirm(`Delete category"${cat.name}"? Any treatments in it will become uncategorised and can be re-assigned to another category later.`)) return;
+ if (!(await confirmDialog({ message: `Delete category"${cat.name}"? Any treatments in it will become uncategorised and can be re-assigned to another category later.`, danger: true }))) return;
  try {
  const res = await adminAPI.deleteMasterCategory(cat.id);
  const unmapped = res.data?.unmappedTreatments ?? 0;
@@ -231,7 +232,7 @@ export const TherapyCatalog: React.FC = () => {
  await adminAPI.setTreatmentStatus(id, status);
  fetchData();
  } catch (err: any) {
- alert("Failed to update status");
+ toast.error("Failed to update status");
  }
  };
 
@@ -284,18 +285,18 @@ export const TherapyCatalog: React.FC = () => {
  await adminAPI.updateMasterTreatment(t.id, { isFeatured: !t.isFeatured });
  fetchData();
  } catch (err: any) {
- alert(err.response?.data?.message ||"Failed to update featured status");
+ toast.error(err.response?.data?.message ||"Failed to update featured status");
  }
  };
 
   const handleAutoConnect = async () => {
     try {
-      if (!confirm("This will automatically link unconnected treatments to categories based on name matching. Proceed?")) return;
+      if (!(await confirmDialog({ message: "This will automatically link unconnected treatments to categories based on name matching. Proceed?" }))) return;
       const res = await adminAPI.autoConnectCategories();
-      alert(`Auto-connect complete. Updated ${res.data.updated} treatments.`);
+      toast.success(`Auto-connect complete. Updated ${res.data.updated} treatments.`);
       fetchData();
     } catch (err: any) {
-      alert("Failed to auto-connect categories: " + (err.response?.data?.message || err.message));
+      toast.error("Failed to auto-connect categories: " + (err.response?.data?.message || err.message));
     }
   };
 

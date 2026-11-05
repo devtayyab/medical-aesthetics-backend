@@ -1,8 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { randomBytes } from 'crypto';
+import { USER_CREATED_BY_STAFF_EVENT } from '../users/account-setup.listener';
 import { In, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Clinic } from './entities/clinic.entity';
+import { Service } from './entities/service.entity';
+import { loadAppointmentDisplayContext, appointmentDoctor, appointmentTreatments } from '../bookings/appointment-display.util';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { Lead } from '../crm/entities/lead.entity';
@@ -48,6 +53,9 @@ export class ClinicPatientsService {
     private readonly leadsRepository: Repository<Lead>,
     @InjectRepository(CustomerRecord)
     private readonly customerRecordsRepository: Repository<CustomerRecord>,
+    @InjectRepository(Service)
+    private readonly servicesRepository: Repository<Service>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private isAdmin(role: string): boolean {
@@ -307,9 +315,8 @@ export class ClinicPatientsService {
       .orderBy('l.createdAt', 'ASC')
       .getOne();
 
-    const password = Math.random().toString(36).slice(-10);
     // Real email only (no placeholders), and never one that belongs to another account
-    const candidateEmail = email || (lead?.email && lead.email.trim() ? lead.email.trim() : undefined);
+    const candidateEmail = (email || (lead?.email && lead.email.trim() ? lead.email.trim() : undefined))?.toLowerCase();
     const emailFree = candidateEmail
       ? !(await this.usersRepository.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email: candidateEmail }).getCount())
       : false;
@@ -321,12 +328,18 @@ export class ClinicPatientsService {
         email: emailFree ? candidateEmail : null,
         role: UserRole.CLIENT,
         isActive: true,
-        passwordHash: password,
+        // Unusable random password: the client sets their own through ONE emailed link (item 18)
+        isEmailVerified: false,
+        accountSetupPending: true,
+        passwordHash: randomBytes(24).toString('hex'),
         profile: lead
           ? { [LINKED_CLIENT_KEY]: [clinicId] }
           : { clinicOwnClient: true, [OWN_CLIENT_KEY]: [clinicId], createdAsClinicClientAt: new Date().toISOString() },
       } as Partial<User>),
     );
+    if (user.email) {
+      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: user.id });
+    }
 
     if (lead) {
       await this.customerRecordsRepository
@@ -414,10 +427,12 @@ export class ClinicPatientsService {
       .leftJoinAndSelect('a.service', 'service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('a.provider', 'provider')
+      .leftJoinAndSelect('a.executedBy', 'executedBy')
       .where('a.clientId = :clientId', { clientId })
       .andWhere("a.status <> 'DELETED'");
     if (clinicIds) qb.andWhere('a.clinicId IN (:...clinicIds)', { clinicIds });
     const appointments = await qb.orderBy('a.startTime', 'DESC').getMany();
+    const displayCtx = await loadAppointmentDisplayContext(appointments, this.servicesRepository, this.usersRepository);
 
     const clinicNames = clinicIds
       ? (await this.clinicsRepository.find({ where: { id: In(clinicIds) }, select: ['id', 'name'] })).map((c) => c.name)
@@ -432,8 +447,10 @@ export class ClinicPatientsService {
         id: a.id,
         startTime: a.startTime,
         clinicName: a.clinic?.name || null,
-        treatment: a.service?.treatment?.name || (a.service as any)?.name || 'Treatment',
-        practitioner: a.provider ? `${a.provider.firstName || ''} ${a.provider.lastName || ''}`.trim() : null,
+        // All treatments (QA #66) and the real doctor (QA #34)
+        treatment: appointmentTreatments(a, displayCtx).treatmentLabel || 'Treatment',
+        durationMinutes: appointmentTreatments(a, displayCtx).durationMinutes,
+        practitioner: appointmentDoctor(a, displayCtx)?.name || null,
         price: a.totalAmount != null ? Number(a.totalAmount) : null,
         amountPaid: a.amountPaid != null ? Number(a.amountPaid) : null,
         status: String(a.status || '').toUpperCase(),

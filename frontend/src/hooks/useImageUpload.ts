@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import { useState, useRef } from 'react';
 import { uploadAPI } from '@/services/api';
 import { getImageUrl } from '@/utils/imageUrl';
@@ -31,7 +32,7 @@ export const useImageUpload = ({ value, onChange }: UseImageUploadOptions) => {
       onChange(imageUrl);
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload image. Please try again.');
+      toast.error('Failed to upload image. Please try again.');
       setPreview(value || null);
     } finally {
       setIsUploading(false);

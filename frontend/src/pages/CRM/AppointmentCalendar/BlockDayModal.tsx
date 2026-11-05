@@ -62,7 +62,7 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
 
     // Get clinic timezone
     const clinic = clinics.find(c => c.id === form.clinicId);
-    const tz = clinic?.timezone || 'UTC';
+    const tz = clinic?.timezone || 'Europe/Athens';
 
     // Block the entire day in the clinic's timezone
     const localDate = new Date(`${form.date}T12:00:00`);

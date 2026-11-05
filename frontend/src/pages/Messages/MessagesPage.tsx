@@ -21,7 +21,7 @@ import MessagesBg from '@/assets/messages_bg.png';
 export const MessagesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { activeConversationId, conversations } = useSelector((state: RootState) => state.messages);
-  const { accessToken, user } = useSelector((state: RootState) => state.auth);
+  const { accessToken, user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'All' | 'Primary' | 'Clinical'>('All');
@@ -41,8 +41,8 @@ export const MessagesPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchConversations());
 
-    if (accessToken) {
-      const socket = socketService.connect(accessToken, '/messages');
+    if (isAuthenticated) {
+      const socket = socketService.connect(accessToken || null, '/messages');
 
       socket.on('new-message', (message: any) => {
         dispatch(receiveMessage(message));
@@ -56,7 +56,7 @@ export const MessagesPage: React.FC = () => {
     return () => {
       socketService.disconnect();
     };
-  }, [dispatch, accessToken]);
+  }, [dispatch, accessToken, isAuthenticated]);
 
   // Clients get a read-only inbox (messages from BeautyDoctors and the clinic).
   if (user?.role === 'client') {

@@ -121,6 +121,7 @@ import EyesElite from"@/assets/Treatments/eyes_surgery_elite.png";
 import RejuvenationElite from"@/assets/Treatments/rejuvenation_elite.png";
 import PrpElite from"@/assets/Treatments/prp_therapy_elite.png";
 import BeardElite from"@/assets/Treatments/beard_transplant_elite.png";
+import { FEATURE_GIFT_CARDS } from"@/config/features";
 
 const getFallbackImage = (name: string): string => {
  const n = name.toLowerCase();
@@ -640,19 +641,29 @@ const mainCategories = [
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
- Gift Confidence
+ {isGreek ? 'Δωροκάρτες' : 'Gift Cards'}
  </h3>
  <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
- Give the gift of expert medical beauty treatments — from
- dermatology to aesthetic enhancements.
+ {isGreek
+ ? 'Χαρίστε μια θεραπεία αισθητικής σε κάποιον που αγαπάτε.'
+ : 'Give an aesthetic treatment to someone you care about.'}
  </p>
+ {FEATURE_GIFT_CARDS ? (
  <button 
  onClick={() => navigate('/gift-card')}
  className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
  >
- Send a Gift Card
+ {isGreek ? 'Στείλτε δωροκάρτα' : 'Send a Gift Card'}
  <ArrowRight className="h-4 w-4" />
  </button>
+ ) : (
+ <span
+ aria-disabled="true"
+ className="w-fit inline-flex items-center justify-center border-2 border-gray-300 text-gray-400 font-bold px-6 py-3 rounded-xl text-sm gap-2 cursor-not-allowed select-none"
+ >
+ {isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}
+ </span>
+ )}
  </div>
  </div>
 
@@ -856,7 +867,7 @@ const mainCategories = [
           <FaApple size={32} />
           <span className="text-left leading-none">
             <span className="text-[10px] uppercase tracking-wider block mb-1">
-              {isGreek ? 'Έρχεται σύντομα στο' : 'Coming soon on the'}
+              {isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}
             </span>
             <span className="font-bold text-lg">App Store</span>
           </span>
@@ -870,7 +881,7 @@ const mainCategories = [
           <FaGooglePlay size={28} />
           <span className="text-left leading-none">
             <span className="text-[10px] uppercase tracking-wider block mb-1">
-              {isGreek ? 'Έρχεται σύντομα στο' : 'Coming soon on'}
+              {isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}
             </span>
             <span className="font-bold text-lg">Google Play</span>
           </span>

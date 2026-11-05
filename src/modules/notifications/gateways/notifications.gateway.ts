@@ -11,6 +11,8 @@ import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { resolveJwtSecret } from '../../../common/utils/jwt-secret.util';
+import { ACCESS_COOKIE, readCookie } from '../../auth/auth-cookies';
+import { socketHandshakeToken } from '../../../common/utils/allowed-origins';
 
 // NOTE: same fallback chain as JwtStrategy (testing phase); remove the hardcoded fallback before production.
 // Read at connect time: .env is loaded by ConfigModule after this file is imported.
@@ -43,7 +45,8 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   async handleConnection(client: AuthenticatedSocket) {
     try {
       // Extract token from auth or query
-      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      // Browsers authenticate with the httpOnly access cookie; native clients pass the token.
+            const token = socketHandshakeToken(client.handshake as any, readCookie, ACCESS_COOKIE);
       
       if (!token) {
         this.logger.warn(`Client ${client.id} disconnected: No token provided`);

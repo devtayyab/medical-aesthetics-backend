@@ -7,8 +7,14 @@ import { crmAPI, adminAPI } from '@/services/api';
 import type { CalendarView, CalendarFilters, SalesPersonResource } from './types';
 
 const sanitizeTz = (tz?: string | null): string => {
-  if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
-  return tz;
+  if (!tz || tz === 'null' || tz.trim() === '') return 'Europe/Athens';
+  // Invalid zone names also fall back to the platform timezone, never UTC.
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return 'Europe/Athens';
+  }
 };
 
 export const getClinicLocalTime = (dateStr: string, timezone?: string) => {
@@ -139,8 +145,13 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
   }, [viewDate, viewMode, filters]);
 
   // Fetch appointments whenever params change
+  // Bumped on every refresh so blocked slots reload too: a block saved from the Block dialog
+  // must appear without changing clinic or reloading the page (QA NEW-5).
+  const [blocksVersion, setBlocksVersion] = useState(0);
+
   const refreshAppointments = useCallback(() => {
     dispatch(fetchClinicAppointments(fetchParams));
+    setBlocksVersion((v) => v + 1);
   }, [dispatch, fetchParams]);
 
   useEffect(() => {
@@ -160,7 +171,7 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
         adminAPI.getBlockedSlots(id).then((r: any) => r.data || []).catch(() => [])
       )
     ).then((results) => setBlockedSlots(results.flat()));
-  }, [filters.clinicId, clinics]);
+  }, [filters.clinicId, clinics, blocksVersion]);
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {

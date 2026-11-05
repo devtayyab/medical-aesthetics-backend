@@ -7,12 +7,23 @@ export const API_BASE_URL = ENV.API_BASE_URL;
  * Base Axios Client
  * Configured with standard timeouts, base URL, and headers.
  */
+/**
+ * Browsers keep the session only in httpOnly cookies; the API does not put tokens in the body.
+ * A native Capacitor shell cannot rely on cross-site cookies, so it asks for bearer tokens.
+ */
+const isNativeShell = (): boolean =>
+  typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+
+export const authTransportHeaders = (): Record<string, string> =>
+  isNativeShell() ? { 'X-Auth-Transport': 'bearer' } : {};
+
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   // Session tokens live in httpOnly cookies set by the API; send them on every request.
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    ...authTransportHeaders(),
   },
 });
 
@@ -64,7 +75,7 @@ const subscribeTokenRefresh = (cb: (token: string | null, error?: any) => void) 
   refreshSubscribers.push(cb);
 };
 
-const onRefreshed = (token: string) => {
+const onRefreshed = (token: string | null) => {
   refreshSubscribers.forEach((cb) => cb(token));
   refreshSubscribers = [];
 };
@@ -125,16 +136,16 @@ api.interceptors.response.use(
 
       try {
         // The refresh token is sent as an httpOnly cookie.
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true, headers: authTransportHeaders() });
         const { accessToken, user } = response.data;
 
         if (store && setTokensAction) {
-          store.dispatch(setTokensAction({ accessToken, user }));
+          store.dispatch(setTokensAction({ accessToken: accessToken || null, user }));
         }
 
         isRefreshing = false;
-        onRefreshed(accessToken);
-        return retryWithToken(originalRequest, accessToken);
+        onRefreshed(accessToken || null);
+        return retryWithToken(originalRequest, accessToken || null);
       } catch (refreshError: any) {
         isRefreshing = false;
         onRefreshFailed(refreshError);

@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -653,7 +654,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  toast.error('Only administrators can delete leads', { id: toastId });
  return;
  }
- if (!window.confirm(`Delete ${count} lead${count === 1 ? '' : 's'} permanently?`)) {
+ if (!(await confirmDialog({ message: `Delete ${count} lead${count === 1 ? '' : 's'} permanently?`, danger: true }))) {
  toast.dismiss(toastId);
  return;
  }
@@ -928,7 +929,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  >
  <option value="">All Statuses</option>
  <option value="new">New</option>
- <option value="in_conversation">In Conversation</option>
  <option value="contacted">Contacted</option>
  <option value="qualified">Qualified</option>
  <option value="converted">Converted</option>
@@ -995,7 +995,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 options={[
                   { value: '', label: 'All Statuses' },
                   { value: 'new', label: 'New' },
-                  { value: 'in_conversation', label: 'In Conversation' },
                   { value: 'contacted', label: 'Contacted' },
                   { value: 'qualified', label: 'Qualified' },
                   { value: 'converted', label: 'Converted' },
@@ -1206,12 +1205,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  onClick={() => handleFilterChange('status', 'new')}
  />
  <StatCard
- title="In Conversation"
- value={stats ? stats.inConversation : leads.filter(l => (l.status as string) === 'contacted' || (l.status as string) === 'follow_up').length}
+ title="Contacted"
+ value={stats ? stats.contacted : leads.filter(l => (l.status as string) === 'contacted' || (l.status as string) === 'follow_up').length}
  icon={Clock}
  color="bg-purple-50 text-purple-600"
- isActive={leadFilters.status === 'in_conversation'}
- onClick={() => handleFilterChange('status', 'in_conversation')}
+ isActive={leadFilters.status === 'contacted'}
+ onClick={() => handleFilterChange('status', 'contacted')}
  />
  <StatCard
  title="Converted"
@@ -1236,8 +1235,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {[
  { key: '', label: 'All Leads', count: stats?.total },
  { key: 'new', label: 'New Inquiries', count: stats?.newInquiries },
- { key: 'in_conversation', label: 'In Conversation', count: stats?.inConversation },
- { key: 'contacted', label: 'Contacted' },
+ { key: 'contacted', label: 'Contacted', count: stats?.contacted },
  { key: 'converted', label: 'Converted', count: stats?.converted },
  { key: 'lost', label: 'Lost', count: stats?.lost },
  ].map((tab) => {
@@ -1598,7 +1596,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   {isAdmin && (
                     <>
                       <div className="w-px h-3 bg-gray-100 mx-0.5" />
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0" onClick={() => { if (window.confirm('Delete 1 lead permanently?')) dispatch(deleteLead(lead.id)); }} title="Delete Lead">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0" onClick={async () => { if (await confirmDialog({ message: 'Delete 1 lead permanently?', danger: true })) dispatch(deleteLead(lead.id)); }} title="Delete Lead">
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
@@ -1727,7 +1725,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
  options={[
                       { value: 'new', label: isGreek ? 'Νέο Lead' : 'New' },
-                      { value: 'contacted', label: isGreek ? 'Σε επικοινωνία' : 'In Conversation' },
+                      { value: 'contacted', label: isGreek ? 'Σε επικοινωνία' : 'Contacted' },
                       { value: 'qualified', label: isGreek ? 'Qualified Lead' : 'Qualified' },
                       { value: 'converted', label: isGreek ? 'Μετατράπηκε σε πελάτη' : 'Converted' },
                       { value: 'lost', label: isGreek ? 'Lost' : 'Lost' }

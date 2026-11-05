@@ -13,8 +13,14 @@
 // Every calendar view should bucket/position appointments through these helpers.
 
 export const sanitizeTz = (tz?: string | null): string => {
-  if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
-  return tz;
+  if (!tz || tz === 'null' || tz.trim() === '') return 'Europe/Athens';
+  // Invalid zone names also fall back to the platform timezone, never UTC.
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return 'Europe/Athens';
+  }
 };
 
 /** Wall-clock date ("YYYY-MM-DD") of a UTC instant in the given clinic timezone. */

@@ -156,13 +156,13 @@ export const GiftCard: React.FC = () => {
             className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/75 backdrop-blur-md border border-white/85 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] shadow-sm mb-4 sm:mb-6"
           >
             <Link to="/my-account" className="text-gray-900 border-b border-gray-900/30 hover:border-black pb-0.5">
-              ACCOUNT
+              {isGreek ? "ΛΟΓΑΡΙΑΣΜΟΣ" : "ACCOUNT"}
             </Link>
             <ChevronRight size={12} className="text-[#84cc16]" />
-            <span className="text-[#84cc16] font-extrabold">DIGITAL GIFT CARDS</span>
+            <span className="text-[#84cc16] font-extrabold">{isGreek ? "ΨΗΦΙΑΚΕΣ ΔΩΡΟΚΑΡΤΕΣ" : "DIGITAL GIFT CARDS"}</span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#CBFF38]/30 border border-[#CBFF38] text-[9px] font-black uppercase tracking-widest text-black ml-1">
               <span className="size-1.5 rounded-full bg-lime-600 animate-pulse" />
-              LAUNCHING SOON
+              {isGreek ? "ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ" : "COMING SOON"}
             </span>
           </motion.div>
 
@@ -171,7 +171,7 @@ export const GiftCard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-none text-gray-900 drop-shadow-sm"
           >
-            BEAUTY GIFT <span className="text-[#84cc16] sm:text-[#a3e635]">CARDS</span>
+            {isGreek ? <>ΔΩΡΟΚΑΡΤΕΣ <span className="text-[#84cc16] sm:text-[#a3e635]">BEAUTYDOCTORS</span></> : <>BEAUTY GIFT <span className="text-[#84cc16] sm:text-[#a3e635]">CARDS</span></>}
           </motion.h1>
 
           <motion.p 
@@ -230,7 +230,7 @@ export const GiftCard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700">
                   <Clock size={14} className="text-[#84cc16]" />
-                  <span>PREPARING LAUNCH</span>
+                  <span>{isGreek ? "ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ" : "COMING SOON"}</span>
                 </div>
               </div>
 
@@ -267,21 +267,21 @@ export const GiftCard: React.FC = () => {
                   <div className="space-y-4 mb-8">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em]">
                       <Sparkles size={12} />
-                      <span>OFFICIAL ANNOUNCEMENT</span>
+                      <span>{isGreek ? "ΑΝΑΚΟΙΝΩΣΗ" : "ANNOUNCEMENT"}</span>
                     </div>
 
                     <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black uppercase text-gray-900 tracking-tight leading-none">
-                      LAUNCHING SOON
+                      {isGreek ? "ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ" : "COMING SOON"}
                     </h2>
 
                     <p className="text-base sm:text-lg font-bold text-gray-800 leading-relaxed">
-                      We are currently preparing an exclusive digital gift card experience for you.
+                      {isGreek ? "Οι ψηφιακές δωροκάρτες θα είναι διαθέσιμες σύντομα." : "Digital gift cards will be available soon."}
                     </p>
 
                     <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-medium">
-                      Soon, you will be able to effortlessly purchase and send digital gift cards to friends,
-                      family, or colleagues. Our digital gift vouchers will allow your loved ones to choose and
-                      enjoy eligible luxury aesthetic care across participating verified providers in our network.
+                      {isGreek
+                        ? "Σύντομα θα μπορείτε να αγοράζετε και να στέλνετε ψηφιακές δωροκάρτες σε φίλους και οικογένεια, για επιλέξιμες υπηρεσίες αισθητικής σε συμμετέχοντες παρόχους."
+                        : "Soon you will be able to buy and send digital gift cards to friends and family, for eligible aesthetic services at participating providers."}
                     </p>
                   </div>
 

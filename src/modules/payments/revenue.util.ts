@@ -1,6 +1,8 @@
 import { EntityManager, SelectQueryBuilder } from 'typeorm';
 import { PaymentRecord, PaymentStatus, PaymentType } from './entities/payment-record.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import { BUSINESS_TIMEZONE } from '../../common/utils/timezone.util';
 
 /**
  * Single source of truth for "revenue" across the platform (admin Payments, Dashboard,
@@ -40,6 +42,33 @@ function toDate(value?: Date | string | null): Date | null {
   if (!value) return null;
   const d = value instanceof Date ? value : new Date(value);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Period for revenue pages as whole Athens calendar days: the start date from 00:00 and the end
+ * date until 23:59:59.999 (Europe/Athens). Every revenue page passes its dates through this so
+ * the same "01/10 to 31/10" gives the same total on the ledger, dashboards and CRM reports.
+ * Accepts 'yyyy-MM-dd', ISO strings or Dates (a Date at UTC midnight keeps its calendar day).
+ */
+export function revenueDayRange(
+  startDate?: Date | string | null,
+  endDate?: Date | string | null,
+  timezone: string = BUSINESS_TIMEZONE,
+): { startDate: Date | null; endDate: Date | null } {
+  const dayOf = (value?: Date | string | null): string | null => {
+    if (!value) return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+    const d = toDate(value);
+    if (!d) return null;
+    const isUtcMidnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+    return isUtcMidnight ? d.toISOString().slice(0, 10) : formatInTimeZone(d, timezone, 'yyyy-MM-dd');
+  };
+  const startDay = dayOf(startDate);
+  const endDay = dayOf(endDate);
+  return {
+    startDate: startDay ? fromZonedTime(`${startDay}T00:00:00.000`, timezone) : null,
+    endDate: endDay ? fromZonedTime(`${endDay}T23:59:59.999`, timezone) : null,
+  };
 }
 
 /** Base query over payment_records with the shared revenue rules and the given filters applied. */

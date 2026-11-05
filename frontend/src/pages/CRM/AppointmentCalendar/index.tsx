@@ -102,10 +102,10 @@ export const AppointmentCalendar: React.FC = () => {
   const effectiveClinicTimezone = useMemo(() => {
     if (filters.clinicId !== 'all') {
       const c = clinics.find((cl: any) => cl.id === filters.clinicId);
-      return c?.timezone || undefined;
+      return c?.timezone || 'Europe/Athens';
     }
-    // "all" mode: use the first clinic's timezone as a reasonable default
-    return clinics[0]?.timezone || undefined;
+    // "all" mode: the platform timezone, not whichever clinic sorts first or the browser's
+    return 'Europe/Athens';
   }, [filters.clinicId, clinics]);
 
   // ── Stats ───────────────────────────────────────────────────────────────────

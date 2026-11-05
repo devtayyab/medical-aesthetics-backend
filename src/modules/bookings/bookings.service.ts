@@ -38,6 +38,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { RevenueFilters, buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
+import { loadAppointmentDisplayContext, appointmentDoctor, appointmentTreatments } from './appointment-display.util';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -333,6 +334,15 @@ export class BookingsService {
 
     let providerId = createAppointmentDto.providerId;
 
+    // The provider is the DOCTOR of the appointment (QA #34). A salesperson, owner or
+    // secretary who books is stored in bookedById, never as the provider.
+    if (providerId) {
+      const chosen = await this.usersRepository.findOne({ where: { id: providerId }, select: ['id', 'role'] as any });
+      if (!chosen || String(chosen.role || '').toLowerCase() !== UserRole.DOCTOR) {
+        providerId = undefined;
+      }
+    }
+
     // Auto-assign to doctor if only one exists and none provided
     if (!providerId) {
       // Only an ACTIVE doctor of the clinic can be auto-assigned (never a deactivated/test account).
@@ -406,6 +416,17 @@ export class BookingsService {
     // Attendance / completion statuses only from the appointment start time.
     if (appointmentData.status && BookingsService.STARTED_ONLY_STATUSES.includes(appointmentData.status as AppointmentStatus)) {
       this.assertAppointmentStarted(appointmentData as Appointment, `Status ${appointmentData.status}`);
+    }
+
+    // Payments (cash/card at the clinic) only from the appointment start time (QA #12).
+    // The online Viva prepayment (paymentMethod 'card' -> PENDING_PAYMENT + payment URL) and
+    // gift cards are not affected: they never set advancePaymentAmount here.
+    const onlineMethods = ['card', 'gift_card', 'viva'];
+    if (
+      Number(createAppointmentDto.advancePaymentAmount || 0) > 0 &&
+      !onlineMethods.includes(String(createAppointmentDto.paymentMethod || '').toLowerCase())
+    ) {
+      this.assertAppointmentStarted(appointmentData as Appointment, 'Recording a payment');
     }
 
     // 🔴 GIFT CARDS — BACKEND HARD BLOCK
@@ -1309,6 +1330,9 @@ export class BookingsService {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
       updateData.isLateCancellation = this.isLateCancellation(appointment);
+      // Reason shown to the client (QA Y33); internal notes are never sent to the client.
+      const reason = String(data?.reason ?? data?.cancellationReason ?? '').trim();
+      if (reason) updateData.cancellationReason = reason.slice(0, 1000);
 
       // Payment state is NOT changed by a cancellation. Only an ADMIN may refund, explicitly.
       const amountPaid = Number(appointment?.amountPaid || 0);
@@ -1493,8 +1517,12 @@ export class BookingsService {
       for (const svc of extra) extraById.set(svc.id, svc);
     }
 
+    // The real doctor of each appointment (QA #34)
+    const displayCtx = await loadAppointmentDisplayContext(appointments, this.servicesRepository, this.usersRepository);
+
     // Add display name to each appointment and sanitize for client
     return appointments.map(apt => {
+      const doctor = appointmentDoctor(apt, displayCtx);
       const additionalServices = (apt.additionalServiceIds || [])
         .filter(id => id && id !== apt.serviceId && extraById.has(id))
         .map(id => {
@@ -1510,7 +1538,8 @@ export class BookingsService {
         durationMinutes: Math.round((new Date(apt.endTime).getTime() - new Date(apt.startTime).getTime()) / 60000),
         displayName: this.formatAppointmentDisplayName(apt),
         serviceName: apt.service?.treatment?.name,
-        providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}`.trim() : null,
+        providerName: doctor?.name || null,
+        doctorId: doctor?.id || null,
       };
 
       if (role === 'client') {
@@ -1529,13 +1558,19 @@ export class BookingsService {
         }
 
         // Doctor's personal email/phone never go to clients
+        // Staff user objects are reduced to id + display name: a spread of the entity
+        // would carry passwordHash and login secrets (QA NEW-1).
+        // Only a doctor is shown as the practitioner (QA #34); never a sales/owner account.
+        if (item.provider && String(item.provider.role || '').toLowerCase() !== UserRole.DOCTOR) {
+          item.provider = null;
+        }
         if (item.provider) {
-          item.provider = { ...item.provider };
-          delete item.provider.email;
-          delete item.provider.phone;
-          delete item.provider.lastLoginAt;
-          delete item.provider.password;
-          delete item.provider.refreshToken;
+          item.provider = {
+            id: item.provider.id,
+            firstName: item.provider.firstName,
+            lastName: item.provider.lastName,
+            profilePictureUrl: item.provider.profilePictureUrl ?? null,
+          };
         }
       }
 
@@ -1582,8 +1617,17 @@ export class BookingsService {
           queryBuilder.where('(appointment.providerId = :userId OR appointment.bookedById = :userId)', { userId });
         }
       } else if (normalizedRole === 'doctor') {
-        // Doctor only sees their own appointments
-        queryBuilder.where('(appointment.providerId = :userId OR appointment.executedById = :userId)', { userId });
+        // Doctor only sees their own appointments. When they are the ONLY doctor of their
+        // clinic, appointments there without a doctor are theirs too (QA #34).
+        const soleClinicId = await this.soleDoctorClinicId(userId);
+        if (soleClinicId) {
+          queryBuilder.where(
+            "(appointment.providerId = :userId OR appointment.executedById = :userId OR (appointment.clinicId = :soleClinicId AND (appointment.providerId IS NULL OR LOWER(CAST(provider.role AS text)) <> 'doctor')))",
+            { userId, soleClinicId },
+          );
+        } else {
+          queryBuilder.where('(appointment.providerId = :userId OR appointment.executedById = :userId)', { userId });
+        }
       } else if (normalizedRole === 'salesperson') {
         // Sales team view: User requested that sales people should see ALL appointments
         queryBuilder.where('1=1');
@@ -1620,12 +1664,22 @@ export class BookingsService {
         });
       }
       if (query.clinicId) queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      // Staff -> Timeline of a DOCTOR: that doctor's appointments, including the ones of a
+      // clinic where they are the only doctor and no doctor was chosen (QA #34).
+      // The doctor filter is applied after the effective doctor is resolved below.
+      let doctorFilterId: string | null = null;
       if (query.providerId) {
-        queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
+        const target = await this.usersRepository.findOne({ where: { id: query.providerId }, select: ['id', 'role'] as any });
+        if (target && String(target.role || '').toLowerCase() === UserRole.DOCTOR) {
+          doctorFilterId = target.id;
+        } else {
+          queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
+        }
       }
       if (query.appointmentSource) queryBuilder.andWhere('appointment.appointmentSource = :source', { source: query.appointmentSource });
 
       const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+      const displayCtx = await loadAppointmentDisplayContext(appointments, this.servicesRepository, this.usersRepository);
       console.log(`[BookingsService] Found ${appointments.length} appointments for user ${userId}`);
 
       // 3. Repeat Customer Logic
@@ -1672,7 +1726,12 @@ export class BookingsService {
       }
 
       // 4. Transform & Mask
-      const mappedAppointments = appointments.map(apt => {
+      const visibleAppointments = doctorFilterId
+        ? appointments.filter(apt => appointmentDoctor(apt, displayCtx)?.id === doctorFilterId)
+        : appointments;
+      const mappedAppointments = visibleAppointments.map(apt => {
+        const doctor = appointmentDoctor(apt, displayCtx);
+        const treatments = appointmentTreatments(apt, displayCtx);
         let isMasked = false;
 
         // PRIVACY RULE: Salespeople see full details for anything the query returned (since the query is already filtered for them)
@@ -1691,7 +1750,7 @@ export class BookingsService {
             displayName: 'Blocked Time',
             serviceName: 'Blocked',
             isBeautyDoctorsClient: false,
-            providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+            providerName: doctor?.name || null,
           };
         }
 
@@ -1703,9 +1762,16 @@ export class BookingsService {
 
         return {
           ...apt,
-          displayName: this.formatAppointmentDisplayName(apt),
+          displayName: `${treatments.treatmentLabel || 'Appointment'} with ${doctor?.name || 'Professional'}`,
           serviceName: apt.service?.treatment?.name,
-          providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+          // All treatments (QA #66) and total duration of the appointment
+          treatmentNames: treatments.treatmentNames,
+          treatmentLabel: treatments.treatmentLabel,
+          durationMinutes: treatments.durationMinutes,
+          // The real doctor (QA #34): never the owner/secretary/salesperson who booked it
+          providerName: doctor?.name || null,
+          doctorId: doctor?.id || null,
+          doctorName: doctor?.name || null,
           bookedByInfo: booker ? {
             id: booker.id,
             name: `${booker.firstName || ''} ${booker.lastName || ''}`.trim(),
@@ -1800,6 +1866,16 @@ export class BookingsService {
       this.logDebug('findClinicAppointments 500 ERROR', { message: err.message, stack: err.stack });
       throw err;
     }
+  }
+
+  /** The clinic of this doctor when they are its only active doctor, else null. */
+  private async soleDoctorClinicId(doctorId: string): Promise<string | null> {
+    const doctor = await this.usersRepository.findOne({ where: { id: doctorId }, select: ['id', 'assignedClinicId'] as any });
+    if (!doctor?.assignedClinicId) return null;
+    const count = await this.usersRepository.count({
+      where: { assignedClinicId: doctor.assignedClinicId, role: UserRole.DOCTOR, isActive: true } as any,
+    });
+    return count === 1 ? doctor.assignedClinicId : null;
   }
 
   async findAppointmentForClinic(
@@ -1926,6 +2002,9 @@ export class BookingsService {
       appointment.cancelledAt = new Date();
       appointment.cancelledById = userId;
       appointment.isLateCancellation = this.isLateCancellation(appointment);
+      // Reason shown to the client (QA Y33). Only the explicit reason; internal notes never.
+      const reason = String(updateData?.reason ?? updateData?.cancellationReason ?? '').trim();
+      if (reason) appointment.cancellationReason = reason.slice(0, 1000);
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
@@ -2791,6 +2870,8 @@ export class BookingsService {
       throw new NotFoundException('Client not found or access denied');
     }
 
+    const displayCtx = await loadAppointmentDisplayContext(appointments, this.servicesRepository, this.usersRepository);
+
     return {
       client: {
         id: client.id,
@@ -2800,32 +2881,33 @@ export class BookingsService {
         email: client.email,
         phone: client.phone,
       },
-      appointments: appointments.map(apt => ({
+      appointments: appointments.map(apt => {
+        const treatments = appointmentTreatments(apt, displayCtx);
+        const doctor = appointmentDoctor(apt, displayCtx);
+        return {
         id: apt.id,
-        serviceName: apt.service?.treatment?.name || 'Treatment',
-        // The real practitioner of THIS appointment: its provider, else the clinic staff
-        // member who performed it. Never a default/placeholder account.
-        providerName: this.practitionerName(apt),
+        // All treatments of the appointment (QA #66), e.g. 'A + B'
+        serviceName: treatments.treatmentLabel || 'Treatment',
+        treatmentNames: treatments.treatmentNames,
+        additionalServices: treatments.additionalServices,
+        durationMinutes: treatments.durationMinutes,
+        // The real doctor of THIS appointment (QA #34); never an owner/secretary/sales account.
+        providerName: doctor?.name || null,
+        doctorId: doctor?.id || null,
         startTime: apt.startTime,
+        endTime: apt.endTime,
+        clinicName: apt.clinic?.name || null,
         status: apt.status,
         totalAmount: apt.totalAmount,
         paymentMethod: apt.paymentMethod,
-      })),
+        };
+      }),
       summary: {
         totalVisits: appointments.length,
         totalSpent: appointments.reduce((sum, apt) => sum + (Number(apt.totalAmount) || 0), 0),
         lastVisit: appointments[0]?.startTime || null,
       },
     };
-  }
-
-  private practitionerName(apt: Appointment): string | null {
-    const clinicRoles = [UserRole.DOCTOR, UserRole.CLINIC_OWNER].map(r => String(r).toLowerCase());
-    const person = apt.provider
-      || (apt.executedBy && clinicRoles.includes(String(apt.executedBy.role || '').toLowerCase()) ? apt.executedBy : null);
-    if (!person) return null;
-    const name = `${person.firstName || ''} ${person.lastName || ''}`.trim();
-    return name || null;
   }
 
   async rescheduleAppointment(

@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useEffect, useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import {
@@ -5,9 +6,9 @@ import {
  ArrowRight, User, Users, Plus, CreditCard,
  AlertCircle, FileText, Check, X,
  MoreHorizontal, Trash2, PhoneCall,
- Activity, CheckCircle, Repeat, RefreshCw, Bell,
+ Activity, CheckCircle, Repeat, Bell,
  ClipboardCheck, ShieldCheck, MessageSquare, MessageCircle,
- ChevronDown, ArrowLeft, Sparkles, UserPlus, DollarSign, CalendarDays, Briefcase, Lock
+ ChevronDown, ArrowLeft, UserPlus, DollarSign, CalendarDays, Briefcase, Lock
 } from"lucide-react";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from"@/components/molecules/Card/Card";
@@ -293,8 +294,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  // HubSpot Data State
  const [hubspotData, setHubspotData] = useState<any>(null);
- const [hubspotLoading, setHubspotLoading] = useState(false);
- const [hubspotError, setHubspotError] = useState<string | null>(null);
+ const [, setHubspotLoading] = useState(false);
+ const [, setHubspotError] = useState<string | null>(null);
 
  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
 
@@ -330,7 +331,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
  setIsEditingCore(false);
  } catch (e) {
- alert("Failed to update properties");
+ toast.error("Failed to update properties");
  }
  };
 
@@ -511,7 +512,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
  } catch (error) {
  console.error("Failed to log email", error);
- alert("Failed to save.");
+ toast.error("Failed to save.");
  }
  };
 
@@ -546,7 +547,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
   } catch (error) {
   console.error("Failed to save note", error);
-  alert("Failed to save.");
+  toast.error("Failed to save.");
   }
   };
 
@@ -760,14 +761,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  if (error.response?.data) {
  console.error("Workflow error details:", error.response.data);
  }
- alert(`Failed: ${error.message ||"Unknown error"}`);
+ toast.error(`Failed: ${error.message ||"Unknown error"}`);
  }
  };
 
  const handleUpdateAppointmentStatus = async (id: string, status: string, aptObj?: any) => {
  if (status === 'COMPLETED' || status === 'completed') {
  if (aptObj?.startTime && new Date(aptObj.startTime).getTime() > Date.now()) {
- alert('An appointment can be completed only from its start time.');
+ toast.error('An appointment can be completed only from its start time.');
  return;
  }
  setPendingAptId(id);
@@ -781,13 +782,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  return;
  }
 
- if (!confirm(`Mark this appointment as ${status.toLowerCase()}?`)) return;
+ if (!(await confirmDialog(`Mark this appointment as ${status.toLowerCase()}?`))) return;
  try {
  await dispatch(updateAppointmentStatus({ id, status })).unwrap();
  dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
  } catch (error) {
  console.error("Failed to update appointment status", error);
- alert("Failed to update appointment status.");
+ toast.error("Failed to update appointment status.");
  }
  };
 
@@ -820,10 +821,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  setPendingAptObj(null);
  dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
 
- alert("Appointment completed and payment recorded.");
+ toast.success("Appointment completed and payment recorded.");
  } catch (error) {
  console.error("Completion failed", error);
- alert("Finalization failed. Ensure amount is valid.");
+ toast.error("Finalization failed. Ensure amount is valid.");
  }
  };
 
@@ -1019,7 +1020,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  />
  <Button
  onClick={async () => {
- if (!wrongNumberRemakes) return alert("Reason required.");
+ if (!wrongNumberRemakes) { toast.error("Reason required."); return; }
  // Lost with the reason saved; open tasks stay open (warning only)
  const lostRes: any = await dispatch(updateLead({ id: customer.id, updates: { status: 'lost', lostReason: wrongNumberRemakes } as any })).unwrap().catch(() => null);
  warnOpenTasks(lostRes);
@@ -1311,19 +1312,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
    <Activity className="w-5 h-5 text-blue-600" />
    {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : activeTab === 'notes' ? 'Notes' : 'HubSpot Appointments'}
   </h3>
-  <div className="flex items-center gap-3">
-    {hubspotError && <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{hubspotError}</span>}
-    <Button 
-      size="sm" 
-      variant="outline" 
-      onClick={fetchHubSpotData}
-      disabled={hubspotLoading || (!email && !phone && !customer?.email && !customer?.phone)}
-      className="h-8 text-[11px] font-bold text-[#ff7a59] border-[#ff7a59]/30 hover:bg-[#ff7a59]/10 shadow-sm"
-    >
-      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${hubspotLoading ? 'animate-spin' : ''}`} />
-      {hubspotLoading ? 'Syncing...' : 'Sync HubSpot'}
-    </Button>
-  </div>
   </div>
   
   {/* Unified Timeline */}
@@ -1629,22 +1617,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* --- RIGHT COLUMN (~25% width) --- */}
  <div className="col-span-1 md:col-span-3 space-y-6">
-
- {/* HubSpot Sync Widget */}
-
- {/* Breeze Summary Card */}
- <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl border border-indigo-100 shadow-sm p-6 relative overflow-hidden group">
- <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
- <div className="flex items-center gap-2 mb-4 relative z-10">
- <Sparkles className="w-5 h-5 text-indigo-500" />
- <h3 className="font-black text-indigo-900 text-sm tracking-tight">Lead Summary</h3>
- </div>
- <p className="text-xs text-indigo-900/80 font-medium leading-relaxed relative z-10">
- {derivedStatus === 'converted'
- ? 'This contact has successfully converted and engaged with appointments. Strong potential for repeat visits. Keep following up for post-treatment care.'
- : 'This is an active prospect. Review the timeline and schedule a call or meeting to drive conversion. No appointments booked yet.'}
- </p>
- </div>
 
  {/* Deals / Appointments Widget */}
  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

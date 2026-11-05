@@ -48,15 +48,19 @@ export class ScheduledTasksService {
       const overdueTasks = await this.tasksService.findOverdueTasks();
       this.logger.log(`Found ${overdueTasks.length} overdue tasks`);
 
+      // Each overdue task is announced ONCE (QA #80: the same reminder came back every
+      // 6 hours). The flag is cleared when the due date changes (TasksService.update).
+      let sent = 0;
       for (const task of overdueTasks) {
-        if (task.assigneeId) {
-          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.TASK_REMINDER, task.assigneeId, {
-            taskTitle: task.description,
-            dueDate: athensDateTime(task.dueDate),
-          });
-        }
-        this.logger.log(`Task ${task.id} is overdue, notification sent.`);
+        if (!task.assigneeId || task.metadata?.overdueReminderSentAt) continue;
+        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.TASK_REMINDER, task.assigneeId, {
+          taskTitle: task.title || task.description,
+          dueDate: athensDateTime(task.dueDate),
+        });
+        await this.tasksService.markOverdueReminderSent(task);
+        sent++;
       }
+      if (sent > 0) this.logger.log(`Overdue task reminders sent: ${sent}`);
     } catch (error) {
       this.logger.error('Failed to check overdue tasks:', error);
     }

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState, useMemo } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { useSearchParams, useNavigate, Link } from"react-router-dom";
@@ -210,7 +211,7 @@ export const Search: React.FC = () => {
  },
  (error) => {
  console.error("Location access denied:", error);
- alert("Please enable location access to see clinics near you.");
+ toast(isGreek ? "Ενεργοποιήστε την πρόσβαση τοποθεσίας για να δείτε κλινικές κοντά σας." : "Please enable location access to see clinics near you.");
  }
  );
  }
@@ -231,7 +232,7 @@ export const Search: React.FC = () => {
  <div className="container mx-auto px-4 sm:px-8 relative z-10 flex flex-col items-center justify-between gap-6 sm:gap-12">
  <div className={`w-full transition-all duration-700 ${isScrolled ? 'flex items-center justify-between gap-4' : 'text-center lg:text-left lg:w-1/2'}`}>
  <h1 className={`text-white font-black tracking-tighter transition-all duration-700 mb-0 whitespace-nowrap ${isScrolled ? 'text-lg sm:text-2xl' : 'text-3xl sm:text-4xl lg:text-5xl mb-4 sm:mb-8'}`}>
- SEARCH <span className="text-[#CBFF38]">TREATMENTS</span>
+ {isGreek ? <>ΑΝΑΖΗΤΗΣΗ <span className="text-[#CBFF38]">ΘΕΡΑΠΕΙΩΝ</span></> : <>SEARCH <span className="text-[#CBFF38]">TREATMENTS</span></>}
  </h1>
  {!isScrolled && <div className="h-1 w-20 bg-[#CBFF38] mx-auto lg:mx-0 mb-8 rounded-full hidden sm:block"></div>}
  <div className={`w-full transition-all ${isScrolled ? 'max-w-[150px] sm:max-w-md' : 'max-w-2xl mx-auto lg:mx-0'}`}>
@@ -362,12 +363,18 @@ export const Search: React.FC = () => {
  className="max-w-4xl mb-10 pt-6"
  >
  <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-white leading-tight mb-4">
- Find the <span className="text-[#CBFF38]">therapy</span> <br/>
- that fits you
+ {isGreek ? (
+ <>ΒΡΕΙΤΕ ΤΗ <span className="text-[#CBFF38]">ΘΕΡΑΠΕΙΑ</span> <br/>
+ ΠΟΥ ΣΑΣ ΤΑΙΡΙΑΖΕΙ</>
+ ) : (
+ <>Find the <span className="text-[#CBFF38]">therapy</span> <br/>
+ that fits you</>
+ )}
  </h1>
  <p className="text-base md:text-lg font-medium text-gray-400 max-w-2xl leading-relaxed">
- Discover invasive and non-invasive treatments by specialty, need, and outcome. 
- Experience premium aesthetic excellence.
+ {isGreek
+ ? 'Ανακαλύψτε επεμβατικές και μη επεμβατικές θεραπείες ανά ειδικότητα, ανάγκη και αποτέλεσμα.'
+ : 'Discover invasive and non-invasive treatments by specialty, need, and outcome.'}
  </p>
  </motion.div>
  )}
@@ -377,11 +384,13 @@ export const Search: React.FC = () => {
  {activeTab === 'clinics' && (
  <div className="mb-8">
  <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter uppercase">
- {total} <span className="text-gray-400 font-bold">Results for</span> {query || 'Aesthetic Venues'}
+ {total} <span className="text-gray-400 font-bold">{isGreek ? 'ΑΠΟΤΕΛΕΣΜΑΤΑ ΓΙΑ' : 'Results for'}</span> {query || (isGreek ? 'ΚΛΙΝΙΚΕΣ' : 'Clinics')}
  </h3>
+ {location && (
  <p className="text-xs font-bold text-[#CBFF38] uppercase tracking-[0.3em] mt-2 bg-black inline-block px-4 py-2 rounded-lg">
- Premium Selection in {location || 'International'}
+ {isGreek ? 'ΠΕΡΙΟΧΗ' : 'Area'}: {location}
  </p>
+ )}
  </div>
  )}
 
@@ -405,8 +414,8 @@ export const Search: React.FC = () => {
  <div className="size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
  <SearchIcon className="text-gray-300" size={24} />
  </div>
- <h3 className="text-xl font-bold text-gray-900 mb-1">No results found</h3>
- <p className="text-gray-500">Try adjusting your search filters or location.</p>
+ <h3 className="text-xl font-bold text-gray-900 mb-1">{isGreek ? 'Δεν βρέθηκαν αποτελέσματα' : 'No results found'}</h3>
+ <p className="text-gray-500">{isGreek ? 'Δοκιμάστε άλλα φίλτρα ή άλλη περιοχή.' : 'Try adjusting your search filters or location.'}</p>
  </div>
  )
  ) : (
@@ -414,7 +423,7 @@ export const Search: React.FC = () => {
  {/* Group treatments by category for the premium Greek look */}
  {Object.entries(
  treatments.reduce((acc: any, t: any) => {
- const cat = t.category || 'General Aesthetics';
+ const cat = t.category || (isGreek ? 'Γενική αισθητική' : 'General Aesthetics');
  if (!acc[cat]) acc[cat] = [];
  acc[cat].push(t);
  return acc;
@@ -450,7 +459,7 @@ export const Search: React.FC = () => {
  {/* Floating Map Toggle for Mobile */}
  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 lg:hidden z-[100]">
  <button onClick={() => setShowMobileMap(true)} className="bg-black text-[#CBFF38] h-14 px-6 sm:px-8 rounded-full shadow-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 sm:gap-3">
- <MapIcon size={18} /> View radar map
+ <MapIcon size={18} /> {isGreek ? 'ΧΑΡΤΗΣ' : 'View map'}
  </button>
  </div>
 
@@ -458,7 +467,7 @@ export const Search: React.FC = () => {
  {showMobileMap && (
  <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed inset-0 bg-white z-[1001] flex flex-col">
  <div className="p-6 bg-[#121212] text-white flex justify-between items-center">
- <span className="font-black uppercase">Radar View</span>
+ <span className="font-black uppercase">{isGreek ? 'ΧΑΡΤΗΣ' : 'Map'}</span>
  <button onClick={() => setShowMobileMap(false)} className="bg-white/10 p-2 rounded-xl text-[#CBFF38]"><X size={24} /></button>
  </div>
  <div className="flex-1">

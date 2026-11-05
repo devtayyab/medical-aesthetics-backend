@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Building2, Edit2, Plus, Search, MapPin,
@@ -269,12 +270,12 @@ export const Clinics: React.FC = () => {
   };
 
   const handleUnblockSlot = async (slotId: string) => {
-    if (!window.confirm("Are you sure you want to remove this block?")) return;
+    if (!(await confirmDialog({ message: "Are you sure you want to remove this block?", danger: true }))) return;
     try {
       await adminAPI.unblockSlot(slotId);
       if (editingClinic) fetchClinicBlockedSlots(editingClinic.id);
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to unblock slot");
+      toast.error(err.response?.data?.message || "Failed to unblock slot");
       console.error("Failed to unblock slot", err);
     }
   };
@@ -309,7 +310,7 @@ export const Clinics: React.FC = () => {
       setBlockForm({ startTime: "", endTime: "", reason: "" });
       fetchClinicBlockedSlots(editingClinic.id);
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to process block request");
+      toast.error(err.response?.data?.message || "Failed to process block request");
       console.error("Failed to block slot", err);
     }
   };
@@ -379,7 +380,7 @@ export const Clinics: React.FC = () => {
       ? formData.ownerIds
       : (formData.ownerId ? [formData.ownerId] : []);
     if (currentOwnerIds.length === 0) {
-      alert("Please select at least one clinic owner before saving.");
+      toast.error("Please select at least one clinic owner before saving.");
       return;
     }
     const submissionData = {
@@ -403,8 +404,8 @@ export const Clinics: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = (clinic: Clinic) => {
-    if (window.confirm(`Are you sure you want to ${clinic.isActive ? 'deactivate' : 'activate'} ${clinic.name}?`)) {
+  const handleToggleStatus = async (clinic: Clinic) => {
+    if (await confirmDialog({ message: `Are you sure you want to ${clinic.isActive ? 'deactivate' : 'activate'} ${clinic.name}?` })) {
       dispatch(updateAdminClinic({
         id: clinic.id,
         data: { isActive: !clinic.isActive }
@@ -1202,7 +1203,7 @@ export const Clinics: React.FC = () => {
                             dispatch(fetchUsers());
                           } catch (err) {
                             console.error("Failed to assign staff", err);
-                            alert("Failed to assign staff member");
+                            toast.error("Failed to assign staff member");
                           }
                           e.target.value = "";
                         }}
@@ -1242,7 +1243,7 @@ export const Clinics: React.FC = () => {
                             <button
                               type="button"
                               onClick={async () => {
-                                if (!window.confirm(`Remove ${u.firstName} from ${editingClinic?.name}?`)) return;
+                                if (!(await confirmDialog({ message: `Remove ${u.firstName} from ${editingClinic?.name}?`, danger: true }))) return;
                                 try {
                                   const currentIds = u.assignedClinics?.map((c: any) => c.id) || [];
                                   const newIds = currentIds.filter((id: string) => id !== editingClinic?.id);
@@ -1250,7 +1251,7 @@ export const Clinics: React.FC = () => {
                                   dispatch(fetchUsers());
                                 } catch (err) {
                                   console.error("Failed to remove staff", err);
-                                  alert("Failed to remove staff member");
+                                  toast.error("Failed to remove staff member");
                                 }
                               }}
                               className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"

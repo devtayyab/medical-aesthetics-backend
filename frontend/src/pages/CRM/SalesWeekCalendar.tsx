@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useState, useEffect, useMemo } from 'react';
 import { PhoneInput } from '@/components/atoms/PhoneInput/PhoneInput';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
   format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
-  startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO
+  startOfDay, isToday, addWeeks, subWeeks, subDays, parseISO
 } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
 import {
@@ -70,8 +71,14 @@ const formatClinicTime = (dateStr: string, timezone?: string) => {
 
 // Sanitize timezone: the DB may store the literal string "null" which must be treated as missing.
 const sanitizeTz = (tz?: string | null): string => {
-  if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
-  return tz;
+  if (!tz || tz === 'null' || tz.trim() === '') return 'Europe/Athens';
+  // Invalid zone names also fall back to the platform timezone, never UTC.
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return 'Europe/Athens';
+  }
 };
 
 const getClinicLocalDate = (dateStr: string, timezone?: string) => {
@@ -341,7 +348,7 @@ export const SalesWeekCalendar: React.FC = () => {
       // (which are also positioned in clinic timezone), not the browser timezone.
       const tz = (apt as any).clinic?.timezone
         || availableClinics.find(c => c.id === (apt as any).clinicId)?.timezone
-        || 'UTC';
+        || 'Europe/Athens';
       const aptDateStr = getClinicLocalDate(apt.startTime, tz);
       let isInView = false;
       if (viewMode === 'week') {
@@ -435,7 +442,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
     // The wizardDate and wizardTime represent the date and time in the CLINIC'S timezone.
     // We need to convert this to the correct UTC timestamp.
-    const tz = wizardClinic.timezone || 'UTC';
+    const tz = wizardClinic.timezone || 'Europe/Athens';
     
     try {
       let currentStartTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
@@ -587,7 +594,7 @@ export const SalesWeekCalendar: React.FC = () => {
   };
 
   const handleUnblockSlot = async (slotId: string) => {
-    if (!window.confirm("Are you sure you want to remove this blocked time?")) return;
+    if (!(await confirmDialog({ message: "Are you sure you want to remove this blocked time?", danger: true }))) return;
     try {
       await adminAPI.unblockSlot(slotId);
       toast.success("Time slot unblocked successfully!");
@@ -789,7 +796,7 @@ export const SalesWeekCalendar: React.FC = () => {
                   {(() => {
                     // 1. Filter day appointments
                     const dayAptsList = appointments.filter(a => {
-                      const tz = a.clinic?.timezone || availableClinics.find(c => c.id === a.clinicId)?.timezone || 'UTC';
+                      const tz = a.clinic?.timezone || availableClinics.find(c => c.id === a.clinicId)?.timezone || 'Europe/Athens';
                       const aptDateStr = getClinicLocalDate(a.startTime, tz);
                       const colDateStr = format(day, 'yyyy-MM-dd');
                       return colDateStr === aptDateStr;
@@ -825,7 +832,7 @@ export const SalesWeekCalendar: React.FC = () => {
                       const apt = group[0];
                       const isGrouped = group.length > 1;
                       
-                      const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'UTC';
+                      const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'Europe/Athens';
                       const timeString = formatClinicTime(apt.startTime, tz);
                       const [strHour, strMinute] = timeString.split(':').map(Number);
                       const top = strHour * 64 + (strMinute / 60) * 64;
@@ -920,46 +927,15 @@ export const SalesWeekCalendar: React.FC = () => {
 
 
                   {isToday(day) && (() => {
-                    // Use the selected clinic's timezone so the red line aligns
-                    // with appointment positions (which are also in clinic tz).
-                    const activeTz = selectedClinicId !== 'all'
+                    // Clinic wall-clock time (24h), same helper as the appointment cards, so
+                    // the red line sits where the cards are. 'All clinics' and a missing/invalid
+                    // timezone use the platform timezone (Europe/Athens), never UTC or the browser.
+                    const activeTz = sanitizeTz(selectedClinicId !== 'all'
                       ? availableClinics.find((c: any) => c.id === selectedClinicId)?.timezone
-                      : availableClinics[0]?.timezone;
-                    let topPx: number;
-                    if (activeTz && activeTz !== 'null') {
-                      try {
-                        const fmt = new Intl.DateTimeFormat('en-US', {
-                          timeZone: activeTz,
-                          hour: 'numeric',
-                          minute: 'numeric',
-                          hourCycle: 'h23',
-                        });
-                        const parts = fmt.formatToParts(new Date());
-                        const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
-                        const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
-                        topPx = (isNaN(h) ? 0 : h) * 64 + ((isNaN(m) ? 0 : m) / 60 * 64);
-                      } catch {
-                        topPx = new Date().getHours() * 64 + (new Date().getMinutes() / 60 * 64);
-                      }
-                    } else {
-                      topPx = new Date().getHours() * 64 + (new Date().getMinutes() / 60 * 64);
-                    }
-                    let currentTimeStr = '';
-                    if (activeTz && activeTz !== 'null') {
-                      try {
-                        const fmtTime = new Intl.DateTimeFormat('en-US', {
-                          timeZone: activeTz,
-                          hour: 'numeric',
-                          minute: 'numeric',
-                          hour12: true
-                        });
-                        currentTimeStr = fmtTime.format(new Date());
-                      } catch {
-                        currentTimeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-                      }
-                    } else {
-                      currentTimeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-                    }
+                      : 'Europe/Athens');
+                    const nowLocal = getClinicLocalTime(new Date().toISOString(), activeTz);
+                    const topPx = nowLocal.hour * 64 + (nowLocal.minute / 60) * 64;
+                    const currentTimeStr = `${String(nowLocal.hour).padStart(2, '0')}:${String(nowLocal.minute).padStart(2, '0')}`;
 
                     return (
                       <div
@@ -1503,7 +1479,7 @@ export const SalesWeekCalendar: React.FC = () => {
                         value={getClinicLocalDate(selectedApt.startTime, selectedApt.clinic?.timezone)}
                         onChange={(e) => {
                           // Keep the clinic-local time of day, just move the date, then re-derive UTC.
-                          const tz = selectedApt.clinic?.timezone || 'UTC';
+                          const tz = selectedApt.clinic?.timezone || 'Europe/Athens';
                           const timeStr = formatClinicTime(selectedApt.startTime, tz);
                           const duration = new Date(selectedApt.endTime).getTime() - new Date(selectedApt.startTime).getTime();
                           const newStart = createClinicUTCDateTime(parseISO(e.target.value), timeStr, tz);
@@ -1523,7 +1499,7 @@ export const SalesWeekCalendar: React.FC = () => {
                         value={formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)}
                         onChange={(e) => {
                           // Interpret the entered time as clinic-local, keep the clinic-local date.
-                          const tz = selectedApt.clinic?.timezone || 'UTC';
+                          const tz = selectedApt.clinic?.timezone || 'Europe/Athens';
                           const dateStr = getClinicLocalDate(selectedApt.startTime, tz);
                           const duration = new Date(selectedApt.endTime).getTime() - new Date(selectedApt.startTime).getTime();
                           const newStart = createClinicUTCDateTime(parseISO(dateStr), e.target.value, tz);
@@ -1644,7 +1620,7 @@ export const SalesWeekCalendar: React.FC = () => {
                     variant="outline"
                     className="w-full h-11 border-red-50 text-red-500 hover:bg-red-50 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
                     onClick={async () => {
-                      if (window.confirm("ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.")) {
+                      if (await confirmDialog({ message: "ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.", danger: true })) {
                         try {
                           await bookingAPI.deleteAppointment(selectedApt.id);
                           setIsDetailDrawerOpen(false);
@@ -1701,7 +1677,9 @@ export const SalesWeekCalendar: React.FC = () => {
                     onClick={async () => {
                       if (selectedClinicId === 'all') return toast.error("Please select a clinic first.");
                       try {
-                        const startTime = setMinutes(setHours(startOfDay(contextMenu.date), parseInt(contextMenu.time)), 0);
+                        // Clinic-local hour (Europe/Athens fallback), not the browser's timezone
+                        const blockTz = sanitizeTz(availableClinics.find((c: any) => c.id === selectedClinicId)?.timezone);
+                        const startTime = createClinicUTCDateTime(contextMenu.date, `${String(parseInt(contextMenu.time)).padStart(2, '0')}:00`, blockTz);
                         const end = new Date(startTime.getTime() + 60 * 60000);
 
                         await bookingAPI.createBlockedSlot({
@@ -1748,7 +1726,7 @@ export const SalesWeekCalendar: React.FC = () => {
                 <div className="max-h-[400px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
                   {expandedGroup.map(apt => {
                     const style = statusLabels[(apt.status || 'PENDING').toUpperCase()] || statusLabels.PENDING;
-                    const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'UTC';
+                    const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'Europe/Athens';
                     
                     return (
                       <div 

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { AppDispatch, RootState } from"../../store";
@@ -11,6 +12,75 @@ import {
 import clinicApi from"../../services/api/clinicApi";
 import { BusinessHours, BlockedSlot } from"../../types/clinic.types";
 import { Clock, Save, Calendar, Plus, Trash2 } from"lucide-react";
+
+// IANA zones offered in the clinic hours picker. The UTC offset in each label is
+// computed for today's date, so it follows daylight saving automatically
+// (e.g. Europe/Athens shows UTC+02:00 in winter and UTC+03:00 in summer).
+const TIMEZONES = [
+ "Pacific/Midway",
+ "Pacific/Honolulu",
+ "America/Anchorage",
+ "America/Los_Angeles",
+ "America/Denver",
+ "America/Chicago",
+ "America/New_York",
+ "America/Caracas",
+ "America/Argentina/Buenos_Aires",
+ "Atlantic/South_Georgia",
+ "Atlantic/Azores",
+ "UTC",
+ "Europe/London",
+ "Europe/Berlin",
+ "Europe/Athens",
+ "Europe/Moscow",
+ "Asia/Tehran",
+ "Asia/Dubai",
+ "Asia/Kabul",
+ "Asia/Karachi",
+ "Asia/Kolkata",
+ "Asia/Kathmandu",
+ "Asia/Dhaka",
+ "Asia/Bangkok",
+ "Asia/Singapore",
+ "Asia/Tokyo",
+ "Australia/Adelaide",
+ "Australia/Sydney",
+ "Pacific/Noumea",
+ "Pacific/Auckland",
+ "Pacific/Tongatapu",
+ "Pacific/Kiritimati",
+];
+
+/** Offset of an IANA zone from UTC, in minutes, at the given instant. */
+const tzOffsetMinutes = (timeZone: string, at: Date): number => {
+ const parts = new Intl.DateTimeFormat("en-US", {
+ timeZone,
+ hourCycle: "h23",
+ year: "numeric",
+ month: "2-digit",
+ day: "2-digit",
+ hour: "2-digit",
+ minute: "2-digit",
+ second: "2-digit",
+ }).formatToParts(at);
+ const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
+ const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+ return Math.round((asUtc - Math.floor(at.getTime() / 1000) * 1000) / 60000);
+};
+
+/** e.g. "Europe/Athens (UTC+03:00)", offset for the current date. */
+const timezoneLabel = (timeZone: string, at: Date = new Date()): string => {
+ try {
+ const off = tzOffsetMinutes(timeZone, at);
+ const sign = off < 0 ? "-" : "+";
+ const abs = Math.abs(off);
+ const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+ const mm = String(abs % 60).padStart(2, "0");
+ return `${timeZone.replace(/_/g, " ")} (UTC${sign}${hh}:${mm})`;
+ } catch {
+ return timeZone;
+ }
+};
 
 const AvailabilityPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -141,7 +211,7 @@ const AvailabilityPage: React.FC = () => {
 
  const handleSave = async () => {
  if (!selectedClinicId) {
- alert("Please select a clinic first.");
+ toast.error(isGreek ? "Επιλέξτε πρώτα κλινική." : "Please select a clinic first.");
  return;
  }
 
@@ -154,10 +224,10 @@ const AvailabilityPage: React.FC = () => {
  };
 
  await dispatch(updateAvailability(payload)).unwrap();
- alert("Availability settings saved successfully!");
+ toast.success(isGreek ? "Οι ρυθμίσεις διαθεσιμότητας αποθηκεύτηκαν." : "Availability settings saved successfully!");
  } catch (error: any) {
  console.error("Failed to save availability:", error);
- alert("Failed to save settings");
+ toast.error(isGreek ? "Η αποθήκευση των ρυθμίσεων απέτυχε" : "Failed to save settings");
  } finally {
  setIsSaving(false);
  }
@@ -191,7 +261,7 @@ const AvailabilityPage: React.FC = () => {
  setNewBlockedDate("");
  loadBlockedSlots(selectedClinicId);
  } catch (err) {
- alert("Failed to block date");
+ toast.error(isGreek ? "Ο αποκλεισμός της ημερομηνίας απέτυχε" : "Failed to block date");
  }
  }
  };
@@ -201,7 +271,7 @@ const AvailabilityPage: React.FC = () => {
  await dispatch(unblockTimeSlot(id)).unwrap();
  loadBlockedSlots(selectedClinicId);
  } catch (e) {
- alert("Failed to unblock date");
+ toast.error(isGreek ? "Η άρση αποκλεισμού της ημερομηνίας απέτυχε" : "Failed to unblock date");
  }
  };
 
@@ -221,7 +291,7 @@ const AvailabilityPage: React.FC = () => {
  setNewSlot({ ...newSlot, date:"" });
  loadBlockedSlots(selectedClinicId);
  } catch (err) {
- alert("Failed to block slot");
+ toast.error(isGreek ? "Ο αποκλεισμός της ώρας απέτυχε" : "Failed to block slot");
  }
  }
  };
@@ -231,7 +301,7 @@ const AvailabilityPage: React.FC = () => {
  await dispatch(unblockTimeSlot(id)).unwrap();
  loadBlockedSlots(selectedClinicId);
  } catch (e) {
- alert("Failed to unblock slot");
+ toast.error(isGreek ? "Η άρση αποκλεισμού της ώρας απέτυχε" : "Failed to unblock slot");
  }
  };
 
@@ -358,42 +428,9 @@ const AvailabilityPage: React.FC = () => {
  onChange={(e) => setTimezone(e.target.value)}
  className="w-full h-11 pl-5 pr-10 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest appearance-none focus:outline-none cursor-pointer hover:bg-gray-100 transition-colors"
  >
- {[
- { value: "Pacific/Midway", label: "UTC -11:00 (Midway)" },
- { value: "Pacific/Honolulu", label: "UTC -10:00 (Hawaii)" },
- { value: "America/Anchorage", label: "UTC -09:00 (Alaska)" },
- { value: "America/Los_Angeles", label: "UTC -08:00 (Pacific Time)" },
- { value: "America/Denver", label: "UTC -07:00 (Mountain Time)" },
- { value: "America/Chicago", label: "UTC -06:00 (Central Time)" },
- { value: "America/New_York", label: "UTC -05:00 (Eastern Time)" },
- { value: "America/Caracas", label: "UTC -04:00 (Caracas)" },
- { value: "America/Buenos_Aires", label: "UTC -03:00 (Buenos Aires)" },
- { value: "Atlantic/South_Georgia", label: "UTC -02:00 (South Georgia)" },
- { value: "Atlantic/Azores", label: "UTC -01:00 (Azores)" },
- { value: "UTC", label: "Coordinated Universal Time (UTC)" },
- { value: "Europe/London", label: "UTC +00:00 (London)" },
- { value: "Europe/Berlin", label: "UTC +01:00 (Central European Time)" },
- { value: "Europe/Athens", label: "UTC +02:00 (Eastern European Time)" },
- { value: "Europe/Moscow", label: "UTC +03:00 (Moscow)" },
- { value: "Asia/Tehran", label: "UTC +03:30 (Tehran)" },
- { value: "Asia/Dubai", label: "UTC +04:00 (Dubai)" },
- { value: "Asia/Kabul", label: "UTC +04:30 (Kabul)" },
- { value: "Asia/Karachi", label: "UTC +05:00 (Islamabad, Karachi)" },
- { value: "Asia/Kolkata", label: "UTC +05:30 (India Standard Time)" },
- { value: "Asia/Kathmandu", label: "UTC +05:45 (Kathmandu)" },
- { value: "Asia/Dhaka", label: "UTC +06:00 (Dhaka)" },
- { value: "Asia/Bangkok", label: "UTC +07:00 (Bangkok)" },
- { value: "Asia/Singapore", label: "UTC +08:00 (Beijing, Singapore)" },
- { value: "Asia/Tokyo", label: "UTC +09:00 (Tokyo)" },
- { value: "Australia/Adelaide", label: "UTC +09:30 (Adelaide)" },
- { value: "Australia/Sydney", label: "UTC +10:00 (Sydney)" },
- { value: "Pacific/Noumea", label: "UTC +11:00 (New Caledonia)" },
- { value: "Pacific/Auckland", label: "UTC +12:00 (Auckland)" },
- { value: "Pacific/Tongatapu", label: "UTC +13:00 (Tonga)" },
- { value: "Pacific/Kiritimati", label: "UTC +14:00 (Kiribati)" },
- ].map((tz) => (
- <option key={tz.value} value={tz.value}>
- {tz.label}
+ {(TIMEZONES.includes(timezone) || !timezone ? TIMEZONES : [timezone, ...TIMEZONES]).map((tz) => (
+ <option key={tz} value={tz}>
+ {timezoneLabel(tz)}
  </option>
  ))}
  </select>

@@ -81,7 +81,7 @@ export class CrmController {
     if (wantsExport && !isAdminUser(req.user)) {
       throw new ForbiddenException('Only administrators can export leads');
     }
-    return this.crmService.findAll({ ...filters, _requesterId: req.user.id });
+    return this.crmService.findAll({ ...filters, _requesterId: req.user.id, _isAdmin: isAdminUser(req.user) });
   }
 
   @Get('leads/stats')
@@ -105,8 +105,8 @@ export class CrmController {
   @ApiOperation({ summary: 'Update lead information' })
   @Roles(UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  update(@Param('id') id: string, @Body() updateLeadDto: UpdateLeadDto) {
-    return this.crmService.update(id, updateLeadDto);
+  update(@Param('id') id: string, @Body() updateLeadDto: UpdateLeadDto, @Request() req) {
+    return this.crmService.update(id, updateLeadDto, req.user?.id);
   }
 
   @Delete('leads/:id')
@@ -202,7 +202,7 @@ export class CrmController {
     return this.crmService.createAction({
       ...actionData,
       salespersonId: actionData.salespersonId || req.user.id,
-    });
+    }, req.user?.id);
   }
 
   @Patch('actions/:id')
@@ -217,8 +217,8 @@ export class CrmController {
   @Roles(UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Delete CRM action (Super Admin only)' })
-  deleteAction(@Param('id') id: string) {
-    return this.crmService.deleteAction(id);
+  deleteAction(@Param('id') id: string, @Request() req) {
+    return this.crmService.deleteAction(id, req.user?.id);
   }
 
   @Get('actions')
@@ -852,8 +852,9 @@ export class CrmController {
   reassignCustomer(
     @Param('id') customerId: string,
     @Body('salespersonId') salespersonId: string,
+    @Request() req,
   ) {
-    return this.crmService.reassignCustomer(customerId, salespersonId);
+    return this.crmService.reassignCustomer(customerId, salespersonId, req.user?.id);
   }
 
   @Get('analytics/super-admin/dashboard')

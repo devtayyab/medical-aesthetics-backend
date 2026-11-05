@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
@@ -68,6 +69,14 @@ export const Reviews: React.FC = () => {
     };
   }, []);
 
+  // Real treatment name(s) of the appointment, e.g. 'A + B' (QA #20)
+  const treatmentTitle = (apt: any): string =>
+    apt?.treatmentLabel ||
+    apt?.serviceName ||
+    apt?.service?.treatment?.name ||
+    apt?.service?.name ||
+    (isGreek ? "ΘΕΡΑΠΕΙΑ" : "TREATMENT");
+
   const dispatch = useDispatch<AppDispatch>();
   const { appointments, isLoading } = useSelector((state: RootState) => state.client);
   const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
@@ -103,8 +112,8 @@ export const Reviews: React.FC = () => {
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error: any) {
       console.error("Failed to submit review:", error);
-      const errorMessage = typeof error === 'string' ? error : (error?.message || "Failed to submit review. Please try again.");
-      alert(errorMessage);
+      const errorMessage = typeof error === 'string' ? error : (error?.message || (isGreek ? "Η υποβολή της αξιολόγησης απέτυχε. Δοκιμάστε ξανά." : "Failed to submit review. Please try again."));
+      toast.error(errorMessage);
       if (errorMessage.toLowerCase().includes("already reviewed")) {
         setSelectedAppointment(null);
       }
@@ -212,7 +221,7 @@ export const Reviews: React.FC = () => {
 
                   <div className="mt-12 py-8 border-t border-gray-200/70">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Detail</p>
-                    <h4 className="text-xl font-black text-gray-900 uppercase mb-2">{selectedAppointment.service?.name}</h4>
+                    <h4 className="text-xl font-black text-gray-900 uppercase mb-2">{treatmentTitle(selectedAppointment)}</h4>
                     <p className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-2"><MapPin size={12} className="text-[#84cc16]" /> {selectedAppointment.clinic?.name}</p>
                     <p className="text-xs font-bold text-gray-600 flex items-center gap-2"><Clock size={12} className="text-[#84cc16]" /> {formatDate(selectedAppointment.startTime)}</p>
                   </div>
@@ -280,7 +289,7 @@ export const Reviews: React.FC = () => {
                         </div>
 
                         <h3 className="font-black text-xl sm:text-2xl uppercase text-gray-900 mb-2 leading-tight tracking-tight">
-                          {apt.service?.name || "Premium Treatment"}
+                          {treatmentTitle(apt)}
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase tracking-wider mb-6">
                           <MapPin size={13} className="text-[#84cc16]" />

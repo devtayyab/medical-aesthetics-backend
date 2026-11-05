@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useEffect, useState } from"react";
 import { useSelector } from"react-redux";
 import { Link } from"react-router-dom";
@@ -105,8 +106,8 @@ export const Rewards: React.FC = () => {
  return;
  }
 
- const confirm = window.confirm(`Redeem ${reward.points} points for ${reward.name}?`);
- if (!confirm) return;
+ const confirmed = await confirmDialog(`Redeem ${reward.points} points for ${reward.name}?`);
+ if (!confirmed) return;
 
  try {
  setIsRedeeming(reward.id);

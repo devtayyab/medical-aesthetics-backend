@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchGiftCardsSummary, fetchGiftCards, generateGiftCard, redeemGiftCardThunk } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
 import { toast } from 'react-hot-toast';
+import { FEATURE_GIFT_CARDS } from '@/config/features';
 
 export const GiftCards: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -20,6 +21,9 @@ export const GiftCards: React.FC = () => {
  const [redeemAmount, setRedeemAmount] = useState('');
 
  const [selectedCard, setSelectedCard] = useState<any>(null);
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+ // Gift cards launch later: issuing/redeeming stays disabled until VITE_FEATURE_GIFT_CARDS=true
+ const giftCardsLive = FEATURE_GIFT_CARDS;
 
  useEffect(() => {
  dispatch(fetchGiftCardsSummary());
@@ -72,18 +76,36 @@ export const GiftCards: React.FC = () => {
  <div className="flex flex-wrap gap-3">
  <button
  onClick={() => setShowRedeemModal(true)}
- className="flex items-center gap-2 bg-white border border-gray-200 text-gray-900 px-4 py-2 font-bold rounded-lg hover:bg-gray-50 transition-colors"
+ disabled={!giftCardsLive}
+ title={!giftCardsLive ? (isGreek ? 'Σύντομα διαθέσιμο' : 'Coming soon') : undefined}
+ className="flex items-center gap-2 bg-white border border-gray-200 text-gray-900 px-4 py-2 font-bold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
  >
  Redeem Card
  </button>
  <button
  onClick={() => setShowModal(true)}
- className="flex items-center gap-2 bg-[#CBFF38] text-[#0B1120] px-4 py-2 font-bold rounded-lg hover:bg-[#A3D900] transition-colors"
+ disabled={!giftCardsLive}
+ title={!giftCardsLive ? (isGreek ? 'Σύντομα διαθέσιμο' : 'Coming soon') : undefined}
+ className="flex items-center gap-2 bg-[#CBFF38] text-[#0B1120] px-4 py-2 font-bold rounded-lg hover:bg-[#A3D900] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
  >
  <Plus className="w-5 h-5" /> Generate Gift Card
  </button>
  </div>
  </div>
+
+ {!giftCardsLive && (
+ <div className="mb-8 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+ <Info className="w-5 h-5 shrink-0 mt-0.5" />
+ <div>
+ <p className="text-sm font-bold uppercase tracking-wide">{isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}</p>
+ <p className="text-sm mt-0.5">
+ {isGreek
+ ? 'Οι δωροκάρτες δεν είναι ενεργές στην πρώτη έκδοση. Οι πελάτες βλέπουν «Σύντομα διαθέσιμο». Η έκδοση και η εξαργύρωση είναι απενεργοποιημένες μέχρι να ενεργοποιηθεί η λειτουργία (VITE_FEATURE_GIFT_CARDS).'
+ : 'Gift cards are not live at launch. Clients see "Coming soon". Issuing and redeeming are disabled until the feature is switched on (VITE_FEATURE_GIFT_CARDS).'}
+ </p>
+ </div>
+ </div>
+ )}
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
  <div className="bg-white rounded-xl shadow p-6 border border-gray-100 flex items-center justify-between">

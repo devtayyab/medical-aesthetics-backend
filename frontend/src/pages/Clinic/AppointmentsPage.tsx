@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
@@ -28,7 +29,9 @@ const AppointmentsPage: React.FC = () => {
  const providerFilter = (() => {
  try { return new URLSearchParams(window.location.search).get('providerId') || ''; } catch { return ''; }
  })();
- const [selectedDate, setSelectedDate] = useState<string>(providerFilter ? '' : new Date().toISOString().split('T')[0]);
+ // Opens on today and everything after it (like Fresha); past ones are in the History tab
+ // (QA Y7). A date picked in the filter narrows the list to that day.
+ const [selectedDate, setSelectedDate] = useState<string>('');
  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
  const [showExecutionModal, setShowExecutionModal] = useState(false);
@@ -59,7 +62,6 @@ const AppointmentsPage: React.FC = () => {
  : (user as any)?.assignedClinicId;
  
  const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
- const isPastDate = new Date(selectedDate) < new Date(new Date().toISOString().split('T')[0]);
 
  const refreshAppointments = () => {
  const filters: any = {};
@@ -84,26 +86,35 @@ const AppointmentsPage: React.FC = () => {
  return getClinicLocalDate(apt.startTime, (apt as any).clinic?.timezone) === selectedDate;
  });
 
+ // Upcoming = today (clinic-local) and later, not completed. History = earlier days or completed.
+ const todayLocal = getClinicLocalDate(new Date().toISOString(), (profile as any)?.timezone);
+ const isHistory = (a: any) =>
+ String(a?.status || '').toLowerCase() === 'completed' ||
+ getClinicLocalDate(a.startTime, a?.clinic?.timezone) < todayLocal;
  const counts = {
- active: dateFilteredAppointments.filter(a => a?.status?.toLowerCase() !== 'completed').length,
- completed: dateFilteredAppointments.filter(a => a?.status?.toLowerCase() === 'completed').length,
+ active: dateFilteredAppointments.filter(a => !isHistory(a)).length,
+ completed: dateFilteredAppointments.filter(a => isHistory(a)).length,
  };
 
  const filteredAppointments = dateFilteredAppointments.filter((apt) => {
  const status = apt.status.toLowerCase();
 
  // Tab filtering
- if (activeTab === 'active' && status === 'completed') return false;
- if (activeTab === 'completed' && status !== 'completed') return false;
+ if (activeTab === 'active' && isHistory(apt)) return false;
+ if (activeTab === 'completed' && !isHistory(apt)) return false;
 
  const matchesStatus = selectedStatus === 'all' || status === selectedStatus.toLowerCase();
  const matchesSearch =
  searchTerm === '' ||
  apt.client?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  apt.client?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
- (apt.serviceName || apt.service?.treatment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+ ((apt as any).treatmentLabel || apt.serviceName || apt.service?.treatment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
 
  return matchesStatus && matchesSearch;
+ }).sort((a, b) => {
+ // Upcoming: soonest first. History: most recent first.
+ const diff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+ return activeTab === 'active' ? diff : -diff;
  });
 
  const handleConfirm = async (id: string) => {
@@ -124,11 +135,14 @@ const AppointmentsPage: React.FC = () => {
  isLate ? (isGreek ? 'Προσοχή: ακύρωση λιγότερο από 24 ώρες πριν (καθυστερημένη ακύρωση).' : 'Warning: less than 24 hours before the appointment (late cancellation).') : '',
  isPaid ? (isGreek ? 'Το ραντεβού έχει πληρωθεί. Η πληρωμή δεν αλλάζει, ο διαχειριστής αποφασίζει για επιστροφή.' : 'This appointment is paid. The payment stays as is; an admin decides on a refund.') : '',
  ].filter(Boolean).join('\n\n');
- if (window.confirm(message)) {
+ if (await confirmDialog({ message, danger: true, confirmText: isGreek ? 'ΝΑΙ, ΑΚΥΡΩΣΗ' : 'Yes, cancel', cancelText: isGreek ? 'ΠΙΣΩ' : 'Back' })) {
+ // Optional reason; the client sees it on the cancelled appointment (QA Y33).
+ const reason = ((await promptDialog({ message: isGreek ? 'Λόγος ακύρωσης (προαιρετικό, το βλέπει ο πελάτης):' : 'Cancellation reason (optional, visible to the client):', multiline: true, confirmText: isGreek ? 'ΣΥΝΕΧΕΙΑ' : 'Continue', cancelText: isGreek ? 'ΠΑΡΑΛΕΙΨΗ' : 'Skip' })) || '').trim();
  await dispatch(
  updateAppointmentStatus({
  id,
  status: AppointmentStatus.CANCELLED,
+ ...(reason ? { updateData: { reason } } : {}),
  })
  );
  }
@@ -179,7 +193,7 @@ const AppointmentsPage: React.FC = () => {
  : 'text-gray-400 hover:text-gray-900'
  }`}
  >
- Active Appointments
+ {isGreek ? 'ΕΠΟΜΕΝΑ' : 'Upcoming'}
  <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'active' ? 'bg-[#CBFF38] text-black' : 'bg-gray-100 text-gray-400'}`}>
  {counts.active}
  </span>
@@ -192,7 +206,7 @@ const AppointmentsPage: React.FC = () => {
  : 'text-gray-400 hover:text-gray-900'
  }`}
  >
- Completed History
+ {isGreek ? 'ΙΣΤΟΡΙΚΟ' : 'History'}
  <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'completed' ? 'bg-[#CBFF38] text-black' : 'bg-gray-100 text-gray-400'}`}>
  {counts.completed}
  </span>
@@ -238,7 +252,7 @@ const AppointmentsPage: React.FC = () => {
  onClick={() => {
  setSelectedStatus('all');
  setSearchTerm('');
- setSelectedDate(new Date().toISOString().split('T')[0]);
+ setSelectedDate('');
  }}
  className="h-11 px-5 border border-gray-100 text-gray-400 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all"
  >
@@ -264,7 +278,7 @@ const AppointmentsPage: React.FC = () => {
  onClick={() => setActiveTab('completed')}
  className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all"
  >
- View {counts.completed} Completed Procedures
+ {isGreek ? `ΙΣΤΟΡΙΚΟ (${counts.completed})` : `View history (${counts.completed})`}
  </button>
  )}
  {activeTab === 'completed' && counts.active > 0 && (
@@ -272,7 +286,7 @@ const AppointmentsPage: React.FC = () => {
  onClick={() => setActiveTab('active')}
  className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all"
  >
- View {counts.active} Active Entries
+ {isGreek ? `ΕΠΟΜΕΝΑ (${counts.active})` : `View upcoming (${counts.active})`}
  </button>
  )}
  </div>
@@ -295,7 +309,7 @@ const AppointmentsPage: React.FC = () => {
  setShowDetailModal(true);
  }}
  onNoShow={async () => {
- if (window.confirm('Mark this client as No Show?')) {
+ if (await confirmDialog(isGreek ? 'Σήμανση του πελάτη ως No Show;' : 'Mark this client as No Show?')) {
  await dispatch(updateAppointmentStatus({ id: appointment.id, status: AppointmentStatus.NO_SHOW }));
  }
  }}
@@ -491,9 +505,12 @@ const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onEx
  <div className="space-y-0.5">
  <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Θεραπεία" : "Treatment"}</p>
  <h4 className="text-sm font-black uppercase tracking-tighter text-gray-900 truncate">
- {appointment.serviceName || appointment.service?.treatment?.name}
+ {appointment.treatmentLabel || appointment.serviceName || appointment.service?.treatment?.name}
  </h4>
- <div className="text-[9px] font-bold text-black bg-[#CBFF38] inline-block px-1 rounded-sm mt-0.5">€{appointment.totalAmount}</div>
+ <div className="text-[9px] font-bold text-black bg-[#CBFF38] inline-block px-1 rounded-sm mt-0.5">€{appointment.totalAmount}{appointment.durationMinutes ? ` · ${appointment.durationMinutes} ${isGreek ? 'λεπτά' : 'min'}` : ''}</div>
+ {appointment.doctorName && (
+ <p className="text-[8px] font-bold text-gray-500 truncate mt-0.5">{isGreek ? 'Ιατρός' : 'Doctor'}: {appointment.doctorName}</p>
+ )}
  </div>
 
  <div className="space-y-0.5 hidden lg:block">

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect, useRef } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { X } from"lucide-react";
@@ -247,7 +248,7 @@ export const AppointmentBooking: React.FC = () => {
  console.error('Failed to hold slot:', err);
  // Someone else holds or booked it: do not let the user continue with this slot.
  setSelectedSlot(null);
- alert('This time is no longer available. Please choose another time.');
+ toast.error('This time is no longer available. Please choose another time.');
  }
  }
  };

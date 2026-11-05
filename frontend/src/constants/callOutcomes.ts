@@ -52,6 +52,13 @@ export const todayNextHour = (): string => {
   return toLocalInputValue(d);
 };
 
+/**
+ * Pre-filled next call for an outcome, the same on every screen (QA #82):
+ * Call Back = today (next full hour); Interested / No Answer = next working day 08:00.
+ */
+export const defaultNextCallFor = (outcome?: string): string =>
+  outcome === 'call_later' ? todayNextHour() : nextWorkingDay0800();
+
 /** dd/mm/yyyy HH:mm in Europe/Athens. */
 export const formatAthens = (date?: string | Date | null): string => {
   if (!date) return '-';

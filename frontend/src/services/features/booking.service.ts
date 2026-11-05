@@ -66,7 +66,7 @@ export const bookingService = {
   validateGiftCard: (code: string) => api.post('/clinic/appointments/validate-gift-card', { code }).then(res => res.data),
 
   // `refund` is only honoured for admins when cancelling a paid appointment.
-  updateStatus: (id: string, status: string, extra?: { refund?: boolean; notes?: string }) =>
+  updateStatus: (id: string, status: string, extra?: { refund?: boolean; notes?: string; reason?: string }) =>
     api.patch(`/appointments/${id}/status`, { status, ...(extra || {}) }),
 
   // Total, paid, balance and every payment (with method) of an appointment.

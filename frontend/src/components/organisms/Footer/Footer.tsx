@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from"react-router-dom";
-import { FaFacebookF, FaLinkedinIn } from"react-icons/fa";
+import { FaFacebookF, FaLinkedinIn, FaApple, FaGooglePlay } from"react-icons/fa";
 import { FaXTwitter } from"react-icons/fa6";
 import { Phone, Mail } from"lucide-react";
 import toast from "react-hot-toast";
@@ -40,6 +40,28 @@ export const Footer: React.FC = () => {
  <p className="mt-3 text-xs text-white text-left leading-relaxed max-w-sm opacity-90">
  BeautyDoctors is a digital platform for exploring treatments and booking appointments with independent doctors and clinics. Treatment suitability is determined by the treating healthcare professional following medical assessment.
  </p>
+ {/* Mobile apps are not published yet: badges stay visible, disabled, marked "coming soon" */}
+ <div className="mt-4 flex flex-wrap gap-2">
+ {[
+ { key: 'ios', icon: <FaApple size={18} />, store: 'App Store' },
+ { key: 'android', icon: <FaGooglePlay size={15} />, store: 'Google Play' },
+ ].map((app) => (
+ <div
+ key={app.key}
+ role="img"
+ aria-disabled="true"
+ aria-label={`${app.store}: ${isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}`}
+ title={isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}
+ className="flex items-center gap-2 rounded-lg border border-white/20 bg-black/40 px-3 py-1.5 text-white opacity-60 cursor-not-allowed select-none"
+ >
+ {app.icon}
+ <span className="leading-none text-left">
+ <span className="block text-[8px] font-bold uppercase tracking-wider text-[#CBFF38]">{isGreek ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}</span>
+ <span className="block text-[12px] font-bold">{app.store}</span>
+ </span>
+ </div>
+ ))}
+ </div>
  </div>
 
  {/* Right Side */}

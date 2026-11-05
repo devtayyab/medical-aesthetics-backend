@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { getImageUrl } from "@/utils/imageUrl";
 import { formatDate } from "@/utils/formatters";
+import { NotFound } from "@/pages/NotFound/NotFound";
 
 const heroSection = css`
   height: 320px;
@@ -106,8 +107,8 @@ export const ClinicDetails: React.FC = () => {
     }
   }, [activeTab, id]);
 
-  if (isLoading) return <div className="p-12 sm:p-20 text-center text-gray-400 font-bold uppercase animate-pulse text-xs tracking-widest">Establishing Connection...</div>;
-  if (!clinicData) return <div className="p-12 sm:p-20 text-center text-red-500 font-bold text-sm">Vector not found.</div>;
+  if (isLoading) return <div className="p-12 sm:p-20 text-center text-gray-400 font-bold uppercase animate-pulse text-xs tracking-widest">{localStorage.getItem('preferredLang') === 'en' ? 'Loading...' : 'ΦΟΡΤΩΣΗ...'}</div>;
+  if (!clinicData) return <NotFound homePath="/search" message={{ el: "Η κλινική δεν βρέθηκε ή δεν είναι πλέον διαθέσιμη.", en: "This clinic was not found or is no longer available." }} />;
 
   const handleBookService = (service: Service) => {
     const bookingPath = `/appointment/booking?clinicId=${clinicData.id}&serviceIds=${service.id}`;

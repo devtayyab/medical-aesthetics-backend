@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from"react-redux";
 import {
@@ -183,11 +184,11 @@ export const Communication: React.FC = () => {
 
  const handleConvertLead = async () => {
  if (!activeContact || activeContact.type !== 'Lead') return;
- if (!window.confirm("Convert this lead to a Customer? This will create a permanent node in the registry.")) return;
+ if (!(await confirmDialog("Convert this lead to a Customer? This will create a permanent node in the registry."))) return;
 
  try {
  await crmAPI.updateLead(activeContact.id, { status: 'converted' });
- alert("Lead successfully converted to Customer.");
+ toast.success("Lead successfully converted to Customer.");
  await fetchContacts(); // Refresh list to see them as Customer
  } catch (err) {
  console.error("Conversion failed:", err);
@@ -205,7 +206,7 @@ export const Communication: React.FC = () => {
  title: pushData.title,
  message: pushData.message
  });
- alert("Notification dispatched successfully.");
+ toast.success("Notification dispatched successfully.");
  setShowPushModal(false);
  setPushData({ title: '', message: '' });
  } catch (err) {

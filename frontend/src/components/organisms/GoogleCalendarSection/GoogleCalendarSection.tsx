@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
@@ -120,7 +121,7 @@ const GoogleCalendarSection: React.FC<Props> = ({ clinicId }) => {
 
   const handleDisconnect = async () => {
     if (!clinicId) return;
-    if (!window.confirm(t("Αποσύνδεση Google Calendar; Τα ραντεβού δεν θα συγχρονίζονται πλέον.", "Disconnect Google Calendar? Appointments will stop syncing."))) {
+    if (!(await confirmDialog({ message: t("Αποσύνδεση Google Calendar; Τα ραντεβού δεν θα συγχρονίζονται πλέον.", "Disconnect Google Calendar? Appointments will stop syncing."), danger: true }))) {
       return;
     }
     setBusy(true);

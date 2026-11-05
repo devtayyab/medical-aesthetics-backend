@@ -1,3 +1,5 @@
+import { toast } from 'react-hot-toast';
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useState, useEffect, useRef } from 'react';
 import {
  User,
@@ -228,7 +230,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  };
 
  const handleCompleteAppointment = async (appointment: any) => {
- if (confirm(`Are you sure you want to mark"${appointment.serviceName}" as completed? Revenue will be recorded as ${formatCurrency(appointment.totalAmount || 0)}.`)) {
+ if (await confirmDialog({ message: `Are you sure you want to mark"${appointment.serviceName}" as completed? Revenue will be recorded as ${formatCurrency(appointment.totalAmount || 0)}.` })) {
  try {
  await dispatch(completeAppointment({ 
  id: appointment.id,
@@ -242,7 +244,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  onUpdate?.();
  } catch (error) {
  console.error('Failed to complete appointment:', error);
- alert('Failed to complete appointment.');
+ toast.error('Failed to complete appointment.');
  }
  }
  };
@@ -271,7 +273,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  onUpdate?.();
  } catch (error) {
  console.error("Failed to save phone call note", error);
- alert("Failed to save.");
+ toast.error("Failed to save.");
  }
  };
 
@@ -282,13 +284,13 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  };
 
  const handleDeleteCommunication = async (id: string) => {
- if (window.confirm("Are you sure you want to delete this log?")) {
+ if (await confirmDialog({ message: "Are you sure you want to delete this log?", danger: true })) {
  try {
  await dispatch(deleteCommunication(id)).unwrap();
  onUpdate?.();
  } catch (error) {
  console.error("Failed to delete communication", error);
- alert("Failed to delete.");
+ toast.error("Failed to delete.");
  }
  }
  };
@@ -309,7 +311,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
  onUpdate?.();
  } catch (error) {
  console.error("Failed to log email", error);
- alert("Failed to save.");
+ toast.error("Failed to save.");
  }
  };
 

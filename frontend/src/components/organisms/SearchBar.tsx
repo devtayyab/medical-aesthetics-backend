@@ -99,6 +99,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -122,7 +123,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  <div className="flex-1 text-left">
  <input
  className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900 text-left text-[15px]"
- placeholder="Search Treatments"
+ placeholder={isGreek ? "Αναζήτηση θεραπειών" : "Search Treatments"}
  autoComplete="one-time-code"
  value={query}
  onChange={(e) => {
@@ -156,7 +157,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  </div>
  ) : suggestions.length > 0 ? (
  <div className="space-y-1">
- <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Treatments Found</p>
+ <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΘΕΡΑΠΕΙΕΣ" : "Treatments Found"}</p>
  {suggestions.map((suggestion, idx) => (
  <button
  key={idx}
@@ -202,9 +203,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  </div>
  <div className="flex-1 text-left">
  <span className={inputLabel}>
- {searchDate ? new Date(searchDate).toLocaleDateString() :"Select Date"}
+ {searchDate ? new Date(searchDate).toLocaleDateString() : (isGreek ? "Επιλογή ημερομηνίας" : "Select Date")}
  </span>
- <span className={inputSubLabel}>Choose your visit date</span>
+ <span className={inputSubLabel}>{isGreek ? "Ημερομηνία επίσκεψης" : "Choose your visit date"}</span>
  </div>
  </div>
 
@@ -217,7 +218,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-4 border border-gray-100"
  >
  <div className="mb-4">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Select Visit Date</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">{isGreek ? "ΕΠΙΛΟΓΗ ΗΜΕΡΟΜΗΝΙΑΣ" : "Select Visit Date"}</p>
  <input
  type="date"
  className="w-full p-4 bg-[#F8FAFC] border border-[#F1F5F9] rounded-xl outline-none font-bold text-gray-900 focus:border-[#CBFF38] transition-colors"

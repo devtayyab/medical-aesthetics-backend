@@ -1,3 +1,4 @@
+import { promptDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useState, useEffect } from"react";
 import { useSelector } from"react-redux";
 import { Link } from"react-router-dom";
@@ -108,7 +109,7 @@ export const InviteFriend: React.FC = () => {
  setCopied(true);
  setTimeout(() => setCopied(false), 2500);
  } catch {
- window.prompt('Copy your invitation message:', inviteMessage);
+ await promptDialog({ message: 'Copy your invitation message:', defaultValue: inviteMessage, multiline: true });
  }
  };
 

@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
+import { formatEuro } from '@/utils/formatters';
 
 // Define the shape of our data
 interface AgentPerformanceData {
@@ -17,12 +18,7 @@ interface AgentPerformanceData {
 
 // Utility function to format currency
 const formatCurrency = (value: number): string => {
- return new Intl.NumberFormat('en-US', {
- style: 'currency',
- currency: 'USD',
- minimumFractionDigits: 0,
- maximumFractionDigits: 0,
- }).format(value);
+ return formatEuro(value, 0);
 };
 
 export const columns: ColumnDef<AgentPerformanceData>[] = [

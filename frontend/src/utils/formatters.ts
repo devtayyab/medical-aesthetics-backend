@@ -10,6 +10,17 @@ export const formatCurrency = (amount?: number | null, currency: string = '€')
   })}`;
 };
 
+/** Euro amount in Greek number style, e.g. €1.234 or €1.234,50 (CRM reports and dashboards). */
+export const formatEuro = (amount?: number | string | null, decimals: number = 0): string => {
+  const n = Number(amount);
+  const value = isNaN(n) ? 0 : n;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}€${Math.abs(value).toLocaleString('el-GR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+};
+
 export const formatPhoneNumber = (phone?: string | null): string => {
   if (!phone) return '';
   const cleaned = phone.replace(/\D/g, '');

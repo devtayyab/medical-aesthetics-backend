@@ -3,34 +3,19 @@ import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-
-/**
- * Browsers may only send credentialed (cookie) requests from these origins.
- * CORS_ORIGINS: comma-separated list, e.g. "https://beautydoctors.gr,https://www.beautydoctors.gr".
- * Falls back to FRONTEND_URL, local dev servers and the Capacitor/WebView origins.
- */
-function allowedOrigins(): string[] {
-  const fromEnv = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((o) => o.trim().replace(/\/$/, ''))
-    .filter(Boolean);
-  const frontend = (process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
-  const defaults = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:4173',
-    'capacitor://localhost',
-    'http://localhost',
-    'https://localhost',
-  ];
-  return Array.from(new Set([...fromEnv, ...(frontend ? [frontend] : []), ...defaults]));
-}
+import { allowedOrigins } from './common/utils/allowed-origins';
+import { StripCredentialsInterceptor } from './common/interceptors/strip-credentials.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Enforce @Exclude() on entities (passwordHash, refreshToken, etc.) in all responses.
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // StripCredentialsInterceptor is outermost, so it cleans the plain copies the serializer
+  // produces, and also catches users that were spread into plain objects (lost @Exclude()).
+  app.useGlobalInterceptors(
+    new StripCredentialsInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
+  );
 
   // Security headers. The API serves uploaded images to the web app on another origin,
   // so resources must be loadable cross-origin; CSP is relaxed only for Swagger UI.
@@ -64,7 +49,7 @@ async function bootstrap() {
       }
     },
     credentials: true,
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Auth-Transport',
   });
 
   // Set global prefix

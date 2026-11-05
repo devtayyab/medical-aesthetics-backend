@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { List, Plus, Edit2, Trash2, Search, Filter, Stethoscope, Tag as TagIcon, Building, Loader2 } from 'lucide-react';
 import { adminSystemListsAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
@@ -87,7 +88,7 @@ export const SystemLists: React.FC = () => {
  };
 
  const handleDelete = async (id: string) => {
- if (!window.confirm('Are you sure you want to delete this?')) return;
+ if (!(await confirmDialog({ message: 'Are you sure you want to delete this?', danger: true }))) return;
  try {
  if (activeTab === 'categories') {
  await adminSystemListsAPI.deleteCategory(id);

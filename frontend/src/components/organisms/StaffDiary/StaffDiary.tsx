@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { PhoneInput } from '@/components/atoms/PhoneInput/PhoneInput';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -42,8 +43,14 @@ const statusLabels: Record<string, { label: string, color: string, icon: any }> 
 
 // Sanitize timezone: the DB may store the literal string "null" which must be treated as missing.
 const sanitizeTz = (tz?: string | null): string => {
-    if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
-    return tz;
+    if (!tz || tz === 'null' || tz.trim() === '') return 'Europe/Athens';
+    // Invalid zone names also fall back to the platform timezone, never UTC.
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: tz });
+        return tz;
+    } catch {
+        return 'Europe/Athens';
+    }
 };
 
 // Helper to reliably extract hour and minute in a specific timezone
@@ -310,7 +317,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             // day columns below (which are also positioned in clinic tz) instead of the
             // browser timezone — otherwise the "Booked" count disagrees with the number
             // of cards actually rendered for the week/day.
-            const tz = (apt as any).clinic?.timezone || 'UTC';
+            const tz = (apt as any).clinic?.timezone || 'Europe/Athens';
             const aptDateStr = getClinicLocalDate(apt.startTime, tz);
             let isInView = false;
             if (viewMode === 'week') {
@@ -428,7 +435,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             setWizardTime("10:00");
         } catch (error) {
             console.error(error);
-            alert("Failed to book appointment.");
+            toast.error("Failed to book appointment.");
         }
     };
 
@@ -544,7 +551,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     };
 
     const handleUnblockSlot = async (slotId: string) => {
-        if (!window.confirm("Are you sure you want to remove this blocked time?")) return;
+        if (!(await confirmDialog({ message: "Are you sure you want to remove this blocked time?", danger: true }))) return;
         try {
             await adminAPI.unblockSlot(slotId);
             toast.success("Time slot unblocked successfully!");
@@ -746,7 +753,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                     {appointments.filter(a => {
                                         // Use clinic-local date so the column the appointment lands in
                                         // matches the date shown in the card label (formatClinicTime).
-                                        const tz = (a as any).clinic?.timezone || 'UTC';
+                                        const tz = (a as any).clinic?.timezone || 'Europe/Athens';
                                         const d = new Date(a.startTime);
                                         let aptDateStr: string;
                                         try {
@@ -764,7 +771,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         const colDateStr = format(day, 'yyyy-MM-dd');
                                         return colDateStr === aptDateStr;
                                     }).map(apt => {
-                                        const clinicTz = apt.clinic?.timezone || 'UTC';
+                                        const clinicTz = apt.clinic?.timezone || 'Europe/Athens';
                                         const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, clinicTz);
                                         const top = startHour * 64 + (startMinute / 60) * 64;
 
@@ -1335,7 +1342,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                                 });
                                             } catch (e) {
                                                 console.error(e);
-                                                alert("Failed to update services & price.");
+                                                toast.error("Failed to update services & price.");
                                             }
                                         }}
                                         className={`w-full font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2 ${editServices.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
@@ -1454,8 +1461,8 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                             providerId: selectedApt.providerId
                                         });
                                         dispatch(fetchClinicAppointments({ providerId: user?.id }));
-                                        alert("Appointment rescheduled successfully.");
-                                    } catch (err) { alert("Reschedule failed."); }
+                                        toast.success("Appointment rescheduled successfully.");
+                                    } catch (err) { toast.error("Reschedule failed."); }
                                 }}
                             >
                                 Confirm Updates
@@ -1534,13 +1541,13 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                 variant="outline"
                                 className="w-full h-11 border-red-50 text-red-500 hover:bg-red-50 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
                                 onClick={async () => {
-                                    if (window.confirm("ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.")) {
+                                    if (await confirmDialog({ message: "ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.", danger: true })) {
                                         try {
                                             await bookingAPI.deleteAppointment(selectedApt.id);
                                             setIsDetailDrawerOpen(false);
                                             setSelectedApt(null);
                                             dispatch(fetchClinicAppointments(currentFilters));
-                                        } catch (err) { alert("Delete failed."); }
+                                        } catch (err) { toast.error("Delete failed."); }
                                     }
                                 }}
                             >
@@ -1588,7 +1595,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         {user?.role === 'clinic_owner' && (
                             <button
                                 onClick={async () => {
-                                    if (selectedClinicId === 'all') return alert("Please select a clinic first.");
+                                    if (selectedClinicId === 'all') { toast.error("Please select a clinic first."); return; }
                                     try {
                                         const startTime = setMinutes(setHours(startOfDay(contextMenu.date), parseInt(contextMenu.time)), 0);
                                         const end = new Date(startTime.getTime() + 60 * 60000);

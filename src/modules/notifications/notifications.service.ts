@@ -17,7 +17,7 @@ import { NotificationDeliveryService } from './services/notification-delivery.se
 import { NotificationDispatch } from './entities/notification-dispatch.entity';
 import { ContactMessage } from './entities/contact-message.entity';
 import { athensDate, athensTime } from './utils/notification-format.util';
-import { DEFAULT_TEMPLATES, LEGACY_DEFAULT_SUBJECTS } from './notification-templates.defaults';
+import { DEFAULT_TEMPLATES, LEGACY_DEFAULT_SUBJECTS, LEGACY_DEFAULT_CONTENTS, LEGACY_REMINDER_TEXT } from './notification-templates.defaults';
 
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 const SALES_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER];
@@ -341,12 +341,12 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     recipientId: string,
     appointmentDetails: { id: string; time: Date | string; serviceName?: string },
   ): Promise<Notification> {
-    const when = `${athensDate(appointmentDetails.time)} στις ${athensTime(appointmentDetails.time)}`;
+    const when = `${athensDate(appointmentDetails.time)}, ώρα ${athensTime(appointmentDetails.time)}`;
     return this.create(
       recipientId,
       NotificationType.PUSH,
       'Υπενθύμιση ραντεβού',
-      `Υπενθύμιση: έχετε ραντεβού${appointmentDetails.serviceName ? ` για ${appointmentDetails.serviceName}` : ''} στις ${when}.`,
+      `Υπενθύμιση: έχετε ραντεβού${appointmentDetails.serviceName ? ` για ${appointmentDetails.serviceName}` : ''} την ${when}.`,
       { appointmentId: appointmentDetails.id, type: 'appointment_reminder' },
     );
   }
@@ -599,7 +599,12 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
       if (!existing) {
         await this.templateRepository.save(this.templateRepository.create({ ...data, isActive: true }));
         created++;
-      } else if (LEGACY_DEFAULT_SUBJECTS.has(existing.subject)) {
+      } else if (
+        LEGACY_DEFAULT_SUBJECTS.has(existing.subject) ||
+        LEGACY_DEFAULT_CONTENTS.has(existing.content) ||
+        (String(data.trigger).startsWith('APPOINTMENT_REMINDER') &&
+          (LEGACY_REMINDER_TEXT.test(existing.subject || '') || LEGACY_REMINDER_TEXT.test(existing.content || '')))
+      ) {
         await this.templateRepository.update(existing.id, { subject: data.subject, content: data.content });
         upgraded++;
       }

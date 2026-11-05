@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import AccountHero from "@/assets/my_account_bg.png";
+import { FEATURE_GIFT_CARDS } from "@/config/features";
 
 export const MyAccount: React.FC = () => {
   const [isGreek, setIsGreek] = useState(
@@ -70,7 +71,7 @@ export const MyAccount: React.FC = () => {
     },
     {
       title: isGreek ? "ΔΩΡΟΚΑΡΤΕΣ" : "GIFT CARDS",
-      desc: isGreek ? "ΜΟΙΡΑΣΤΕΙΤΕ ΠΟΛΥΤΕΛΕΙΑ" : "SHARE LUXURY",
+      desc: !FEATURE_GIFT_CARDS ? (isGreek ? "ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ" : "COMING SOON") : (isGreek ? "ΔΩΣΤΕ ΜΙΑ ΘΕΡΑΠΕΙΑ ΔΩΡΟ" : "GIVE A TREATMENT AS A GIFT"),
       icon: <Gift className="size-5" />,
       link: "/gift-card"
     },
@@ -126,7 +127,7 @@ export const MyAccount: React.FC = () => {
             </span>
             <ChevronRight size={12} className="text-[#84cc16]" />
             <span className="text-[#84cc16] font-extrabold">
-              MEMBER LOUNGE
+              {isGreek ? "Ο ΛΟΓΑΡΙΑΣΜΟΣ ΜΟΥ" : "MY ACCOUNT"}
             </span>
           </motion.div>
 

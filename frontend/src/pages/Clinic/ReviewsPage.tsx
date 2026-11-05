@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
@@ -38,7 +39,7 @@ const ReviewsPage: React.FC = () => {
 
  const handleRespond = async (reviewId: string) => {
  if (!responseText.trim()) {
- alert('Please enter a response');
+ toast.error(isGreek ? 'Συμπληρώστε μια απάντηση' : 'Please enter a response');
  return;
  }
 

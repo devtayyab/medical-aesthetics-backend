@@ -10,7 +10,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PAYMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
 import * as crypto from 'crypto';
 import { UserRole } from '../../common/enums/user-role.enum';
-import { getPaidRevenueTotal } from './revenue.util';
+import { getPaidRevenueTotal, revenueDayRange } from './revenue.util';
+import { User } from '../users/entities/user.entity';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 @Injectable()
 export class FinancialService {
@@ -40,10 +42,11 @@ export class FinancialService {
         metadata?: any;
         recordedById?: string;
     }): Promise<PaymentRecord> {
-        // Every payment carries the salesperson. When the caller does not pass one, derive it
-        // from the linked appointment (its representative, else whoever booked it, if staff).
-        if (!data.salespersonId && data.appointmentId) {
-            data = { ...data, salespersonId: (await this.resolveAppointmentSalespersonId(data.appointmentId)) || undefined };
+        // Every payment carries the salesperson. When the caller does not pass one, derive it:
+        // the appointment's representative, else the salesperson who booked it, else the
+        // client's assigned salesperson (CRM customer record, then CRM lead).
+        if (!data.salespersonId) {
+            data = { ...data, salespersonId: (await this.resolvePaymentSalespersonId(data.appointmentId, data.clientId)) || undefined };
         }
 
         const payment = this.paymentRecordsRepository.create({
@@ -92,8 +95,102 @@ export class FinancialService {
         const salesRoles = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN].map(r => String(r).toLowerCase());
         const isSales = (u?: any) => !!u && salesRoles.includes(String(u.role || '').toLowerCase());
         if (appointment.representativeId && isSales(appointment.representative)) return appointment.representativeId;
-        if (appointment.bookedById && isSales(appointment.bookedBy)) return appointment.bookedById;
+        if (appointment.bookedById && String(appointment.bookedBy?.role || '').toLowerCase() === UserRole.SALESPERSON) {
+            return appointment.bookedById;
+        }
         return null;
+    }
+
+    /** The salesperson assigned to a client in the CRM: customer record first, then the CRM lead. */
+    async resolveClientSalespersonId(clientId?: string | null): Promise<string | null> {
+        if (!clientId) return null;
+        const rows = await this.paymentRecordsRepository.manager.query(
+            `SELECT COALESCE(
+                (SELECT cr."assignedSalespersonId" FROM "customer_records" cr
+                  WHERE cr."customerId" = $1 AND cr."assignedSalespersonId" IS NOT NULL
+                  ORDER BY cr."updatedAt" DESC LIMIT 1),
+                (SELECT l."assignedSalesId" FROM "leads" l
+                   JOIN "users" u ON u.id = $1
+                  WHERE l."assignedSalesId" IS NOT NULL AND l."deletedAt" IS NULL
+                    AND u.email IS NOT NULL AND LOWER(l.email) = LOWER(u.email)
+                  ORDER BY l."updatedAt" DESC LIMIT 1)
+             ) AS "salespersonId"`,
+            [clientId],
+        );
+        return rows?.[0]?.salespersonId || null;
+    }
+
+    /** Salesperson for a payment: from the appointment, else from the client's CRM assignment. */
+    async resolvePaymentSalespersonId(appointmentId?: string | null, clientId?: string | null): Promise<string | null> {
+        let clientForLookup = clientId || null;
+        if (appointmentId) {
+            const fromAppointment = await this.resolveAppointmentSalespersonId(appointmentId);
+            if (fromAppointment) return fromAppointment;
+            if (!clientForLookup) {
+                const apt = await this.appointmentsRepository.findOne({ where: { id: appointmentId }, select: ['id', 'clientId'] });
+                clientForLookup = apt?.clientId || null;
+            }
+        }
+        return this.resolveClientSalespersonId(clientForLookup);
+    }
+
+    /** Clients for the manual payment form (server-side search by name, email or phone). */
+    async searchClientsForPayment(search?: string, limit = 20) {
+        const qb = this.paymentRecordsRepository.manager
+            .getRepository(User)
+            .createQueryBuilder('u')
+            .select(['u.id', 'u.firstName', 'u.lastName', 'u.email', 'u.phone'])
+            .where('u.role = :role', { role: UserRole.CLIENT });
+        const term = (search || '').trim();
+        if (term) {
+            qb.andWhere(
+                `(u.firstName ILIKE :q OR u.lastName ILIKE :q OR u.email ILIKE :q OR u.phone ILIKE :q
+                  OR CONCAT(COALESCE(u.firstName, ''), ' ', COALESCE(u.lastName, '')) ILIKE :q
+                  OR CONCAT(COALESCE(u.lastName, ''), ' ', COALESCE(u.firstName, '')) ILIKE :q)`,
+                { q: `%${term}%` },
+            );
+        }
+        const take = Math.min(Math.max(Number(limit) || 20, 1), 100);
+        return qb.orderBy('u.firstName', 'ASC').addOrderBy('u.lastName', 'ASC').take(take).getMany();
+    }
+
+    /** A client's appointments (newest first) so a manual payment can be linked to one. */
+    async getClientAppointmentsForPayment(clientId: string) {
+        if (!clientId) return [];
+        const rows = await this.appointmentsRepository.createQueryBuilder('a')
+            .leftJoin('a.service', 's')
+            .leftJoin('s.treatment', 't')
+            .leftJoin('a.clinic', 'c')
+            .select([
+                'a.id', 'a.startTime', 'a.status', 'a.clinicId', 'a.providerId',
+                'a.totalAmount', 'a.amountPaid', 's.id', 't.id', 't.name', 'c.id', 'c.name',
+            ])
+            .where('a.clientId = :clientId', { clientId })
+            .andWhere('a.status != :deleted', { deleted: AppointmentStatus.DELETED })
+            .orderBy('a.startTime', 'DESC')
+            .take(100)
+            .getMany();
+        return rows.map((a: any) => ({
+            id: a.id,
+            startTime: a.startTime,
+            status: a.status,
+            clinicId: a.clinicId,
+            clinicName: a.clinic?.name || null,
+            providerId: a.providerId,
+            treatmentName: a.service?.treatment?.name || null,
+            totalAmount: Number(a.totalAmount || 0),
+            amountPaid: Number(a.amountPaid || 0),
+        }));
+    }
+
+    /** Appointment fields a manual payment inherits when linked to an appointment. */
+    async getAppointmentPaymentContext(appointmentId: string) {
+        const apt = await this.appointmentsRepository.findOne({
+            where: { id: appointmentId },
+            select: ['id', 'clientId', 'clinicId', 'providerId'],
+        });
+        if (!apt) throw new NotFoundException('Appointment not found');
+        return apt;
     }
 
     /**
@@ -170,16 +267,13 @@ export class FinancialService {
         if (filters.clientId) query.andWhere('payment.clientId = :clientId', { clientId: filters.clientId });
         if (filters.method) query.andWhere('payment.method = :method', { method: filters.method });
 
-        if (filters.startDate && filters.startDate.trim() !== '') {
-            query.andWhere('payment.createdAt >= :startDate', { startDate: new Date(filters.startDate) });
-        }
-        if (filters.endDate && filters.endDate.trim() !== '') {
-            const end = new Date(filters.endDate);
-            if (!isNaN(end.getTime())) {
-                end.setHours(23, 59, 59, 999);
-                query.andWhere('payment.createdAt <= :endDate', { endDate: end });
-            }
-        }
+        // Whole Athens days, the same period rule as every other revenue page.
+        const period = revenueDayRange(
+            filters.startDate && filters.startDate.trim() !== '' ? filters.startDate : null,
+            filters.endDate && filters.endDate.trim() !== '' ? filters.endDate : null,
+        );
+        if (period.startDate) query.andWhere('payment.createdAt >= :startDate', { startDate: period.startDate });
+        if (period.endDate) query.andWhere('payment.createdAt <= :endDate', { endDate: period.endDate });
 
         const parsedLimit = filters.limit ? parseInt(filters.limit as any, 10) : 50;
         const parsedOffset = filters.offset ? parseInt(filters.offset as any, 10) : 0;
@@ -191,15 +285,13 @@ export class FinancialService {
             .getManyAndCount();
 
         // Net paid revenue for the same filters: the shared definition used by every revenue page.
-        const end = filters.endDate && filters.endDate.trim() !== '' ? new Date(filters.endDate) : null;
-        if (end && !isNaN(end.getTime())) end.setHours(23, 59, 59, 999);
         const netRevenue = await getPaidRevenueTotal(this.paymentRecordsRepository.manager, {
             clinicId: filters.clinicId,
             providerId: filters.providerId,
             salespersonId: filters.salespersonId,
             clientId: filters.clientId,
-            startDate: filters.startDate && filters.startDate.trim() !== '' ? new Date(filters.startDate) : null,
-            endDate: end && !isNaN(end.getTime()) ? end : null,
+            startDate: period.startDate,
+            endDate: period.endDate,
         });
 
         return { items, total, netRevenue, currency: 'EUR' };

@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState } from"react";
+﻿import { toast } from 'react-hot-toast';
+import React, { useEffect, useState } from"react";
 import { clinicsAPI } from"@/services/api";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card } from"@/components/atoms/Card/Card";
@@ -48,7 +49,7 @@ export const ReviewModeration: React.FC = () => {
  await clinicsAPI.setReviewResponseVisibility(reviewId, hidden);
  setReviews(reviews.map(r => (r.id === reviewId ? { ...r, responseHidden: hidden } : r)));
  } catch (err: any) {
- alert(err.response?.data?.message || (isEl ? 'Η ενέργεια απέτυχε' : 'Action failed'));
+ toast.error(err.response?.data?.message || (isEl ? 'Η ενέργεια απέτυχε' : 'Action failed'));
  }
  };
 
@@ -57,7 +58,7 @@ export const ReviewModeration: React.FC = () => {
  await clinicsAPI.moderateReview(reviewId, { status });
  setReviews(reviews.filter(r => r.id !== reviewId));
  } catch (err: any) {
- alert(err.response?.data?.message || `Failed to ${status.toLowerCase()} review`);
+ toast.error(err.response?.data?.message || `Failed to ${status.toLowerCase()} review`);
  }
  };
 

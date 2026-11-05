@@ -397,7 +397,7 @@ export const AdminSuperCalendar: React.FC = () => {
  <div className="flex items-center gap-3 text-sm">
  <Clock className="w-4 h-4 text-gray-400" />
  <span className="font-bold text-gray-700">{(() => {
- const tz = selectedApt.clinic?.timezone && selectedApt.clinic.timezone !== 'null' ? selectedApt.clinic.timezone : 'UTC';
+ const tz = selectedApt.clinic?.timezone && selectedApt.clinic.timezone !== 'null' ? selectedApt.clinic.timezone : 'Europe/Athens';
  const datePart = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(selectedApt.startTime));
  const { hour, minute } = getClinicLocalTime(selectedApt.startTime, tz);
  return `${datePart} @ ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;

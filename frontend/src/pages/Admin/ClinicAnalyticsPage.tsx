@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from 'date-fns';
@@ -78,7 +79,7 @@ export const ClinicAnalyticsPage = () => {
   };
 
   const handleSeedData = async () => {
-    if (!confirm('This will generate mock appointments, revenue, and clients for testing. Continue?')) return;
+    if (!(await confirmDialog({ message: 'This will generate mock appointments, revenue, and clients for testing. Continue?' }))) return;
     setIsLoading(true);
     try {
       await (adminAPI as any).axiosInstance.get('/crm/manager-crm/seed-mock-data');
