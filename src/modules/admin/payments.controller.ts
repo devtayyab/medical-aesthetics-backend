@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, ForbiddenException, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,6 +23,8 @@ export class PaymentsController {
         @Query('providerId') providerId?: string,
         @Query('salespersonId') salespersonId?: string,
         @Query('date') date?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
         @Query('method') method?: string,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number
@@ -33,7 +35,21 @@ export class PaymentsController {
         if (!isPlatformAdmin && !clinicId) {
             throw new ForbiddenException('A clinicId is required to view the payments ledger.');
         }
-        return this.paymentsService.getLedger({ clinicId, providerId, salespersonId, date, method, limit, offset });
+        return this.paymentsService.getLedger({ clinicId, providerId, salespersonId, date, startDate, endDate, method, limit, offset });
+    }
+
+    @Get('clients')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+    @ApiOperation({ summary: 'Search clients for the manual payment form' })
+    searchClients(@Query('search') search?: string, @Query('limit') limit?: number) {
+        return this.paymentsService.searchClients(search, limit);
+    }
+
+    @Get('clients/:clientId/appointments')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+    @ApiOperation({ summary: 'Appointments of a client, to link a manual payment to one' })
+    getClientAppointments(@Param('clientId', ParseUUIDPipe) clientId: string) {
+        return this.paymentsService.getClientAppointments(clientId);
     }
 
     @Post(':id/refund')

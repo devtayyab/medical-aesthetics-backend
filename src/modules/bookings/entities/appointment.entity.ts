@@ -58,6 +58,11 @@ export class Appointment {
   @Column('text', { nullable: true })
   rescheduleReason?: string;
 
+  // Reason given when the appointment was cancelled. Shown to the client on the cancelled
+  // card (QA Y33); internal notes stay staff-only.
+  @Column('text', { nullable: true })
+  cancellationReason?: string;
+
   @Column({ nullable: true })
   paymentMethod: string; // 'cash', 'card', 'bank_transfer', etc.
 

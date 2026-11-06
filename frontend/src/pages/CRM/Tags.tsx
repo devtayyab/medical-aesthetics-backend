@@ -1,3 +1,5 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
+import { toast } from 'react-hot-toast';
 import {
  Trash2,
  Plus,
@@ -120,7 +122,7 @@ export const Tags: React.FC = () => {
 
  const handleAddTag = async () => {
  if (!tagData.customerId || !tagData.tagId) {
- alert("Please select a customer and a tag");
+ toast.error("Please select a customer and a tag");
  return;
  }
 
@@ -136,9 +138,9 @@ export const Tags: React.FC = () => {
  handleFetchCustomersByTag(selectedTagHeader);
  }
  
- alert("Tag assigned successfully!");
+ toast.success("Tag assigned successfully!");
  } catch (error) {
- alert("Failed to assign tag");
+ toast.error("Failed to assign tag");
  }
  };
 
@@ -148,9 +150,9 @@ export const Tags: React.FC = () => {
  const res = await adminAPI.createTag(newTag);
  setAvailableTags(prev => [...prev, res.data]);
  setNewTag({ name:"", color:"#3b82f6", description:"" });
- alert("New tag definition created!");
+ toast.success("New tag definition created!");
  } catch (err) {
- alert("Failed to create tag definition");
+ toast.error("Failed to create tag definition");
  }
  };
 
@@ -164,7 +166,7 @@ export const Tags: React.FC = () => {
  document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
  }, 100);
  } catch (error) {
- alert("Failed to fetch customers");
+ toast.error("Failed to fetch customers");
  }
  };
 
@@ -370,8 +372,8 @@ export const Tags: React.FC = () => {
  variant='ghost'
  size='sm'
  className='h-8 w-8 p-0 text-slate-300 hover:text-red-500 transition-colors'
- onClick={() => {
- if (confirm("Remove tag?")) {
+ onClick={async () => {
+ if (await confirmDialog({ message: "Remove tag?", danger: true })) {
  dispatch(removeCustomerTag(customer.id)).then(() => {
  setCustomersByTag(prev => prev.filter(c => c.id !== customer.id));
  });

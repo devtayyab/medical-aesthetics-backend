@@ -127,7 +127,7 @@ export const FacebookIntegration: React.FC = () => {
 
   const handleImportLeads = async () => {
     if (!importData.formId) {
-      alert("Please enter a Form ID");
+      toast.error("Please enter a Form ID");
       return;
     }
     await handleImportForm(importData.formId);

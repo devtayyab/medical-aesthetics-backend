@@ -36,6 +36,11 @@ export class ManualPaymentDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
+  providerId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
   salespersonId?: string;
 
   @ApiProperty({ required: false })

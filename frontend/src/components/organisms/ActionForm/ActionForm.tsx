@@ -18,6 +18,7 @@ import type { CrmAction } from '@/types';
 import { userAPI, crmAPI, clinicsAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { cn } from"@/lib/utils";
+import { CALL_OUTCOMES } from '@/constants/callOutcomes';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -822,14 +823,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  label="Call Outcome"
  value={formData.metadata?.callOutcome || ''}
  onChange={(value) => handleInputChange('metadata.callOutcome', value)}
- options={[
- { value: 'interested', label: 'Interested' },
- { value: 'not_interested', label: 'Not Interested' },
- { value: 'callback', label: 'Call Back' },
- { value: 'booked', label: 'Booked Appointment' },
- { value: 'no_answer', label: 'No Answer' },
- { value: 'wrong_number', label: 'Wrong Number' }
- ]}
+ options={CALL_OUTCOMES.map(o => ({ value: o.value, label: isGreek ? o.labelEl : o.label }))}
  />
  </div>
  </>

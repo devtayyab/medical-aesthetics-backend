@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { FinancialService } from '../payments/financial.service';
 import { PaymentMethod, PaymentType, PaymentStatus } from '../payments/entities/payment-record.entity';
 import { ManualPaymentDto } from './dto/manual-payment.dto';
@@ -14,6 +14,8 @@ export class PaymentsService {
         providerId?: string;
         salespersonId?: string;
         date?: string;
+        startDate?: string;
+        endDate?: string;
         method?: string;
         limit?: number;
         offset?: number;
@@ -22,8 +24,9 @@ export class PaymentsService {
             clinicId: query.clinicId,
             providerId: query.providerId,
             salespersonId: query.salespersonId,
-            startDate: query.date,
-            endDate: query.date,
+            // A single day (date) or a period (startDate/endDate).
+            startDate: query.date || query.startDate,
+            endDate: query.date || query.endDate,
             method: query.method as any,
             limit: query.limit,
             offset: query.offset
@@ -38,14 +41,39 @@ export class PaymentsService {
         return this.financialService.voidPayment(id, notes, recordedById);
     }
 
+    searchClients(search?: string, limit?: number) {
+        return this.financialService.searchClientsForPayment(search, limit);
+    }
+
+    getClientAppointments(clientId: string) {
+        return this.financialService.getClientAppointmentsForPayment(clientId);
+    }
+
     async createManualPayment(data: ManualPaymentDto & { recordedById: string }) {
+        // A payment linked to an appointment inherits its client, clinic and doctor, and the
+        // appointment must belong to the selected client.
+        let clientId = data.clientId;
+        let clinicId = data.clinicId;
+        let providerId = data.providerId;
+        if (data.appointmentId) {
+            const apt = await this.financialService.getAppointmentPaymentContext(data.appointmentId);
+            if (clientId && apt.clientId && clientId !== apt.clientId) {
+                throw new BadRequestException('The selected appointment does not belong to this client.');
+            }
+            clientId = clientId || apt.clientId;
+            clinicId = clinicId || apt.clinicId;
+            providerId = providerId || apt.providerId;
+        }
+        if (!clientId) throw new BadRequestException('A client is required.');
+
         // Only whitelisted fields are forwarded; type/status are forced server-side so a
         // manager cannot fabricate refunds or completed turnover they didn't collect.
         return this.financialService.recordPayment({
             amount: data.amount,
             method: data.method,
-            clinicId: data.clinicId,
-            clientId: data.clientId,
+            clinicId,
+            clientId,
+            providerId,
             appointmentId: data.appointmentId,
             salespersonId: data.salespersonId,
             notes: data.notes,

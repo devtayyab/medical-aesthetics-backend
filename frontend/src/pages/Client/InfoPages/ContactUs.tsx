@@ -256,7 +256,7 @@ export const ContactUs: React.FC = () => {
  </div>
  <div>
  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Phone <span className="text-gray-300 normal-case font-semibold">(optional)</span></label>
- <input className={inputClass} type="tel" placeholder="+30 …" value={form.phone} onChange={set("phone")} autoComplete="tel" />
+ <input className={inputClass} type="tel" placeholder="+30 6912345678" value={form.phone} onChange={set("phone")} autoComplete="tel" />
  </div>
  <div>
  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Subject *</label>

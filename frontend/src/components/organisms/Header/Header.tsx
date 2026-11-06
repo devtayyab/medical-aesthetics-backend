@@ -344,19 +344,19 @@ export const Header: React.FC = () => {
 
  if (user.role ==="admin") {
  return [
- { to:"/admin/dashboard", label:"Dashboard" },
- { to:"/messages", label:"Messages" },
- { to:"/crm/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
+ { to:"/admin/dashboard", label: isGreek ? "Πίνακας ελέγχου" : "Dashboard" },
+ { to:"/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+ { to:"/crm/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+ { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
  ];
  }
 
  if (user.role ==="SUPER_ADMIN" || user.role ==="manager") {
  return [
- { to:"/admin/manager-dashboard", label:"Dashboard" },
- { to:"/messages", label:"Messages" },
- { to:"/crm/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
+ { to:"/admin/manager-dashboard", label: isGreek ? "Πίνακας ελέγχου" : "Dashboard" },
+ { to:"/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+ { to:"/crm/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+ { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
  ];
  }
 
@@ -374,54 +374,54 @@ export const Header: React.FC = () => {
 
  if (user.role ==="doctor") {
  return [
- { to:"/clinic/diary", label:"My Appointments" },
- { to:"/change-password", label:"Settings" },
- { action: handleLogout, label:"Logout" },
+ { to:"/clinic/diary", label: isGreek ? "Τα ραντεβού μου" : "My Appointments" },
+ { to:"/change-password", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+ { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
  ];
  }
 
  if (user.role ==="secretariat") {
  return [
- { to:"/clinic/dashboard", label:"Dashboard" },
- { to:"/clinic/appointments", label:"Appointments" },
- { to:"/clinic/availability-settings", label:"Availability" },
- { to:"/clinic/diary", label:"Diary" },
- { to:"/messages", label:"Messages" },
- { to:"/change-password", label:"Settings" },
- { action: handleLogout, label:"Logout" },
+ { to:"/clinic/dashboard", label: isGreek ? "Πίνακας ελέγχου" : "Dashboard" },
+ { to:"/clinic/appointments", label: isGreek ? "Ραντεβού" : "Appointments" },
+ { to:"/clinic/availability-settings", label: isGreek ? "Διαθεσιμότητα" : "Availability" },
+ { to:"/clinic/diary", label: isGreek ? "Ημερολόγιο" : "Diary" },
+ { to:"/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+ { to:"/change-password", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+ { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
  ];
  }
 
  if (clinicRoles.includes(user.role)) {
  return [
- { to:"/clinic/dashboard", label:"Dashboard" },
- { to:"/clinic/appointments", label:"Appointments" },
- { to:"/clinic/clients", label:"Clients" },
- { to:"/clinic/reviews", label:"Reviews" },
- { to:"/messages", label:"Messages" },
- { to:"/clinic/notifications", label:"Notifications" },
- { to:"/clinic/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
+ { to:"/clinic/dashboard", label: isGreek ? "Πίνακας ελέγχου" : "Dashboard" },
+ { to:"/clinic/appointments", label: isGreek ? "Ραντεβού" : "Appointments" },
+ { to:"/clinic/clients", label: isGreek ? "Ασθενείς" : "Clients" },
+ { to:"/clinic/reviews", label: isGreek ? "Κριτικές" : "Reviews" },
+ { to:"/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+ { to:"/clinic/notifications", label: isGreek ? "Ειδοποιήσεις" : "Notifications" },
+ { to:"/clinic/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+ { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
  ];
  }
 
   if (user.role ==="salesperson") {
   return [
   { to:"/crm", label:"CRM" },
-  { to:"/crm/customers", label:"Customers" },
-  { to:"/crm/tasks", label:"Tasks" },
-  { to:"/crm/repeat-management", label:"Repeat Management" },
+  { to:"/crm/customers", label: isGreek ? "Πελάτες" : "Customers" },
+  { to:"/crm/tasks", label: isGreek ? "Εργασίες" : "Tasks" },
+  { to:"/crm/repeat-management", label: isGreek ? "Επαναλήψεις" : "Repeat Management" },
   { to:"/crm/leads", label:"Leads" },
-  { to:"/crm/lost-leads", label:"Lost Leads" },
-  { to:"/messages", label:"Messages" },
-  { to:"/crm/communication", label:"Communication" },
-  { to:"/crm/tag", label:"Tags" },
-  { to:"/crm/settings", label:"Settings" },
-  { action: handleLogout, label:"Logout" },
+  { to:"/crm/lost-leads", label: isGreek ? "Χαμένα leads" : "Lost Leads" },
+  { to:"/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+  { to:"/crm/communication", label: isGreek ? "Επικοινωνία" : "Communication" },
+  { to:"/crm/tag", label: isGreek ? "Ετικέτες" : "Tags" },
+  { to:"/crm/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+  { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
   ];
   }
 
- return [{ action: handleLogout, label:"Logout" }]; // Default case
+ return [{ action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" }]; // Default case
  };
 
  return (

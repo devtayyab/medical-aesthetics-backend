@@ -78,7 +78,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  e.preventDefault();
 
  if (!formData.clientId || !formData.clinicId || !formData.serviceId || !formData.date || !formData.time) {
- return alert('Please fill in all required fields');
+ toast.error('Please fill in all required fields');
+  return;
  }
 
  const selectedService = services.find(s => s.id === formData.serviceId);

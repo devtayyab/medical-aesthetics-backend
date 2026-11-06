@@ -18,9 +18,11 @@ import type { Customer } from"@/types/crm.types";
 export interface CrmState {
  // Lead Management
  leads: Lead[];
+ /** Set when leads were fetched with withTotal=true (server-side paging). */
+ leadsPage: { total: number; page: number; limit: number; totalPages: number; summary?: { facebook: number; last30Days: number; restorable: number; formNames?: string[] } } | null;
  selectedLead: Lead | null;
  leadFilters: CrmFilters;
- stats: { total: number; newInquiries: number; inConversation: number; converted: number; lost?: number } | null;
+ stats: { total: number; newInquiries: number; contacted: number; converted: number; lost?: number } | null;
  customer: Customer | null;
  // Customer Management
  customerRecord: CustomerSummary | null;
@@ -82,6 +84,7 @@ export interface CrmState {
 
 const initialState: CrmState = {
  leads: [],
+ leadsPage: null,
  selectedLead: null,
  leadFilters: {},
  stats: null,
@@ -584,7 +587,12 @@ const crmSlice = createSlice({
  }
  })
  .addCase(fetchLeads.fulfilled, (state, action) => {
- const fetchedLeads = action.payload || [];
+ const payload: any = action.payload;
+ const paged = payload && !Array.isArray(payload) && Array.isArray(payload.data);
+ state.leadsPage = paged
+ ? { total: payload.total, page: payload.page, limit: payload.limit, totalPages: payload.totalPages, summary: payload.summary }
+ : null;
+ const fetchedLeads = (paged ? payload.data : payload) || [];
  const uniqueLeadsMap = new Map();
  fetchedLeads.forEach((l: any) => {
  if (l && l.id) {

@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
@@ -200,7 +201,7 @@ export const Appointments: React.FC = () => {
     const lateWarning = greek
       ? "Προσοχή: ακύρωση λιγότερο από 24 ώρες πριν το ραντεβού. Θα καταγραφεί ως καθυστερημένη ακύρωση."
       : "Warning: this is less than 24 hours before your appointment. It will be recorded as a late cancellation.";
-    if (window.confirm(isLate ? `${lateWarning}\n\n${question}` : question)) {
+    if (await confirmDialog({ message: isLate ? `${lateWarning}\n\n${question}` : question, danger: true, confirmText: greek ? 'ΝΑΙ, ΑΚΥΡΩΣΗ' : 'Yes, cancel', cancelText: greek ? 'ΠΙΣΩ' : 'Back' })) {
       try {
         await dispatch(cancelAppointment(apt.id)).unwrap();
         toast.success("Appointment cancelled");
@@ -240,7 +241,7 @@ export const Appointments: React.FC = () => {
       const redirectUrl = (res.data as any)?.redirectUrl;
       if (redirectUrl) window.location.href = redirectUrl;
     } catch (err) {
-      window.alert('Failed to retrieve payment link.');
+      toast.error(isGreek ? 'Δεν ήταν δυνατή η λήψη του συνδέσμου πληρωμής.' : 'Failed to retrieve payment link.');
     }
   };
 
@@ -370,9 +371,8 @@ export const Appointments: React.FC = () => {
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs sm:text-[14px] font-black uppercase tracking-tight text-gray-900 leading-none mb-1 truncate">
-                            {apt.clinic?.name || "B&D Elite Clinic"}
+                            {apt.clinic?.name || "-"}
                           </p>
-                          <p className="text-[8px] sm:text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">Premium Partner</p>
                         </div>
                       </div>
                       
@@ -398,6 +398,18 @@ export const Appointments: React.FC = () => {
                         <Shield size={13} className="text-[#84cc16] shrink-0 mt-0.5" />
                         <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
                           Proceeding with the treatment requires a medical assessment and informed consent.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Cancellation reason (QA Y33): visible on the cancelled card */}
+                    {apt.status.toLowerCase() === 'cancelled' && (apt as any).cancellationReason && (
+                      <div className="mb-5 p-3 rounded-2xl bg-red-50/80 border border-red-100">
+                        <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mb-1">
+                          {isGreek ? "ΛΟΓΟΣ ΑΚΥΡΩΣΗΣ" : "Cancellation reason"}
+                        </p>
+                        <p className="text-[11px] text-gray-700 font-medium leading-relaxed break-words">
+                          {(apt as any).cancellationReason}
                         </p>
                       </div>
                     )}
@@ -485,7 +497,7 @@ export const Appointments: React.FC = () => {
                         <div className="group relative">
                           <MessageSquare className="text-gray-400 hover:text-black transition-colors cursor-help" size={20} />
                           <div className="absolute bottom-full right-0 mb-3 w-48 sm:w-56 p-3 sm:p-4 bg-black text-white text-[10px] font-medium rounded-2xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 pointer-events-none z-30 shadow-2xl border border-white/10 leading-relaxed">
-                            <span className="block text-[#CBFF38] font-black mb-1">RESCHEDULE_REASON:</span>
+                            <span className="block text-[#CBFF38] font-black mb-1">{isGreek ? "ΛΟΓΟΣ ΑΛΛΑΓΗΣ" : "Reason for change"}:</span>
                             {apt.rescheduleReason}
                           </div>
                         </div>

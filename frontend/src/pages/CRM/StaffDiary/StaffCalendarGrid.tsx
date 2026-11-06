@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   format, isToday, startOfWeek, endOfWeek,
@@ -89,7 +90,7 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
   // Get timezone for an appointment
   const getAptTimezone = (apt: any): string => {
     const clinic = clinics.find(c => c.id === apt.clinicId);
-    return apt.clinic?.timezone || clinic?.timezone || 'UTC';
+    return apt.clinic?.timezone || clinic?.timezone || 'Europe/Athens';
   };
 
   // Filter appointments for a given day
@@ -107,7 +108,7 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
     const dayDateStr = format(day, 'yyyy-MM-dd');
     return blockedSlots.filter(slot => {
       const clinic = clinics.find(c => c.id === slot.clinicId);
-      const tz = clinic?.timezone || 'UTC';
+      const tz = clinic?.timezone || 'Europe/Athens';
       // getClinicLocalDate already returns a 'yyyy-MM-dd' string — do NOT wrap it in
       // format() (which expects a Date and silently mis-parses the string).
       const slotDateStr = getClinicLocalDate(slot.startTime, tz);
@@ -157,7 +158,7 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
   // Unblock a slot
   const handleUnblock = async (e: React.MouseEvent, slotId: string) => {
     e.stopPropagation();
-    if (!window.confirm('Remove this blocked time?')) return;
+    if (!(await confirmDialog({ message: 'Remove this blocked time?', danger: true }))) return;
     try {
       await adminAPI.unblockSlot(slotId);
       toast.success('Slot unblocked!');
@@ -170,7 +171,9 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
   // Day column click
   const handleColumnClick = (e: React.MouseEvent<HTMLDivElement>, day: Date, dayApts: CalendarAppointment[]) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const relativeY = e.clientY - rect.top + (scrollContainerRef.current?.scrollTop || 0);
+    // The column scrolls with the container, so rect.top already includes the scroll
+    // offset; adding scrollTop again moved every clicked slot down by the scroll distance.
+    const relativeY = e.clientY - rect.top;
     const totalMinutes = Math.floor((relativeY / HOUR_HEIGHT_PX) * 60);
     const snappedMinutes = Math.round(totalMinutes / SLOT_INTERVAL_MIN) * SLOT_INTERVAL_MIN;
     
@@ -305,7 +308,7 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
                 {/* Blocked Slots */}
                 {dayBlocked.map(slot => {
                   const clinic = clinics.find(c => c.id === slot.clinicId);
-                  const tz = clinic?.timezone || 'UTC';
+                  const tz = clinic?.timezone || 'Europe/Athens';
                   
                   const { hour: startHour, minute: startMinVal } = getClinicLocalTime(slot.startTime, tz);
                   const { hour: endHour, minute: endMinVal } = getClinicLocalTime(slot.endTime, tz);
@@ -381,7 +384,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ appointments, days, onEdit }) =
         const dayApts = appointments.filter(apt => {
           // Bucket by clinic-local date (same as the desktop grid's getAptsByDay),
           // NOT browser-local, so mobile and desktop agree on which day a card is on.
-          const tz = apt.clinic?.timezone || 'UTC';
+          const tz = apt.clinic?.timezone || 'Europe/Athens';
           return getClinicLocalDate(apt.startTime, tz) === format(day, 'yyyy-MM-dd');
         });
 
@@ -424,7 +427,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ appointments, days, onEdit }) =
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {(() => {
-                              const tz = apt.clinic?.timezone || 'UTC';
+                              const tz = apt.clinic?.timezone || 'Europe/Athens';
                               const { hour, minute } = getClinicLocalTime(apt.startTime, tz);
                               return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                             })()}

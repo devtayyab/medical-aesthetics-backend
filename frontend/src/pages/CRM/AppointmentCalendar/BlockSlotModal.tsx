@@ -25,11 +25,10 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
   initialTime,
   initialClinicId,
   clinics,
-  salespersons,
+  salespersons: _salespersons,
   onClose,
   onSuccess,
 }) => {
-  const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BlockSlotFormData>({
     clinicId: clinics[0]?.id || '',
@@ -67,7 +66,7 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
       : form.customReason ? `${baseReason} - ${form.customReason}` : baseReason;
 
     const clinic = clinics.find(c => c.id === form.clinicId);
-    const tz = clinic?.timezone || 'UTC';
+    const tz = clinic?.timezone || 'Europe/Athens';
     const localDate = new Date(`${form.date}T12:00:00`);
     
     const startDateTime = createClinicUTCDateTime(localDate, form.startTime, tz);
@@ -77,7 +76,8 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     try {
       await adminAPI.blockSlot({
         clinicId: form.clinicId,
-        providerId: form.salesPersonId || null,
+        // Clinic-wide block; the server records who blocked it (blockedById).
+        providerId: null,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
         reason: reasonText,
@@ -127,26 +127,6 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
               <option value="">Select clinic...</option>
               {[...clinics].sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })).map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Assigned Staff Member (optional) */}
-          <div>
-            <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-              {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}{' '}
-              <span className="text-slate-400 font-normal">
-                {isGreek ? '(προαιρετικό — αφήστε κενό για όλους)' : '(optional — leave blank for all)'}
-              </span>
-            </label>
-            <select
-              value={form.salesPersonId}
-              onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
-            >
-              <option value="">{isGreek ? 'Όλο το προσωπικό' : 'All Staff'}</option>
-              {salespersons.map(sp => (
-                <option key={sp.id} value={sp.id}>{sp.name}</option>
               ))}
             </select>
           </div>

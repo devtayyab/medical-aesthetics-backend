@@ -8,7 +8,7 @@ import { Textarea } from"@/components/atoms/Textarea";
 import { Select } from"@/components/atoms/Select/Select";
 import { Phone, User, MoreHorizontal, X, Check, Activity, Clock, PhoneCall, Calendar } from"lucide-react";
 import toast from"react-hot-toast";
-import { CALL_OUTCOMES, KEEP_TASK_OPEN_OUTCOMES, formatAthens, nextWorkingDay0800 } from '@/constants/callOutcomes';
+import { CALL_OUTCOMES, KEEP_TASK_OPEN_OUTCOMES, formatAthens, defaultNextCallFor } from '@/constants/callOutcomes';
 
 // Reuse the visual Dialer UI
 const DialerModalUI = ({
@@ -156,7 +156,7 @@ export const GlobalDialer: React.FC = () => {
  // 2. Interested / Call back / No answer: the SAME task moves to the next call; else it is completed
  if (taskId) {
  const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(outcome);
- const next = keepOpen ? new Date(nextCallAt || nextWorkingDay0800()) : null;
+ const next = keepOpen ? new Date(nextCallAt || defaultNextCallFor(outcome)) : null;
  await dispatch(updateAction({
  id: taskId,
  updates: {
@@ -222,8 +222,9 @@ export const GlobalDialer: React.FC = () => {
  <button
  key={opt.id}
  onClick={() => {
+ const outcomeChanged = opt.id !== outcome;
  setOutcome(opt.id);
- if (KEEP_TASK_OPEN_OUTCOMES.includes(opt.id) && !nextCallAt) setNextCallAt(nextWorkingDay0800());
+ if (KEEP_TASK_OPEN_OUTCOMES.includes(opt.id) && (!nextCallAt || outcomeChanged)) setNextCallAt(defaultNextCallFor(opt.id));
  }}
  className={`flex items-center gap-3 p-3 border rounded-xl transition-all text-left ${
  outcome === opt.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:border-blue-300'

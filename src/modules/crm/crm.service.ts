@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef, HttpException } from '@nestjs/common';
-import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal } from '../payments/revenue.util';
+import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal, revenueDayRange } from '../payments/revenue.util';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
@@ -320,8 +320,9 @@ export class CrmService implements OnModuleInit {
     };
   }
 
-  async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
+  async update(id: string, updateLeadDto: UpdateLeadDto, actorId?: string): Promise<Lead> {
     const lead = await this.findById(id);
+    const leadBefore: Record<string, any> = { ...lead };
 
     if ((updateLeadDto as any).assignedSalesId === '') {
       (updateLeadDto as any).assignedSalesId = null;
@@ -389,11 +390,65 @@ export class CrmService implements OnModuleInit {
     }
 
     const updated = await this.findById(id);
+    this.auditLeadUpdate(leadBefore, updated, actorId);
     if (baseUpdates.status === LeadStatus.LOST) {
       // Open tasks are NOT closed automatically; the UI warns about them instead
       (updated as any).openTasksCount = await this.countOpenTasksForLead(updated);
     }
     return updated;
+  }
+
+  /** Audit log entry (who and when) for CRM changes; shown on the admin Audit Log page. */
+  private emitCrmAudit(action: string, resource: 'leads' | 'tasks', resourceId: string, userId: string | null | undefined, before: any, after: any, data?: any) {
+    this.eventEmitter.emit('audit.log', {
+      userId: userId || null,
+      action,
+      resource,
+      resourceId,
+      changes: { before, after },
+      data,
+    });
+  }
+
+  /** Lead changes: status change, reassignment and other field edits each get their own entry. */
+  private auditLeadUpdate(before: Record<string, any>, after: Lead, actorId?: string) {
+    const name = `${after.firstName || ''} ${after.lastName || ''}`.trim();
+    const norm = (v: any) => (v instanceof Date ? v.toISOString() : v ?? null);
+    if (norm(before.status) !== norm(after.status)) {
+      this.emitCrmAudit('LEAD_STATUS_CHANGE', 'leads', after.id, actorId,
+        { status: before.status ?? null }, { status: after.status ?? null }, { leadName: name });
+    }
+    if (norm(before.assignedSalesId) !== norm(after.assignedSalesId)) {
+      this.emitCrmAudit('LEAD_REASSIGN', 'leads', after.id, actorId,
+        { assignedSalesId: before.assignedSalesId ?? null }, { assignedSalesId: after.assignedSalesId ?? null }, { leadName: name });
+    }
+    const fields = ['firstName', 'lastName', 'email', 'phone', 'source', 'notes', 'estimatedValue', 'scheduledAt', 'metadata'];
+    const b: Record<string, any> = {};
+    const a: Record<string, any> = {};
+    for (const f of fields) {
+      const x = f === 'metadata' ? JSON.stringify(before[f] ?? null) : norm(before[f]);
+      const y = f === 'metadata' ? JSON.stringify((after as any)[f] ?? null) : norm((after as any)[f]);
+      if (x !== y) {
+        b[f] = before[f] ?? null;
+        a[f] = (after as any)[f] ?? null;
+      }
+    }
+    if (Object.keys(a).length > 0) {
+      this.emitCrmAudit('LEAD_UPDATE', 'leads', after.id, actorId, b, a, { leadName: name });
+    }
+  }
+
+  /** Task (CRM action) fields shown in the audit log. */
+  private taskAuditSnapshot(t: Partial<CrmAction> | null | undefined) {
+    if (!t) return null;
+    return {
+      title: t.title ?? null,
+      status: t.status ?? null,
+      salespersonId: t.salespersonId ?? null,
+      dueDate: t.dueDate ?? null,
+      priority: (t as any).priority ?? null,
+      actionType: t.actionType ?? null,
+    };
   }
 
   /** Throws when the user may not own leads/tasks (only sales staff and admins). */
@@ -730,7 +785,7 @@ export class CrmService implements OnModuleInit {
           if (processed.has(leadgenId)) continue;
           // Get full lead data from Facebook using the lead ID from the webhook
           const leadData = await this.facebookService.getLead(leadgenId);
-          const formName = await this.facebookService.getFormName(leadData.form_id || change.value?.form_id);
+          const formName = await this.resolveFormName(leadData.form_id || change.value?.form_id);
           const parsedLead = this.facebookService.parseLeadData(leadData, formName);
           await this.ingestParsedFacebookLead(parsedLead, leadData, true);
         } catch (error) {
@@ -806,6 +861,89 @@ export class CrmService implements OnModuleInit {
     return new Set(rows.map((r) => r.fb_id).filter(Boolean));
   }
 
+  /**
+   * Human name of a Facebook form: the Graph API (cached) first, then the name
+   * other leads of the same form already carry. Undefined when neither knows it.
+   */
+  private async resolveFormName(formId?: string, accessToken?: string): Promise<string | undefined> {
+    if (!formId) return undefined;
+    const live = await this.facebookService.getFormName(formId, accessToken);
+    if (live) return live;
+    try {
+      const rows: Array<{ name: string }> = await this.leadsRepository.query(
+        `SELECT "lastMetaFormName" AS name FROM leads
+         WHERE "facebookFormId" = $1 AND "lastMetaFormName" IS NOT NULL AND "lastMetaFormName" !~ '^Facebook Form [0-9]+$'
+         GROUP BY "lastMetaFormName" ORDER BY COUNT(*) DESC LIMIT 1`,
+        [String(formId)],
+      );
+      return rows?.[0]?.name || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Replace the "Facebook Form <id>" placeholder with the real form name on cards
+   * and in their form history, for every form whose name is known now.
+   */
+  private async healNumericFormNames(forms: Array<{ id?: string; name?: string }>): Promise<number> {
+    const names = new Map<string, string>();
+    for (const f of forms) {
+      if (f?.id && f?.name && !/^Facebook Form [0-9]+$/.test(f.name)) names.set(String(f.id), f.name);
+    }
+    const placeholderRows: Array<{ id: string; facebookFormId: string | null; lastMetaFormName: string | null; metadata: any }> =
+      await this.leadsRepository.query(
+        `SELECT id, "facebookFormId", "lastMetaFormName", metadata FROM leads
+         WHERE "deletedAt" IS NULL
+           AND ("lastMetaFormName" ~ '^Facebook Form [0-9]+$' OR metadata::text ~ '"formName" *: *"Facebook Form [0-9]+"')
+         LIMIT 5000`,
+      );
+    if (placeholderRows.length === 0) return 0;
+
+    // Names other cards of the same form already carry fill the gaps
+    const missingIds = new Set<string>();
+    for (const r of placeholderRows) {
+      const m = /^Facebook Form ([0-9]+)$/.exec(r.lastMetaFormName || '');
+      if (m && !names.has(m[1])) missingIds.add(m[1]);
+      for (const h of Array.isArray(r.metadata?.formHistory) ? r.metadata.formHistory : []) {
+        const hm = /^Facebook Form ([0-9]+)$/.exec(h?.formName || '');
+        if (hm && !names.has(hm[1])) missingIds.add(hm[1]);
+      }
+    }
+    for (const formId of missingIds) {
+      const known = await this.resolveFormName(formId).catch(() => undefined);
+      if (known) names.set(formId, known);
+    }
+    if (names.size === 0) return 0;
+
+    let healed = 0;
+    for (const r of placeholderRows) {
+      const patch: Record<string, any> = {};
+      const m = /^Facebook Form ([0-9]+)$/.exec(r.lastMetaFormName || '');
+      if (m && names.has(m[1])) patch.lastMetaFormName = names.get(m[1]);
+
+      const history = Array.isArray(r.metadata?.formHistory) ? r.metadata.formHistory : null;
+      if (history) {
+        let changed = false;
+        const nextHistory = history.map((h: any) => {
+          const hm = /^Facebook Form ([0-9]+)$/.exec(h?.formName || '');
+          if (hm && names.has(hm[1])) {
+            changed = true;
+            return { ...h, formName: names.get(hm[1]) };
+          }
+          return h;
+        });
+        if (changed) patch.metadata = { ...r.metadata, formHistory: nextHistory };
+      }
+      if (Object.keys(patch).length > 0) {
+        await this.leadsRepository.update(r.id, patch);
+        healed++;
+      }
+    }
+    if (healed > 0) this.logger.log(`Repaired form names on ${healed} lead(s)`);
+    return healed;
+  }
+
   /** One parsed Facebook submission into the CRM: new card, or history entry of the existing card. */
   private async ingestParsedFacebookLead(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean): Promise<Lead | null> {
     const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
@@ -836,7 +974,7 @@ export class CrmService implements OnModuleInit {
       }
     }
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit, pageAccessToken);
-    const formName = await this.facebookService.getFormName(formId, pageAccessToken);
+    const formName = await this.resolveFormName(formId, pageAccessToken);
     const createdLeads: Lead[] = [];
 
     // Dedup on the Facebook lead ID (not name/email heuristics), including
@@ -1300,7 +1438,16 @@ export class CrmService implements OnModuleInit {
     return this.taskAutomationService.sendTaskReminders();
   }
 
-  async findAll(filters: any = {}): Promise<Lead[]> {
+  /** Largest page a normal list request may ask for (QA NEW-2: limit=30000 froze the API). */
+  static readonly LEADS_MAX_PAGE_SIZE = 200;
+  /** Admin-only CSV export ceiling. */
+  static readonly LEADS_MAX_EXPORT_SIZE = 50000;
+
+  /**
+   * Lists leads. Returns an array (legacy shape) unless `withTotal=true`, in which case it
+   * returns { data, total, page, limit, totalPages, summary } for server-side paging.
+   */
+  async findAll(filters: any = {}): Promise<any> {
     // NOTE: we do NOT leftJoinAndSelect tags here because TypeORM generates
     // SELECT DISTINCT for pagination whenever there is a LEFT JOIN to a *Many
     // relation (lead_tags). PostgreSQL then requires ORDER BY columns to also
@@ -1312,7 +1459,9 @@ export class CrmService implements OnModuleInit {
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         qb.andWhere('lead.status IN (:...status)', { status: filters.status });
-      } else if (filters.status === 'in_conversation') {
+      } else if (filters.status === 'contacted' || filters.status === 'in_conversation') {
+        // One "Contacted" status (QA Y51): legacy 'follow_up' cards count as contacted;
+        // 'in_conversation' is the old name of this filter, kept for bookmarked URLs
         qb.andWhere("lead.status IN ('contacted', 'follow_up')");
       } else if (filters.status !== 'all') {
         qb.andWhere('lead.status = :status', { status: filters.status });
@@ -1327,6 +1476,10 @@ export class CrmService implements OnModuleInit {
 
     if (filters.source) {
       qb.andWhere('lead.source = :source', { source: filters.source });
+    }
+
+    if (filters.assignedSalesId) {
+      qb.andWhere('lead.assignedSalesId = :assignedSalesId', { assignedSalesId: filters.assignedSalesId });
     }
 
     if (filters.search && filters.search.trim()) {
@@ -1368,11 +1521,7 @@ export class CrmService implements OnModuleInit {
       qb.andWhere('CAST(lead.lastContactedAt AS DATE) <= :lastContactedTo', { lastContactedTo: filters.lastContactedTo });
     }
 
-    // ACL: if requester is salesperson, they can now see ALL leads (globally).
-    if (filters._requesterId) {
-      const user = await this.usersRepository.findOne({ where: { id: filters._requesterId } });
-      // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
-    }
+    // ACL: salespeople see ALL leads (globally); /crm/* is closed to clinic roles by RolesGuard.
 
     // Default Sorting
     if (filters.status === 'converted' || (Array.isArray(filters.status) && filters.status.includes('converted'))) {
@@ -1385,16 +1534,22 @@ export class CrmService implements OnModuleInit {
         .addOrderBy('lead.createdAt', 'DESC');
     }
 
-    // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
-    const limit = filters.limit
-      ? parseInt(filters.limit, 10)
-      : filters.take
-      ? parseInt(filters.take, 10)
-      : (filters.all === 'true' || filters.all === true || filters.isExport === 'true' || filters.isExport === true)
-      ? 100000
-      : 50;
+    // Page size is always capped on the server. Only an admin export (the controller rejects
+    // export for everyone else) may read beyond one page.
+    const isAdminExport = filters._isAdmin === true &&
+      [filters.all, filters.isExport].some((v) => v === true || v === 'true');
+    const maxLimit = isAdminExport ? CrmService.LEADS_MAX_EXPORT_SIZE : CrmService.LEADS_MAX_PAGE_SIZE;
+    const requested = parseInt(String(filters.limit ?? filters.take ?? ''), 10);
+    const limit = Math.min(
+      maxLimit,
+      Math.max(1, Number.isFinite(requested) ? requested : isAdminExport ? maxLimit : 50),
+    );
 
-    const page = filters.page ? Math.max(1, parseInt(filters.page, 10)) : 1;
+    const page = Math.max(1, parseInt(String(filters.page ?? 1), 10) || 1);
+    const withTotal = filters.withTotal === true || filters.withTotal === 'true';
+    // Count/summary run on the same filters before paging is applied.
+    const countQb = withTotal ? qb.clone().orderBy() : null;
+
     qb.limit(limit);
     qb.offset((page - 1) * limit);
 
@@ -1403,13 +1558,6 @@ export class CrmService implements OnModuleInit {
     // Load tags separately to avoid SELECT DISTINCT pagination issues
     if (leads.length > 0) {
       const leadIds = leads.map((l) => l.id);
-      const tagsRows = await this.leadsRepository
-        .createQueryBuilder('lead')
-        .relation(Lead, 'tags')
-        .of(leadIds)
-        .loadMany();
-      // tagsRows is an array of Tag[]; we need to associate per lead via an entityManager approach.
-      // Instead, use a raw join query for efficiency:
       const rawTags = await this.leadsRepository.manager.query(
         `SELECT lt."leadId", t.id, t.name, t.color, t.description, t."isActive", t."createdAt", t."updatedAt"
          FROM lead_tags lt
@@ -1431,10 +1579,43 @@ export class CrmService implements OnModuleInit {
       }
     }
 
-    return leads;
+    if (!countQb) return leads;
+
+    const formRows = await countQb
+      .clone()
+      .select('DISTINCT lead.lastMetaFormName', 'name')
+      .andWhere('lead.lastMetaFormName IS NOT NULL')
+      .limit(500)
+      .getRawMany();
+    const raw = await countQb
+      .select('COUNT(*)', 'total')
+      .addSelect(
+        "COUNT(*) FILTER (WHERE lead.source = 'facebook_ads' OR lead.facebookLeadId IS NOT NULL)",
+        'facebook',
+      )
+      .addSelect("COUNT(*) FILTER (WHERE lead.createdAt >= NOW() - INTERVAL '30 days')", 'last30Days')
+      .addSelect(
+        "COUNT(*) FILTER (WHERE COALESCE(lead.phone, '') <> '' OR COALESCE(lead.email, '') <> '')",
+        'restorable',
+      )
+      .getRawOne();
+    const total = Number(raw?.total || 0);
+    return {
+      data: leads,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      summary: {
+        facebook: Number(raw?.facebook || 0),
+        last30Days: Number(raw?.last30Days || 0),
+        restorable: Number(raw?.restorable || 0),
+        formNames: formRows.map((r) => r.name).filter(Boolean).sort(),
+      },
+    };
   }
 
-  async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; inConversation: number; converted: number; lost: number }> {
+  async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; contacted: number; converted: number; lost: number }> {
     const isDefault = !filters.source && (!filters.search || !filters.search.trim()) && !filters.formNames && !filters.submissionDateFrom && !filters.submissionDateTo;
     if (isDefault && this.leadStatsCache && (Date.now() - this.leadStatsCache.timestamp < 15000)) {
       return this.leadStatsCache.data;
@@ -1475,7 +1656,7 @@ export class CrmService implements OnModuleInit {
     const rawStats = await qb
       .select('COUNT(lead.id)', 'total')
       .addSelect("COUNT(CASE WHEN lead.status = 'new' THEN 1 END)", 'newInquiries')
-      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up') THEN 1 END)", 'inConversation')
+      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up') THEN 1 END)", 'contacted')
       .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'converted')
       .addSelect("COUNT(CASE WHEN lead.status = 'lost' THEN 1 END)", 'lost')
       .getRawOne();
@@ -1483,7 +1664,7 @@ export class CrmService implements OnModuleInit {
     const result = {
       total: parseInt(rawStats?.total || '0', 10),
       newInquiries: parseInt(rawStats?.newInquiries || '0', 10),
-      inConversation: parseInt(rawStats?.inConversation || '0', 10),
+      contacted: parseInt(rawStats?.contacted || '0', 10),
       converted: parseInt(rawStats?.converted || '0', 10),
       lost: parseInt(rawStats?.lost || '0', 10),
     };
@@ -1981,15 +2162,18 @@ export class CrmService implements OnModuleInit {
     if (existing) {
       throw new BadRequestException('A client with this email or phone already exists');
     }
-    const password = Math.random().toString(36).slice(-10);
+    const password = randomBytes(24).toString('hex');
     const newUser = this.usersRepository.create({
       firstName: data.firstName,
       lastName: data.lastName || '',
       phone: data.phone || '',
       // No placeholder addresses: the real email or none
-      email: data.email && data.email.trim() ? data.email.trim() : null,
+      email: data.email && data.email.trim() && !/@example\.com$/i.test(data.email.trim()) ? data.email.trim().toLowerCase() : null,
       role: UserRole.CLIENT,
       isActive: true,
+      // The client sets their own password through ONE emailed link (item 18)
+      isEmailVerified: false,
+      accountSetupPending: true,
       passwordHash: password,
       profile: {
         clinicOwnClient: true,
@@ -1998,6 +2182,9 @@ export class CrmService implements OnModuleInit {
       },
     } as Partial<User>);
     const savedUser = await this.usersRepository.save(newUser);
+    if (savedUser.email) {
+      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: savedUser.id });
+    }
     return { user: savedUser, password };
   }
 
@@ -2305,7 +2492,7 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
+  async createAction(data: Partial<CrmAction>, actorId?: string): Promise<CrmAction> {
     // 1. Mandatory Reminder Logic - Fallback to dueDate or now if missing
     if (!data.reminderDate) {
       data.reminderDate = data.dueDate || new Date();
@@ -2532,6 +2719,10 @@ export class CrmService implements OnModuleInit {
     }
 
     this.eventEmitter.emit('crm.action.created', savedAction);
+    this.emitCrmAudit('TASK_CREATE', 'tasks', savedAction.id, actorId, null, this.taskAuditSnapshot(savedAction), {
+      leadId: savedAction.relatedLeadId ?? null,
+      customerId: savedAction.customerId ?? null,
+    });
     return savedAction;
   }
 
@@ -2541,6 +2732,8 @@ export class CrmService implements OnModuleInit {
     if (!action) {
       throw new NotFoundException('Action not found');
     }
+
+    const taskBefore = this.taskAuditSnapshot(action);
 
     // Call note: appended to the task (description + metadata.callNotes history), never overwritten
     const callNote = updateData.callNote;
@@ -2693,15 +2886,45 @@ export class CrmService implements OnModuleInit {
       }
     }
 
+    // Audit: completion, reassignment and other edits (due date, status, title) with who and when
+    const taskAfter = this.taskAuditSnapshot(saved);
+    const taskData = { leadId: saved.relatedLeadId ?? null, customerId: saved.customerId ?? null, title: saved.title };
+    const sameValue = (x: any, y: any) => String(x instanceof Date ? x.toISOString() : x ?? '') === String(y instanceof Date ? y.toISOString() : y ?? '');
+    if (isNowCompleted && !wasCompleted) {
+      this.emitCrmAudit('TASK_COMPLETE', 'tasks', saved.id, actorId, { status: taskBefore?.status }, { status: saved.status, outcome: requestOutcome ?? null }, taskData);
+    }
+    if (isReassigned) {
+      this.emitCrmAudit('TASK_REASSIGN', 'tasks', saved.id, actorId, { salespersonId: previousOwnerId ?? null }, { salespersonId: saved.salespersonId ?? null }, taskData);
+    }
+    const otherBefore: Record<string, any> = {};
+    const otherAfter: Record<string, any> = {};
+    for (const k of ['title', 'dueDate', 'priority', 'actionType', 'status'] as const) {
+      if (k === 'status' && isNowCompleted && !wasCompleted) continue;
+      if (!sameValue(taskBefore?.[k], taskAfter?.[k])) {
+        otherBefore[k] = taskBefore?.[k] ?? null;
+        otherAfter[k] = taskAfter?.[k] ?? null;
+      }
+    }
+    if (callNote && (callNote.note || callNote.outcome)) {
+      otherAfter.callNote = { outcome: callNote.outcome || null, note: String(callNote.note || '').trim() };
+    }
+    if (Object.keys(otherAfter).length > 0) {
+      this.emitCrmAudit('TASK_UPDATE', 'tasks', saved.id, actorId, otherBefore, otherAfter, taskData);
+    }
+
     return saved;
   }
 
-  async deleteAction(id: string): Promise<void> {
+  async deleteAction(id: string, actorId?: string): Promise<void> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
     if (!action) {
       throw new NotFoundException(`Action with ID "${id}" not found`);
     }
     await this.crmActionsRepository.delete(id);
+    this.emitCrmAudit('TASK_DELETE', 'tasks', id, actorId, this.taskAuditSnapshot(action), null, {
+      leadId: action.relatedLeadId ?? null,
+      customerId: action.customerId ?? null,
+    });
     this.logger.log(`[deleteAction] Action ${id} permanently deleted by Super Admin`);
   }
 
@@ -2739,6 +2962,12 @@ export class CrmService implements OnModuleInit {
       createdAt: undefined,
       updatedAt: undefined,
     };
+
+    // The next occurrence gets its own reminder
+    if (nextActionData.metadata) {
+      const { reminderSent: _sent, ...restMeta } = nextActionData.metadata as Record<string, any>;
+      nextActionData.metadata = restMeta;
+    }
 
     // Filter out some fields that shouldn't be copied
     delete nextActionData['createdAt'];
@@ -3234,10 +3463,7 @@ export class CrmService implements OnModuleInit {
       .getRawOne();
 
     // Overdue = open now and past due (not limited to tasks created inside the period)
-    const overdueQ = this.crmActionsRepository.createQueryBuilder('action')
-      .where("action.status IN ('pending', 'in_progress') AND action.dueDate < CURRENT_TIMESTAMP");
-    if (!isAll) overdueQ.andWhere('action.salespersonId = :salespersonId', { salespersonId });
-    const overdueTasks = await overdueQ.getCount();
+    const overdueTasks = await this.countOverdueTasks(isAll ? undefined : salespersonId);
 
     const tasksCompleted = parseInt(actionStats.completedActions || '0');
     const totalActions = parseInt(actionStats.totalActions || '0');
@@ -4155,7 +4381,10 @@ export class CrmService implements OnModuleInit {
 
     // Revenue per salesperson / per day / total: shared definition (payments received, EUR).
     const revenueManager = this.appointmentsRepository.manager;
-    const revenueRange = { startDate: defaultDateRange.startDate, endDate: defaultDateRange.endDate };
+    // Whole Athens days, like the Payments ledger and the super-admin dashboard.
+    const revenueRange = dateRange
+      ? revenueDayRange(dateRange.startDate, dateRange.endDate)
+      : { startDate: defaultDateRange.startDate, endDate: defaultDateRange.endDate };
     const revenueBySalesperson = await getPaidRevenueBy(revenueManager, 'salespersonId', { ...revenueRange, salespersonId, clinicId });
     for (const sp of salesPersonsMap.values()) {
       sp.revenue = revenueBySalesperson.get(sp.id) || 0;
@@ -4225,13 +4454,7 @@ export class CrmService implements OnModuleInit {
       }
     });
 
-    const overdueTasksCount = await this.crmActionsRepository.count({
-      where: {
-        status: In(['pending', 'in_progress']),
-        dueDate: Between(new Date(0), new Date()), // Any date in past including now
-        ...(salespersonId ? { salespersonId: salespersonId } : {}),
-      }
-    });
+    const overdueTasksCount = await this.countOverdueTasks(salespersonId);
 
     const followupsDueTodayCount = await this.crmActionsRepository.count({
       where: {
@@ -4756,31 +4979,65 @@ export class CrmService implements OnModuleInit {
   }
 
   async getServicePerformance(dateRange?: { startDate: Date; endDate: Date }) {
+    // One row per treatment, not per clinic service: the same treatment offered by
+    // several clinics (or created twice with the same name) used to show up as
+    // duplicate rows. Group by treatment in SQL, then merge by normalized name.
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.service', 'service')
+      .innerJoin('apt.service', 'service')
       .leftJoin('service.treatment', 'treatment')
-      .select('service.id', 'serviceId')
+      .select('treatment.id', 'treatmentId')
       .addSelect('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
+      .addSelect(`COALESCE(SUM(CASE WHEN apt.status <> 'CANCELLED' THEN apt.totalAmount ELSE 0 END), 0)`, 'totalRevenue')
       .addSelect("COUNT(CASE WHEN apt.status = 'CANCELLED' THEN 1 END)", 'cancellations')
-      .where('service.id IS NOT NULL');
+      .where("apt.status <> 'DELETED'");
 
     if (dateRange) {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('service.id, treatment.name');
+    query = query.groupBy('treatment.id').addGroupBy('treatment.name');
 
     const results = await query.getRawMany();
-    return results.map(row => ({
-      serviceId: row.serviceId,
-      serviceName: row.serviceName,
-      totalAppointments: parseInt(row.totalAppointments) || 0,
-      totalRevenue: parseFloat(row.totalRevenue) || 0,
-      cancellations: parseInt(row.cancellations) || 0
-    }));
+
+    const normalize = (name: string) =>
+      (name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+
+    const merged = new Map<string, {
+      serviceId: string | null;
+      serviceName: string;
+      totalAppointments: number;
+      totalRevenue: number;
+      cancellations: number;
+    }>();
+
+    for (const row of results) {
+      const name = (row.serviceName || '').trim() || 'Unknown treatment';
+      const key = normalize(name);
+      const current = merged.get(key);
+      const appointments = parseInt(row.totalAppointments) || 0;
+      if (current) {
+        current.totalAppointments += appointments;
+        current.totalRevenue += parseFloat(row.totalRevenue) || 0;
+        current.cancellations += parseInt(row.cancellations) || 0;
+      } else {
+        merged.set(key, {
+          serviceId: row.treatmentId || null,
+          serviceName: name,
+          totalAppointments: appointments,
+          totalRevenue: parseFloat(row.totalRevenue) || 0,
+          cancellations: parseInt(row.cancellations) || 0,
+        });
+      }
+    }
+
+    return Array.from(merged.values()).sort((a, b) => b.totalAppointments - a.totalAppointments);
   }
 
   async getAdvertisementStats(dateRange?: { startDate: Date; endDate: Date }) {
@@ -5636,7 +5893,7 @@ export class CrmService implements OnModuleInit {
     };
   }
 
-  async reassignCustomer(customerId: string, newSalespersonId: string): Promise<any> {
+  async reassignCustomer(customerId: string, newSalespersonId: string, actorId?: string): Promise<any> {
     const salesperson = await this.usersRepository.findOne({ where: { id: newSalespersonId, role: UserRole.SALESPERSON } });
     if (!salesperson) {
       throw new NotFoundException(`Salesperson not found with ID: ${newSalespersonId}`);
@@ -5644,8 +5901,14 @@ export class CrmService implements OnModuleInit {
 
     const lead = await this.leadsRepository.findOne({ where: { id: customerId } });
     if (lead) {
+      const previousSalesId = lead.assignedSalesId ?? null;
       lead.assignedSalesId = newSalespersonId;
       await this.leadsRepository.save(lead);
+      if (previousSalesId !== newSalespersonId) {
+        this.emitCrmAudit('LEAD_REASSIGN', 'leads', lead.id, actorId,
+          { assignedSalesId: previousSalesId }, { assignedSalesId: newSalespersonId },
+          { leadName: `${lead.firstName || ''} ${lead.lastName || ''}`.trim() });
+      }
     }
 
     const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: customerId } });
@@ -5663,22 +5926,27 @@ export class CrmService implements OnModuleInit {
     return { success: true, message: `Customer reassigned to ${salesperson.firstName} ${salesperson.lastName}` };
   }
 
+  /**
+   * Overdue CRM tasks, one definition for every page (Tasks, Manager and super-admin dashboards):
+   * open (pending / in progress) and due before now.
+   */
+  private async countOverdueTasks(salespersonId?: string): Promise<number> {
+    const q = this.crmActionsRepository.createQueryBuilder('action')
+      .where('action.status IN (:...openStatuses)', { openStatuses: ['pending', 'in_progress'] })
+      .andWhere('action.dueDate < :overdueNow', { overdueNow: new Date() });
+    if (salespersonId) q.andWhere('action.salespersonId = :salespersonId', { salespersonId });
+    return q.getCount();
+  }
+
   async getSuperAdminDashboardStats(filters: { startDate?: Date; endDate?: Date }): Promise<any> {
     const { startDate, endDate } = filters;
 
-    // 1. Clinic Turnover (Revenue)
-    const revenueQuery = this.dataSource.createQueryBuilder(Appointment, 'a')
-      .select('SUM(a.amountPaid)', 'total')
-      .where('a.status = :status', { status: AppointmentStatus.COMPLETED });
-
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      revenueQuery.andWhere('a.startTime BETWEEN :start AND :end', { start, end });
-    }
-    const { total: totalRevenue } = await revenueQuery.getRawOne();
+    // 1. Clinic Turnover (Revenue): the shared revenue definition (payments received, EUR, net
+    // of refunds/voids, by payment date), the same figure as the Payments ledger and Manager Dashboard.
+    const totalRevenue = await getPaidRevenueTotal(
+      this.appointmentsRepository.manager,
+      startDate && endDate ? revenueDayRange(startDate, endDate) : {},
+    );
 
     // 2. Appointment Counts — apply the SAME date window as revenue so the dashboard is
     // internally consistent (previously counts were all-time while revenue was date-filtered).
@@ -5699,13 +5967,8 @@ export class CrmService implements OnModuleInit {
     const totalApts = aptCounts.reduce((sum, item) => sum + parseInt(item.count), 0);
     const completedApts = aptCounts.find(c => c.status === AppointmentStatus.COMPLETED)?.count || 0;
 
-    // 3. Overdue Tasks
-    const overdueTasks = await this.crmActionsRepository.count({
-      where: {
-        status: 'pending',
-        dueDate: LessThan(new Date())
-      }
-    });
+    // 3. Overdue Tasks (shared definition: open and past due)
+    const overdueTasks = await this.countOverdueTasks();
 
     // 4. Sales Person Task KPIs
     const salespersons = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
@@ -5725,7 +5988,7 @@ export class CrmService implements OnModuleInit {
     }));
 
     return {
-      turnover: { totalPaid: parseFloat(totalRevenue || 0) },
+      turnover: { totalPaid: Math.round(totalRevenue * 100) / 100, currency: 'EUR' },
       appointments: { total: totalApts, completed: parseInt(completedApts as any) },
       tasks: { overdue: overdueTasks },
       salesPerformance
@@ -5807,6 +6070,10 @@ export class CrmService implements OnModuleInit {
     let liveForms: any[] = [];
     try {
       const forms = await this.facebookService.getAllForms();
+      // Leads stored as "Facebook Form <id>" (name lookup failed back then) get the real name
+      await this.healNumericFormNames(forms || []).catch((err) =>
+        this.logger.warn(`Could not repair numeric form names: ${err.message}`),
+      );
       // DB-only pseudo forms (id: 'db_<name>') have no Facebook form to fetch from
       liveForms = (forms || []).filter((f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED');
     } catch (err) {

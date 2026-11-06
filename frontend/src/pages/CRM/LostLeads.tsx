@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -48,7 +49,7 @@ export const LostLeadsPage: React.FC = () => {
   }, []);
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { leads, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
+  const { leads, leadsPage, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   // Export and permanent delete are admin-only (also enforced on the server)
   const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
@@ -68,39 +69,57 @@ export const LostLeadsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [leadsPerPage, setLeadsPerPage] = useState(50);
 
-  // Load lost leads on mount & filter changes
+  // Lost leads are paged on the server (QA NEW-2): one page per request, never the whole table.
+  const lostFilters = {
+    status: 'lost',
+    search: searchTerm,
+    submissionDateFrom: submissionDateFrom || undefined,
+    submissionDateTo: submissionDateTo || undefined,
+    lastContactedFrom: lastContactedFrom || undefined,
+    lastContactedTo: lastContactedTo || undefined,
+    formNames: selectedFormName ? [selectedFormName] : undefined,
+    assignedSalesId: selectedSalesId || undefined,
+  };
+
   useEffect(() => {
     dispatch(fetchSalespersons());
-    dispatch(fetchLeads({
-      status: 'lost',
-      limit: 10000,
-      search: searchTerm,
-      submissionDateFrom: submissionDateFrom || undefined,
-      submissionDateTo: submissionDateTo || undefined,
-      lastContactedFrom: lastContactedFrom || undefined,
-      lastContactedTo: lastContactedTo || undefined,
-      formNames: selectedFormName ? [selectedFormName] : undefined,
-      assignedSalesId: selectedSalesId || undefined,
-    }));
-  }, [dispatch, searchTerm, submissionDateFrom, submissionDateTo, lastContactedFrom, lastContactedTo, selectedFormName, selectedSalesId]);
+  }, [dispatch]);
 
-  // Filter lost leads locally as a fallback
-  const lostLeads = (leads || []).filter(l => l.status === 'lost');
+  // Back to page 1 whenever a filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, submissionDateFrom, submissionDateTo, lastContactedFrom, lastContactedTo, selectedFormName, selectedSalesId, leadsPerPage]);
 
-  // Available Form Names for filter dropdown
-  const availableForms = Array.from(new Set(lostLeads.map(l => (l as any).lastMetaFormName).filter(Boolean)));
+  const reloadPage = () =>
+    dispatch(fetchLeads({ ...lostFilters, page: currentPage, limit: leadsPerPage, withTotal: 'true' }));
 
-  // Pagination logic
-  const totalPages = Math.ceil(lostLeads.length / leadsPerPage);
-  const indexOfLastLead = currentPage * leadsPerPage;
-  const indexOfFirstLead = indexOfLastLead - leadsPerPage;
-  const currentLeads = lostLeads.slice(indexOfFirstLead, indexOfLastLead);
+  useEffect(() => {
+    reloadPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, currentPage, leadsPerPage, searchTerm, submissionDateFrom, submissionDateTo, lastContactedFrom, lastContactedTo, selectedFormName, selectedSalesId]);
+
+  // The current page (filtered locally as a fallback against stale store data)
+  const currentLeads = (leads || []).filter(l => l.status === 'lost');
+  const totalLost = leadsPage?.total ?? currentLeads.length;
+  const summary = leadsPage?.summary;
+
+  // Available Form Names for filter dropdown (from the server, over all matching lost leads)
+  const availableForms = Array.from(new Set([
+    ...(summary?.formNames || []),
+    ...(selectedFormName ? [selectedFormName] : []),
+  ]));
+
+  // Pagination
+  const totalPages = leadsPage?.totalPages ?? 1;
+  const indexOfFirstLead = (currentPage - 1) * leadsPerPage;
+  const indexOfLastLead = indexOfFirstLead + currentLeads.length;
 
   // Handlers
   const handleReactivate = async (lead: Lead, newStatus: string) => {
     try {
       await dispatch(updateLead({ id: lead.id, updates: { status: newStatus as any } })).unwrap();
       toast.success(`Lead restored to status "${newStatus}"`);
+      reloadPage();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to restore lead');
     }
@@ -108,17 +127,32 @@ export const LostLeadsPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!isAdmin) return;
-    if (!window.confirm('Delete 1 lead permanently?')) return;
+    if (!(await confirmDialog({ message: 'Delete 1 lead permanently?', danger: true }))) return;
     try {
       await dispatch(deleteLead(id)).unwrap();
       toast.success('Lead deleted');
+      reloadPage();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete lead');
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (!isAdmin) return;
+    // Admin export reads every matching lost lead in batches (the list itself only holds one page).
+    const lostLeads: Lead[] = [];
+    try {
+      const batchSize = 1000;
+      for (let page = 1; page <= 100; page++) {
+        const res: any = await crmAPI.getLeads({ ...lostFilters, page, limit: batchSize, isExport: 'true', all: 'true' } as any);
+        const batch: Lead[] = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        lostLeads.push(...batch);
+        if (batch.length < batchSize) break;
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Export failed');
+      return;
+    }
     if (lostLeads.length === 0) {
       toast.error('No lost leads to export');
       return;
@@ -188,7 +222,7 @@ export const LostLeadsPage: React.FC = () => {
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Lost Leads</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">{lostLeads.length}</h3>
+              <h3 className="text-2xl font-black text-gray-900 mt-1">{totalLost.toLocaleString()}</h3>
             </div>
             <div className="size-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center font-bold">
               <UserX size={20} />
@@ -201,7 +235,7 @@ export const LostLeadsPage: React.FC = () => {
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">From Facebook Ads</p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {lostLeads.filter(l => l.source === 'facebook_ads' || (l as any).facebookLeadId).length}
+                {(summary?.facebook ?? 0).toLocaleString()}
               </h3>
             </div>
             <div className="size-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
@@ -215,10 +249,7 @@ export const LostLeadsPage: React.FC = () => {
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Last 30 Days</p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {lostLeads.filter(l => {
-                  const d = new Date((l as any).createdAt);
-                  return (Date.now() - d.getTime()) <= 30 * 86400000;
-                }).length}
+                {(summary?.last30Days ?? 0).toLocaleString()}
               </h3>
             </div>
             <div className="size-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center font-bold">
@@ -232,7 +263,7 @@ export const LostLeadsPage: React.FC = () => {
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Restorable Leads</p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {lostLeads.filter(l => l.phone || l.email).length}
+                {(summary?.restorable ?? 0).toLocaleString()}
               </h3>
             </div>
             <div className="size-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center font-bold">
@@ -479,7 +510,7 @@ export const LostLeadsPage: React.FC = () => {
         </div>
 
         {/* Pagination Footer */}
-        {lostLeads.length > 0 && (
+        {totalLost > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Leads per page:</span>
@@ -496,7 +527,7 @@ export const LostLeadsPage: React.FC = () => {
                 <option value={100}>100</option>
               </select>
               <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
-                Showing {indexOfFirstLead + 1} to {Math.min(indexOfLastLead, lostLeads.length)} of {lostLeads.length}
+                Showing {indexOfFirstLead + 1} to {indexOfLastLead} of {totalLost.toLocaleString()}
               </span>
             </div>
 

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { AppDispatch, RootState } from"../../store";
@@ -121,10 +122,10 @@ const SettingsPage: React.FC = () => {
 
  try {
  await dispatch(updateClinicProfile(formData)).unwrap();
- alert("Clinic configuration updated successfully!");
+ toast.success(isGreek ? "Οι ρυθμίσεις της κλινικής ενημερώθηκαν." : "Clinic configuration updated successfully!");
  } catch (error) {
  console.error("Failed to update profile:", error);
- alert("Update failed. Verify operational parameters.");
+ toast.error(isGreek ? "Η ενημέρωση απέτυχε. Ελέγξτε τις ρυθμίσεις." : "Update failed. Verify operational parameters.");
  } finally {
  setIsSaving(false);
  }

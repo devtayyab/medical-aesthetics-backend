@@ -131,11 +131,12 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
   {((appointment as any).bookedByInfo?.name) || 'Direct Online Booking'}
   </span>
   </div>
-  {((appointment as any).providerName || appointment.provider) && (
+  {(appointment as any).providerName && (
     <div className="flex justify-between text-xs">
       <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Doctor / Specialist</span>
       <span className="text-indigo-600 font-black uppercase">
-        {appointment.provider ? `Dr. ${appointment.provider.firstName} ${appointment.provider.lastName}` : `Dr. ${(appointment as any).providerName}`}
+        {/* Server-resolved doctor (QA #34): never the owner/secretary/salesperson who booked */}
+        {`Dr. ${(appointment as any).providerName}`}
       </span>
     </div>
   )}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
@@ -86,23 +86,36 @@ const navItem = css`
 
 const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
 
   if (!isAuthenticated || user?.role !== 'client') {
     return <>{children}</>;
   }
 
   const menuItems = [
-    { title: "Home", icon: <TbHome size={15} />, link: "/" },
-    { title: "My Appointments", icon: <TbCalendarClock size={15} />, link: "/appointments" },
-    { title: "Personal Details", icon: <ImProfile size={15} />, link: "/personal-details" },
-    { title: "Payments", icon: <TbReceipt2 size={15} />, link: "/payments" },
-    { title: "Gift Cards", icon: <HiOutlineGift size={15} />, link: "/gift-card" },
-    { title: "My Reviews", icon: <FaStar size={14} />, link: "/reviews" },
-    { title: "Notifications", icon: <TbBell size={15} />, link: "/notifications" },
-    { title: "Your inbox", icon: <TbMessage size={15} />, link: "/messages" },
+    { title: isGreek ? "ΑΡΧΙΚΗ" : "Home", icon: <TbHome size={15} />, link: "/" },
+    { title: isGreek ? "ΤΑ ΡΑΝΤΕΒΟΥ ΜΟΥ" : "My Appointments", icon: <TbCalendarClock size={15} />, link: "/appointments" },
+    { title: isGreek ? "ΠΡΟΣΩΠΙΚΑ ΣΤΟΙΧΕΙΑ" : "Personal Details", icon: <ImProfile size={15} />, link: "/personal-details" },
+    { title: isGreek ? "ΠΛΗΡΩΜΕΣ" : "Payments", icon: <TbReceipt2 size={15} />, link: "/payments" },
+    { title: isGreek ? "ΔΩΡΟΚΑΡΤΕΣ" : "Gift Cards", icon: <HiOutlineGift size={15} />, link: "/gift-card" },
+    { title: isGreek ? "ΟΙ ΚΡΙΤΙΚΕΣ ΜΟΥ" : "My Reviews", icon: <FaStar size={14} />, link: "/reviews" },
+    { title: isGreek ? "ΕΙΔΟΠΟΙΗΣΕΙΣ" : "Notifications", icon: <TbBell size={15} />, link: "/notifications" },
+    { title: isGreek ? "ΤΑ ΜΗΝΥΜΑΤΑ ΣΑΣ" : "Your inbox", icon: <TbMessage size={15} />, link: "/messages" },
     { title: "Blog", icon: <FaBookOpen size={14} />, link: "/blog" },
-    { title: "Settings", icon: <TbSettings size={15} />, link: "/settings" },
-    { title: "My Account", icon: <TbHome size={15} />, link: "/my-account" },
+    { title: isGreek ? "ΡΥΘΜΙΣΕΙΣ" : "Settings", icon: <TbSettings size={15} />, link: "/settings" },
+    { title: isGreek ? "Ο ΛΟΓΑΡΙΑΣΜΟΣ ΜΟΥ" : "My Account", icon: <TbHome size={15} />, link: "/my-account" },
   ];
 
   return (

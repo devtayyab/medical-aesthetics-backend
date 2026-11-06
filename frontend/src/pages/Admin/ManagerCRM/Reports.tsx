@@ -9,7 +9,7 @@ import {
  FileText,
  MessageSquare,
  Calendar as CalendarIcon,
- DollarSign,
+ Euro,
  RefreshCcw,
  Clock,
  ExternalLink
@@ -28,6 +28,7 @@ import {
  getDateRange,
 } from"@/services/managerCrm.service";
 import { cn } from"@/lib/utils";
+import { formatEuro } from "@/utils/formatters";
 
 const periods = [
  { label:"Today", value:"0" },
@@ -84,11 +85,7 @@ export const Reports: React.FC = () => {
  loadData();
  }, [loadData]);
 
- const money = (n: number) => new Intl.NumberFormat("en-US", {
- style:"currency",
- currency:"USD",
- maximumFractionDigits: 0
- }).format(n);
+ const money = (n: number) => formatEuro(n, 0);
 
  return (
  <div className="p-4 md:p-6 space-y-6 md:space-y-8 bg-gray-50/50 min-h-screen">
@@ -163,7 +160,7 @@ export const Reports: React.FC = () => {
  <Card className="hover:shadow-md transition-shadow">
  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-medium text-xs uppercase tracking-wider">
  Total Net Cash
- <DollarSign className="h-4 w-4 text-emerald-500" />
+ <Euro className="h-4 w-4 text-emerald-500" />
  </CardHeader>
  <CardContent>
  <div className="text-2xl font-bold">{money(cash.reduce((acc, curr) => acc + curr.net, 0))}</div>
@@ -295,7 +292,7 @@ export const Reports: React.FC = () => {
  <Card className="shadow-sm border-gray-200/60 overflow-hidden">
  <CardHeader className="bg-gray-50/50 border-b">
  <div className="flex items-center gap-2">
- <DollarSign className="h-4 w-4 text-gray-500" />
+ <Euro className="h-4 w-4 text-gray-500" />
  <CardTitle className="text-lg">Financial Impact</CardTitle>
  </div>
  <CardDescription>Revenue and refunds attributed to agents.</CardDescription>

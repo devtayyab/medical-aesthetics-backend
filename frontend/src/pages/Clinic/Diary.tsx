@@ -7,9 +7,11 @@ export const Diary: React.FC = () => {
   const { profile } = useSelector((state: RootState) => state.clinic);
   const { user } = useSelector((state: RootState) => state.auth);
 
+  // The clinic chosen in the layout switcher (profile is reloaded on every switch) wins over
+  // a stored id, so the diary never shows another clinic's appointments (QA #29).
   const activeClinicId =
-    localStorage.getItem('activeClinicId') ||
     profile?.id ||
+    localStorage.getItem('activeClinicId') ||
     user?.assignedClinicId ||
     (user as any)?.ownedClinics?.[0]?.id ||
     (user as any)?.assignedClinics?.[0]?.id;

@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState } from"react";
+﻿import { toast } from 'react-hot-toast';
+import React, { useEffect, useState } from"react";
 import clinicApi from"@/services/api/clinicApi";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card } from"@/components/atoms/Card/Card";
@@ -33,7 +34,7 @@ export const TreatmentApproval: React.FC = () => {
  await clinicApi.services.setTreatmentStatus(treatmentId, status);
  setTreatments(treatments.filter(t => t.id !== treatmentId));
  } catch (err: any) {
- alert(err.response?.data?.message || `Failed to ${status.toLowerCase()} treatment`);
+ toast.error(err.response?.data?.message || `Failed to ${status.toLowerCase()} treatment`);
  }
  };
 

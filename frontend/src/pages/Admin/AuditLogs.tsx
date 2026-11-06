@@ -27,7 +27,7 @@ interface AuditLog {
 const actionMeta = (action: string) => {
   if (action.includes('PAYMENT') || action.includes('REFUND') || action.includes('VOID'))
     return { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', icon: <CreditCard size={11} /> };
-  if (action.includes('STATUS'))
+  if (action.includes('STATUS') || action.includes('RESCHEDULE') || action.includes('REASSIGN'))
     return { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200', icon: <Activity size={11} /> };
   if (action.includes('ERROR') || action.includes('FAILED'))
     return { bg: 'bg-red-50', text: 'text-red-600', ring: 'ring-red-200', icon: <AlertCircle size={11} /> };
@@ -41,6 +41,7 @@ const resourceColor = (resource: string) => {
     appointments: 'text-violet-600 bg-violet-50',
     payments:     'text-emerald-600 bg-emerald-50',
     leads:        'text-blue-600 bg-blue-50',
+    tasks:        'text-sky-600 bg-sky-50',
     users:        'text-amber-600 bg-amber-50',
     gift_cards:   'text-pink-600 bg-pink-50',
   };
@@ -229,6 +230,7 @@ export const AuditLogs: React.FC = () => {
               <option value="payments">{isEl ? 'Πληρωμές' : 'Payments'}</option>
               <option value="gift_cards">{isEl ? 'Δωροκάρτες' : 'Gift Cards'}</option>
               <option value="leads">Leads / CRM</option>
+              <option value="tasks">{isEl ? 'Εργασίες' : 'Tasks'}</option>
               <option value="users">{isEl ? 'Χρήστες' : 'Users'}</option>
             </select>
           </div>
@@ -240,12 +242,31 @@ export const AuditLogs: React.FC = () => {
               className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent transition-all"
             >
               <option value="">{isEl ? 'Όλες οι Ενέργειες' : 'All Actions'}</option>
-              <option value="APPOINTMENT_STATUS_CHANGE">Status Change</option>
-              <option value="APPOINTMENT_COMPLETE_WITH_PAYMENT">Completion &amp; Payment</option>
-              <option value="APPOINTMENT_PAYMENT_RECORD">Payment Recorded</option>
-              <option value="PAYMENT_REFUND">Payment Refund</option>
-              <option value="PAYMENT_VOID">Payment Void</option>
-              <option value="GIFT_CARD_REDEEM">Gift Card Redeem</option>
+              <optgroup label={isEl ? 'Ραντεβού' : 'Appointments'}>
+                <option value="APPOINTMENT_STATUS_CHANGE">{isEl ? 'Αλλαγή κατάστασης' : 'Status Change'}</option>
+                <option value="APPOINTMENT_RESCHEDULE">{isEl ? 'Αλλαγή ώρας ραντεβού' : 'Reschedule'}</option>
+                <option value="APPOINTMENT_UPDATE">{isEl ? 'Επεξεργασία ραντεβού' : 'Appointment Edit'}</option>
+                <option value="APPOINTMENT_COMPLETED">{isEl ? 'Ολοκλήρωση και πληρωμή' : 'Completion & Payment'}</option>
+                <option value="APPOINTMENT_SOFT_DELETE">{isEl ? 'Διαγραφή ραντεβού' : 'Appointment Delete'}</option>
+              </optgroup>
+              <optgroup label={isEl ? 'Πληρωμές' : 'Payments'}>
+                <option value="APPOINTMENT_PAYMENT_RECORD">{isEl ? 'Καταχώριση πληρωμής' : 'Payment Recorded'}</option>
+                <option value="PAYMENT_REFUND">{isEl ? 'Επιστροφή χρημάτων' : 'Payment Refund'}</option>
+                <option value="PAYMENT_VOID">{isEl ? 'Ακύρωση πληρωμής' : 'Payment Void'}</option>
+                <option value="GIFT_CARD_REDEEM">{isEl ? 'Εξαργύρωση δωροκάρτας' : 'Gift Card Redeem'}</option>
+              </optgroup>
+              <optgroup label="Leads">
+                <option value="LEAD_STATUS_CHANGE">{isEl ? 'Αλλαγή κατάστασης lead' : 'Lead Status Change'}</option>
+                <option value="LEAD_REASSIGN">{isEl ? 'Ανάθεση lead' : 'Lead Reassign'}</option>
+                <option value="LEAD_UPDATE">{isEl ? 'Επεξεργασία lead' : 'Lead Edit'}</option>
+              </optgroup>
+              <optgroup label={isEl ? 'Εργασίες' : 'Tasks'}>
+                <option value="TASK_CREATE">{isEl ? 'Νέα εργασία' : 'Task Created'}</option>
+                <option value="TASK_UPDATE">{isEl ? 'Επεξεργασία εργασίας' : 'Task Edit'}</option>
+                <option value="TASK_REASSIGN">{isEl ? 'Ανάθεση εργασίας' : 'Task Reassign'}</option>
+                <option value="TASK_COMPLETE">{isEl ? 'Ολοκλήρωση εργασίας' : 'Task Completed'}</option>
+                <option value="TASK_DELETE">{isEl ? 'Διαγραφή εργασίας' : 'Task Delete'}</option>
+              </optgroup>
             </select>
           </div>
 

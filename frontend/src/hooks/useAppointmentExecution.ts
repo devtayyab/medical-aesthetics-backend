@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
@@ -97,11 +98,11 @@ export const useAppointmentExecution = ({
         setAppliedGiftCard({ code: giftCardCodeInput.trim(), balance: res.balance });
         setGiftCardCodeInput('');
       } else {
-        alert('Invalid or inactive Gift Card.');
+        toast.error('Invalid or inactive Gift Card.');
         setAppliedGiftCard(null);
       }
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to validate Gift Card.');
+      toast.error(err?.response?.data?.message || 'Failed to validate Gift Card.');
       setAppliedGiftCard(null);
     } finally {
       setIsValidatingCard(false);
@@ -114,11 +115,11 @@ export const useAppointmentExecution = ({
   ) => {
     e.preventDefault();
     if (new Date(appointment.startTime).getTime() > Date.now()) {
-      alert('Completion, no-show and payment are possible from the appointment start time.');
+      toast.error('Completion, no-show and payment are possible from the appointment start time.');
       return;
     }
     if (pointsToRedeem > pointsBalance) {
-      alert(`Insufficient points! Client only has ${pointsBalance} points.`);
+      toast.error(`Insufficient points! Client only has ${pointsBalance} points.`);
       setIsSubmitting(false);
       return;
     }
@@ -183,7 +184,7 @@ export const useAppointmentExecution = ({
       onComplete();
     } catch (error) {
       console.error('Clinical action failed:', error);
-      alert('Failed to process clinical action. Please try again.');
+      toast.error('Failed to process clinical action. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

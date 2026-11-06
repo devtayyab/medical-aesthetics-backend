@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
@@ -195,9 +196,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         clinicId: apt.clinicId,
         clinicName: apt.clinic?.name || '',
         salesPersonId: bookedPersonId || '',
-        date: getClinicLocalDate(apt.startTime, apt.clinic?.timezone || 'UTC'),
+        date: getClinicLocalDate(apt.startTime, apt.clinic?.timezone || 'Europe/Athens'),
         startTime: (() => {
-          const tz = apt.clinic?.timezone || 'UTC';
+          const tz = apt.clinic?.timezone || 'Europe/Athens';
           const { hour, minute } = getClinicLocalTime(apt.startTime, tz);
           return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         })(),
@@ -300,7 +301,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     // Get the clinic timezone so we display slots in clinic local time
     // (same approach as AppointmentBooking.tsx formatClinicTime)
     const clinic = clinics.find((c: any) => c.id === form.clinicId);
-    const clinicTz = clinic?.timezone || 'UTC';
+    const clinicTz = clinic?.timezone || 'Europe/Athens';
 
     const formatInClinicTz = (utcIso: string): string => {
       const d = new Date(utcIso);
@@ -536,7 +537,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!form.durationMinutes || form.durationMinutes <= 0) { toast.error('Please set a duration.'); return false; }
 
     const clinic = clinics.find(c => c.id === form.clinicId);
-    const tz = clinic?.timezone || 'UTC';
+    const tz = clinic?.timezone || 'Europe/Athens';
     const localDate = new Date(form.date + 'T00:00:00');
     const startUTC = createClinicUTCDateTime(localDate, form.startTime, tz);
     const endUTC = new Date(startUTC.getTime() + form.durationMinutes * 60000);
@@ -579,20 +580,39 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     const paidSoFar = Number(paymentSummary?.paid ?? existingAppointment?.amountPaid ?? 0);
     if (mode === 'edit' && statusChanged && targetStatus === 'CANCELLED' && paidSoFar > 0) {
       if (isAdmin) {
-        refund = window.confirm(isGreek
-          ? `Το ραντεβού έχει πληρωθεί (€${paidSoFar.toFixed(2)}). Επιστροφή χρημάτων;`
-          : `This appointment is paid (€${paidSoFar.toFixed(2)}). Refund?`);
-      } else if (!window.confirm(isGreek
-        ? 'Το ραντεβού έχει πληρωθεί. Η πληρωμή δεν αλλάζει, ο διαχειριστής αποφασίζει για επιστροφή. Ακύρωση;'
-        : 'This appointment is paid. The payment stays as is and an admin decides on a refund. Cancel it?')) {
+        refund = await confirmDialog({
+          message: isGreek
+            ? `Το ραντεβού έχει πληρωθεί (€${paidSoFar.toFixed(2)}). Επιστροφή χρημάτων;`
+            : `This appointment is paid (€${paidSoFar.toFixed(2)}). Refund?`,
+          confirmText: isGreek ? 'ΕΠΙΣΤΡΟΦΗ' : 'Refund',
+          cancelText: isGreek ? 'ΧΩΡΙΣ ΕΠΙΣΤΡΟΦΗ' : 'No refund',
+        });
+      } else if (!(await confirmDialog({
+        message: isGreek
+          ? 'Το ραντεβού έχει πληρωθεί. Η πληρωμή δεν αλλάζει, ο διαχειριστής αποφασίζει για επιστροφή. Ακύρωση;'
+          : 'This appointment is paid. The payment stays as is and an admin decides on a refund. Cancel it?',
+        confirmText: isGreek ? 'ΝΑΙ, ΑΚΥΡΩΣΗ' : 'Yes, cancel it',
+        cancelText: isGreek ? 'ΠΙΣΩ' : 'Back',
+        danger: true,
+      }))) {
         return;
       }
+    }
+    // Optional cancellation reason; the client sees it on the cancelled appointment (QA Y33).
+    let cancellationReason = '';
+    if (mode === 'edit' && statusChanged && targetStatus === 'CANCELLED') {
+      const answer = await promptDialog({
+        message: isGreek ? 'Λόγος ακύρωσης (προαιρετικό, το βλέπει ο πελάτης):' : 'Cancellation reason (optional, visible to the client):',
+        multiline: true,
+      });
+      if (answer === null) return;
+      cancellationReason = answer.trim();
     }
     if (!validateAndCheckConflict()) return;
     setIsSubmitting(true);
 
     const clinic = clinics.find(c => c.id === form.clinicId);
-    const tz = clinic?.timezone || 'UTC';
+    const tz = clinic?.timezone || 'Europe/Athens';
     const localDate = new Date(form.date + 'T00:00:00');
     const startUTC = createClinicUTCDateTime(localDate, form.startTime, tz);
     const endUTC = new Date(startUTC.getTime() + form.durationMinutes * 60000);
@@ -639,7 +659,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         // Update status separately if changed
         const finalStatus = targetStatus;
         if (finalStatus !== String(existingAppointment?.status || '').toUpperCase()) {
-          await bookingAPI.updateStatus(existingAppointment!.id, finalStatus, refund ? { refund: true } : undefined);
+          const extra: { refund?: boolean; reason?: string } = {};
+          if (refund) extra.refund = true;
+          if (finalStatus === 'CANCELLED' && cancellationReason) extra.reason = cancellationReason;
+          await bookingAPI.updateStatus(existingAppointment!.id, finalStatus, Object.keys(extra).length ? extra : undefined);
         }
         toast.success('Appointment updated successfully!');
       }
@@ -657,7 +680,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       toast.error(isGreek ? 'Το ολοκληρωμένο ραντεβού είναι κλειδωμένο και δεν μπορεί να διαγραφεί.' : 'Completed appointments are locked and cannot be deleted.');
       return;
     }
-    if (!existingAppointment || !window.confirm('Are you sure you want to delete this appointment?')) return;
+    if (!existingAppointment) return;
+    if (!(await confirmDialog({
+      message: isGreek ? 'Θέλετε σίγουρα να διαγράψετε αυτό το ραντεβού;' : 'Are you sure you want to delete this appointment?',
+      danger: true,
+    }))) return;
     setIsDeleting(true);
     try {
       await bookingAPI.deleteAppointment(existingAppointment.id);
@@ -747,6 +774,14 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const total = computeTotal(form.amount, form.tax, form.discount);
+
+  // Start time of the appointment being created, in the clinic's timezone.
+  const isNewFormFuture = (() => {
+    if (mode !== 'create' || !form.date) return false;
+    const tz = clinics.find(c => c.id === form.clinicId)?.timezone || 'Europe/Athens';
+    const start = createClinicUTCDateTime(new Date(form.date + 'T00:00:00'), form.startTime || '00:00', tz).getTime();
+    return Number.isFinite(start) && start > Date.now();
+  })();
 
   return ReactDOM.createPortal(
     <>
@@ -1062,9 +1097,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       {isGreek ? 'Ιατρός / Ειδικός' : 'Doctor / Specialist'}:
                     </span>
                     <span className="font-black text-indigo-600">
-                      {existingAppointment.provider
-                        ? `Dr. ${existingAppointment.provider.firstName} ${existingAppointment.provider.lastName}`
-                        : (existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : (isGreek ? 'Κλινική' : 'Clinic Doctor'))}
+                      {/* Server-resolved doctor (QA #34); never the owner/secretary/sales account that booked */}
+                      {existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : '-'}
                     </span>
                   </div>
                   {((existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName) && (
@@ -1275,7 +1309,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               </div>
             )}
 
-            {mode === 'edit' && isFutureAppointment && form.paymentStatus !== 'PAID' ? (
+            {mode === 'create' && form.paymentStatus !== 'PAID' ? (
+              // New appointment: no payment buttons (QA #12). Payment is recorded on the saved
+              // appointment, and only from its start time.
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
+                {isNewFormFuture
+                  ? (isGreek ? 'Η πληρωμή καταχωρείται από την ώρα έναρξης του ραντεβού.' : 'Payments can be recorded from the appointment start time.')
+                  : (isGreek ? 'Η πληρωμή καταχωρείται αφού αποθηκευτεί το ραντεβού.' : 'Payments can be recorded once the appointment is saved.')}
+              </div>
+            ) : mode === 'edit' && isFutureAppointment && form.paymentStatus !== 'PAID' ? (
               <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
                 {isGreek ? 'Η πληρωμή καταχωρείται από την ώρα έναρξης του ραντεβού.' : 'Payments can be recorded from the appointment start time.'}
               </div>

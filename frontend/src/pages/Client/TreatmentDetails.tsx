@@ -38,6 +38,7 @@ import EyesElite from"@/assets/Treatments/eyes_surgery_elite.png";
 import RejuvenationElite from"@/assets/Treatments/rejuvenation_elite.png";
 import PrpElite from"@/assets/Treatments/prp_therapy_elite.png";
 import BeardElite from"@/assets/Treatments/beard_transplant_elite.png";
+import { NotFound } from "@/pages/NotFound/NotFound";
 
 const getFallbackImage = (name: string): string => {
  const n = name.toLowerCase();
@@ -157,7 +158,7 @@ export const TreatmentDetails: React.FC = () => {
  </div>
  );
 
- if (!treatment) return <div className="p-20 text-center text-red-500 font-bold">Treatment not found.</div>;
+ if (!treatment) return <NotFound homePath="/treatments" message={{ el: "Η θεραπεία δεν βρέθηκε.", en: "This treatment was not found." }} />;
 
  return (
  <div className="min-h-screen bg-white text-gray-900">

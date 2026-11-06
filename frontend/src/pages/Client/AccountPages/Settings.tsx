@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -168,7 +169,7 @@ export const Settings: React.FC = () => {
       setTimeout(() => setDeletionSuccessMsg(null), 5000);
     } catch (err: any) {
       console.error("Failed to deactivate account:", err);
-      alert(err.response?.data?.message || "Failed to submit account deletion request. Please try again.");
+      toast.error(err.response?.data?.message || (isGreek ? "Η υποβολή του αιτήματος διαγραφής λογαριασμού απέτυχε. Δοκιμάστε ξανά." : "Failed to submit account deletion request. Please try again."));
     } finally {
       setIsDeactivating(false);
     }
@@ -192,7 +193,7 @@ export const Settings: React.FC = () => {
       setTimeout(() => setDeletionSuccessMsg(null), 5000);
     } catch (err: any) {
       console.error("Failed to cancel account deletion:", err);
-      alert(err.response?.data?.message || "Failed to cancel account deletion.");
+      toast.error(err.response?.data?.message || (isGreek ? "Η ακύρωση της διαγραφής λογαριασμού απέτυχε." : "Failed to cancel account deletion."));
     } finally {
       setIsCancelling(false);
     }
@@ -206,7 +207,7 @@ export const Settings: React.FC = () => {
       navigate("/login", { replace: true });
     } catch (err: any) {
       console.error("Failed to permanently delete account:", err);
-      alert(err.response?.data?.message || "Failed to permanently delete account.");
+      toast.error(err.response?.data?.message || (isGreek ? "Η οριστική διαγραφή του λογαριασμού απέτυχε." : "Failed to permanently delete account."));
     } finally {
       setIsDeactivating(false);
     }

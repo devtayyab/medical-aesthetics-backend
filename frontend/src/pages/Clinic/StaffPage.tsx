@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/molecules/ConfirmDialog";
 import React, { useEffect, useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { useNavigate } from"react-router-dom";
@@ -103,7 +104,7 @@ const StaffPage: React.FC = () => {
  const confirmMsg = isGreek
    ? "Είστε σίγουροι ότι θέλετε να αφαιρέσετε αυτό το μέλος από το προσωπικό της κλινικής;"
    : "Are you sure you want to remove this staff member from this clinic?";
- if (!window.confirm(confirmMsg)) return;
+ if (!(await confirmDialog({ message: confirmMsg, danger: true }))) return;
  try {
  await clinicApi.staff.remove(id);
  setMsg({ type: 'success', text: isGreek ? "Το μέλος προσωπικού αφαιρέθηκε επιτυχώς!" : "Staff member removed successfully!" });
@@ -315,7 +316,7 @@ const StaffPage: React.FC = () => {
  </label>
  <input
  type="text"
- placeholder="+30 69..."
+ placeholder="+30 6912345678"
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-sm font-semibold transition-all"
  value={newStaff.phone}
  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}

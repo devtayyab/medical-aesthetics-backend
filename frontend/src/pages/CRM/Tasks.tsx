@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/molecules/ConfirmDialog';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -15,6 +16,7 @@ import {
   KEEP_TASK_OPEN_OUTCOMES,
   formatAthens,
   nextWorkingDay0800,
+  defaultNextCallFor,
   toLocalInputValue,
 } from '@/constants/callOutcomes';
 
@@ -362,7 +364,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       }
       const check = await runCsvImport(records, true);
       const errorLines = check.errors.slice(0, 10).map(er => `Γραμμή ${er.row}: ${er.reason}`).join('\n');
-      const proceed = window.confirm(
+      const proceed = await confirmDialog(
         `Εισαγωγή εργασιών HubSpot\n\nΝέες εργασίες: ${check.created}\nΥπάρχουν ήδη: ${check.skipped}\nΣφάλματα: ${check.errors.length}` +
         (errorLines ? `\n\n${errorLines}${check.errors.length > 10 ? '\n...' : ''}` : '') +
         (check.created > 0 ? `\n\nΝα δημιουργηθούν ${check.created} εργασίες;` : '')
@@ -424,7 +426,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+    if (await confirmDialog({ message: "Are you sure you want to delete this task? This action cannot be undone.", danger: true })) {
       try {
         await dispatch(deleteAction(id)).unwrap();
         toast.success("Task deleted successfully");
@@ -486,7 +488,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(effectiveOutcome);
     let nextCall: Date | null = null;
     if (keepOpen) {
-      nextCall = new Date(callbackDate || nextWorkingDay0800());
+      nextCall = new Date(callbackDate || defaultNextCallFor(effectiveOutcome));
       if (isNaN(nextCall.getTime())) {
         toast.error('Ορίστε έγκυρη ημερομηνία και ώρα επόμενης κλήσης.');
         return;
@@ -1561,16 +1563,17 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       <div
                         key={opt.value}
                         onClick={async () => {
+                          const outcomeChanged = opt.value !== interactionOutcome;
                           setInteractionOutcome(opt.value);
                           if (opt.value === 'interested') {
                             // Remarks + next call date: the task stays open
                             setShowInterestedRemarks(true);
-                            if (!callbackDate) setCallbackDate(nextWorkingDay0800());
+                            if (!callbackDate || outcomeChanged) setCallbackDate(defaultNextCallFor(opt.value));
                           } else if (opt.value === 'appointment_booked') {
                             setShowBookingModal(true);
                           } else if (opt.value === 'call_later' || opt.value === 'no_answer') {
-                            // Default next call: next working day 08:00
-                            if (!callbackDate) setCallbackDate(nextWorkingDay0800());
+                            // Default next call: Call Back today, No Answer next working day 08:00
+                            if (!callbackDate || outcomeChanged) setCallbackDate(defaultNextCallFor(opt.value));
                           } else {
                             setWorkflowStep(3);
                           }

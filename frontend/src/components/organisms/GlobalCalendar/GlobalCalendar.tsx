@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast';
 import React, { useEffect, useMemo, useState, useRef } from"react";
 import {
  addDays,
@@ -114,7 +115,7 @@ const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
  onActionDone();
  } catch (e) {
  console.error("Status update failed:", e);
- alert("Failed to update status. Please try again.");
+ toast.error("Failed to update status. Please try again.");
  } finally {
  setLoading(null);
  }
@@ -128,7 +129,7 @@ const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
  onActionDone();
  } catch (e) {
  console.error("Cancel failed:", e);
- alert("Failed to cancel. Please try again.");
+ toast.error("Failed to cancel. Please try again.");
  } finally {
  setLoading(null);
  }
@@ -142,7 +143,7 @@ const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
  onActionDone();
  } catch (e) {
  console.error("Complete failed:", e);
- alert("Failed to mark as done. Please try again.");
+ toast.error("Failed to mark as done. Please try again.");
  } finally {
  setLoading(null);
  }

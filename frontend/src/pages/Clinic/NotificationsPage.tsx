@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
@@ -46,12 +47,12 @@ const NotificationsPage: React.FC = () => {
 
  const handleSend = async () => {
  if (!title || !message) {
- alert('Please fill in title and message');
+ toast.error(isGreek ? 'Συμπληρώστε τίτλο και μήνυμα' : 'Please fill in title and message');
  return;
  }
 
  if (selectedClients.length === 0) {
- alert('Please select at least one recipient');
+ toast.error(isGreek ? 'Επιλέξτε τουλάχιστον έναν παραλήπτη' : 'Please select at least one recipient');
  return;
  }
 
@@ -73,13 +74,13 @@ const NotificationsPage: React.FC = () => {
  });
  }
 
- alert('Notification sent successfully!');
+ toast.success(isGreek ? 'Η ειδοποίηση στάλθηκε.' : 'Notification sent successfully!');
  setTitle('');
  setMessage('');
  setSelectedClients([]);
  } catch (error) {
  console.error('Failed to send notification:', error);
- alert('Failed to send notification. Please try again.');
+ toast.error(isGreek ? 'Η αποστολή της ειδοποίησης απέτυχε. Δοκιμάστε ξανά.' : 'Failed to send notification. Please try again.');
  } finally {
  setIsSending(false);
  }

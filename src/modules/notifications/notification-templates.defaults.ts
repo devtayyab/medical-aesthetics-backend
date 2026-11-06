@@ -70,12 +70,12 @@ export const DEFAULT_TEMPLATES: Array<{
     trigger: NotificationTrigger.APPOINTMENT_REMINDER,
     type: NotificationType.PUSH,
     subject: 'Υπενθύμιση ραντεβού αύριο',
-    content: 'Αύριο {{appointmentDate}} στις {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
+    content: 'Αύριο {{appointmentDate}}, ώρα {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_REMINDER,
     type: NotificationType.EMAIL,
-    subject: 'Υπενθύμιση: το ραντεβού σας αύριο στις {{appointmentTime}}',
+    subject: 'Υπενθύμιση: το ραντεβού σας αύριο {{appointmentDate}}, ώρα {{appointmentTime}}',
     content:
       'Γεια σας {{customerName}},\n\nΣας υπενθυμίζουμε το ραντεβού σας:\n\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΘεραπεία: {{serviceName}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΑν χρειάζεται αλλαγή, επικοινωνήστε μαζί μας το συντομότερο.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
@@ -83,14 +83,14 @@ export const DEFAULT_TEMPLATES: Array<{
     trigger: NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY,
     type: NotificationType.PUSH,
     subject: 'Το ραντεβού σας σε 2 ώρες',
-    content: 'Σήμερα στις {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
+    content: 'Σήμερα {{appointmentDate}}, ώρα {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY,
     type: NotificationType.EMAIL,
-    subject: 'Σήμερα στις {{appointmentTime}}: το ραντεβού σας',
+    subject: 'Σήμερα {{appointmentDate}}, ώρα {{appointmentTime}}: το ραντεβού σας',
     content:
-      'Γεια σας {{customerName}},\n\nΣας περιμένουμε σήμερα {{appointmentDate}} στις {{appointmentTime}} για {{serviceName}}.\n\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΣας περιμένουμε σήμερα {{appointmentDate}}, ώρα {{appointmentTime}} για {{serviceName}}.\n\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.POST_VISIT_THANK_YOU,
@@ -180,6 +180,22 @@ export const LEGACY_DEFAULT_SUBJECTS = new Set<string>([
   'Reminder: Your Appointment Tomorrow at {{clinicName}}',
   'Thank You for Choosing {{clinicName}}',
   'Task Reminder',
+  // Earlier Greek reminder defaults ("στις" wording); upgraded to "dd/mm/yyyy, ώρα HH:mm" (QA #4)
+  'Υπενθύμιση: το ραντεβού σας αύριο στις {{appointmentTime}}',
+  'Σήμερα στις {{appointmentTime}}: το ραντεβού σας',
   'Welcome to Beauty & Doctors - Your Account is Ready',
   'Action Completed',
 ]);
+
+/**
+ * Earlier default CONTENTS of templates whose subject did not change; a template still
+ * holding one of them (or English 12h reminder text such as "tomorrow at 01:30 PM") is
+ * upgraded to the current default (QA #4).
+ */
+export const LEGACY_DEFAULT_CONTENTS = new Set<string>([
+  'Αύριο {{appointmentDate}} στις {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
+  'Σήμερα στις {{appointmentTime}}: {{serviceName}}, {{clinicName}}.',
+]);
+
+/** English / 12-hour reminder text that must never reach a client. */
+export const LEGACY_REMINDER_TEXT = /tomorrow at|\b(?:AM|PM)\b/i;

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useEffect, useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { AppDispatch, RootState } from"../../store";
@@ -344,7 +345,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
  if (!(Number(formData.price) > 0)) {
- alert(isGreek ? "Ορίστε τιμή μεγαλύτερη από €0." : "Please set a price greater than €0.");
+ toast.error(isGreek ? "Ορίστε τιμή μεγαλύτερη από €0." : "Please set a price greater than €0.");
  return;
  }
 
@@ -385,7 +386,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  onSave();
  } catch (error: any) {
  console.error("Failed to save service:", error);
- alert(error?.response?.data?.message || (isGreek ? "Η αποθήκευση απέτυχε. Δοκιμάστε ξανά." : "Failed to save service. Please try again."));
+ toast.error(error?.response?.data?.message || (isGreek ? "Η αποθήκευση απέτυχε. Δοκιμάστε ξανά." : "Failed to save service. Please try again."));
  } finally {
  setIsSubmitting(false);
  }

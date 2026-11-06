@@ -313,13 +313,13 @@ export class BookingsController {
 
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
-  async cancel(@Param('id') id: string, @Body() body: { refund?: boolean }, @Request() req) {
+  async cancel(@Param('id') id: string, @Body() body: { refund?: boolean; reason?: string }, @Request() req) {
     const appointment = await this.assertCanAccess(id, req.user);
     if (this.isStaff(req.user)) this.assertNotLockedForSales(appointment, req.user);
     return this.bookingsService.updateStatus(
       id,
       AppointmentStatus.CANCELLED,
-      { refund: body?.refund === true },
+      { refund: body?.refund === true, reason: typeof body?.reason === 'string' ? body.reason : undefined },
       req.user?.id,
       { role: req.user?.role },
     );
@@ -375,7 +375,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment status' })
   async updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: AppointmentStatus | string; refund?: boolean; notes?: string },
+    @Body() body: { status: AppointmentStatus | string; refund?: boolean; notes?: string; reason?: string },
     @Request() req,
   ) {
     this.assertStaff(req.user);
@@ -386,6 +386,7 @@ export class BookingsController {
     return this.bookingsService.updateAppointmentStatus(id, status, req.user.id, req.user.role, {
       refund: body.refund === true,
       notes: body.notes,
+      reason: typeof body.reason === 'string' ? body.reason : undefined,
     });
   }
 

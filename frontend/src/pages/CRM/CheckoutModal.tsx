@@ -36,7 +36,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
 
  if (paymentMethod === 'gift_card') {
  if (!giftCardCode.trim()) {
- alert('Please enter a Gift Card code.');
+ toast.error('Please enter a Gift Card code.');
  return;
  }
  try {

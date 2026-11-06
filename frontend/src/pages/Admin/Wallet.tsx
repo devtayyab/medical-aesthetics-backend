@@ -3,6 +3,7 @@ import { CreditCard, History, Award } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchWalletSummary, fetchRecentTransactions } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
+import { FEATURE_LOYALTY } from '@/config/features';
 
 export const Wallet: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -21,6 +22,19 @@ export const Wallet: React.FC = () => {
  <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Loyalty & Wallet Management</h1>
  <p className="text-sm text-gray-500 mt-1">Manage consumer wallets, loyalty points, and redemptions</p>
  </div>
+
+ {!FEATURE_LOYALTY && (
+ <div className="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+ <p className="text-sm font-bold uppercase tracking-wide">
+ {localStorage.getItem('preferredLang') === 'el' ? 'ΣΥΝΤΟΜΑ ΔΙΑΘΕΣΙΜΟ' : 'Coming soon'}
+ </p>
+ <p className="text-sm mt-0.5">
+ {localStorage.getItem('preferredLang') === 'el'
+ ? 'Το πρόγραμμα επιβράβευσης δεν είναι ενεργό στην πρώτη έκδοση. Οι πελάτες δεν βλέπουν πόντους ή πορτοφόλι μέχρι να ενεργοποιηθεί η λειτουργία (VITE_FEATURE_LOYALTY).'
+ : 'Loyalty is not live at launch. Clients see no points or wallet until the feature is switched on (VITE_FEATURE_LOYALTY).'}
+ </p>
+ </div>
+ )}
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
  <div className="bg-white rounded-xl shadow p-6 border border-gray-100 flex items-center gap-4">

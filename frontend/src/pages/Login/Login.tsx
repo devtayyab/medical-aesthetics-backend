@@ -132,7 +132,7 @@ export const Login: React.FC = () => {
 
  try {
  const result = await dispatch(login({ email: email.trim(), password })).unwrap();
- if ((result as any).accessToken || !(result as any).requiresCode) {
+ if (!(result as any).requiresCode) {
  navigate(redirect || roleHome((result as any).user?.role), { replace: true });
  return;
  }

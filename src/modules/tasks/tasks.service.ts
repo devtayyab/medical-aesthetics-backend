@@ -147,6 +147,12 @@ export class TasksService {
 
     this.validateRecurringConfig(updateTaskDto);
 
+    // A moved due date gets a fresh (single) overdue reminder
+    if (updateData.dueDate && new Date(updateData.dueDate).getTime() !== new Date(task.dueDate).getTime()) {
+      const { overdueReminderSentAt: _sent, ...restMeta } = { ...(task.metadata || {}), ...(updateData.metadata || {}) };
+      updateData.metadata = restMeta;
+    }
+
     // Check for status changes
     if (updateTaskDto.status && updateTaskDto.status !== task.status) {
       if (updateTaskDto.status === TaskStatus.COMPLETED) {
@@ -169,6 +175,13 @@ export class TasksService {
     if (result.affected === 0) {
       throw new NotFoundException('Task not found');
     }
+  }
+
+  /** Remember that the overdue reminder of this task went out (sent once per due date). */
+  async markOverdueReminderSent(task: Task): Promise<void> {
+    await this.tasksRepository.update(task.id, {
+      metadata: { ...(task.metadata || {}), overdueReminderSentAt: new Date().toISOString() },
+    });
   }
 
   async findOverdueTasks(): Promise<Task[]> {

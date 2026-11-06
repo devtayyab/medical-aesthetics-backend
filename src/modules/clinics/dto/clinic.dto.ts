@@ -166,6 +166,11 @@ export class UpdateAppointmentStatusDto {
   @IsString()
   notes?: string;
 
+  @ApiPropertyOptional({ description: 'Cancellation reason, shown to the client (QA Y33)' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsObject()

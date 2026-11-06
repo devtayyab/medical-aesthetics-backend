@@ -6,6 +6,7 @@ import { adminAPI } from '@/services/api';
 import type { AppDispatch, RootState } from '@/store';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
+import { promptDialog } from '@/components/molecules/ConfirmDialog';
 
 export const Payments: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -30,10 +31,15 @@ export const Payments: React.FC = () => {
  notes: '',
  clinicId: '',
  clientId: '',
+ appointmentId: '',
  providerId: '',
  salespersonId: '',
  });
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [clientSearch, setClientSearch] = useState('');
+ const [clientOptions, setClientOptions] = useState<any[]>([]);
+ const [isSearchingClients, setIsSearchingClients] = useState(false);
+ const [clientAppointments, setClientAppointments] = useState<any[]>([]);
   const [currentLang, setCurrentLang] = useState<string>(
     () => localStorage.getItem('preferredLang') || 'el'
   );
@@ -60,7 +66,50 @@ export const Payments: React.FC = () => {
 
  const doctors = users.filter(u => u.role === 'doctor');
  const salespeople = users.filter(u => u.role === 'salesperson');
- const clients = users.filter(u => u.role === 'client');
+
+ // Clients are searched server-side (all clients, not only the first page of users).
+ useEffect(() => {
+ if (!showManualModal) return;
+ let cancelled = false;
+ setIsSearchingClients(true);
+ const t = setTimeout(async () => {
+ try {
+ const res = await adminAPI.searchPaymentClients(clientSearch, 50);
+ if (!cancelled) setClientOptions(Array.isArray(res.data) ? res.data : []);
+ } catch {
+ if (!cancelled) setClientOptions([]);
+ } finally {
+ if (!cancelled) setIsSearchingClients(false);
+ }
+ }, 300);
+ return () => { cancelled = true; clearTimeout(t); };
+ }, [clientSearch, showManualModal]);
+
+ // Appointments of the selected client, so the payment can be linked to one.
+ useEffect(() => {
+ if (!manualForm.clientId) { setClientAppointments([]); return; }
+ let cancelled = false;
+ adminAPI.getPaymentClientAppointments(manualForm.clientId)
+ .then(res => { if (!cancelled) setClientAppointments(Array.isArray(res.data) ? res.data : []); })
+ .catch(() => { if (!cancelled) setClientAppointments([]); });
+ return () => { cancelled = true; };
+ }, [manualForm.clientId]);
+
+ const handleAppointmentSelect = (appointmentId: string) => {
+ const apt = clientAppointments.find(a => a.id === appointmentId);
+ setManualForm(p => ({
+ ...p,
+ appointmentId,
+ clinicId: apt?.clinicId || p.clinicId,
+ providerId: apt?.providerId || p.providerId,
+ }));
+ };
+
+ const resetManualForm = () => {
+ setManualForm({ amount: '', method: 'cash', type: 'payment', notes: '', clinicId: '', clientId: '', appointmentId: '', providerId: '', salespersonId: '' });
+ setClientSearch('');
+ setClientAppointments([]);
+ };
 
  const handleFilterChange = (name: string, value: string) => {
  // Paging must not reset itself: only a real filter change resets offset to 0.
@@ -100,7 +149,7 @@ export const Payments: React.FC = () => {
  const handleManualSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
  if (!manualForm.amount || !manualForm.clinicId || !manualForm.clientId) {
- toast.error('Please fill in client, amount, and clinic');
+ toast.error(isEl ? 'Συμπληρώστε πελάτη, ποσό και κλινική' : 'Please fill in client, amount, and clinic');
  return;
  }
  setIsSubmitting(true);
@@ -108,16 +157,16 @@ export const Payments: React.FC = () => {
  await adminAPI.createManualPayment({
  amount: parseFloat(manualForm.amount),
  method: manualForm.method,
- type: manualForm.type,
  notes: manualForm.notes,
  clinicId: manualForm.clinicId,
  clientId: manualForm.clientId,
+ appointmentId: manualForm.appointmentId || undefined,
  providerId: manualForm.providerId || undefined,
  salespersonId: manualForm.salespersonId || undefined,
  });
  toast.success('Manual record created successfully');
  setShowManualModal(false);
- setManualForm({ amount: '', method: 'cash', type: 'payment', notes: '', clinicId: '', clientId: '', providerId: '', salespersonId: '' });
+ resetManualForm();
  dispatch(fetchPaymentsLedger(filters));
  } catch (err: any) {
  toast.error(err.response?.data?.message || 'Failed to create record');
@@ -127,7 +176,7 @@ export const Payments: React.FC = () => {
  };
 
  const handleAction = async (id: string, action: 'refund' | 'void') => {
- const notes = window.prompt(`Enter reason for ${action}:`);
+ const notes = await promptDialog({ message: `Enter reason for ${action}:`, danger: action === 'void' });
  if (notes === null) return;
 
  setIsActioning(id);
@@ -179,15 +228,43 @@ export const Payments: React.FC = () => {
  <form onSubmit={handleManualSubmit} className="space-y-4">
  <div>
  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Πελάτης *' : 'Client *'}</label>
+ <input
+ type="text"
+ value={clientSearch}
+ onChange={e => setClientSearch(e.target.value)}
+ className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none mb-2"
+ placeholder={isEl ? 'Αναζήτηση με όνομα, email ή τηλέφωνο' : 'Search by name, email or phone'}
+ />
  <select
  value={manualForm.clientId}
- onChange={e => setManualForm(p => ({ ...p, clientId: e.target.value }))}
+ onChange={e => setManualForm(p => ({ ...p, clientId: e.target.value, appointmentId: '' }))}
  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
  required
  >
- <option value="">{isEl ? 'Επιλέξτε Πελάτη' : 'Select Client'}</option>
- {clients.map(u => (
+ <option value="">
+ {isSearchingClients
+ ? (isEl ? 'Αναζήτηση...' : 'Searching...')
+ : (isEl ? `Επιλέξτε Πελάτη (${clientOptions.length})` : `Select Client (${clientOptions.length})`)}
+ </option>
+ {clientOptions.map(u => (
  <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email || u.phone || 'No Contact'})</option>
+ ))}
+ </select>
+ </div>
+ <div>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'ΡΑΝΤΕΒΟΥ / ΘΕΡΑΠΕΙΑ' : 'Appointment / Treatment'}</label>
+ <select
+ value={manualForm.appointmentId}
+ onChange={e => handleAppointmentSelect(e.target.value)}
+ className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+ disabled={!manualForm.clientId}
+ >
+ <option value="">{isEl ? 'Χωρίς σύνδεση με ραντεβού' : 'Not linked to an appointment'}</option>
+ {clientAppointments.map(a => (
+ <option key={a.id} value={a.id}>
+ {a.startTime ? format(new Date(a.startTime), 'dd/MM/yyyy HH:mm') : ''} · {a.treatmentName || (isEl ? 'Θεραπεία' : 'Treatment')}
+ {a.clinicName ? ` · ${a.clinicName}` : ''} · €{Number(a.amountPaid || 0).toFixed(2)} / €{Number(a.totalAmount || 0).toFixed(2)} · {a.status}
+ </option>
  ))}
  </select>
  </div>
@@ -216,19 +293,7 @@ export const Payments: React.FC = () => {
  required
  />
  </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
- <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Τύπος' : 'Type'}</label>
- <select
- value={manualForm.type}
- onChange={e => setManualForm(p => ({ ...p, type: e.target.value }))}
- className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
- >
- <option value="payment">Payment</option>
- <option value="refund">Refund</option>
- <option value="adjustment">Adjustment</option>
- </select>
- </div>
+ <div className="grid grid-cols-1 gap-3">
  <div>
  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Μέθοδος' : 'Method'}</label>
  <select
@@ -238,6 +303,7 @@ export const Payments: React.FC = () => {
  >
  <option value="cash">Cash</option>
  <option value="pos">POS / Card</option>
+ <option value="bank_transfer">{isEl ? 'Τραπεζική μεταφορά' : 'Bank Transfer'}</option>
  <option value="viva_wallet">Viva Wallet</option>
  <option value="online_deposit">Online Deposit</option>
  </select>
@@ -278,7 +344,7 @@ export const Payments: React.FC = () => {
  />
  </div>
  <div className="flex gap-3 pt-2">
- <button type="button" onClick={() => setShowManualModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+ <button type="button" onClick={() => { setShowManualModal(false); resetManualForm(); }} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
  Cancel
  </button>
  <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 bg-[#405C0B] text-white rounded-xl text-sm font-semibold hover:bg-[#304608] disabled:opacity-60">
@@ -336,6 +402,7 @@ export const Payments: React.FC = () => {
  <option value="">{isEl ? 'Όλες οι Μέθοδοι' : 'All Methods'}</option>
  <option value="cash">Cash</option>
  <option value="pos">POS / Card</option>
+ <option value="bank_transfer">{isEl ? 'Τραπεζική μεταφορά' : 'Bank Transfer'}</option>
  <option value="viva_wallet">Viva Wallet</option>
  <option value="online_deposit">Online Deposit</option>
  </select>
