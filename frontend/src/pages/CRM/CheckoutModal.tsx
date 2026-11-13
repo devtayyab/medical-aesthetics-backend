@@ -18,16 +18,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
  const dispatch = useDispatch<AppDispatch>();
  const { isLoading } = useSelector((state: RootState) => state.booking);
 
- const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'gift_card'>('card');
- const [giftCardCode, setGiftCardCode] = useState('');
- const [amountPaid, setAmountPaid] = useState<number>(appointment?.service?.price || 0);
+  const totalAmount = Number(appointment?.totalAmount ?? appointment?.service?.price ?? 0);
+  const alreadyPaid = Number((appointment as any)?.amountPaid ?? 0);
+  const remainingBalance = Math.max(0, Number((totalAmount - alreadyPaid).toFixed(2)));
 
- // Update amount if appointment changes
- React.useEffect(() => {
- if (appointment) {
- setAmountPaid(appointment.service?.price || 0);
- }
- }, [appointment]);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'gift_card'>('card');
+  const [giftCardCode, setGiftCardCode] = useState('');
+  const [amountPaid, setAmountPaid] = useState<number>(remainingBalance || totalAmount);
+
+  // Update amount if appointment changes: ask only for remaining balance (QA #43)
+  React.useEffect(() => {
+    if (appointment) {
+      const tot = Number(appointment.totalAmount ?? appointment.service?.price ?? 0);
+      const paid = Number((appointment as any).amountPaid ?? 0);
+      const bal = Math.max(0, Number((tot - paid).toFixed(2)));
+      setAmountPaid(bal > 0 ? bal : tot);
+    }
+  }, [appointment]);
 
  if (!isOpen || !appointment) return null;
 
@@ -91,9 +98,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
  <div className="font-bold text-gray-900">{appointment.client?.firstName} {appointment.client?.lastName}</div>
  </div>
 
+ {/* Total - Paid - Balance Breakup (QA #43) */}
+ <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+ <div>
+ <div className="text-[10px] font-bold uppercase text-slate-400">Total</div>
+ <div className="font-bold text-slate-900">€{totalAmount.toFixed(2)}</div>
+ </div>
+ <div>
+ <div className="text-[10px] font-bold uppercase text-emerald-600">Paid</div>
+ <div className="font-bold text-emerald-700">€{alreadyPaid.toFixed(2)}</div>
+ </div>
+ <div>
+ <div className="text-[10px] font-bold uppercase text-amber-600">Balance</div>
+ <div className="font-bold text-amber-700">€{remainingBalance.toFixed(2)}</div>
+ </div>
+ </div>
+
  {/* Amount */}
  <div className="space-y-1.5">
- <label className="text-sm font-semibold text-gray-700">Total Amount</label>
+ <label className="text-sm font-semibold text-gray-700">
+ {alreadyPaid > 0 && remainingBalance > 0 ? 'Balance to Pay (€)' : 'Amount to Pay (€)'}
+ </label>
  <div className="relative">
  <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
  <input

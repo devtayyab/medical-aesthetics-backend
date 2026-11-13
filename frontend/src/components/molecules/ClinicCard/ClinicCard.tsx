@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from"framer-motion";
 import { css } from"@emotion/css";
 
 import { getImageUrl } from "@/utils/imageUrl";
+import { getPreferredLanguage } from "@/utils/language";
 
 // Fallback high-fidelity asset
 import BotoxImg from"@/assets/Botox.jpg";
@@ -163,16 +164,16 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
   {isAuthenticated ? (
     <>
       <span className="text-[16px] font-black text-gray-900 block">€{service.price}</span>
-      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none">starts from</span>
+      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none">{getPreferredLanguage() === 'el' ? 'ξεκινά από' : 'starts from'}</span>
     </>
   ) : (
     <button
       onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
       className="flex items-center gap-1 text-[9px] font-black uppercase text-lime-600 hover:text-black tracking-wider transition-colors"
-      title="Login required to view prices"
+      title={getPreferredLanguage() === 'el' ? 'Απαιτείται σύνδεση για προβολή τιμών' : 'Login required to view prices'}
     >
       <Lock size={10} className="text-lime-600 shrink-0" />
-      <span>Login for price</span>
+      <span>{getPreferredLanguage() === 'el' ? 'Συνδεθείτε για τιμή' : 'Login for price'}</span>
     </button>
   )}
  </div>

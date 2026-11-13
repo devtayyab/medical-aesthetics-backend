@@ -467,8 +467,8 @@ export const Header: React.FC = () => {
               to="/for-clinics"
               className="text-[10px] font-black uppercase tracking-wider text-gray-300 hover:text-[#CBFF38] transition-colors whitespace-nowrap"
             >
-              <span className="sm:hidden">For Clinics &rarr;</span>
-              <span className="hidden sm:inline">For Clinics &amp; Partners &rarr;</span>
+              <span className="sm:hidden">{isGreek ? "Για Κλινικές" : "For Clinics"} &rarr;</span>
+              <span className="hidden sm:inline">{isGreek ? "Για Κλινικές & Συνεργάτες" : "For Clinics & Partners"} &rarr;</span>
             </Link>
           </div>
         </div>
@@ -797,7 +797,7 @@ export const Header: React.FC = () => {
  className="text-white font-bold hover:text-[#CBFF38] transition-all uppercase text-[12px] tracking-wider whitespace-nowrap"
  onClick={() => navigate("/login")}
  >
- Sign In
+ {isGreek ? "Σύνδεση" : "Sign In"}
  </button>
  <Link
  to="/register"
@@ -955,7 +955,7 @@ export const Header: React.FC = () => {
  setIsMobileMenuOpen(false);
  }}
  >
- Sign In
+ {isGreek ? "Σύνδεση" : "Sign In"}
  </Button>
  <Button
  fullWidth
@@ -1002,19 +1002,19 @@ export const Header: React.FC = () => {
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/contact') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Contact
+              {isGreek ? "Επικοινωνία" : "Contact"}
             </Link>
             <Link
               to="/for-clinics"
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/for-clinics') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              For Clinics / Partners
+              {isGreek ? "Για Κλινικές / Συνεργάτες" : "For Clinics / Partners"}
             </Link>
           </div>
 
           <div className="flex flex-col gap-2 mt-2">
- <span className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-4">Treatments</span>
+ <span className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-4">{isGreek ? "Θεραπείες" : "Treatments"}</span>
  {navCategories.length > 0 ? (
  navCategories.map((cat) => {
  const hasChildren = cat.children && cat.children.length > 0;

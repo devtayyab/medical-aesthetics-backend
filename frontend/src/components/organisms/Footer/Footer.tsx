@@ -38,7 +38,9 @@ export const Footer: React.FC = () => {
  </div>
  </Link>
  <p className="mt-3 text-xs text-white text-left leading-relaxed max-w-sm opacity-90">
- BeautyDoctors is a digital platform for exploring treatments and booking appointments with independent doctors and clinics. Treatment suitability is determined by the treating healthcare professional following medical assessment.
+ {isGreek
+   ? 'Το BeautyDoctors είναι μια ψηφιακή πλατφόρμα αναζήτησης θεραπειών και κράτησης ραντεβού με ανεξάρτητους ιατρούς και κλινικές. Η καταλληλότητα κάθε θεραπείας κρίνεται από τον θεράποντα ιατρό κατόπιν ιατρικής αξιολόγησης.'
+   : 'BeautyDoctors is a digital platform for exploring treatments and booking appointments with independent doctors and clinics. Treatment suitability is determined by the treating healthcare professional following medical assessment.'}
  </p>
  {/* Mobile apps are not published yet: badges stay visible, disabled, marked "coming soon" */}
  <div className="mt-4 flex flex-wrap gap-2">
@@ -69,32 +71,32 @@ export const Footer: React.FC = () => {
   {/* Overview */}
   <div>
     <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
-      Overview
+      {isGreek ? 'Επισκόπηση' : 'Overview'}
     </strong>
     <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
       <li>
         <Link to="/treatments" className="text-white transition hover:text-[#CBFF38]">
-          Treatments
+          {isGreek ? 'Θεραπείες' : 'Treatments'}
         </Link>
       </li>
       <li>
         <Link to="/search" className="text-white transition hover:text-[#CBFF38]">
-          Doctors / Clinics
+          {isGreek ? 'Ιατροί / Κλινικές' : 'Doctors / Clinics'}
         </Link>
       </li>
       <li>
         <Link to="/services" className="text-white transition hover:text-[#CBFF38]">
-          Privileges
+          {isGreek ? 'Προνόμια' : 'Privileges'}
         </Link>
       </li>
       <li>
         <Link to="/blog" className="text-white transition hover:text-[#CBFF38]">
-          Latest Articles
+          {isGreek ? 'Τελευταία Άρθρα' : 'Latest Articles'}
         </Link>
       </li>
       <li>
         <Link to="/for-clinics" className="text-white transition hover:text-[#CBFF38]">
-          For Clinics
+          {isGreek ? 'Για Κλινικές' : 'For Clinics'}
         </Link>
       </li>
     </ul>
@@ -103,22 +105,22 @@ export const Footer: React.FC = () => {
   {/* Company */}
   <div>
     <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
-      Company
+      {isGreek ? 'Εταιρεία' : 'Company'}
     </strong>
     <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
       <li>
         <Link to="/about-us" className="text-white transition hover:text-[#CBFF38]">
-          About Us
+          {isGreek ? 'Σχετικά με εμάς' : 'About Us'}
         </Link>
       </li>
       <li>
         <Link to="/contact" className="text-white transition hover:text-[#CBFF38]">
-          Contact
+          {isGreek ? 'Επικοινωνία' : 'Contact'}
         </Link>
       </li>
       <li>
         <Link to="/support" className="text-white transition hover:text-[#CBFF38]">
-          Support
+          {isGreek ? 'Υποστήριξη' : 'Support'}
         </Link>
       </li>
     </ul>
@@ -127,37 +129,37 @@ export const Footer: React.FC = () => {
   {/* Legal */}
   <div>
     <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
-      Legal
+      {isGreek ? 'Νομικά' : 'Legal'}
     </strong>
     <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
       <li>
         <Link to="/terms-of-use" className="text-white transition hover:text-[#CBFF38]">
-          Terms of Use
+          {isGreek ? 'Όροι Χρήσης' : 'Terms of Use'}
         </Link>
       </li>
       <li>
         <Link to="/privacy-policy" className="text-white transition hover:text-[#CBFF38]">
-          Privacy Policy
+          {isGreek ? 'Πολιτική Απορρήτου' : 'Privacy Policy'}
         </Link>
       </li>
       <li>
         <Link to="/cookie-policy" className="text-white transition hover:text-[#CBFF38]">
-          Cookie Policy
+          {isGreek ? 'Πολιτική Cookies' : 'Cookie Policy'}
         </Link>
       </li>
       <li>
         <Link to="/medical-disclaimer" className="text-white transition hover:text-[#CBFF38]">
-          Medical Disclaimer
+          {isGreek ? 'Ιατρική Αποποίηση' : 'Medical Disclaimer'}
         </Link>
       </li>
       <li>
         <Link to="/gift-card-terms" className="text-white transition hover:text-[#CBFF38]">
-          Gift Card Terms
+          {isGreek ? 'Όροι Δωροκάρτας' : 'Gift Card Terms'}
         </Link>
       </li>
       <li>
         <Link to="/provider-terms" className="text-white transition hover:text-[#CBFF38]">
-          Provider Terms
+          {isGreek ? 'Όροι Παρόχων' : 'Provider Terms'}
         </Link>
       </li>
     </ul>
@@ -166,7 +168,7 @@ export const Footer: React.FC = () => {
   {/* Contact */}
   <div className="min-w-0">
     <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
-      Contact Us
+      {isGreek ? 'Επικοινωνήστε' : 'Contact Us'}
     </strong>
     <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
       <li>
@@ -235,7 +237,7 @@ export const Footer: React.FC = () => {
           <form onSubmit={(e) => e.preventDefault()} className="w-full sm:w-auto">
             <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full">
               <label className="text-white text-[10px] font-bold uppercase tracking-wider mb-1 sm:mb-0" htmlFor="email">
-                Newsletter
+                {isGreek ? 'Ενημερωτικό Δελτίο' : 'Newsletter'}
               </label>
 
               <div className="flex w-full sm:w-auto gap-2">
@@ -279,15 +281,23 @@ export const Footer: React.FC = () => {
          {/* Bottom Legal / Copyright / Company Details */}
         <div className="mt-8 pt-6 border-t border-[#4A5568] flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-gray-300 text-center md:text-left">
           <div className="space-y-1">
-            <p className="font-semibold text-white">© 2026 Beauty Doctors. Operated by Beautydoctors O.E. All rights reserved.</p>
-            <p className="text-[10px] text-gray-400">Beautydoctors O.E. · VAT 803040724 · G.E.MI. 188015103000 · 23 Xanthippou Street, Pikermi 19009, Greece</p>
+            <p className="font-semibold text-white">
+              {isGreek
+                ? '© 2026 Beauty Doctors. Διαχείριση από Beautydoctors O.E. Με επιφύλαξη παντός δικαιώματος.'
+                : '© 2026 Beauty Doctors. Operated by Beautydoctors O.E. All rights reserved.'}
+            </p>
+            <p className="text-[10px] text-gray-400">
+              {isGreek
+                ? 'Beautydoctors O.E. · ΑΦΜ 803040724 · Γ.Ε.ΜΗ. 188015103000 · Ξανθίππου 23, Πικέρμι 19009, Ελλάδα'
+                : 'Beautydoctors O.E. · VAT 803040724 · G.E.MI. 188015103000 · 23 Xanthippou Street, Pikermi 19009, Greece'}
+            </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] text-gray-300">
-            <Link to="/terms-of-use" className="hover:text-[#CBFF38] transition-colors">Terms of Use</Link>
-            <Link to="/privacy-policy" className="hover:text-[#CBFF38] transition-colors">Privacy Policy</Link>
-            <Link to="/cookie-policy" className="hover:text-[#CBFF38] transition-colors">Cookie Policy</Link>
-            <Link to="/medical-disclaimer" className="hover:text-[#CBFF38] transition-colors">Medical Disclaimer</Link>
-            <Link to="/gift-card-terms" className="hover:text-[#CBFF38] transition-colors">Gift Card Terms</Link>
+            <Link to="/terms-of-use" className="hover:text-[#CBFF38] transition-colors">{isGreek ? 'Όροι Χρήσης' : 'Terms of Use'}</Link>
+            <Link to="/privacy-policy" className="hover:text-[#CBFF38] transition-colors">{isGreek ? 'Πολιτική Απορρήτου' : 'Privacy Policy'}</Link>
+            <Link to="/cookie-policy" className="hover:text-[#CBFF38] transition-colors">{isGreek ? 'Πολιτική Cookies' : 'Cookie Policy'}</Link>
+            <Link to="/medical-disclaimer" className="hover:text-[#CBFF38] transition-colors">{isGreek ? 'Ιατρική Αποποίηση' : 'Medical Disclaimer'}</Link>
+            <Link to="/gift-card-terms" className="hover:text-[#CBFF38] transition-colors">{isGreek ? 'Όροι Δωροκάρτας' : 'Gift Card Terms'}</Link>
           </div>
         </div>
       </div>

@@ -424,7 +424,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment, isGreek }: any
  </div>
  <div>
  <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||(isGreek ? "Θεραπεία" : "Treatment")}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΙΑΤΡΟΣ" : "Practitioner"}: {apt.providerName || "-"}{apt.durationMinutes ? ` · ${apt.durationMinutes} ${isGreek ? 'ΛΕΠΤΑ' : 'MIN'}` : ''}</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΙΑΤΡΟΣ" : "Practitioner"}: {apt.providerName || (isGreek ? "Χωρίς ανάθεση" : "Not assigned")}{apt.durationMinutes ? ` · ${apt.durationMinutes} ${isGreek ? 'ΛΕΠΤΑ' : 'MIN'}` : ''}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">

@@ -51,7 +51,33 @@ export class FacebookService {
   ) {
     this.axiosInstance = axios.create({
       baseURL: `https://graph.facebook.com/${this.apiVersion}`,
-      timeout: 10000,
+      timeout: 35000, // Raised from 10s to prevent META_SYNC_ERROR timeouts (QA NEW-10)
+    });
+
+    // Retry transient network / timeout / 5xx errors with exponential backoff (QA NEW-10)
+    this.axiosInstance.interceptors.response.use(undefined, async (error) => {
+      const config = error?.config;
+      if (!config) return Promise.reject(error);
+
+      const status = error?.response?.status;
+      const isTransient =
+        error?.code === 'ECONNABORTED' ||
+        error?.code === 'ETIMEDOUT' ||
+        error?.code === 'ECONNRESET' ||
+        (status && status >= 500);
+
+      if (!isTransient) return Promise.reject(error);
+
+      config.__retryCount = config.__retryCount || 0;
+      if (config.__retryCount >= 2) return Promise.reject(error);
+
+      config.__retryCount += 1;
+      const delayMs = 1000 * Math.pow(2, config.__retryCount - 1);
+      this.logger.warn(
+        `Retrying Graph API request (${config.url}) attempt ${config.__retryCount} after ${delayMs}ms: ${error.message}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return this.axiosInstance.request(config);
     });
   }
 

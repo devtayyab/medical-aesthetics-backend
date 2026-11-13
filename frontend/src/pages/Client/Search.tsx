@@ -257,7 +257,7 @@ export const Search: React.FC = () => {
  onClick={() => setActiveTab('treatments')}
  className={`text-[10px] sm:text-[12px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === 'treatments' ? 'text-black border-b-2 sm:border-b-4 border-[#CBFF38] pb-1' : 'text-gray-400'}`}
  >
- Treatments ({totalTreatments})
+ {isGreek ? `Θεραπείες (${totalTreatments})` : `Treatments (${totalTreatments})`}
  </button>
  </div>
 
@@ -269,7 +269,7 @@ export const Search: React.FC = () => {
  onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
  className={filterPill(sortBy !== 'alphabetical')}
  >
- <List size={12} className="text-gray-400" /> Sort
+ <List size={12} className="text-gray-400" /> {isGreek ? 'Ταξινόμηση' : 'Sort'}
  <ChevronDown size={12} />
  </button>
  </div>

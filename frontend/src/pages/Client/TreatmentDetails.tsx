@@ -13,6 +13,7 @@ import { SearchBar } from"@/components/organisms/SearchBar";
 import BotoxImg from"@/assets/Botox.jpg";
 
 import { getImageUrl } from "@/utils/imageUrl";
+import { getPreferredLanguage } from "@/utils/language";
 
 // Category Icons
 import DermaIcon from"@/assets/Icons/TreatmentIcons/DermaIcon.svg";
@@ -212,7 +213,7 @@ export const TreatmentDetails: React.FC = () => {
  }}
  className="w-full sm:w-auto px-6 sm:px-8 h-12 bg-[#CBFF38] text-black rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
  >
- Find Clinicians <ChevronRight size={14} />
+ {getPreferredLanguage() === 'el' ? 'Βρείτε Ιατρούς' : 'Find Clinicians'} <ChevronRight size={14} />
  </button>
  
  {!showMap && (
@@ -255,10 +256,10 @@ export const TreatmentDetails: React.FC = () => {
  <section id="clinics-list" className="py-8 sm:py-16 bg-white">
  <div className="container mx-auto px-4 sm:px-8">
  <div className="mb-6 sm:mb-12">
- <span className="text-[9px] font-black text-lime-600 uppercase tracking-[0.3em] mb-1.5 block">Premium Selection</span>
+ <span className="text-[9px] font-black text-lime-600 uppercase tracking-[0.3em] mb-1.5 block">{getPreferredLanguage() === 'el' ? 'Κορυφαία Επιλογή' : 'Premium Selection'}</span>
  <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter text-gray-900 leading-snug flex flex-wrap items-center gap-2">
- <span>Verified</span>
- <span className="text-[#CBFF38] bg-black px-2.5 py-0.5 rounded-lg">Practitioners</span>
+ <span>{getPreferredLanguage() === 'el' ? 'Πιστοποιημένοι' : 'Verified'}</span>
+ <span className="text-[#CBFF38] bg-black px-2.5 py-0.5 rounded-lg">{getPreferredLanguage() === 'el' ? 'Ιατροί' : 'Practitioners'}</span>
  </h2>
  </div>
           {!isAuthenticated ? (
@@ -267,16 +268,18 @@ export const TreatmentDetails: React.FC = () => {
                 <Lock size={24} />
               </div>
               <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight mb-2">
-                Log In to View Practitioners & Prices
+                {getPreferredLanguage() === 'el' ? 'Συνδεθείτε για να δείτε Ιατρούς & Τιμές' : 'Log In to View Practitioners & Prices'}
               </h3>
               <p className="text-sm text-gray-400 max-w-md mx-auto mb-6">
-                To access verified aesthetic clinics, expert practitioners, and real-time treatment prices, please log in.
+                {getPreferredLanguage() === 'el'
+                  ? 'Για πρόσβαση σε πιστοποιημένες κλινικές, εξειδικευμένους ιατρούς και τιμές, παρακαλούμε συνδεθείτε.'
+                  : 'To access verified aesthetic clinics, expert practitioners, and real-time treatment prices, please log in.'}
               </p>
               <button
                 onClick={() => navigate(`/login?redirect=${encodeURIComponent(`/treatment/${id}`)}`)}
                 className="px-8 py-3.5 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-white transition-all shadow-lg inline-flex items-center gap-2"
               >
-                Log In / Register <ChevronRight size={14} />
+                {getPreferredLanguage() === 'el' ? 'Σύνδεση / Εγγραφή' : 'Log In / Register'} <ChevronRight size={14} />
               </button>
             </div>
           ) : (

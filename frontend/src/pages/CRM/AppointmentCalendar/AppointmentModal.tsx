@@ -1096,9 +1096,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">
                       {isGreek ? 'Ιατρός / Ειδικός' : 'Doctor / Specialist'}:
                     </span>
-                    <span className="font-black text-indigo-600">
+                    <span className={`font-black ${existingAppointment.providerName ? 'text-indigo-600' : 'text-slate-400 italic'}`}>
                       {/* Server-resolved doctor (QA #34); never the owner/secretary/sales account that booked */}
-                      {existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : '-'}
+                      {existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : (isGreek ? 'Χωρίς ανάθεση' : 'Not assigned')}
                     </span>
                   </div>
                   {((existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName) && (

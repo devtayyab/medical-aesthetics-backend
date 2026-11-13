@@ -18,6 +18,7 @@ import {
  fetchClinicById,
 } from"@/store/slices/clientSlice";
 import { RootState, AppDispatch } from"@/store";
+import { getPreferredLanguage } from "@/utils/language";
 import type { TimeSlot } from"@/types";
 import { css } from"@emotion/css";
 import {
@@ -345,13 +346,13 @@ export const AppointmentBooking: React.FC = () => {
  <div className="size-8 rounded-lg bg-lime-50 flex items-center justify-center">
  <FaClock className="text-lime-500" size={14} />
  </div>
- <h3 className="text-xl font-black uppercase text-gray-900">Available Times</h3>
+ <h3 className="text-xl font-black uppercase text-gray-900">{getPreferredLanguage() === 'el' ? 'Διαθέσιμες Ώρες' : 'Available Times'}</h3>
  </div>
 
  {/* Provider Selection (Step B2) */}
  {clinic?.providers && clinic.providers.length > 0 && (
  <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
- <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Choose Professional (Optional)</h4>
+ <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">{getPreferredLanguage() === 'el' ? 'Επιλογή Ειδικού (Προαιρετικό)' : 'Choose Professional (Optional)'}</h4>
  <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
  <button
  className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${!selectedProviderId ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
@@ -402,7 +403,7 @@ export const AppointmentBooking: React.FC = () => {
  <div className={sidebarCardStyle}>
  <div className="absolute top-0 right-0 w-32 h-32 bg-[#CBFF38]/5 rounded-full blur-2xl" />
  
- <h3 className="text-xl font-black uppercase text-white mb-6 pb-4 border-b border-white/10 relative z-10">Booking Details</h3>
+ <h3 className="text-xl font-black uppercase text-white mb-6 pb-4 border-b border-white/10 relative z-10">{getPreferredLanguage() === 'el' ? 'Στοιχεία Κράτησης' : 'Booking Details'}</h3>
 
  <div className="space-y-6 mb-8 relative z-10">
  <div>
@@ -447,7 +448,7 @@ export const AppointmentBooking: React.FC = () => {
  onClick={handleProceed}
  className="bg-[#CBFF38] text-black hover:bg-lime-400 hover:text-black h-12 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg hover:scale-105 transition-all relative z-10"
  >
- {bookingLoading ?"Waiting..." :"Checkout"}
+ {bookingLoading ? (getPreferredLanguage() === 'el' ? "Αναμονή..." : "Waiting...") : (getPreferredLanguage() === 'el' ? "Ολοκλήρωση" : "Checkout")}
  </Button>
 
  {holdId && (

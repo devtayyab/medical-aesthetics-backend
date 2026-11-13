@@ -60,7 +60,7 @@ export const permissions = {
  canManageAvailability: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
  // Staff Management
- canManageStaff: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN],
+ canManageStaff: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.ADMIN],
 
  // Messages
  canViewMessages: [
@@ -249,7 +249,7 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     if (!menuItems.find(m => m.id === 'messages')) {
       menuItems.push({ id: 'messages', label: 'Messages', labelGr: 'Μηνύματα', path: '/clinic/messages', icon: 'MessageSquare' });
     }
-    if (!menuItems.find(m => m.id === 'staff')) {
+    if (String(userRole).toLowerCase() !== 'doctor' && !menuItems.find(m => m.id === 'staff')) {
       menuItems.push({ id: 'staff', label: 'Staff Management', labelGr: 'Διαχείριση Προσωπικού', path: '/clinic/staff', icon: 'UserCog' });
     }
     if (!menuItems.find(m => m.id === 'diary')) {

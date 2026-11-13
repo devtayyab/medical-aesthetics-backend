@@ -239,7 +239,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number; isGreek: b
                 <span className="notranslate" translate="no">{getCategoryLabel(category.name, isGreek)}</span>
               </h3>
               <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                ELITE CLINICAL SPECIALTY
+                {isGreek ? "ΕΞΕΙΔΙΚΕΥΜΕΝΗ ΚΛΙΝΙΚΗ ΕΙΔΙΚΟΤΗΤΑ" : "ELITE CLINICAL SPECIALTY"}
               </p>
             </div>
           </div>
@@ -278,7 +278,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number; isGreek: b
       {procedures.length > 0 && (
         <div className="mt-6 pt-5 border-t border-gray-100/60">
           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#64748b] mb-3">
-            {isGreek ? "FEATURED PROCEDURES" : "FEATURED PROCEDURES"}
+            {isGreek ? "ΔΗΜΟΦΙΛΕΙΣ ΘΕΡΑΠΕΙΕΣ" : "FEATURED PROCEDURES"}
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {procedures.map((t, pIdx) => (
