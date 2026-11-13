@@ -19,39 +19,39 @@ export class NormalizeClinicTimezonesAndCleanupTestData1787840000000 implements 
         await queryRunner.query(`
             DO $$
             DECLARE
-                fever_service_ids uuid[];
-                fever_apt_ids uuid[];
+                fever_service_ids text[];
+                fever_apt_ids text[];
             BEGIN
-                SELECT array_agg(id) INTO fever_service_ids
+                SELECT array_agg(id::text) INTO fever_service_ids
                 FROM "services"
                 WHERE "treatmentId" IN (SELECT id FROM "treatments" WHERE LOWER("name") LIKE '%fever%');
 
                 IF fever_service_ids IS NOT NULL AND array_length(fever_service_ids, 1) > 0 THEN
-                    SELECT array_agg(id) INTO fever_apt_ids
+                    SELECT array_agg(id::text) INTO fever_apt_ids
                     FROM "appointments"
-                    WHERE "serviceId" = ANY(fever_service_ids);
+                    WHERE "serviceId"::text = ANY(fever_service_ids);
 
                     IF fever_apt_ids IS NOT NULL AND array_length(fever_apt_ids, 1) > 0 THEN
                         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'payment_records') THEN
-                            DELETE FROM "payment_records" WHERE "appointmentId" = ANY(fever_apt_ids);
+                            DELETE FROM "payment_records" WHERE "appointmentId"::text = ANY(fever_apt_ids);
                         END IF;
                         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'reviews') THEN
-                            DELETE FROM "reviews" WHERE "appointmentId" = ANY(fever_apt_ids);
+                            DELETE FROM "reviews" WHERE "appointmentId"::text = ANY(fever_apt_ids);
                         END IF;
                         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'loyalty_ledger') THEN
-                            DELETE FROM "loyalty_ledger" WHERE "appointmentId" = ANY(fever_apt_ids);
+                            DELETE FROM "loyalty_ledger" WHERE "appointmentId"::text = ANY(fever_apt_ids);
                         END IF;
                         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'notifications') THEN
-                            DELETE FROM "notifications" WHERE "referenceId" = ANY(fever_apt_ids);
+                            DELETE FROM "notifications" WHERE "referenceId"::text = ANY(fever_apt_ids);
                         END IF;
-                        DELETE FROM "appointments" WHERE id = ANY(fever_apt_ids);
+                        DELETE FROM "appointments" WHERE id::text = ANY(fever_apt_ids);
                     END IF;
 
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_holds') THEN
-                        DELETE FROM "appointment_holds" WHERE "serviceId" = ANY(fever_service_ids);
+                        DELETE FROM "appointment_holds" WHERE "serviceId"::text = ANY(fever_service_ids);
                     END IF;
 
-                    DELETE FROM "services" WHERE id = ANY(fever_service_ids);
+                    DELETE FROM "services" WHERE id::text = ANY(fever_service_ids);
                 END IF;
 
                 DELETE FROM "treatments" WHERE LOWER("name") LIKE '%fever%';
