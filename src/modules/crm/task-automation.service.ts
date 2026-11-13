@@ -389,8 +389,8 @@ export class TaskAutomationService {
         await this.notificationsService.create(
           task.salespersonId,
           NotificationType.PUSH,
-          'Task Reminder',
-          `Reminder: Task "${task.title}" is due ${task.dueDate ? formatDateTimeInTz(task.dueDate, BUSINESS_TIMEZONE) : 'now'}.`,
+          'Υπενθύμιση Εργασίας',
+          `Υπενθύμιση: Η εργασία «${task.title}» λήγει ${task.dueDate ? formatDateTimeInTz(task.dueDate, BUSINESS_TIMEZONE) : 'τώρα'}.`,
           { actionId: task.id },
         );
 

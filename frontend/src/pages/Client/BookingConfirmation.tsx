@@ -4,6 +4,7 @@ import { Button } from"@/components/atoms/Button/Button";
 import { FaCheckCircle, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaChevronLeft, FaStar, FaShareAlt, FaCalendarPlus } from"react-icons/fa";
 import { css } from"@emotion/css";
 import { formatWeekdayDate, formatTime } from"@/utils/formatters";
+import { getPreferredLanguage } from"@/utils/language";
 import { downloadIcs, googleCalendarUrl, formatClinicLocation, type CalendarEventInput } from"@/utils/calendarExport";
 
 const containerStyle = css`
@@ -201,12 +202,14 @@ const BookingConfirmation: React.FC = () => {
   {/* Discreet Medical Assessment Note */}
   <div className="mb-6 p-3.5 rounded-xl bg-gray-50 border border-gray-100 text-left">
     <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-      * Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment.
+      {getPreferredLanguage() === 'el'
+        ? "* Η διενέργεια της θεραπείας προϋποθέτει ιατρική αξιολόγηση και ενημερωμένη συναίνεση. Ο θεράπων ιατρός δύναται να επιβεβαιώσει, να τροποποιήσει ή να μην πραγματοποιήσει την επιλεγμένη θεραπεία."
+        : "* Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment."}
     </p>
   </div>
 
   <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 border-t border-gray-100 pt-4 sm:pt-8">
-  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-4">What happens next?</h3>
+  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-4">{getPreferredLanguage() === 'el' ? "Τι ακολουθεί;" : "What happens next?"}</h3>
   <div className="grid grid-cols-3 gap-2 sm:gap-4">
  <div>
  <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">1</div>

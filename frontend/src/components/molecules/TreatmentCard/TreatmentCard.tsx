@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from"framer-motion";
 import { css } from"@emotion/css";
 
 import { getImageUrl } from "@/utils/imageUrl";
+import { getPreferredLanguage } from "@/utils/language";
 
 // Assets
 import BotoxImg from"@/assets/Botox.jpg";
@@ -147,17 +148,17 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                       {(treatment as any).fromPrice > 0 ? "Starts From" : "Treatment"}
                     </p>
                     <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">
-                      {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : "Available"}
+                      {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : (getPreferredLanguage() === 'el' ? "Διαθέσιμο" : "Available")}
                     </p>
                   </>
                 ) : (
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
                     className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[#CBFF38] hover:underline"
-                    title="Login required to view prices"
+                    title={getPreferredLanguage() === 'el' ? "Απαιτείται σύνδεση για προβολή τιμών" : "Login required to view prices"}
                   >
                     <Lock size={10} className="text-[#CBFF38]" />
-                    <span>Login for price</span>
+                    <span>{getPreferredLanguage() === 'el' ? "Συνδεθείτε για τιμή" : "Login for price"}</span>
                   </button>
                 )}
               </div>

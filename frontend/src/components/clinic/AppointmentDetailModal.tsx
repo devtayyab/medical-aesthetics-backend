@@ -131,15 +131,13 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
   {((appointment as any).bookedByInfo?.name) || 'Direct Online Booking'}
   </span>
   </div>
-  {(appointment as any).providerName && (
-    <div className="flex justify-between text-xs">
-      <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Doctor / Specialist</span>
-      <span className="text-indigo-600 font-black uppercase">
-        {/* Server-resolved doctor (QA #34): never the owner/secretary/salesperson who booked */}
-        {`Dr. ${(appointment as any).providerName}`}
-      </span>
-    </div>
-  )}
+  <div className="flex justify-between text-xs">
+    <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Doctor / Specialist</span>
+    <span className={`font-black uppercase ${(appointment as any).providerName ? 'text-indigo-600' : 'text-gray-400 italic'}`}>
+      {/* Server-resolved doctor (QA #34): never the owner/secretary/salesperson who booked */}
+      {(appointment as any).providerName ? `Dr. ${(appointment as any).providerName}` : 'Not assigned'}
+    </span>
+  </div>
   {(((appointment as any).executedByName || (appointment as any).executedByInfo?.name || (appointment as any).appointmentCompletionReport?.recordedByName) && (
     <div className="flex justify-between text-xs">
       <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Executed By</span>

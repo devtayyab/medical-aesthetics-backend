@@ -397,7 +397,9 @@ export const Appointments: React.FC = () => {
                       <div className="mb-5 p-3 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 flex items-start gap-2.5">
                         <Shield size={13} className="text-[#84cc16] shrink-0 mt-0.5" />
                         <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-                          Proceeding with the treatment requires a medical assessment and informed consent.
+                          {isGreek
+                            ? "Η διενέργεια της θεραπείας προϋποθέτει ιατρική αξιολόγηση και ενημερωμένη συναίνεση."
+                            : "Proceeding with the treatment requires a medical assessment and informed consent."}
                         </p>
                       </div>
                     )}
