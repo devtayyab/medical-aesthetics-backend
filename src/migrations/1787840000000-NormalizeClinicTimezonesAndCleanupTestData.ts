@@ -38,17 +38,7 @@ export class NormalizeClinicTimezonesAndCleanupTestData1787840000000 implements 
                         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'reviews') THEN
                             DELETE FROM "reviews" WHERE "appointmentId"::text = ANY(fever_apt_ids);
                         END IF;
-                        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'loyalty_ledger') THEN
-                            DELETE FROM "loyalty_ledger" WHERE "appointmentId"::text = ANY(fever_apt_ids);
-                        END IF;
-                        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'notifications') THEN
-                            DELETE FROM "notifications" WHERE "referenceId"::text = ANY(fever_apt_ids);
-                        END IF;
                         DELETE FROM "appointments" WHERE id::text = ANY(fever_apt_ids);
-                    END IF;
-
-                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'appointment_holds') THEN
-                        DELETE FROM "appointment_holds" WHERE "serviceId"::text = ANY(fever_service_ids);
                     END IF;
 
                     DELETE FROM "services" WHERE id::text = ANY(fever_service_ids);
