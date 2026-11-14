@@ -192,16 +192,20 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
 
   // Fetch blocked slots for selected clinic
   useEffect(() => {
-    const clinicIds = filters.clinicId !== 'all'
+    const clinicIds = filters.clinicId && filters.clinicId !== 'all'
       ? [filters.clinicId]
       : clinics.map((c: any) => c.id);
     if (!clinicIds.length) { setBlockedSlots([]); return; }
+    let cancelled = false;
     Promise.all(
       clinicIds.map((id: string) =>
         adminAPI.getBlockedSlots(id).then((r: any) => r.data || []).catch(() => [])
       )
-    ).then((results) => setBlockedSlots(results.flat()));
-  }, [filters.clinicId, clinics, blocksVersion]);
+    ).then((results) => {
+      if (!cancelled) setBlockedSlots(results.flat());
+    });
+    return () => { cancelled = true; };
+  }, [filters.clinicId, filters.clinicId !== 'all' ? null : clinics, blocksVersion]);
 
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {

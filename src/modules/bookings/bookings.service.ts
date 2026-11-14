@@ -343,27 +343,30 @@ export class BookingsService {
       }
     }
 
-    // Auto-assign to doctor if only one exists and none provided
-    if (!providerId) {
-      // Only an ACTIVE doctor of the clinic can be auto-assigned (never a deactivated/test account).
-      const clinicDoctors = await this.usersRepository.find({
-        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR, isActive: true } as any
+    // Only auto-assign when the logged-in actor is themselves a DOCTOR of this clinic.
+    // Bookings created by sales, clients, owners or admins without choosing a doctor stay unassigned (null).
+    if (!providerId && actor?.id && String(actor.role || '').toLowerCase() === UserRole.DOCTOR) {
+      const actorDoctor = await this.usersRepository.findOne({
+        where: { id: actor.id, assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR, isActive: true } as any,
       });
-      if (clinicDoctors.length === 1) {
-        providerId = clinicDoctors[0].id;
+      if (actorDoctor) {
+        providerId = actorDoctor.id;
       }
     }
 
     // --- ENHANCED: Beauty Doctors Client Identification ---
     let isBeautyDoctorsClient = false;
     let representativeId = createAppointmentDto.representativeId || null;
+    const isClinicOwnProfile = Boolean((userExists as any)?.profile?.clinicOwnClient);
 
-    if (!representativeId && userExists) {
+    if (!representativeId && userExists && !isClinicOwnProfile) {
       // 1. Check if user is assigned to a salesperson
       const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } });
       if (customerRecord?.assignedSalespersonId) {
         isBeautyDoctorsClient = true;
         representativeId = customerRecord.assignedSalespersonId;
+      } else if (customerRecord) {
+        isBeautyDoctorsClient = true;
       }
     } else if (!userExists) {
       // Or if they were from a source that implies central ownership
@@ -372,16 +375,23 @@ export class BookingsService {
       }
     }
 
+    const effectiveSource: 'clinic_own' | 'platform_broker' =
+      createAppointmentDto.appointmentSource === 'clinic_own' ||
+      isClinicOwnProfile ||
+      (!isBeautyDoctorsClient && this.isClinicAccountRole(actor?.role))
+        ? 'clinic_own'
+        : (createAppointmentDto.appointmentSource || 'platform_broker');
+
     const appointmentData: Partial<Appointment> = {
       ...createAppointmentDto,
       clientId,
       providerId: providerId ?? null,
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
-      appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
+      appointmentSource: effectiveSource,
       clientDetails: createAppointmentDto.clientDetails,
       bookedById: (createAppointmentDto.bookedById && createAppointmentDto.bookedById !== clientId) ? createAppointmentDto.bookedById : null,
-      isBeautyDoctorsClient,
+      isBeautyDoctorsClient: effectiveSource === 'clinic_own' ? false : isBeautyDoctorsClient,
       representativeId,
     };
 
@@ -717,10 +727,11 @@ export class BookingsService {
   // Helper method to format appointment display name
   formatAppointmentDisplayName(appointment: Appointment): string {
     const serviceName = appointment.service?.treatment?.name || 'Appointment';
-    const providerName = appointment.provider
-      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
-      : 'Professional';
-    return `${serviceName} with ${providerName}`;
+    const isDoc = appointment.provider && String(appointment.provider.role || '').toLowerCase() === UserRole.DOCTOR;
+    const providerName = isDoc
+      ? `${appointment.provider.firstName || ''} ${appointment.provider.lastName || ''}`.trim()
+      : '';
+    return providerName ? `${serviceName} with ${providerName}` : serviceName;
   }
 
   // Undo a gift card claim made by an appointment that is being rolled back.
@@ -1330,8 +1341,8 @@ export class BookingsService {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
       updateData.isLateCancellation = this.isLateCancellation(appointment);
-      // Reason shown to the client (QA Y33); internal notes are never sent to the client.
-      const reason = String(data?.reason ?? data?.cancellationReason ?? '').trim();
+      // Reason shown to the client (QA Y33); fallback to notes when cancellation reason is sent via notes.
+      const reason = String(data?.reason ?? data?.cancellationReason ?? data?.notes ?? '').trim();
       if (reason) updateData.cancellationReason = reason.slice(0, 1000);
 
       // Payment state is NOT changed by a cancellation. Only an ADMIN may refund, explicitly.
@@ -1732,11 +1743,18 @@ export class BookingsService {
       const mappedAppointments = visibleAppointments.map(apt => {
         const doctor = appointmentDoctor(apt, displayCtx);
         const treatments = appointmentTreatments(apt, displayCtx);
-        let isMasked = false;
+        const isClinicPrivate =
+          apt.appointmentSource === 'clinic_own' ||
+          Boolean((apt.client as any)?.profile?.clinicOwnClient) ||
+          (apt.isBeautyDoctorsClient === false &&
+            !(apt.client as any)?.customerRecords?.length &&
+            !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
+            !apt.representativeId);
 
-        // PRIVACY RULE: Salespeople see full details for anything the query returned (since the query is already filtered for them)
-        if (normalizedRole === 'salesperson') {
-          isMasked = false;
+        let isMasked = false;
+        // PRIVACY RULE (QA #25): Doctor/clinic private clients are masked as 'Busy' for Salespeople
+        if (normalizedRole === 'salesperson' && isClinicPrivate) {
+          isMasked = true;
         }
 
         if (isMasked) {
@@ -1744,13 +1762,24 @@ export class BookingsService {
             id: apt.id,
             startTime: apt.startTime,
             endTime: apt.endTime,
-            status: apt.status,
+            status: 'BLOCKED',
             clinicId: apt.clinicId,
+            clinic: apt.clinic ? { id: apt.clinic.id, name: apt.clinic.name, timezone: apt.clinic.timezone } : null,
             isBlocked: true,
-            displayName: 'Blocked Time',
-            serviceName: 'Blocked',
+            isMaskedPrivate: true,
+            displayName: 'Busy',
+            serviceName: 'Busy',
+            treatmentLabel: 'Busy',
+            treatmentNames: [],
+            client: null,
+            clientId: null,
+            clientDetails: null,
+            notes: null,
             isBeautyDoctorsClient: false,
+            providerId: doctor?.id || apt.providerId || null,
             providerName: doctor?.name || null,
+            doctorId: doctor?.id || null,
+            doctorName: doctor?.name || null,
           };
         }
 
@@ -1762,7 +1791,9 @@ export class BookingsService {
 
         return {
           ...apt,
-          displayName: `${treatments.treatmentLabel || 'Appointment'} with ${doctor?.name || 'Professional'}`,
+          displayName: doctor?.name
+            ? `${treatments.treatmentLabel || 'Appointment'} with ${doctor.name}`
+            : (treatments.treatmentLabel || 'Appointment'),
           serviceName: apt.service?.treatment?.name,
           // All treatments (QA #66) and total duration of the appointment
           treatmentNames: treatments.treatmentNames,
@@ -1850,8 +1881,9 @@ export class BookingsService {
           clinicId: slot.clinicId,
           clinic: slot.clinic ? { id: slot.clinic.id, timezone: slot.clinic.timezone } : null,
           isBlocked: true,
-          displayName: slot.reason || 'Blocked Time',
-          serviceName: slot.reason || 'Blocked',
+          displayName: 'Blocked',
+          serviceName: 'Blocked',
+          reason: normalizedRole === 'salesperson' ? null : (slot.reason || null),
           isBeautyDoctorsClient: false,
           providerName: slot.provider ? `${slot.provider.firstName} ${slot.provider.lastName}` : null,
           bookedByInfo: null,
@@ -2002,8 +2034,8 @@ export class BookingsService {
       appointment.cancelledAt = new Date();
       appointment.cancelledById = userId;
       appointment.isLateCancellation = this.isLateCancellation(appointment);
-      // Reason shown to the client (QA Y33). Only the explicit reason; internal notes never.
-      const reason = String(updateData?.reason ?? updateData?.cancellationReason ?? '').trim();
+      // Reason shown to the client (QA Y33). Fallback to notes if sent via notes field.
+      const reason = String(updateData?.reason ?? updateData?.cancellationReason ?? updateData?.notes ?? '').trim();
       if (reason) appointment.cancellationReason = reason.slice(0, 1000);
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
@@ -2871,6 +2903,11 @@ export class BookingsService {
     }
 
     const displayCtx = await loadAppointmentDisplayContext(appointments, this.servicesRepository, this.usersRepository);
+    const revenueFilters = await this.resolveRevenueScope(userId, userRole, {});
+    const totalSpent = await getPaidRevenueTotal(this.appointmentsRepository.manager, {
+      ...revenueFilters,
+      clientId,
+    });
 
     return {
       client: {
@@ -2904,7 +2941,7 @@ export class BookingsService {
       }),
       summary: {
         totalVisits: appointments.length,
-        totalSpent: appointments.reduce((sum, apt) => sum + (Number(apt.totalAmount) || 0), 0),
+        totalSpent,
         lastVisit: appointments[0]?.startTime || null,
       },
     };
@@ -3096,7 +3133,7 @@ export class BookingsService {
         userRole === UserRole.SALESPERSON;
 
       if (isAdminLike && !isBeautyDoctorsClient) {
-        // Show as blocked time only
+        // Show as busy time only
         return {
           id: apt.id,
           clinicId: apt.clinicId,
@@ -3104,11 +3141,12 @@ export class BookingsService {
           providerId: apt.providerId,
           startTime: apt.startTime,
           endTime: apt.endTime,
-          status: apt.status,
+          status: 'BLOCKED',
           isBlocked: true,
+          isMaskedPrivate: true,
           isBeautyDoctorsClient: false,
-          displayName: 'Blocked Time',
-          serviceName: 'Blocked',
+          displayName: 'Busy',
+          serviceName: 'Busy',
           providerName,
         };
       }
@@ -3148,8 +3186,8 @@ export class BookingsService {
         status: 'blocked',
         isBlocked: true,
         isBeautyDoctorsClient: false,
-        displayName: slot.reason || 'Blocked Time',
-        serviceName: slot.reason || 'Blocked',
+        displayName: 'Blocked',
+        serviceName: 'Blocked',
         providerName,
         clientName: '',
       };

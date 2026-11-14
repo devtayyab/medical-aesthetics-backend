@@ -452,7 +452,7 @@ export const Payments: React.FC = () => {
  transactions.map((txn: any) => (
  <tr key={txn.id} className="hover:bg-gray-50/50 transition-colors group">
  <td className="px-6 py-5 whitespace-nowrap">
- <div className="text-sm font-bold text-gray-900">{format(new Date(txn.createdAt), 'MMM dd, yyyy')}</div>
+ <div className="text-sm font-bold text-gray-900">{format(new Date(txn.createdAt), 'dd/MM/yyyy')}</div>
  <div className="text-[11px] text-gray-400 font-medium font-mono uppercase">{format(new Date(txn.createdAt), 'HH:mm')}</div>
  </td>
  <td className="px-6 py-5">

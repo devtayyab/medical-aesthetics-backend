@@ -930,7 +930,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <option value="">All Statuses</option>
  <option value="new">New</option>
  <option value="contacted">Contacted</option>
- <option value="qualified">Qualified</option>
  <option value="converted">Converted</option>
  <option value="lost">Lost</option>
  </select>
@@ -996,7 +995,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   { value: '', label: 'All Statuses' },
                   { value: 'new', label: 'New' },
                   { value: 'contacted', label: 'Contacted' },
-                  { value: 'qualified', label: 'Qualified' },
                   { value: 'converted', label: 'Converted' },
                   { value: 'lost', label: 'Lost' },
                 ]}
@@ -1726,7 +1724,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  options={[
                       { value: 'new', label: isGreek ? 'Νέο Lead' : 'New' },
                       { value: 'contacted', label: isGreek ? 'Σε επικοινωνία' : 'Contacted' },
-                      { value: 'qualified', label: isGreek ? 'Qualified Lead' : 'Qualified' },
                       { value: 'converted', label: isGreek ? 'Μετατράπηκε σε πελάτη' : 'Converted' },
                       { value: 'lost', label: isGreek ? 'Lost' : 'Lost' }
                     ]}
@@ -1868,8 +1865,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  leftIcon={<Tag className="w-4 h-4" />}
  options={[
  { value: 'new', label: 'New Lead' },
- { value: 'contacted', label: 'Contacted' },
- { value: 'qualified', label: 'Qualified' }
+ { value: 'contacted', label: 'Contacted' }
  ]}
  />
  <Select

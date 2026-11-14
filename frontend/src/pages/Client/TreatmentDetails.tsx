@@ -311,17 +311,17 @@ export const TreatmentDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    <button 
+                     <button 
                       onClick={() => navigate(`/appointment/booking?clinicId=${offering.clinicId}&serviceIds=${offering.id}`)}
                       className="w-full h-14 bg-[#121212] text-[#CBFF38] rounded-xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
                     >
-                      Initiate Booking <ChevronRight size={14} />
+                      {getPreferredLanguage() === 'el' ? 'Κλείστε Ραντεβού' : 'Initiate Booking'} <ChevronRight size={14} />
                     </button>
                   </motion.div>
                 ))
               ) : (
                 <div className="col-span-full py-12 text-center text-gray-400 font-bold uppercase text-xs tracking-widest">
-                  No verified practitioners currently available for this protocol.
+                  {getPreferredLanguage() === 'el' ? 'Δεν υπάρχουν διαθέσιμοι πιστοποιημένοι ιατροί αυτή τη στιγμή.' : 'No verified practitioners currently available for this protocol.'}
                 </div>
               )}
             </div>
@@ -331,7 +331,9 @@ export const TreatmentDetails: React.FC = () => {
           <div className="mt-8 p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3">
             <Info size={16} className="text-gray-400 shrink-0" />
             <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
-              * Final treatment cost may vary depending on the treatment plan determined following a medical assessment.
+              {getPreferredLanguage() === 'el'
+                ? '* Το τελικό κόστος της θεραπείας ενδέχεται να διαφέρει ανάλογα με το θεραπευτικό πλάνο που θα καθοριστεί μετά από ιατρική αξιολόγηση.'
+                : '* Final treatment cost may vary depending on the treatment plan determined following a medical assessment.'}
             </p>
           </div>
         </div>
@@ -342,7 +344,9 @@ export const TreatmentDetails: React.FC = () => {
  <div className="container mx-auto px-4 sm:px-8 max-w-4xl">
  <div className="flex items-center gap-4 mb-6">
  <div className="h-px bg-gray-200 flex-1"></div>
- <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#CBFF38] bg-black px-3 py-1 rounded-md shrink-0">In-depth Protocol</h3>
+ <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#CBFF38] bg-black px-3 py-1 rounded-md shrink-0">
+ {getPreferredLanguage() === 'el' ? 'Αναλυτική Περιγραφή' : 'In-depth Protocol'}
+ </h3>
  <div className="h-px bg-gray-200 flex-1"></div>
  </div>
  <p className="text-base sm:text-lg md:text-xl font-medium text-gray-800 leading-relaxed text-left whitespace-pre-wrap">
@@ -355,9 +359,13 @@ export const TreatmentDetails: React.FC = () => {
               <Shield size={20} />
             </div>
             <div className="space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">Medical Assessment</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
+                {getPreferredLanguage() === 'el' ? 'Ιατρική Αξιολόγηση' : 'Medical Assessment'}
+              </h4>
               <p className="text-xs sm:text-sm text-gray-600 font-medium leading-relaxed">
-                Treatment suitability and the final treatment plan are determined by the treating physician following an individual medical assessment.
+                {getPreferredLanguage() === 'el'
+                  ? 'Η καταλληλότητα της θεραπείας και το τελικό θεραπευτικό πλάνο καθορίζονται από τον θεράποντα ιατρό μετά από εξατομικευμένη ιατρική αξιολόγηση.'
+                  : 'Treatment suitability and the final treatment plan are determined by the treating physician following an individual medical assessment.'}
               </p>
             </div>
           </div>
@@ -365,13 +373,15 @@ export const TreatmentDetails: React.FC = () => {
           {/* Scientific Review Metadata */}
           <div className="mt-6 pt-4 border-t border-gray-200/60 flex flex-col gap-3">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[#CBFF38]"></span> SCIENTIFIC REVIEW
+              <span className="size-2 rounded-full bg-[#CBFF38]"></span> {getPreferredLanguage() === 'el' ? 'ΕΠΙΣΤΗΜΟΝΙΚΟΣ ΕΛΕΓΧΟΣ' : 'SCIENTIFIC REVIEW'}
             </h4>
             <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
-              The informational content has been reviewed by the BeautyDoctors Scientific Board. The suitability of the treatment is assessed individually by the treating physician before any procedure is performed.
+              {getPreferredLanguage() === 'el'
+                ? 'Το ενημερωτικό περιεχόμενο έχει ελεγχθεί από την Επιστημονική Επιτροπή της BeautyDoctors. Η καταλληλότητα της θεραπείας αξιολογείται εξατομικευμένα από τον θεράποντα ιατρό πριν από την πραγματοποίηση οποιασδήποτε πράξης.'
+                : 'The informational content has been reviewed by the BeautyDoctors Scientific Board. The suitability of the treatment is assessed individually by the treating physician before any procedure is performed.'}
             </p>
             <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-1">
-              <span>Last reviewed: <strong className="text-gray-900">September 2026</strong></span>
+              <span>{getPreferredLanguage() === 'el' ? <>Τελευταίος έλεγχος: <strong className="text-gray-900">Σεπτέμβριος 2026</strong></> : <>Last reviewed: <strong className="text-gray-900">September 2026</strong></>}</span>
               {/* Once the Medical Director is appointed: Scientific review: Dr. [NAME], [SPECIALTY] */}
             </div>
           </div>

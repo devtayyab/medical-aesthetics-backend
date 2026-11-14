@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef, HttpException } from '@nestjs/common';
-import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal, revenueDayRange } from '../payments/revenue.util';
+import { buildPaidRevenueQuery, getPaidRevenueBy, getPaidRevenueByDay, getPaidRevenueTotal, netPaidExpression, revenueDayRange } from '../payments/revenue.util';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
@@ -1459,10 +1459,9 @@ export class CrmService implements OnModuleInit {
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         qb.andWhere('lead.status IN (:...status)', { status: filters.status });
-      } else if (filters.status === 'contacted' || filters.status === 'in_conversation') {
-        // One "Contacted" status (QA Y51): legacy 'follow_up' cards count as contacted;
-        // 'in_conversation' is the old name of this filter, kept for bookmarked URLs
-        qb.andWhere("lead.status IN ('contacted', 'follow_up')");
+      } else if (filters.status === 'contacted' || filters.status === 'in_conversation' || filters.status === 'qualified') {
+        // One "Contacted" status (QA Y51 / NEW-12): legacy 'follow_up', 'qualified', 'in_conversation', 'appointment_scheduled' count as contacted
+        qb.andWhere("lead.status IN ('contacted', 'follow_up', 'qualified', 'in_conversation', 'appointment_scheduled')");
       } else if (filters.status !== 'all') {
         qb.andWhere('lead.status = :status', { status: filters.status });
       }
@@ -1656,7 +1655,7 @@ export class CrmService implements OnModuleInit {
     const rawStats = await qb
       .select('COUNT(lead.id)', 'total')
       .addSelect("COUNT(CASE WHEN lead.status = 'new' THEN 1 END)", 'newInquiries')
-      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up') THEN 1 END)", 'contacted')
+      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up', 'qualified', 'in_conversation', 'appointment_scheduled') THEN 1 END)", 'contacted')
       .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'converted')
       .addSelect("COUNT(CASE WHEN lead.status = 'lost' THEN 1 END)", 'lost')
       .getRawOne();
@@ -3957,10 +3956,8 @@ export class CrmService implements OnModuleInit {
     const aptStats = await aptQ.getRawMany();
 
     // Revenue per salesperson: shared definition (payments received, EUR, net of refunds).
-    const agentRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'salespersonId', {
-      startDate: dateRange?.startDate,
-      endDate: dateRange?.endDate,
-    });
+    const revenueRange = dateRange ? revenueDayRange(dateRange.startDate, dateRange.endDate) : {};
+    const agentRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'salespersonId', revenueRange);
 
     // Merge with appointment stats
     for (const apt of aptStats) {
@@ -3991,6 +3988,41 @@ export class CrmService implements OnModuleInit {
         avgAppointmentValue: completedAppointments > 0 ? totalRevenue / completedAppointments : 0,
         conversionRate: totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0
       });
+    }
+
+    // Ensure every salesperson with ledger revenue in the period gets their totalRevenue credited
+    // even if they had 0 appointments in aptStats during this window.
+    for (const [revAgentId, revAmount] of agentRevenue.entries()) {
+      const existing = agentMap.get(revAgentId);
+      if (existing) {
+        existing.totalRevenue = revAmount;
+        existing.avgAppointmentValue = existing.completedAppointments > 0
+          ? revAmount / existing.completedAppointments
+          : 0;
+      } else if (revAmount !== 0) {
+        const u = await this.usersRepository.findOne({
+          where: { id: revAgentId },
+          select: ['id', 'firstName', 'lastName'],
+        });
+        agentMap.set(revAgentId, {
+          agentId: revAgentId,
+          agentName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unknown Agent' : 'Unknown Agent',
+          totalCommunications: 0,
+          totalCalls: 0,
+          answeredCalls: 0,
+          missedCalls: 0,
+          totalDuration: 0,
+          totalAppointments: 0,
+          completedAppointments: 0,
+          noShows: 0,
+          cancellations: 0,
+          totalRevenue: revAmount,
+          totalLeads: 0,
+          convertedLeads: 0,
+          avgAppointmentValue: 0,
+          conversionRate: 0,
+        });
+      }
     }
 
     // 3. Get lead statistics per agent
@@ -4038,18 +4070,50 @@ export class CrmService implements OnModuleInit {
   }
 
   async getServiceStats(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
-    let q = this.appointmentsRepository
+    const revenueRange: { startDate?: Date; endDate?: Date } = dateRange ? revenueDayRange(dateRange.startDate, dateRange.endDate) : {};
+    let aptQ = this.appointmentsRepository
       .createQueryBuilder('apt')
       .leftJoin('apt.service', 'service')
       .leftJoin('service.treatment', 'treatment')
       .select('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'count')
-      .addSelect('SUM(COALESCE(apt.totalAmount, service.price, 0))', 'revenue')
+      .where("apt.status <> 'DELETED'")
       .groupBy('treatment.name');
-    if (dateRange) {
-      q = q.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    if (revenueRange.startDate && revenueRange.endDate) {
+      aptQ = aptQ.andWhere('apt.startTime BETWEEN :startDate AND :endDate', revenueRange);
     }
-    return q.getRawMany();
+    const aptRows = await aptQ.getRawMany();
+
+    // Revenue per treatment from the single source of truth (payment_records, EUR, net of refunds/voids).
+    const revRows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, revenueRange, 'p')
+      .leftJoin('p_apt.service', 'service')
+      .leftJoin('service.treatment', 'treatment')
+      .select("COALESCE(treatment.name, 'Other / Direct Payment')", 'serviceName')
+      .addSelect(`${netPaidExpression('p')}`, 'revenue')
+      .groupBy('treatment.name')
+      .getRawMany();
+
+    const byService = new Map<string, { serviceName: string; count: number; revenue: number }>();
+    for (const r of aptRows) {
+      const name = (r.serviceName || '').trim();
+      if (!name) continue;
+      byService.set(name, {
+        serviceName: name,
+        count: parseInt(r.count, 10) || 0,
+        revenue: 0,
+      });
+    }
+    for (const r of revRows) {
+      const name = (r.serviceName || '').trim() || 'Other / Direct Payment';
+      const rev = Number(r.revenue ?? 0) || 0;
+      const existing = byService.get(name);
+      if (existing) {
+        existing.revenue += rev;
+      } else if (rev !== 0) {
+        byService.set(name, { serviceName: name, count: 0, revenue: rev });
+      }
+    }
+    return Array.from(byService.values()).sort((a, b) => b.revenue - a.revenue || b.count - a.count);
   }
 
   async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }, clinicId?: string): Promise<any[]> {
@@ -4084,9 +4148,9 @@ export class CrmService implements OnModuleInit {
     const stats = await qb.getRawMany();
 
     // Revenue per clinic: shared definition (payments received, EUR, net of refunds).
+    const clinicRevRange = dateRange ? revenueDayRange(dateRange.startDate, dateRange.endDate) : {};
     const clinicRevenue = await getPaidRevenueBy(this.appointmentsRepository.manager, 'clinicId', {
-      startDate: dateRange?.startDate,
-      endDate: dateRange?.endDate,
+      ...clinicRevRange,
       clinicId,
     });
 
@@ -4663,14 +4727,16 @@ export class CrmService implements OnModuleInit {
 
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
     // Shared revenue definition (payments received, EUR) grouped by the payment's salesperson.
-    const rows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, {
-      startDate: dateRange?.startDate,
-      endDate: dateRange?.endDate,
-    }, 'p')
+    // Includes unassigned/direct payments as well so Total Net Cash on CRM Reports always matches
+    // the Payments Ledger and Manager Dashboard total for the same period.
+    const revenueRange = dateRange ? revenueDayRange(dateRange.startDate, dateRange.endDate) : {};
+    const rows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, revenueRange, 'p')
       .leftJoin('users', 'agent', 'agent.id = p.salespersonId')
-      .andWhere('p.salespersonId IS NOT NULL')
-      .select('p.salespersonId', 'agentId')
-      .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
+      .select("COALESCE(CAST(p.salespersonId AS text), 'unassigned')", 'agentId')
+      .addSelect(
+        `CASE WHEN p.salespersonId IS NULL THEN 'Direct / Unassigned' ELSE COALESCE(NULLIF(TRIM(CONCAT(agent.firstName, ' ', agent.lastName)), ''), 'Unknown Agent') END`,
+        'agentName',
+      )
       .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('payment', 'deposit') THEN p.amount ELSE 0 END), 0)`, 'revenue')
       .addSelect(`COALESCE(SUM(CASE WHEN p.type IN ('refund', 'void') THEN p.amount ELSE 0 END), 0)`, 'refunds')
       .groupBy('p.salespersonId')
@@ -4982,6 +5048,7 @@ export class CrmService implements OnModuleInit {
     // One row per treatment, not per clinic service: the same treatment offered by
     // several clinics (or created twice with the same name) used to show up as
     // duplicate rows. Group by treatment in SQL, then merge by normalized name.
+    const revenueRange: { startDate?: Date; endDate?: Date } = dateRange ? revenueDayRange(dateRange.startDate, dateRange.endDate) : {};
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
       .innerJoin('apt.service', 'service')
@@ -4989,17 +5056,27 @@ export class CrmService implements OnModuleInit {
       .select('treatment.id', 'treatmentId')
       .addSelect('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
-      .addSelect(`COALESCE(SUM(CASE WHEN apt.status <> 'CANCELLED' THEN apt.totalAmount ELSE 0 END), 0)`, 'totalRevenue')
       .addSelect("COUNT(CASE WHEN apt.status = 'CANCELLED' THEN 1 END)", 'cancellations')
       .where("apt.status <> 'DELETED'");
 
-    if (dateRange) {
-      query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    if (revenueRange.startDate && revenueRange.endDate) {
+      query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', revenueRange);
     }
 
     query = query.groupBy('treatment.id').addGroupBy('treatment.name');
 
     const results = await query.getRawMany();
+
+    // Revenue per treatment from payment_records (single source of truth).
+    const revRows = await buildPaidRevenueQuery(this.appointmentsRepository.manager, revenueRange, 'p')
+      .leftJoin('p_apt.service', 'service')
+      .leftJoin('service.treatment', 'treatment')
+      .select('treatment.id', 'treatmentId')
+      .addSelect('treatment.name', 'serviceName')
+      .addSelect(`${netPaidExpression('p')}`, 'totalRevenue')
+      .groupBy('treatment.id')
+      .addGroupBy('treatment.name')
+      .getRawMany();
 
     const normalize = (name: string) =>
       (name || '')
@@ -5024,20 +5101,37 @@ export class CrmService implements OnModuleInit {
       const appointments = parseInt(row.totalAppointments) || 0;
       if (current) {
         current.totalAppointments += appointments;
-        current.totalRevenue += parseFloat(row.totalRevenue) || 0;
         current.cancellations += parseInt(row.cancellations) || 0;
       } else {
         merged.set(key, {
           serviceId: row.treatmentId || null,
           serviceName: name,
           totalAppointments: appointments,
-          totalRevenue: parseFloat(row.totalRevenue) || 0,
+          totalRevenue: 0,
           cancellations: parseInt(row.cancellations) || 0,
         });
       }
     }
 
-    return Array.from(merged.values()).sort((a, b) => b.totalAppointments - a.totalAppointments);
+    for (const r of revRows) {
+      const name = (r.serviceName || '').trim() || 'Unknown treatment';
+      const key = normalize(name);
+      const rev = parseFloat(r.totalRevenue) || 0;
+      const current = merged.get(key);
+      if (current) {
+        current.totalRevenue += rev;
+      } else if (rev !== 0) {
+        merged.set(key, {
+          serviceId: r.treatmentId || null,
+          serviceName: name,
+          totalAppointments: 0,
+          totalRevenue: rev,
+          cancellations: 0,
+        });
+      }
+    }
+
+    return Array.from(merged.values()).sort((a, b) => b.totalRevenue - a.totalRevenue || b.totalAppointments - a.totalAppointments);
   }
 
   async getAdvertisementStats(dateRange?: { startDate: Date; endDate: Date }) {

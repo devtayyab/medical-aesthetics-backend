@@ -30,8 +30,8 @@ export const Wallet: React.FC = () => {
  </p>
  <p className="text-sm mt-0.5">
  {localStorage.getItem('preferredLang') === 'el'
- ? 'Το πρόγραμμα επιβράβευσης δεν είναι ενεργό στην πρώτη έκδοση. Οι πελάτες δεν βλέπουν πόντους ή πορτοφόλι μέχρι να ενεργοποιηθεί η λειτουργία (VITE_FEATURE_LOYALTY).'
- : 'Loyalty is not live at launch. Clients see no points or wallet until the feature is switched on (VITE_FEATURE_LOYALTY).'}
+ ? 'Το πρόγραμμα επιβράβευσης δεν είναι ενεργό στην πρώτη έκδοση. Οι πελάτες δεν βλέπουν πόντους ή πορτοφόλι μέχρι να ενεργοποιηθεί η λειτουργία.'
+ : 'Loyalty is not live at launch. Clients see no points or wallet until the feature is switched on.'}
  </p>
  </div>
  )}

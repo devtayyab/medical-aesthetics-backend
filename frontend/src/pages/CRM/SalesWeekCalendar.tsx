@@ -424,7 +424,7 @@ export const SalesWeekCalendar: React.FC = () => {
           firstName: walkInForm.firstName,
           lastName: walkInForm.lastName,
           phone: walkInForm.phone,
-          email: `${walkInForm.firstName.toLowerCase()}${Math.random().toString(36).substr(2, 5)}@walkin.local`,
+          email: (walkInForm as any).email?.trim() || undefined,
           status: 'new'
         })).unwrap();
         clientId = leadRes.id;
@@ -847,28 +847,32 @@ export const SalesWeekCalendar: React.FC = () => {
                       const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
 
                       if (apt.isBlocked) {
+                        const isMasked = Boolean((apt as any).isMaskedPrivate);
                         return (
                           <div
                             key={apt.id}
-                            onClick={(e) => { e.stopPropagation(); handleUnblockSlot(apt.id); }}
-                            className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-orange-100/50 hover:border-orange-300 transition-all group"
+                            onClick={(e) => { e.stopPropagation(); if (!isMasked) handleUnblockSlot(apt.id); }}
+                            className={`absolute left-1 right-1 rounded-md border-2 border-dashed ${isMasked ? 'border-slate-300 bg-slate-100/80 cursor-not-allowed' : 'border-orange-200 bg-orange-50/40 cursor-pointer hover:bg-orange-100/50 hover:border-orange-300'} z-10 flex items-center justify-center overflow-hidden transition-all group`}
                             style={{ top, height }}
-                            title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}. Click to unblock.`}
+                            title={isMasked ? 'Busy' : 'Blocked'}
                           >
                             <div className="flex flex-col items-center justify-center p-1 text-center">
-                              <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
-                              {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
+                              <span className={`text-[8px] font-black ${isMasked ? 'text-slate-600' : 'text-orange-600'} uppercase tracking-tighter leading-none`}>
+                                {isMasked ? 'BUSY' : 'BLOCKED'}
+                              </span>
                             </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUnblockSlot(apt.id);
-                              }}
-                              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
-                              title="Delete blocked time"
-                            >
-                              <Trash2 size={12} className="stroke-[2.5]" />
-                            </button>
+                            {!isMasked && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnblockSlot(apt.id);
+                                }}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
+                                title="Delete blocked time"
+                              >
+                                <Trash2 size={12} className="stroke-[2.5]" />
+                              </button>
+                            )}
                           </div>
                         );
                       }

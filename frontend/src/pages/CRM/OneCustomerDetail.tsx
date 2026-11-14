@@ -67,31 +67,35 @@ const DialerModal = ({
  onClose,
  customerName,
  phoneNumber,
- onCallEnded
+ onCallEnded,
+ onSkipToResult,
 }: {
  isOpen: boolean;
  onClose: () => void;
  customerName: string;
  phoneNumber: string;
  onCallEnded: (duration: number) => void;
+ onSkipToResult?: () => void;
 }) => {
- const [callStatus, setCallStatus] = useState<'dialing' | 'connected' | 'ended'>('dialing');
+ const [callStatus, setCallStatus] = useState<'confirm' | 'dialing' | 'connected' | 'ended'>('confirm');
  const [duration, setDuration] = useState(0);
 
  useEffect(() => {
- let timer: NodeJS.Timeout;
  if (isOpen) {
- // Reset state on open
- setCallStatus('dialing');
+ setCallStatus('confirm');
  setDuration(0);
+ }
+ }, [isOpen]);
 
- // Simulate connection after 2 seconds
+ useEffect(() => {
+ let timer: NodeJS.Timeout;
+ if (callStatus === 'dialing') {
  timer = setTimeout(() => {
  setCallStatus('connected');
- }, 2000);
+ }, 1500);
  }
  return () => clearTimeout(timer);
- }, [isOpen]);
+ }, [callStatus]);
 
  useEffect(() => {
  let timer: NodeJS.Timeout;
@@ -111,10 +115,9 @@ const DialerModal = ({
 
  const handleEndCall = () => {
  setCallStatus('ended');
- // Small delay to show"Call Ended" state before closing
  setTimeout(() => {
  onCallEnded(duration);
- }, 1000);
+ }, 600);
  };
 
  if (!isOpen) return null;
@@ -130,10 +133,9 @@ const DialerModal = ({
  {/* Header */}
  <div className="p-6 flex justify-between items-center">
  <div className="text-xs font-bold tracking-widest text-gray-400 uppercase">VoIP Dialer</div>
- <div className="flex gap-2">
- <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
- <span className="text-xs text-green-400 font-bold">Online</span>
- </div>
+ <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-full">
+   <X className="w-4 h-4" />
+ </button>
  </div>
 
  {/* Caller Info */}
@@ -154,9 +156,11 @@ const DialerModal = ({
 
  <div className="space-y-1">
  <div className={`text-sm font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-block
- ${callStatus === 'dialing' ? 'bg-yellow-500/20 text-yellow-400' :
+ ${callStatus === 'confirm' ? 'bg-blue-500/20 text-blue-300' :
+ callStatus === 'dialing' ? 'bg-yellow-500/20 text-yellow-400' :
  callStatus === 'connected' ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-red-500/20 text-red-400'}`}>
- {callStatus === 'dialing' ? 'Dialing...' :
+ {callStatus === 'confirm' ? 'Ready to Call' :
+ callStatus === 'dialing' ? 'Dialing...' :
  callStatus === 'connected' ? (
  <div className="flex items-center gap-2">
  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -168,28 +172,53 @@ const DialerModal = ({
  </div>
 
  {/* Controls */}
- <div className="p-8 pb-10 flex justify-center items-center gap-8">
- <Button
- variant="ghost"
- className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
- onClick={onClose}
- >
- <User className="w-6 h-6" />
- </Button>
-
- <Button
- onClick={handleEndCall}
- className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/40 border-4 border-gray-800 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
- >
- <Phone className="w-8 h-8 fill-current rotate-[135deg]" />
- </Button>
-
- <Button
- variant="ghost"
- className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
- >
- <MoreHorizontal className="w-6 h-6" />
- </Button>
+ <div className="p-6 pb-8 flex flex-col items-center gap-3">
+ {callStatus === 'confirm' ? (
+   <>
+     <div className="flex items-center gap-3 w-full">
+       <Button
+         onClick={() => setCallStatus('dialing')}
+         className="flex-1 h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+       >
+         <PhoneCall className="w-4 h-4" /> Call Now
+       </Button>
+       <Button
+         variant="ghost"
+         onClick={onClose}
+         className="h-12 px-4 rounded-2xl bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-bold text-xs"
+       >
+         Cancel
+       </Button>
+     </div>
+     {onSkipToResult && (
+       <button
+         type="button"
+         onClick={onSkipToResult}
+         className="w-full py-2.5 text-xs font-bold text-blue-300 hover:text-white underline underline-offset-4 transition-colors"
+       >
+         Skip to Result (Log without calling) →
+       </button>
+     )}
+   </>
+ ) : (
+   <div className="flex justify-center items-center gap-6">
+     <Button
+       onClick={handleEndCall}
+       className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/40 border-4 border-gray-800 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+     >
+       <Phone className="w-8 h-8 fill-current rotate-[135deg]" />
+     </Button>
+     {onSkipToResult && (
+       <button
+         type="button"
+         onClick={onSkipToResult}
+         className="text-xs font-bold text-gray-300 hover:text-white underline"
+       >
+         Skip to Result
+       </button>
+     )}
+   </div>
+ )}
  </div>
  </div>
  </div>
@@ -742,8 +771,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  // If appointment booked tagging, ensure logic
  if (interactionOutcome === 'appointment_booked' && !isConverted) {
  try {
- // Booking => "Appointment booked"; Converted only after a completed visit
- await dispatch(updateLead({ id: customer.id, updates: { status: 'appointment_scheduled' as any } })).unwrap();
+ // Booking => "contacted" until a completed visit converts the lead
+ await dispatch(updateLead({ id: customer.id, updates: { status: 'contacted' as any } })).unwrap();
  } catch (updateErr) {
  console.warn("Lead update skipped (maybe already converted):", updateErr);
  }
@@ -874,19 +903,39 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Step Content Container */}
  <div className="min-h-[140px] flex flex-col justify-center">
  {workflowStep === 1 && (
- <div className="animate-in fade-in duration-500">
+ <div className="animate-in fade-in duration-500 space-y-2.5">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
  <button
- className="w-full h-20 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-200 transition-all rounded-lg group"
+ type="button"
+ className="w-full h-20 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all rounded-lg group"
  onClick={() => handleStartInteraction('call')}
  >
- <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
- <PhoneCall className="w-5 h-5" />
+ <div className="p-2 bg-white text-blue-600 rounded-lg shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
+ <PhoneCall className="w-4 h-4" />
  </div>
  <div className="text-center">
- <span className="font-bold text-slate-700 text-sm block">Start Interaction</span>
- <span className="text-[10px] text-slate-400 font-medium">Log a call or meeting</span>
+ <span className="font-bold text-slate-700 text-xs block">Start Interaction (Call)</span>
+ <span className="text-[10px] text-slate-400 font-medium">Open dialer with confirmation</span>
  </div>
  </button>
+ <button
+ type="button"
+ className="w-full h-20 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-white hover:border-emerald-300 transition-all rounded-lg group"
+ onClick={() => {
+   setInteractionType('call');
+   setCallDuration(0);
+   setWorkflowStep(2);
+ }}
+ >
+ <div className="p-2 bg-white text-emerald-600 rounded-lg shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
+ <ClipboardCheck className="w-4 h-4" />
+ </div>
+ <div className="text-center">
+ <span className="font-bold text-slate-700 text-xs block">Skip to Result</span>
+ <span className="text-[10px] text-slate-400 font-medium">Log outcome without calling</span>
+ </div>
+ </button>
+ </div>
  </div>
  )}
 
@@ -1954,7 +2003,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  onSuccess={async () => {
  if (!isConverted) {
  try {
- await dispatch(updateLead({ id: customer.id, updates: { status: 'appointment_scheduled' as any } })).unwrap();
+ await dispatch(updateLead({ id: customer.id, updates: { status: 'contacted' as any } })).unwrap();
  } catch (e) {
  console.error("Lead conversion failed on success", e);
  }
@@ -1969,6 +2018,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  customerName={`${customer.firstName} ${customer.lastName}`}
  phoneNumber={customer.phone || 'No Number'}
  onCallEnded={handleCallEnded}
+ onSkipToResult={() => {
+   setShowDialer(false);
+   setCallDuration(0);
+   setWorkflowStep(2);
+ }}
  />
 
  </>

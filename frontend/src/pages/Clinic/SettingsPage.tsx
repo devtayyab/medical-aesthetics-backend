@@ -82,9 +82,15 @@ const SettingsPage: React.FC = () => {
  setBankToast(null);
  try {
  await bankDetailsApi.update(bankData);
- setBankToast({ type:"success", msg:"Bank details saved successfully!" });
+ setBankToast({
+   type: "success",
+   msg: isGreek ? "Τα τραπεζικά στοιχεία αποθηκεύτηκαν επιτυχώς!" : "Bank details saved successfully!",
+ });
  } catch {
- setBankToast({ type:"error", msg:"Failed to save bank details. Try again." });
+ setBankToast({
+   type: "error",
+   msg: isGreek ? "Αποτυχία αποθήκευσης τραπεζικών στοιχείων. Δοκιμάστε ξανά." : "Failed to save bank details. Try again.",
+ });
  } finally {
  setIsSavingBank(false);
  setTimeout(() => setBankToast(null), 4000);
@@ -352,8 +358,14 @@ const SettingsPage: React.FC = () => {
  <Landmark size={20} />
  </div>
  <div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Στοιχεία τραπεζικού λογαριασμού" : "Bank Account Details"}</h2>
- <p className="text-[10px] text-gray-400 font-medium">Online payments will be transferred to this bank account</p>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">
+   {isGreek ? "Τραπεζικά Στοιχεία & Εκκαθαρίσεις Ιατρών (Viva Wallet)" : "Bank Account Details & Doctor Payouts (Viva Wallet)"}
+ </h2>
+ <p className="text-[10px] text-gray-400 font-medium">
+   {isGreek
+     ? "Οι online πληρωμές πελατών μεταφέρονται σε αυτόν τον τραπεζικό λογαριασμό"
+     : "Online payments will be transferred to this bank account"}
+ </p>
  </div>
  </div>
 
@@ -374,12 +386,14 @@ const SettingsPage: React.FC = () => {
  <div className="space-y-5 mt-6">
  {/* IBAN */}
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">IBAN Number *</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">
+   {isGreek ? "Αριθμός IBAN *" : "IBAN Number *"}
+ </p>
  <input
  type="text"
  value={bankData.bankIban}
  onChange={(e) => setBankData({ ...bankData, bankIban: e.target.value.toUpperCase() })}
- placeholder="e.g. GB29 NWBK 6016 1331 9268 19"
+ placeholder="π.χ. GR16 0110 1250 0000 0001 2300 695"
  className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none tracking-widest"
  />
  </div>
@@ -387,47 +401,63 @@ const SettingsPage: React.FC = () => {
  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
  {/* Account Holder */}
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Account Holder Name *</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">
+   {isGreek ? "Δικαιούχος Λογαριασμού *" : "Account Holder Name *"}
+ </p>
  <input
  type="text"
  value={bankData.bankAccountHolder}
  onChange={(e) => setBankData({ ...bankData, bankAccountHolder: e.target.value })}
- placeholder="e.g. Dr. Smith Aesthetics Ltd"
+ placeholder={isGreek ? "π.χ. Ιατρική Αισθητική Ε.Π.Ε." : "e.g. Dr. Papadopoulos Aesthetics Ltd"}
  className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none"
  />
  </div>
 
  {/* Bank Name */}
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Bank Name</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">
+   {isGreek ? "Όνομα Τράπεζας" : "Bank Name"}
+ </p>
  <input
  type="text"
  value={bankData.bankName}
  onChange={(e) => setBankData({ ...bankData, bankName: e.target.value })}
- placeholder="e.g. HSBC, Barclays, Alpha Bank"
+ placeholder={isGreek ? "π.χ. Εθνική Τράπεζα, Alpha Bank, Eurobank, Πειραιώς" : "e.g. National Bank of Greece, Alpha Bank, Eurobank"}
  className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none"
  />
  </div>
 
  {/* BIC / SWIFT */}
  <div className="md:col-span-2 relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">BIC / SWIFT Code</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">
+   {isGreek ? "Κωδικός BIC / SWIFT" : "BIC / SWIFT Code"}
+ </p>
  <input
  type="text"
  value={bankData.bankBic}
  onChange={(e) => setBankData({ ...bankData, bankBic: e.target.value.toUpperCase() })}
- placeholder="e.g. HBUKGB4B"
+ placeholder="π.χ. ETHNGRAA"
  className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none tracking-widest"
  />
  </div>
  </div>
 
- {/* Info note */}
+ {/* Info note on how doctor payouts work */}
  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
  <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
- <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
- When a client pays online via Viva Wallet, the amount will be <strong>automatically transferred</strong> to this bank account after payment confirmation.
- </p>
+ <div className="text-[10px] font-bold text-amber-800 leading-relaxed space-y-1">
+   <p>
+     {isGreek ? (
+       <>
+         <strong>Πώς λειτουργούν οι πληρωμές & η εκκαθάριση ιατρών:</strong> Όταν ένας πελάτης πληρώνει online μέσω <strong>Viva Wallet</strong>, το ποσό καταγράφεται αυτόματα στο ιστορικό πληρωμών της κλινικής σας και αποδίδεται στον δηλωμένο τραπεζικό λογαριασμό (IBAN) μετά την επιβεβαίωση της συναλλαγής και την ολοκλήρωση του ραντεβού. Για πληρωμές στο ιατρείο (μετρητά ή POS), η είσπραξη γίνεται απευθείας από την κλινική.
+       </>
+     ) : (
+       <>
+         <strong>How doctor & clinic payouts work:</strong> When a client pays online via <strong>Viva Wallet</strong>, the payment is recorded in your clinic ledger and transferred to the IBAN above after payment confirmation and appointment completion. In-clinic payments (cash or card at venue) are collected directly by the clinic.
+       </>
+     )}
+   </p>
+ </div>
  </div>
 
  <button
@@ -437,7 +467,9 @@ const SettingsPage: React.FC = () => {
  className="h-12 px-6 bg-[#CBFF38] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 flex items-center gap-3 disabled:opacity-20"
  >
  <Save size={16} />
- {isSavingBank ?"Saving..." :"Save Bank Details"}
+ {isSavingBank
+   ? (isGreek ? "Αποθήκευση..." : "Saving...")
+   : (isGreek ? "Αποθήκευση Τραπεζικών Στοιχείων" : "Save Bank Details")}
  </button>
  </div>
  </div>

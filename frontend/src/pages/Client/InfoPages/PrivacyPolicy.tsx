@@ -231,7 +231,7 @@ export const PrivacyPolicy: React.FC = () => {
                 <ul className="list-disc list-inside space-y-1.5 pl-1">
                   <li><strong>Ο Πάροχος που επιλέγετε:</strong> μόνο τα δεδομένα που είναι αναγκαία για το ραντεβού σας. Τα δεδομένα σας δεν είναι προσβάσιμα σε άλλους ιατρούς.</li>
                   <li><strong>Εξουσιοδοτημένο προσωπικό της BeautyDoctors:</strong> για την εξυπηρέτηση, την οργάνωση ραντεβού και την υποστήριξη, υπό υποχρέωση εχεμύθειας.</li>
-                  <li><strong>Εκτελούντες την επεξεργασία:</strong> Amazon Web Services (φιλοξενία, περιοχή ΕΕ eu-central-1), Viva (πληρωμές), πάροχος Email (AWS SES), SMS Gateway, HubSpot (διαχείριση αιτημάτων ενδιαφέροντος) και OpenStreetMap (εμφάνιση χαρτών).</li>
+                  <li><strong>Εκτελούντες την επεξεργασία:</strong> Amazon Web Services (φιλοξενία, περιοχή ΕΕ eu-central-1), Viva (πληρωμές), πάροχος Email (AWS SES), SMS Gateway, HubSpot (διαχείριση αιτημάτων ενδιαφέροντος) και Google Maps (εμφάνιση χαρτών).</li>
                   <li><strong>Meta (Facebook/Instagram):</strong> όταν συμπληρώνετε φόρμα διαφήμισης, η Meta μας διαβιβάζει τα στοιχεία της φόρμας. Η Meta επεξεργάζεται τα δικά της δεδομένα ως αυτοτελής υπεύθυνος, σύμφωνα με τη δική της πολιτική.</li>
                   <li><strong>Δημόσιες αρχές:</strong> μόνο όταν αυτό επιβάλλεται από τον νόμο.</li>
                   <li><strong>DPO:</strong> Η άσκηση των δικαιωμάτων προϋποθέτει την υποβολή, χωρίς κόστος, έγγραφης αίτησης στην Εταιρία, στην ηλεκτρονική διεύθυνση <a href="mailto:personaldata@beautydoctors.gr" className="text-lime-700 underline font-semibold">personaldata@beautydoctors.gr</a>.</li>
@@ -468,7 +468,7 @@ export const PrivacyPolicy: React.FC = () => {
                 <ul className="list-disc list-inside space-y-1.5 pl-1">
                   <li><strong>The Provider you choose:</strong> only the data necessary for your appointment. Your data is not accessible to other doctors.</li>
                   <li><strong>Authorised BeautyDoctors staff:</strong> for customer service, organising appointments and support, subject to a duty of confidentiality.</li>
-                  <li><strong>Processors providing technical services:</strong> Amazon Web Services (hosting, EU region eu-central-1), Viva (payments), email provider (AWS SES), SMS Gateway, HubSpot (management of enquiries), and OpenStreetMap (map display).</li>
+                  <li><strong>Processors providing technical services:</strong> Amazon Web Services (hosting, EU region eu-central-1), Viva (payments), email provider (AWS SES), SMS Gateway, HubSpot (management of enquiries), and Google Maps (map display).</li>
                   <li><strong>Meta (Facebook/Instagram):</strong> when you fill in an advertisement form, Meta transmits the form data to us. Meta processes its own data as an independent controller, in accordance with its own policy.</li>
                   <li><strong>Public authorities:</strong> only where required by law.</li>
                   <li><strong>DPO:</strong> Rights may be exercised by submitting, free of charge, a written request to the Company at the email address <a href="mailto:personaldata@beautydoctors.gr" className="text-lime-700 underline font-semibold">personaldata@beautydoctors.gr</a>.</li>

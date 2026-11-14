@@ -204,7 +204,7 @@ export const Footer: React.FC = () => {
         </a>
       </li>
       <li className="pt-1 text-[10px] text-gray-300">
-        23 Xanthippou Street, Pikermi 19009, Greece
+        {isGreek ? 'Ξανθίππου 23, Πικέρμι 19009, Ελλάδα' : '23 Xanthippou Street, Pikermi 19009, Greece'}
       </li>
     </ul>
   </div>

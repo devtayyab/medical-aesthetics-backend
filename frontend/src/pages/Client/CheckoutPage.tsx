@@ -11,6 +11,7 @@ import { createAppointment, clearBooking } from"@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from"@/store";
 import { Input } from"@/components/atoms/Input/Input";
 import { format } from"date-fns";
+import { el } from "date-fns/locale";
 import { paymentsAPI } from"@/services/api";
 import { FaGift } from"react-icons/fa";
 import { FEATURE_GIFT_CARDS } from"@/config/features";
@@ -420,7 +421,7 @@ export const CheckoutPage: React.FC = () => {
  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">{isGreek ? "ΡΑΝΤΕΒΟΥ" : "Appointment"}</h4>
  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
  <p className="text-sm font-black text-gray-900 uppercase mb-1">
- {selectedDate ? format(new Date(`${selectedDate}T00:00:00`),"EEEE, dd/MM/yyyy") : (isGreek ? 'Χωρίς ημερομηνία' : 'Date not set')}
+ {selectedDate ? format(new Date(`${selectedDate}T00:00:00`),"EEEE, dd/MM/yyyy", isGreek ? { locale: el } : undefined) : (isGreek ? 'Χωρίς ημερομηνία' : 'Date not set')}
  </p>
  <p className="text-lg font-black text-lime-600">
  {selectedTimeSlot ? formatClinicTime(selectedTimeSlot.startTime, selectedClinic?.timezone) : '00:00'}

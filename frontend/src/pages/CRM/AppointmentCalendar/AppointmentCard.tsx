@@ -53,19 +53,24 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const statusCfg = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.PENDING;
   const paymentCfg = PAYMENT_STATUS_CONFIG[apt.computedPaymentStatus] || PAYMENT_STATUS_CONFIG.UNPAID;
 
-  const isBlocked = apt.isBlocked;
+  const isMaskedPrivate = Boolean((apt as any).isMaskedPrivate);
+  const isBlocked = apt.isBlocked || isMaskedPrivate;
   const isFullDayBlocked = isBlocked && apt.startTime?.includes('00:00:00') && (apt.endTime?.includes('23:59') || apt.endTime?.includes('23:00'));
 
-  const clientName = isBlocked
-    ? (isFullDayBlocked ? 'Clinic Closed' : 'Blocked Slot')
+  const clientName = isMaskedPrivate
+    ? 'Busy'
+    : isBlocked
+    ? (isFullDayBlocked ? 'Clinic Closed' : 'Blocked')
     : apt.client?.firstName
     ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
     : apt.clientDetails?.fullName || 'Unknown Patient';
 
   const clinicName = apt.clinic?.name || apt.clinicName || '';
 
-  const primaryServiceName = isBlocked
-    ? apt.displayName || apt.notes || apt.reason || 'Unavailable'
+  const primaryServiceName = isMaskedPrivate
+    ? 'Busy'
+    : isBlocked
+    ? 'Blocked'
     : apt.service?.name || apt.service?.treatment?.name || (apt as any).serviceName || 'Treatment';
 
   const additionalServices: Array<{ name: string; price?: number }> = apt.additionalServices || [];
@@ -116,11 +121,11 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   return (
     <div
       ref={cardRef}
-      className="absolute cursor-pointer select-none group"
+      className={`absolute ${isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'} select-none group`}
       style={{ ...style, zIndex: showTooltip ? 50 : 20 }}
-      onClick={e => { e.stopPropagation(); onEdit(apt); }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onClick={e => { e.stopPropagation(); if (!isBlocked) onEdit(apt); }}
+      onMouseEnter={isBlocked ? undefined : handleMouseEnter}
+      onMouseLeave={isBlocked ? undefined : handleMouseLeave}
     >
       {/* ── Compact Card ── */}
       <div

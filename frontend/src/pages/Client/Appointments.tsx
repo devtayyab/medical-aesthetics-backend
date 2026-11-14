@@ -95,8 +95,10 @@ const filterTab = (active: boolean) => css`
 const getAppointmentMeta = (apt: Appointment, isGreek: boolean) => {
   const isPast = new Date(apt.startTime).getTime() < Date.now();
   const rawStatus = (apt.status || '').toUpperCase();
+  const paymentStatus = String((apt as any).paymentStatus || '').toLowerCase();
+  const isPaid = paymentStatus === 'paid' || paymentStatus === 'completed' || Number((apt as any).amountPaid || 0) > 0;
 
-  if (rawStatus === 'COMPLETED') {
+  if (rawStatus === 'COMPLETED' || rawStatus === 'EXECUTED') {
     return {
       isPast,
       badgeText: isGreek ? 'ΟΛΟΚΛΗΡΩΜΕΝΟ' : 'COMPLETED',
@@ -121,7 +123,15 @@ const getAppointmentMeta = (apt: Appointment, isGreek: boolean) => {
     };
   }
   if (isPast) {
-    if (rawStatus === 'PENDING_PAYMENT') {
+    if (isPaid) {
+      return {
+        isPast: true,
+        badgeText: isGreek ? 'ΟΛΟΚΛΗΡΩΜΕΝΟ' : 'COMPLETED',
+        badgeClass: 'bg-emerald-500/15 text-emerald-800 border-emerald-500/30',
+        icon: <CheckCircle2 size={12} />,
+      };
+    }
+    if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
       return {
         isPast: true,
         badgeText: isGreek ? 'ΕΚΠΝΕΥΣΕ' : 'EXPIRED',
@@ -405,13 +415,13 @@ export const Appointments: React.FC = () => {
                     )}
 
                     {/* Cancellation reason (QA Y33): visible on the cancelled card */}
-                    {apt.status.toLowerCase() === 'cancelled' && (apt as any).cancellationReason && (
+                    {apt.status.toLowerCase() === 'cancelled' && ((apt as any).cancellationReason || (apt as any).rescheduleReason || apt.notes) && (
                       <div className="mb-5 p-3 rounded-2xl bg-red-50/80 border border-red-100">
                         <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mb-1">
                           {isGreek ? "ΛΟΓΟΣ ΑΚΥΡΩΣΗΣ" : "Cancellation reason"}
                         </p>
                         <p className="text-[11px] text-gray-700 font-medium leading-relaxed break-words">
-                          {(apt as any).cancellationReason}
+                          {(apt as any).cancellationReason || (apt as any).rescheduleReason || apt.notes}
                         </p>
                       </div>
                     )}

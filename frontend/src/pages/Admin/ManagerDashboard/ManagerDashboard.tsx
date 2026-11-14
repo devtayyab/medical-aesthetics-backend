@@ -116,6 +116,7 @@ export const ManagerDashboard = () => {
  const [serviceStats, setServiceStats] = useState<ServiceStat[]>([]);
  const [clinicStats, setClinicStats] = useState<ClinicAnalytics[]>([]);
  const [revenueData, setRevenueData] = useState<any[]>([]);
+ const [ledgerTotalRevenue, setLedgerTotalRevenue] = useState<number | null>(null);
  const [isLoading, setIsLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
  const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -248,6 +249,11 @@ export const ManagerDashboard = () => {
  setClinicStats(clinics);
  if (performance && performance.dailyProgressChart) {
  setRevenueData(performance.dailyProgressChart);
+ }
+ if (performance?.salesConversionAnalytics?.totalRevenue !== undefined) {
+ setLedgerTotalRevenue(Number(performance.salesConversionAnalytics.totalRevenue) || 0);
+ } else {
+ setLedgerTotalRevenue(null);
  }
 
  // Handle deep-linking to an agent
@@ -403,7 +409,9 @@ export const ManagerDashboard = () => {
  // Calculate summary metrics.
  // NOTE: period-over-period deltas are not available from the API yet, so the trend
  // indicator is intentionally omitted rather than showing hardcoded/fake percentages.
- const totalRevenue = agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);
+ const totalRevenue = ledgerTotalRevenue !== null
+ ? ledgerTotalRevenue
+ : agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);
  const totalAppointments = agentKpis.reduce((sum, agent) => sum + agent.totalAppointments, 0);
  const completedAppointments = agentKpis.reduce((sum, agent) => sum + agent.completedAppointments, 0);
  const avgConversionRate = agentKpis.length > 0
@@ -435,6 +443,11 @@ export const ManagerDashboard = () => {
  setClinicStats(clinics);
  if (performance?.dailyProgressChart) {
  setRevenueData(performance.dailyProgressChart);
+ }
+ if (performance?.salesConversionAnalytics?.totalRevenue !== undefined) {
+ setLedgerTotalRevenue(Number(performance.salesConversionAnalytics.totalRevenue) || 0);
+ } else {
+ setLedgerTotalRevenue(null);
  }
  setError(null);
  }).catch(err => {

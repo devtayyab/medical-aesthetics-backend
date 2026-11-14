@@ -433,7 +433,7 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Phone className="h-3 w-3 text-[#CBFF38] shrink-0" />
-              <span className="hidden sm:inline text-gray-400 font-bold uppercase tracking-wider text-[10px]">Call Us:</span>
+              <span className="hidden sm:inline text-gray-400 font-bold uppercase tracking-wider text-[10px]">{isGreek ? "Καλέστε μας:" : "Call Us:"}</span>
               <a href="tel:6948880498" className="hover:text-[#CBFF38] font-bold text-white transition-colors whitespace-nowrap text-[10px] sm:text-[11px]">
                 6948880498
               </a>
@@ -523,7 +523,7 @@ export const Header: React.FC = () => {
                         : "text-gray-400 hover:text-white"
                     }`}
                   >
-                    Treatments <ChevronDown size={12} className={`transition-transform duration-200 ${isCategoriesOpen ? 'rotate-180 text-[#CBFF38]' : ''}`} />
+                    {isGreek ? "Θεραπείες" : "Treatments"} <ChevronDown size={12} className={`transition-transform duration-200 ${isCategoriesOpen ? 'rotate-180 text-[#CBFF38]' : ''}`} />
                   </Link>
 
                   {isCategoriesOpen && navCategories.length > 0 && (
@@ -964,7 +964,7 @@ export const Header: React.FC = () => {
  setIsMobileMenuOpen(false);
  }}
  >
- Sign Up
+ {isGreek ? "Εγγραφή" : "Sign Up"}
  </Button>
  </div>
 
@@ -974,28 +974,28 @@ export const Header: React.FC = () => {
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Home
+              {isGreek ? "Αρχική" : "Home"}
             </Link>
             <Link
               to="/treatments"
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/treatments') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Treatments
+              {isGreek ? "Θεραπείες" : "Treatments"}
             </Link>
             <Link
               to="/services"
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/services') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Privileges
+              {isGreek ? "Προνόμια" : "Privileges"}
             </Link>
             <Link
               to="/blog"
               className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/blog') || location.pathname.startsWith('/articles') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Articles
+              {isGreek ? "Άρθρα" : "Articles"}
             </Link>
             <Link
               to="/contact"

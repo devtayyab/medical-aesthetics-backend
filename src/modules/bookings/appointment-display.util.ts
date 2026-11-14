@@ -57,13 +57,11 @@ export async function loadAppointmentDisplayContext(
 const isDoctor = (u?: Partial<User> | null) => !!u && String(u.role || '').toLowerCase() === UserRole.DOCTOR;
 const fullName = (u: Partial<User>) => `${u.firstName || ''} ${u.lastName || ''}`.trim();
 
-export function appointmentDoctor(apt: Partial<Appointment>, ctx: AppointmentDisplayContext): AppointmentDoctor | null {
+export function appointmentDoctor(apt: Partial<Appointment>, _ctx: AppointmentDisplayContext): AppointmentDoctor | null {
   const provider = apt.provider as User | undefined;
   if (isDoctor(provider) && fullName(provider)) return { id: provider.id, name: fullName(provider) };
   const executedBy = (apt as any).executedBy as User | undefined;
   if (isDoctor(executedBy) && fullName(executedBy)) return { id: executedBy.id, name: fullName(executedBy) };
-  const single = apt.clinicId ? ctx.singleDoctorByClinic.get(apt.clinicId) : null;
-  if (single && fullName(single)) return { id: single.id, name: fullName(single) };
   return null;
 }
 

@@ -383,6 +383,8 @@ export const Search: React.FC = () => {
  {/* Results Header for Clinics */}
  {activeTab === 'clinics' && (
  <div className="mb-8">
+ <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+ <div>
  <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter uppercase">
  {total} <span className="text-gray-400 font-bold">{isGreek ? 'ΑΠΟΤΕΛΕΣΜΑΤΑ ΓΙΑ' : 'Results for'}</span> {query || (isGreek ? 'ΚΛΙΝΙΚΕΣ' : 'Clinics')}
  </h3>
@@ -391,6 +393,18 @@ export const Search: React.FC = () => {
  {isGreek ? 'ΠΕΡΙΟΧΗ' : 'Area'}: {location}
  </p>
  )}
+ </div>
+ <button
+ type="button"
+ onClick={() => setShowMobileMap((prev) => !prev)}
+ className="hidden lg:inline-flex items-center gap-2 bg-black text-[#CBFF38] px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-md hover:bg-gray-900 transition-all"
+ >
+ <MapIcon size={16} /> {showMobileMap ? (isGreek ? 'ΚΛΕΙΣΙΜΟ ΧΑΡΤΗ' : 'Close Map') : (isGreek ? 'ΠΡΟΒΟΛΗ ΧΑΡΤΗ' : 'View Map')}
+ </button>
+ </div>
+ <div className="hidden lg:block w-full h-[340px] rounded-[28px] overflow-hidden border border-gray-200 shadow-sm mb-8">
+ <ClinicMap clinics={clinics} center={mapCenter} />
+ </div>
  </div>
  )}
 

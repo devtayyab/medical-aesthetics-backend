@@ -322,21 +322,19 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
                   return (
                     <div
                       key={slot.id}
-                      className="absolute left-0 right-0 z-10 bg-red-500/10 border-2 border-dashed border-red-400 flex items-center justify-between px-2 overflow-hidden group"
+                      className="absolute left-0 right-0 z-10 bg-red-500/10 border-2 border-dashed border-red-400 flex items-start justify-between px-1.5 py-1 overflow-hidden group pointer-events-auto"
                       style={{ top: isFullDay ? 0 : top, height: isFullDay ? '100%' : height }}
                       onClick={e => e.stopPropagation()}
                     >
-                      <div className="flex items-center gap-1 min-w-0">
+                      <div className="flex items-center gap-1 min-w-0 bg-red-50/95 px-1.5 py-0.5 rounded shadow-sm z-30">
                         <Lock className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
-                        {height > 30 && (
-                          <span className="text-[9px] font-bold text-red-700 uppercase truncate">
-                            {slot.reason || 'Blocked'}
-                          </span>
-                        )}
+                        <span className="text-[9px] font-bold text-red-700 uppercase truncate">
+                          {slot.reason || 'Blocked'}
+                        </span>
                       </div>
                       <button
                         onClick={e => handleUnblock(e, slot.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-100 rounded-md flex items-center justify-center flex-shrink-0"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 bg-red-100 rounded-md flex items-center justify-center flex-shrink-0 z-30"
                       >
                         <Trash2 className="w-2.5 h-2.5 text-red-500" />
                       </button>

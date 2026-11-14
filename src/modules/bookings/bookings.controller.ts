@@ -55,12 +55,20 @@ export class BookingsController {
   }
 
   // Owner-or-staff: a client may only touch their own appointment; clinic accounts only
-  // appointments of their own clinic(s); BeautyDoctors staff may touch any.
+  // appointments of their own clinic(s); BeautyDoctors staff may touch any except doctor-private appointments.
   private async assertCanAccess(id: string, user: any) {
     const appointment = await this.bookingsService.findById(id);
+    const role = String(user?.role || '').toLowerCase();
     if (this.bookingsService.isClinicAccountRole(user?.role)) {
       // Throws NotFound unless the appointment belongs to one of the account's clinics.
-      await this.bookingsService.findAppointmentForClinic(id, user.id, String(user.role).toLowerCase());
+      await this.bookingsService.findAppointmentForClinic(id, user.id, role);
+    } else if (role === UserRole.SALESPERSON) {
+      const isPrivate =
+        appointment.appointmentSource === 'clinic_own' ||
+        Boolean((appointment.client as any)?.profile?.clinicOwnClient);
+      if (isPrivate) {
+        throw new ForbiddenException('This appointment is private to the clinic.');
+      }
     } else if (!this.isStaff(user) && String(appointment.clientId) !== String(user?.id)) {
       throw new ForbiddenException('You do not have access to this appointment.');
     }
@@ -180,12 +188,17 @@ export class BookingsController {
     const staffRepresentative = appointment.representative?.role !== 'client' ? appointment.representative : null;
     const booker = isStaffBooker ? appointment.bookedBy : staffRepresentative;
 
+    const isDoc = appointment.provider && String(appointment.provider.role || '').toLowerCase() === UserRole.DOCTOR;
     const result: any = {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
       serviceName: appointment.service?.treatment?.name,
-      providerName: appointment.provider
-        ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
+      providerName: isDoc
+        ? `${appointment.provider.firstName || ''} ${appointment.provider.lastName || ''}`.trim()
+        : null,
+      doctorId: isDoc ? appointment.provider.id : null,
+      doctorName: isDoc
+        ? `${appointment.provider.firstName || ''} ${appointment.provider.lastName || ''}`.trim()
         : null,
       bookedByInfo: booker ? {
         id: booker.id,
@@ -313,13 +326,14 @@ export class BookingsController {
 
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
-  async cancel(@Param('id') id: string, @Body() body: { refund?: boolean; reason?: string }, @Request() req) {
+  async cancel(@Param('id') id: string, @Body() body: { refund?: boolean; reason?: string; cancellationReason?: string; notes?: string }, @Request() req) {
     const appointment = await this.assertCanAccess(id, req.user);
     if (this.isStaff(req.user)) this.assertNotLockedForSales(appointment, req.user);
+    const reasonText = body?.reason ?? body?.cancellationReason ?? body?.notes;
     return this.bookingsService.updateStatus(
       id,
       AppointmentStatus.CANCELLED,
-      { refund: body?.refund === true, reason: typeof body?.reason === 'string' ? body.reason : undefined },
+      { refund: body?.refund === true, reason: typeof reasonText === 'string' ? reasonText : undefined },
       req.user?.id,
       { role: req.user?.role },
     );
@@ -375,7 +389,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment status' })
   async updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: AppointmentStatus | string; refund?: boolean; notes?: string; reason?: string },
+    @Body() body: { status: AppointmentStatus | string; refund?: boolean; notes?: string; reason?: string; cancellationReason?: string },
     @Request() req,
   ) {
     this.assertStaff(req.user);
@@ -383,10 +397,11 @@ export class BookingsController {
     this.assertNotLockedForSales(appointment, req.user);
     // Status input is normalized server-side ('completed' -> 'COMPLETED'); unknown values are rejected.
     const status = this.bookingsService.normalizeStatus(body.status);
+    const reasonText = body.reason ?? body.cancellationReason ?? body.notes;
     return this.bookingsService.updateAppointmentStatus(id, status, req.user.id, req.user.role, {
       refund: body.refund === true,
       notes: body.notes,
-      reason: typeof body.reason === 'string' ? body.reason : undefined,
+      reason: typeof reasonText === 'string' ? reasonText : undefined,
     });
   }
 

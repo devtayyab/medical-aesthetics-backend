@@ -113,15 +113,29 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [clinics, status, center?.[0], center?.[1], zoom, navigate]);
 
+ const locatedClinics = clinics.filter(hasCoords);
+ const fallbackLat = locatedClinics.length > 0 ? Number(locatedClinics[0].latitude) : center[0];
+ const fallbackLng = locatedClinics.length > 0 ? Number(locatedClinics[0].longitude) : center[1];
+ const fallbackZoom = locatedClinics.length === 1 ? 14 : zoom;
+ const embedLang = isGreek ? 'el' : 'en';
+ const embedUrl = `https://maps.google.com/maps?q=${fallbackLat},${fallbackLng}&z=${fallbackZoom}&hl=${embedLang}&output=embed`;
+
  return (
  <div className="w-full h-full min-h-[300px] relative z-0">
  <div ref={mapContainerRef} className="w-full h-full min-h-[300px] bg-gray-100" style={{ height: '100%', width: '100%' }} />
- {status !== 'ready' && (
+ {status === 'loading' && (
  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-[11px] font-bold uppercase tracking-widest text-gray-400 text-center px-6">
- {status === 'loading'
- ? (isGreek ? 'Φόρτωση χάρτη...' : 'Loading map...')
- : (isGreek ? 'Ο χάρτης δεν είναι διαθέσιμος' : 'Map not available')}
+ {isGreek ? 'Φόρτωση χάρτη...' : 'Loading map...'}
  </div>
+ )}
+ {status === 'error' && (
+ <iframe
+ title={isGreek ? 'Χάρτης Κλινικών Google Maps' : 'Google Maps Clinics'}
+ src={embedUrl}
+ className="absolute inset-0 w-full h-full border-0 min-h-[300px]"
+ loading="lazy"
+ referrerPolicy="no-referrer-when-downgrade"
+ />
  )}
  </div>
  );

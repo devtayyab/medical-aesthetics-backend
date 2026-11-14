@@ -35,6 +35,7 @@ import {
  isBefore,
  startOfToday
 } from"date-fns";
+import { el } from "date-fns/locale";
 import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } from "react-icons/fa";
 
 const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
@@ -262,11 +263,14 @@ export const AppointmentBooking: React.FC = () => {
  navigate('/checkout');
  };
 
+ const isGreek = getPreferredLanguage() === 'el';
+ const dateLocale = isGreek ? { locale: el } : undefined;
+
  const renderCells = () => {
  const monthStart = startOfMonth(currentMonth);
  const monthEnd = endOfMonth(monthStart);
- const startDate = startOfWeek(monthStart);
- const endDate = endOfWeek(monthEnd);
+ const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+ const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
  const rows = [];
  let days = [];
@@ -293,7 +297,7 @@ export const AppointmentBooking: React.FC = () => {
  return <div className="space-y-1">{rows}</div>;
  };
 
- if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black uppercase tracking-tighter animate-pulse">Establishing Connection...</div>;
+ if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black uppercase tracking-tighter animate-pulse">{isGreek ? "Φόρτωση διαθεσιμότητας..." : "Establishing Connection..."}</div>;
 
  return (
  <div className="min-h-screen bg-[#FDFDFD]">
@@ -303,18 +307,18 @@ export const AppointmentBooking: React.FC = () => {
   <div className="size-7 sm:size-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-[#CBFF38] group-hover:text-black transition-all shadow-sm">
   <FaChevronLeft size={10} />
   </div>
-  Back to Search
+  {isGreek ? "Πίσω στην Αναζήτηση" : "Back to Search"}
   </button>
   
   <div className="flex items-center gap-2 sm:gap-4">
   <div className="flex flex-col items-center">
   <div className="size-7 sm:size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
-  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>
+  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">{isGreek ? "Ώρα" : "Time"}</span>
   </div>
   <div className="w-4 sm:w-12 h-[2px] bg-gray-100 -mt-4" />
   <div className="flex flex-col items-center">
   <div className="size-7 sm:size-8 rounded-xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-black text-xs shadow-sm">2</div>
-  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">Details</span>
+  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">{isGreek ? "Στοιχεία" : "Details"}</span>
   </div>
   </div>
   </div>
@@ -325,8 +329,8 @@ export const AppointmentBooking: React.FC = () => {
   <div className={cardStyle}>
   <div className="flex items-center justify-between mb-4 sm:mb-6">
   <div>
-  <h4 className="text-[8px] sm:text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-0.5 sm:mb-1">Select the Exact Time</h4>
-  <h2 className="text-base sm:text-xl font-black uppercase text-gray-900">{format(currentMonth,"MMMM yyyy")}</h2>
+  <h4 className="text-[8px] sm:text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-0.5 sm:mb-1">{isGreek ? "Επιλέξτε Ημερομηνία & Ώρα" : "Select the Exact Time"}</h4>
+  <h2 className="text-base sm:text-xl font-black uppercase text-gray-900">{format(currentMonth,"MMMM yyyy", dateLocale)}</h2>
   </div>
   <div className="flex gap-1.5 sm:gap-2">
   <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-8 sm:size-10 rounded-lg sm:rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronLeft size={10} /></button>
@@ -334,7 +338,7 @@ export const AppointmentBooking: React.FC = () => {
   </div>
   </div>
   <div className="grid grid-cols-7 gap-1 mb-4">
- {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+ {(isGreek ? ["Δευ","Τρι","Τετ","Πεμ","Παρ","Σαβ","Κυρ"] : ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]).map(d => (
  <div key={d} className="text-center text-[9px] font-bold text-gray-300 uppercase tracking-widest py-1">{d}</div>
  ))}
  </div>
@@ -346,20 +350,20 @@ export const AppointmentBooking: React.FC = () => {
  <div className="size-8 rounded-lg bg-lime-50 flex items-center justify-center">
  <FaClock className="text-lime-500" size={14} />
  </div>
- <h3 className="text-xl font-black uppercase text-gray-900">{getPreferredLanguage() === 'el' ? 'Διαθέσιμες Ώρες' : 'Available Times'}</h3>
+ <h3 className="text-xl font-black uppercase text-gray-900">{isGreek ? 'Διαθέσιμες Ώρες' : 'Available Times'}</h3>
  </div>
 
  {/* Provider Selection (Step B2) */}
  {clinic?.providers && clinic.providers.length > 0 && (
  <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
- <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">{getPreferredLanguage() === 'el' ? 'Επιλογή Ειδικού (Προαιρετικό)' : 'Choose Professional (Optional)'}</h4>
+ <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">{isGreek ? 'Επιλογή Ειδικού (Προαιρετικό)' : 'Choose Professional (Optional)'}</h4>
  <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
  <button
  className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${!selectedProviderId ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
  onClick={() => handleProviderSelect(null)}
  >
- <div className="size-12 rounded-full bg-gray-200 flex items-center justify-center font-black text-xs text-gray-500">Any</div>
- <span className="text-[10px] font-black uppercase tracking-tight">Any Professional</span>
+ <div className="size-12 rounded-full bg-gray-200 flex items-center justify-center font-black text-xs text-gray-500">{isGreek ? 'Όλοι' : 'Any'}</div>
+ <span className="text-[10px] font-black uppercase tracking-tight">{isGreek ? 'Οποιοσδήποτε Ειδικός' : 'Any Professional'}</span>
  </button>
  {clinic.providers.map((p: any) => (
  <button
@@ -389,7 +393,7 @@ export const AppointmentBooking: React.FC = () => {
  </div>
  ) : (
  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
- <p className="text-sm font-black uppercase text-gray-400">No availability for this date</p>
+ <p className="text-sm font-black uppercase text-gray-400">{isGreek ? 'Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημερομηνία' : 'No availability for this date'}</p>
  {availabilityReason && (
  <p className="text-[10px] font-black uppercase text-red-500 mt-2">{availabilityReason}</p>
  )}
@@ -403,16 +407,16 @@ export const AppointmentBooking: React.FC = () => {
  <div className={sidebarCardStyle}>
  <div className="absolute top-0 right-0 w-32 h-32 bg-[#CBFF38]/5 rounded-full blur-2xl" />
  
- <h3 className="text-xl font-black uppercase text-white mb-6 pb-4 border-b border-white/10 relative z-10">{getPreferredLanguage() === 'el' ? 'Στοιχεία Κράτησης' : 'Booking Details'}</h3>
+ <h3 className="text-xl font-black uppercase text-white mb-6 pb-4 border-b border-white/10 relative z-10">{isGreek ? 'Στοιχεία Κράτησης' : 'Booking Details'}</h3>
 
  <div className="space-y-6 mb-8 relative z-10">
  <div>
- <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2">Clinic Selected</h4>
+ <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2">{isGreek ? 'Επιλεγμένη Κλινική' : 'Clinic Selected'}</h4>
  <p className="text-base font-black text-white">{clinic?.name}</p>
  </div>
 
  <div>
- <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2">Requested Treatments</h4>
+ <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2">{isGreek ? 'Θεραπείες Ενδιαφέροντος' : 'Requested Treatments'}</h4>
  <div className="space-y-2">
  {selectedServices.map(s => (
  <div key={s.id} className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl">
@@ -427,9 +431,9 @@ export const AppointmentBooking: React.FC = () => {
  <div className="p-4 rounded-2xl bg-[#CBFF38] text-black shadow-xl shadow-[#CBFF38]/10 animate-in zoom-in-95 duration-300 mt-6">
  <div className="flex items-center gap-2 mb-2">
  <FaCalendarAlt className="text-black/60" size={10} />
- <span className="text-[9px] font-black uppercase text-black/60 tracking-[0.2em]">Scheduled For</span>
+ <span className="text-[9px] font-black uppercase text-black/60 tracking-[0.2em]">{isGreek ? 'Προγραμματισμένο για' : 'Scheduled For'}</span>
  </div>
- <p className="text-base font-black uppercase">{format(selectedDateState,"EEEE, dd/MM/yyyy")}</p>
+ <p className="text-base font-black uppercase">{format(selectedDateState,"EEEE, dd/MM/yyyy", dateLocale)}</p>
  <p className="text-2xl font-black leading-none">{formatClinicTime(selectedSlot.startTime, clinic?.timezone)}</p>
  </div>
  )}
@@ -437,7 +441,7 @@ export const AppointmentBooking: React.FC = () => {
 
  <div className="border-t border-white/10 pt-6 mb-8 relative z-10">
  <div className="flex justify-between items-center">
- <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em]">Total</span>
+ <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em]">{isGreek ? 'Σύνολο' : 'Total'}</span>
  <span className="text-2xl font-black text-white"><span className="font-sans mr-1">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
  </div>
  </div>
@@ -448,12 +452,12 @@ export const AppointmentBooking: React.FC = () => {
  onClick={handleProceed}
  className="bg-[#CBFF38] text-black hover:bg-lime-400 hover:text-black h-12 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg hover:scale-105 transition-all relative z-10"
  >
- {bookingLoading ? (getPreferredLanguage() === 'el' ? "Αναμονή..." : "Waiting...") : (getPreferredLanguage() === 'el' ? "Ολοκλήρωση" : "Checkout")}
+ {bookingLoading ? (isGreek ? "Αναμονή..." : "Waiting...") : (isGreek ? "Ολοκλήρωση" : "Checkout")}
  </Button>
 
  {holdId && (
  <div className="mt-4 flex items-center justify-center gap-2 text-[9px] text-[#CBFF38] font-black uppercase tracking-widest relative z-10 bg-[#CBFF38]/10 py-1.5 rounded-md">
- <FaCheckCircle size={10}/> Slot Locked For 15m
+ <FaCheckCircle size={10}/> {isGreek ? 'Η ώρα δεσμεύτηκε για 15 λεπτά' : 'Slot Locked For 15m'}
  </div>
  )}
  </div>
@@ -467,8 +471,8 @@ export const AppointmentBooking: React.FC = () => {
  <div className="bg-white rounded-t-3xl p-4 sm:p-6 w-full max-h-[75vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
  <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4 shrink-0">
  <div>
- <h3 className="text-lg font-black uppercase text-gray-900 leading-tight">Select Time</h3>
- <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, dd/MM/yyyy")}</p>
+ <h3 className="text-lg font-black uppercase text-gray-900 leading-tight">{isGreek ? 'Επιλογή Ώρας' : 'Select Time'}</h3>
+ <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, dd/MM/yyyy", dateLocale)}</p>
  </div>
  <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200 shrink-0">
  <X className="w-4 h-4" />

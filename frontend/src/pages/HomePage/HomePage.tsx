@@ -168,21 +168,27 @@ const mainCategories = [
  {
  id:"treatments",
  name:"Treatments",
+ nameEl:"Θεραπείες",
  description:"Browse treatments by category",
+ descriptionEl:"Αναζητήστε θεραπείες ανά κατηγορία",
  icon: <Sparkles size={28} />,
  link:"/treatments"
  },
  {
  id:"articles",
  name:"Articles",
+ nameEl:"Άρθρα",
  description:"Read about latest trends",
+ descriptionEl:"Ενημερωθείτε για τις νεότερες εξελίξεις",
  icon: <FaBook className="text-3xl" />,
  link:"/blog" // Placeholder or search redirect
  },
  {
  id:"other",
  name:"Other Services",
+ nameEl:"Προνόμια",
  description:"Explore more services",
+ descriptionEl:"Ανακαλύψτε περισσότερες υπηρεσίες",
  icon: <FaTh className="text-3xl" />,
  link:"/services" // Placeholder
  }
@@ -375,12 +381,14 @@ const mainCategories = [
  <div className="flex flex-col max-w-xl">
   <div className="mb-6">
    <h1 className="text-gray-950 text-2xl sm:text-4xl md:text-[44px] lg:text-[48px] font-black mb-3 leading-[1.12] uppercase tracking-tight notranslate" translate="no">
-   {isGreek ? 'ΒΡΕΙΤΕ ΤΗΝ ΣΩΣΤΗ' : 'FIND THE RIGHT'} <br />
+   {isGreek ? 'ΒΡΕΙΤΕ ΤΗ ΣΩΣΤΗ' : 'FIND THE RIGHT'} <br />
    <span className="text-[#A3E635] inline-block">{isGreek ? 'ΘΕΡΑΠΕΙΑ ΓΙΑ ΕΣΑΣ' : 'TREATMENT FOR YOU'}</span>
    </h1>
 
   <p className="text-gray-700 text-xs sm:text-sm md:text-[15px] max-w-lg leading-relaxed font-medium">
-  Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
+  {isGreek
+    ? 'Συνδεθείτε με συμμετέχοντες ιατρούς και κλινικές για ιατρική αξιολόγηση και εξατομικευμένο θεραπευτικό πλάνο.'
+    : 'Connect with participating doctors and clinics for medical assessment and personalized treatment planning.'}
   </p>
   </div>
 
@@ -408,8 +416,8 @@ const mainCategories = [
  {cat.icon}
  </div>
  <div>
- <h3 className="text-xl font-bold text-gray-900 group-hover:text-lime-700 transition-colors">{cat.name}</h3>
- <p className="text-gray-500 text-sm">{cat.description}</p>
+ <h3 className="text-xl font-bold text-gray-900 group-hover:text-lime-700 transition-colors">{isGreek ? (cat as any).nameEl || cat.name : cat.name}</h3>
+ <p className="text-gray-500 text-sm">{isGreek ? (cat as any).descriptionEl || cat.description : cat.description}</p>
  </div>
  </div>
  ))}
@@ -422,14 +430,14 @@ const mainCategories = [
  <div className="max-w-[1200px] mx-auto px-6">
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
  <div>
- <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
- <p className="text-gray-600 mt-1">Explore top treatments by category</p>
+ <h2 className="text-2xl font-bold text-[#33373F]">{isGreek ? 'Δημοφιλείς Κατηγορίες' : 'Popular Categories'}</h2>
+ <p className="text-gray-600 mt-1">{isGreek ? 'Ανακαλύψτε κορυφαίες θεραπείες ανά κατηγορία' : 'Explore top treatments by category'}</p>
  </div>
  <button
  onClick={() => navigate('/treatments')}
  className="text-lime-600 font-medium hover:text-lime-700 transition text-sm"
  >
- View All <ArrowRight className="inline-block ml-1 h-4 w-4" />
+ {isGreek ? 'Προβολή Όλων' : 'View All'} <ArrowRight className="inline-block ml-1 h-4 w-4" />
  </button>
  </div>
  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -460,14 +468,14 @@ const mainCategories = [
  <div className="max-w-[1200px] mx-auto px-6">
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
  <div>
- <h2 className="text-2xl font-bold text-[#33373F]">Featured Treatments</h2>
- <p className="text-gray-600 mt-1">Explore selected treatments and medical services.</p>
+ <h2 className="text-2xl font-bold text-[#33373F]">{isGreek ? 'Επιλεγμένες Θεραπείες' : 'Featured Treatments'}</h2>
+ <p className="text-gray-600 mt-1">{isGreek ? 'Εξερευνήστε επιλεγμένες θεραπείες και ιατρικές υπηρεσίες.' : 'Explore selected treatments and medical services.'}</p>
  </div>
  <button
  onClick={() => navigate('/treatments')}
  className="text-lime-600 font-medium hover:text-lime-700 transition"
  >
- See All Treatments <ArrowRight className="inline-block ml-1 h-4 w-4" />
+ {isGreek ? 'Όλες οι Θεραπείες' : 'See All Treatments'} <ArrowRight className="inline-block ml-1 h-4 w-4" />
  </button>
  </div>
 
@@ -515,7 +523,7 @@ const mainCategories = [
  <div className="flex flex-col">
  {isAuthenticated && treatment.fromPrice ? (
  <>
- <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Price Starting From</span>
+ <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{isGreek ? 'Τιμή από' : 'Price Starting From'}</span>
  <span className="text-lg font-black text-gray-900 tracking-tighter">€{treatment.fromPrice}</span>
  </>
  ) : !isAuthenticated ? (
@@ -528,11 +536,11 @@ const mainCategories = [
  <span>{isGreek ? "Σύνδεση για τιμές" : "Login to view price"}</span>
  </span>
  ) : (
- <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">View Details</span>
+ <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{isGreek ? 'Λεπτομέρειες' : 'View Details'}</span>
  )}
  </div>
  <span className="text-lime-600 font-black text-[10px] uppercase tracking-widest group-hover:underline">
- Book Now
+ {isGreek ? 'Κράτηση' : 'Book Now'}
  </span>
  </div>
  </div>
@@ -675,16 +683,18 @@ const mainCategories = [
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
- Aesthetic Treatments
+ {isGreek ? 'Αισθητικές Θεραπείες' : 'Aesthetic Treatments'}
  </h3>
  <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
- Explore modern aesthetic treatments delivered by specialized medical professionals.
+ {isGreek
+   ? 'Ανακαλύψτε σύγχρονες αισθητικές θεραπείες από εξειδικευμένους επαγγελματίες υγείας.'
+   : 'Explore modern aesthetic treatments delivered by specialized medical professionals.'}
  </p>
  <button 
  onClick={() => navigate('/treatments')}
  className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
  >
- Explore Aesthetic Treatments
+ {isGreek ? 'Εξερευνήστε Θεραπείες' : 'Explore Aesthetic Treatments'}
  <ArrowRight className="h-4 w-4" />
  </button>
  </div>
@@ -699,7 +709,7 @@ const mainCategories = [
  <div className="pb-12">
  <div className="text-center mb-12">
  <h2 className="text-[#33373F] text-2xl font-semibold">
- Browse by treatment
+ {isGreek ? 'Αναζήτηση ανά θεραπεία' : 'Browse by treatment'}
  </h2>
  </div>
 
@@ -746,7 +756,7 @@ const mainCategories = [
  onClick={() => navigate('/search')}
  className="border border-lime-600 text-lime-700 px-6 py-2 rounded-md text-sm font-medium hover:bg-lime-50 transition flex items-center justify-center mx-auto gap-2"
  >
- View More <ArrowRight className="h-4 w-4" />
+ {isGreek ? 'Περισσότερα' : 'View More'} <ArrowRight className="h-4 w-4" />
  </button>
  </div>
  </div>

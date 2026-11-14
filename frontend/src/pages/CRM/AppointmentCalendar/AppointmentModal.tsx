@@ -176,12 +176,26 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         paymentStatus = (paid > 0 && paid < serviceAmount) ? 'PARTIALLY_PAID' : 'PAID';
       }
 
-      // Salesperson/Booked by: assign to representative or whoever booked it.
-      // NEVER fallback to providerId (Doctor), because doctor is the practitioner, not the salesperson!
-      // If direct online booking without salesperson or booked by the client themselves, it remains empty string (Unassigned).
-      const rawBookedId = (apt as any).representativeId || (apt as any).representative?.id || (apt as any).bookedById || (apt as any).bookedBy?.id || '';
-      const isClientBooker = (apt as any).bookedBy?.role === 'client' ||
-        (apt as any).bookedByInfo?.role === 'client' ||
+      // Salesperson/Booked by: assign ONLY to an actual salesperson/manager/admin representative or booker.
+      // NEVER fallback to providerId (Doctor), clinic_owner, secretariat, or client!
+      const staffRoles = ['salesperson', 'manager', 'admin', 'super_admin'];
+      const repRole = String((apt as any).representative?.role || '').toLowerCase();
+      const bookedRole = String((apt as any).bookedBy?.role || (apt as any).bookedByInfo?.role || '').toLowerCase();
+      const validRepId = (apt as any).representativeId && (!repRole || staffRoles.includes(repRole))
+        ? (apt as any).representativeId
+        : (apt as any).representative?.id && staffRoles.includes(repRole)
+        ? (apt as any).representative.id
+        : '';
+      const validBookedId = (apt as any).bookedById && (
+        staffRoles.includes(bookedRole) ||
+        salespersons.some(sp => sp.id === (apt as any).bookedById)
+      )
+        ? (apt as any).bookedById
+        : (apt as any).bookedBy?.id && staffRoles.includes(bookedRole)
+        ? (apt as any).bookedBy.id
+        : '';
+      const rawBookedId = validRepId || validBookedId || '';
+      const isClientBooker = bookedRole === 'client' ||
         rawBookedId === apt.clientId ||
         rawBookedId === (apt as any).client?.id;
       const bookedPersonId = isClientBooker ? '' : rawBookedId;
@@ -527,8 +541,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const validateAndCheckConflict = useCallback((): boolean => {
     if (!form.isNewPatient && !form.patientId) { toast.error('Please select a patient.'); return false; }
-    if (form.isNewPatient && (!form.newPatientDetails?.fullName || !form.newPatientDetails?.phone)) {
-      toast.error('Please provide at least a name and a phone number for the new patient.');
+    if (form.isNewPatient && (!form.newPatientDetails?.fullName || !form.newPatientDetails?.phone || !form.newPatientDetails?.email?.trim())) {
+      toast.error('Please provide name, phone number, and email for the new patient.');
       return false;
     }
     if (!form.serviceId) { toast.error('Please select a treatment.'); return false; }
@@ -880,7 +894,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     />
                     <input
                       type="email"
-                      placeholder="Email"
+                      required
+                      placeholder="Email *"
                       value={form.newPatientDetails?.email || ''}
                       onChange={e => setForm(prev => ({ ...prev, newPatientDetails: { ...prev.newPatientDetails!, email: e.target.value } }))}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -1057,7 +1072,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`.trim()}</option>
                 )}
                 {existingAppointment?.bookedBy &&
-                  existingAppointment.bookedBy.role !== 'client' &&
+                  ['salesperson', 'manager', 'admin', 'super_admin'].includes(String(existingAppointment.bookedBy.role || '').toLowerCase()) &&
                   existingAppointment.bookedBy.id !== existingAppointment.clientId &&
                   existingAppointment.bookedBy.id !== (existingAppointment as any).client?.id &&
                   !salespersons.some(sp => sp.id === existingAppointment.bookedBy?.id) &&
@@ -1067,7 +1082,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </option>
                 )}
                 {(existingAppointment as any)?.representative &&
-                  (existingAppointment as any).representative.role !== 'client' &&
+                  ['salesperson', 'manager', 'admin', 'super_admin'].includes(String((existingAppointment as any).representative.role || '').toLowerCase()) &&
                   (existingAppointment as any).representative.id !== existingAppointment?.clientId &&
                   (existingAppointment as any).representative.id !== (existingAppointment as any)?.client?.id &&
                   !salespersons.some(sp => sp.id === (existingAppointment as any).representative?.id) &&

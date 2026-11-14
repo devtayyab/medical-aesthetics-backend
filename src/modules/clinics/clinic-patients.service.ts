@@ -148,10 +148,12 @@ export class ClinicPatientsService {
 
     const params: any[] = [];
     let aptScope = `a.status <> 'DELETED'`;
+    let payScope = `p.status IN ('completed', 'refunded', 'voided') AND COALESCE(p.currency, 'EUR') = 'EUR'`;
     let profileScope = 'FALSE';
     if (clinicIds) {
       params.push(clinicIds);
       aptScope += ` AND a."clinicId"::text = ANY($1::text[])`;
+      payScope += ` AND p."clinicId"::text = ANY($1::text[])`;
       profileScope = this.profileClinicSql('u').replace(/:clinicIds/g, () => '$1');
     }
 
@@ -175,8 +177,19 @@ export class ClinicPatientsService {
       `SELECT u.id AS "appointment_clientId", u."firstName" AS firstname, u."lastName" AS lastname,
               COUNT(*) OVER() AS total_count,
               u.email AS clientemail, u.phone AS clientphone, u."createdAt" AS createdat,
-              COUNT(a.id) AS totalvisits,
-              COALESCE(SUM(CASE WHEN UPPER(a.status::text) IN ('COMPLETED', 'EXECUTED') THEN COALESCE(NULLIF(a."amountPaid", 0), a."totalAmount", 0) ELSE COALESCE(a."amountPaid", 0) END), 0) AS totalspent,
+              COUNT(DISTINCT a.id) AS totalvisits,
+              COALESCE((
+                SELECT SUM(CASE
+                  WHEN p.type IN ('payment', 'deposit') THEN p.amount
+                  WHEN p.type IN ('refund', 'void') THEN -p.amount
+                  ELSE 0
+                END)
+                FROM payment_records p
+                LEFT JOIN appointments pa ON pa.id = p."appointmentId"
+                WHERE p."clientId" = u.id
+                  AND (pa.id IS NULL OR pa.status <> 'DELETED')
+                  AND ${payScope}
+              ), 0) AS totalspent,
               MAX(a."startTime") AS lastvisit
          FROM users u
          LEFT JOIN appointments a ON a."clientId" = u.id AND ${aptScope}

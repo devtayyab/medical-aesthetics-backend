@@ -199,7 +199,7 @@ export const Integrations: React.FC = () => {
  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${log.action.includes('ERROR') ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
  {log.action}
  </span>
- <span className="text-[10px] text-gray-400">{format(new Date(log.createdAt), 'MMM d, HH:mm')}</span>
+ <span className="text-[10px] text-gray-400">{format(new Date(log.createdAt), 'dd/MM/yyyy HH:mm')}</span>
  </div>
  <p className="text-xs text-gray-700 font-medium mb-1 truncate">ID: {log.resourceId}</p>
  {log.data && (

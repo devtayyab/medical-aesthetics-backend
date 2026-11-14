@@ -222,8 +222,8 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
-  // Clinic Settings (was Settings)
-  if (hasPermission(userRole, 'canEditProfile')) {
+  // Clinic Settings (was Settings) - hidden for doctor role (QA NEW-9)
+  if (hasPermission(userRole, 'canEditProfile') && String(userRole).toLowerCase() !== 'doctor') {
     menuItems.push({
       id: 'settings',
       label: 'Clinic Settings',

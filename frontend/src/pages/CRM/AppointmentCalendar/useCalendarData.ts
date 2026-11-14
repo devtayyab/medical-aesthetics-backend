@@ -173,9 +173,9 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
     ).then((results) => setBlockedSlots(results.flat()));
   }, [filters.clinicId, clinics, blocksVersion]);
 
-  // Enrich appointments with computed fields
+  // Enrich appointments with computed fields (keep doctor-private masked appointments so they render as 'Busy')
   const enrichedAppointments = useMemo(() => {
-    return appointments.filter((apt: any) => !apt.isBlocked).map((apt: any) => {
+    return appointments.filter((apt: any) => !apt.isBlocked || apt.isMaskedPrivate).map((apt: any) => {
       const primaryPrice = parseFloat(String(apt.service?.price || 0));
       const additionalServicesTotal = (apt.additionalServices || []).reduce(
         (sum: number, s: any) => sum + parseFloat(String(s.price || 0)),
