@@ -188,8 +188,8 @@ export class FixQa13NovIssues1787850000000 implements MigrationInterface {
             WHERE a."startTime" < NOW()
               AND LOWER(a."status"::text) IN ('pending', 'confirmed', 'pending_payment')
               AND (
-                  LOWER(COALESCE(a."paymentStatus"::text, '')) IN ('paid', 'completed')
-                  OR COALESCE(a."amountPaid", 0) > 0
+                  COALESCE(a."amountPaid", 0) > 0
+                  OR a."serviceExecuted" = true
                   OR EXISTS (
                       SELECT 1 FROM "payment_records" p
                       WHERE p."appointmentId" = a.id
