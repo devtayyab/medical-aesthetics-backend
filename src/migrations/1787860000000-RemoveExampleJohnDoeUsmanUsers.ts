@@ -138,6 +138,28 @@ export class RemoveExampleJohnDoeUsmanUsers1787860000000 implements MigrationInt
                   );
 
                 -- Delete dummy @example.com leads that are not converted payment leads, and clear @example.com email on any remaining leads
+                DELETE FROM "tasks"
+                WHERE "relatedLeadId" IN (
+                    SELECT id FROM "leads"
+                    WHERE LOWER(COALESCE("email", '')) IN (
+                        'test@example.com',
+                        'yao_gym@example.com',
+                        'test-claude-newlead@example.com',
+                        'test-claude-dup@example.com'
+                    )
+                );
+
+                DELETE FROM "lead_owners"
+                WHERE "leadId" IN (
+                    SELECT id FROM "leads"
+                    WHERE LOWER(COALESCE("email", '')) IN (
+                        'test@example.com',
+                        'yao_gym@example.com',
+                        'test-claude-newlead@example.com',
+                        'test-claude-dup@example.com'
+                    )
+                );
+
                 DELETE FROM "leads"
                 WHERE LOWER(COALESCE("email", '')) IN (
                     'test@example.com',
