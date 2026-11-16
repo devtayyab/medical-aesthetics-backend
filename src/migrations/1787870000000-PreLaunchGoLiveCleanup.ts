@@ -138,6 +138,8 @@ export class PreLaunchGoLiveCleanup1787870000000 implements MigrationInterface {
                    OR LOWER(TRIM(name)) IN ('epistimi beauty', 'dinails', 'test clinic', 'dibeauty');
 
                 IF inactive_clinic_ids IS NOT NULL AND array_length(inactive_clinic_ids, 1) > 0 THEN
+                    UPDATE "users" SET "assignedClinicId" = NULL WHERE "assignedClinicId" = ANY(inactive_clinic_ids);
+                    DELETE FROM "loyalty_ledger" WHERE "clinicId" = ANY(inactive_clinic_ids);
                     DELETE FROM "clinic_ownership" WHERE "clinicId" = ANY(inactive_clinic_ids);
                     DELETE FROM "agent_clinic_access" WHERE "clinicId" = ANY(inactive_clinic_ids);
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'clinic_calendar_connections') THEN
@@ -145,6 +147,9 @@ export class PreLaunchGoLiveCleanup1787870000000 implements MigrationInterface {
                     END IF;
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'lead_clinic_statuses') THEN
                         DELETE FROM "lead_clinic_statuses" WHERE "clinicId" = ANY(inactive_clinic_ids);
+                    END IF;
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'lead_clinics') THEN
+                        DELETE FROM "lead_clinics" WHERE "clinicId" = ANY(inactive_clinic_ids);
                     END IF;
                     DELETE FROM "services" WHERE "clinicId" = ANY(inactive_clinic_ids);
                     DELETE FROM "clinics" WHERE id = ANY(inactive_clinic_ids);
@@ -208,6 +213,12 @@ export class PreLaunchGoLiveCleanup1787870000000 implements MigrationInterface {
                     END IF;
                     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'lead_clinic_statuses') THEN
                         DELETE FROM "lead_clinic_statuses" WHERE "leadId" = ANY(del_lead_ids);
+                    END IF;
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'lead_clinics') THEN
+                        DELETE FROM "lead_clinics" WHERE "leadId" = ANY(del_lead_ids);
+                    END IF;
+                    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'lead_tags') THEN
+                        DELETE FROM "lead_tags" WHERE "leadId" = ANY(del_lead_ids);
                     END IF;
                     DELETE FROM "leads" WHERE id = ANY(del_lead_ids);
                 END IF;
@@ -281,11 +292,14 @@ export class PreLaunchGoLiveCleanup1787870000000 implements MigrationInterface {
                     UPDATE "leads" SET "assignedSalesId" = real_sales_id WHERE "assignedSalesId" = ANY(del_user_ids);
                     DELETE FROM "loyalty_ledger" WHERE "clientId" = ANY(del_user_ids);
                     DELETE FROM "consent_records" WHERE "userId" = ANY(del_user_ids);
-                    DELETE FROM "customer_tags" WHERE "addedBy" = ANY(del_user_ids) OR "customerId" = ANY(del_user_ids);
+                    UPDATE "customer_records" SET "adAttributionId" = NULL WHERE "customerId" = ANY(del_user_ids);
+                    DELETE FROM "ad_attributions" WHERE "customerRecordId" IN (SELECT id FROM "customer_records" WHERE "customerId" = ANY(del_user_ids));
+                    DELETE FROM "customer_tags" WHERE "addedBy" = ANY(del_user_ids) OR "customerId" IN (SELECT id FROM "customer_records" WHERE "customerId" = ANY(del_user_ids));
                     DELETE FROM "customer_records" WHERE "customerId" = ANY(del_user_ids);
                     UPDATE "customer_records" SET "assignedSalespersonId" = real_sales_id WHERE "assignedSalespersonId" = ANY(del_user_ids);
                     UPDATE "users" SET "assignedSalespersonId" = NULL WHERE "assignedSalespersonId" = ANY(del_user_ids);
                     UPDATE "users" SET "referredById" = NULL WHERE "referredById" = ANY(del_user_ids);
+                    DELETE FROM "clinic_ownership" WHERE "ownerUserId" = ANY(del_user_ids);
                     DELETE FROM "agent_clinic_access" WHERE "agentUserId" = ANY(del_user_ids);
                     DELETE FROM "messages" WHERE "senderId" = ANY(del_user_ids);
                     DELETE FROM "conversation_participants" WHERE "userId" = ANY(del_user_ids);
