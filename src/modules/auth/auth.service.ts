@@ -70,11 +70,11 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException("This account has been deactivated.");
     }
-    if (!user.isEmailVerified && process.env.ENABLE_EMAIL_VERIFICATION === "true") {
+    if (!user.isEmailVerified && process.env.ENABLE_EMAIL_VERIFICATION !== "false") {
       throw new UnauthorizedException({
         statusCode: 401,
         code: "EMAIL_NOT_VERIFIED",
-        message: "Please verify your email first. We sent you a link when you registered.",
+        message: "Παρακαλούμε επιβεβαιώστε πρώτα το email σας. / Please verify your email first. We sent you a link when you registered.",
       });
     }
 
@@ -320,6 +320,14 @@ export class AuthService {
   async register(registerDto: RegisterDto, redirect?: string) {
     const email = normalizeEmail(registerDto.email);
     assertPasswordPolicy(registerDto.password);
+
+    const rawPhone = String(registerDto.phone || "").trim();
+    const phoneDigits = rawPhone.replace(/\D/g, "");
+    if (!rawPhone || phoneDigits.length < 8) {
+      throw new BadRequestException(
+        "Το κινητό τηλέφωνο είναι υποχρεωτικό για την εγγραφή. / Mobile phone number is mandatory during registration.",
+      );
+    }
 
     const existing = await this.usersService.findByEmail(email);
     if (existing) {

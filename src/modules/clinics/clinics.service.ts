@@ -485,19 +485,31 @@ export class ClinicsService {
     const offerings = user
       ? treatment.offerings
           .filter(o => o.isActive && o.clinic?.isActive)
-          .map(o => ({
-            id: o.id,
-            clinicId: o.clinic.id,
-            clinicName: o.clinic.name,
-            location: o.clinic.address
-              ? `${o.clinic.address.city || ''}, ${o.clinic.address.state || ''}`.replace(/^,\s*|,\s*$/, '')
-              : 'Location not specified',
-            price: o.price,
-            durationMinutes: o.durationMinutes,
-            latitude: o.clinic.latitude,
-            longitude: o.clinic.longitude,
-            rating: o.clinic.rating,
-          }))
+          .map(o => {
+            const addr: any = o.clinic.address || {};
+            const fullAddress = [addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ');
+            const lat = Number(o.clinic.latitude);
+            const lng = Number(o.clinic.longitude);
+            const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+            const mapQuery = encodeURIComponent(
+              [o.clinic.name, addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ') ||
+              (hasCoords ? `${lat},${lng}` : 'Athens, Greece'),
+            );
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+            return {
+              id: o.id,
+              clinicId: o.clinic.id,
+              clinicName: o.clinic.name,
+              location: fullAddress || addr.city || 'Location not specified',
+              address: o.clinic.address,
+              googleMapsUrl,
+              price: o.price,
+              durationMinutes: o.durationMinutes,
+              latitude: o.clinic.latitude,
+              longitude: o.clinic.longitude,
+              rating: o.clinic.rating,
+            };
+          })
       : [];
 
     return {

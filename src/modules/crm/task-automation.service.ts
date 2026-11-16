@@ -298,7 +298,7 @@ export class TaskAutomationService {
         ownerId,
         NotificationType.PUSH,
         'Task assigned to you',
-        `Task assigned to you: ${title} - due ${formatDateTimeInTz(dueDate, tz)}`,
+        `Task assigned to you: ${title} - due ${athensDateTime(dueDate)}`,
         { actionId: saved.id, trigger: 'TASK_OPEN' },
       );
       this.eventEmitter.emit('automated.task.created', saved);

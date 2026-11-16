@@ -295,12 +295,27 @@ export const TreatmentDetails: React.FC = () => {
                     className="bg-white p-5 sm:p-8 rounded-[2rem] border border-gray-100 hover:border-[#CBFF38] transition-all hover:-translate-y-1 group shadow-sm flex flex-col"
                   >
                     <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-3 sm:gap-0">
-                      <div className="w-full sm:max-w-[60%]">
+                      <div className="w-full sm:max-w-[65%]">
                         <h4 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-tight mb-2">
                           {offering.clinicName}
                         </h4>
-                        <div className="flex items-center gap-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                          <MapPin size={10} className="text-[#CBFF38] shrink-0" /> <span className="truncate">{offering.location}</span>
+                        <div className="flex flex-col gap-1.5 text-[11px] font-bold text-gray-500">
+                          <div className="flex items-start gap-1.5">
+                            <MapPin size={12} className="text-[#84cc16] shrink-0 mt-0.5" />
+                            <span className="leading-snug">{offering.location}</span>
+                          </div>
+                          <a
+                            href={
+                              offering.googleMapsUrl ||
+                              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offering.clinicName || ''} ${offering.location || ''}`.trim())}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-lime-700 hover:text-black underline w-fit"
+                          >
+                            {getPreferredLanguage() === 'el' ? 'Προβολή στους Χάρτες Google ↗' : 'View on Google Maps ↗'}
+                          </a>
                         </div>
                       </div>
                       <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">

@@ -184,7 +184,16 @@ export class AppointmentNotificationsListener {
 
   private clientContext(apt: Appointment, treatments: string) {
     const addr: any = apt.clinic?.address || {};
-    const clinicAddress = [addr.street, addr.city].filter(Boolean).join(', ');
+    const clinicAddress = [addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ');
+    const clinicPhone = apt.clinic?.phone || '';
+    const lat = Number(apt.clinic?.latitude);
+    const lng = Number(apt.clinic?.longitude);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+    const mapQuery = encodeURIComponent(
+      [apt.clinic?.name, addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ') ||
+      (hasCoords ? `${lat},${lng}` : 'Athens, Greece'),
+    );
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
     return {
       customerName: apt.client?.firstName || apt.clientDetails?.fullName || '',
       serviceName: treatments,
@@ -192,6 +201,10 @@ export class AppointmentNotificationsListener {
       appointmentTime: athensTime(apt.startTime),
       clinicName: apt.clinic?.name || '',
       clinicAddress,
+      clinicPhone,
+      googleMapsUrl,
+      clinicMapUrl: googleMapsUrl,
+      mapUrl: googleMapsUrl,
       appointmentId: apt.id,
     };
   }
@@ -340,9 +353,8 @@ export class AppointmentNotificationsListener {
           );
           await this.emailClinicOwner(apt.clinic?.ownerId, NotificationTrigger.CLINIC_APPOINTMENT_CANCELLED, this.clientContext(apt, treatments), exclude);
         }
-        if (!actor.isClient) {
-          await this.notifyClient(apt, NotificationTrigger.APPOINTMENT_CANCELED, treatments);
-        }
+        // Always send cancellation confirmation email/notification to the client (even when the client cancels their own appointment)
+        await this.notifyClient(apt, NotificationTrigger.APPOINTMENT_CANCELED, treatments);
 
         // Paid appointment cancelled by anyone but an admin: admins decide about the refund.
         if (paid > 0 && !actor.isAdmin) {

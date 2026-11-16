@@ -2491,7 +2491,21 @@ export class CrmService implements OnModuleInit {
     }
   }
 
+  private normalizeTaskDate(val: any): Date | undefined {
+    if (!val) return undefined;
+    if (val instanceof Date) return isNaN(val.getTime()) ? undefined : val;
+    const s = String(val).trim();
+    if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+      const parsed = parseWallClockInTz(s, null, BUSINESS_TIMEZONE);
+      if (parsed) return parsed;
+    }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? undefined : d;
+  }
+
   async createAction(data: Partial<CrmAction>, actorId?: string): Promise<CrmAction> {
+    if (data.dueDate) data.dueDate = this.normalizeTaskDate(data.dueDate);
+    if (data.reminderDate) data.reminderDate = this.normalizeTaskDate(data.reminderDate);
     // 1. Mandatory Reminder Logic - Fallback to dueDate or now if missing
     if (!data.reminderDate) {
       data.reminderDate = data.dueDate || new Date();
@@ -2726,6 +2740,8 @@ export class CrmService implements OnModuleInit {
   }
 
   async updateAction(id: string, updateData: Partial<CrmAction> & { callNote?: any }, actorId?: string): Promise<CrmAction> {
+    if (updateData.dueDate) updateData.dueDate = this.normalizeTaskDate(updateData.dueDate);
+    if (updateData.reminderDate) updateData.reminderDate = this.normalizeTaskDate(updateData.reminderDate);
     const action = await this.crmActionsRepository.findOne({ where: { id } });
 
     if (!action) {
@@ -2872,7 +2888,7 @@ export class CrmService implements OnModuleInit {
 
     if (isReassigned) {
       try {
-        const due = saved.dueDate ? ` - due ${formatDateTimeInTz(saved.dueDate, BUSINESS_TIMEZONE)}` : '';
+        const due = saved.dueDate ? ` - due ${athensDateTime(saved.dueDate)}` : '';
         await this.notificationsService.create(
           saved.salespersonId,
           NotificationType.PUSH,
@@ -6370,7 +6386,19 @@ export class CrmService implements OnModuleInit {
   /** Therapy catalog for the "Treatment" field of lead forms. */
   async getTreatmentCatalog(): Promise<Array<{ id: string; name: string }>> {
     const rows = await this.dataSource.query(
-      `SELECT id, name FROM treatments WHERE "isActive" IS DISTINCT FROM false AND (status IS NULL OR LOWER(status::text) = 'approved') ORDER BY name ASC`,
+      `SELECT DISTINCT ON (UPPER(TRIM(name))) id, name
+       FROM treatments
+       WHERE "isActive" IS DISTINCT FROM false
+         AND LOWER(COALESCE(status::text, 'approved')) = 'approved'
+         AND LOWER(TRIM(name)) NOT IN (
+           'botox', 'cheek fillers', 'chemical peel', 'coolsculpting',
+           'emsculpt body toning', 'emsculpt', 'face laser', 'full body laser',
+           'lip fillers (1ml)', 'microneedling', 'teeth whitening',
+           'underarm laser', 'veneers', 'yalouronic', 'face wash',
+           'advance', 'surgery', 'beauty treatment', 'fever'
+         )
+         AND LOWER(TRIM(name)) NOT LIKE 'test claude%'
+       ORDER BY UPPER(TRIM(name)) ASC, "updatedAt" DESC`,
     );
     return rows.map((r: any) => ({ id: r.id, name: r.name }));
   }

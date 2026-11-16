@@ -27,29 +27,84 @@ export const outcomeLabel = (value?: string, greek = false): string => {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** "YYYY-MM-DDTHH:mm" in browser local time (staff browsers run in Europe/Athens). */
+const athensParts = (date: Date) => {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const map: Record<string, string> = {};
+  fmt.formatToParts(date).forEach((p) => {
+    map[p.type] = p.value;
+  });
+  return map;
+};
+
+/**
+ * Converts a wall-clock string "YYYY-MM-DDTHH:mm" in Europe/Athens into a UTC Date,
+ * regardless of the browser's OS timezone.
+ */
+export const parseAthensWallClock = (value?: string | Date | null): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  const s = String(value).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/);
+  if (m) {
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    const hour = m[4] !== undefined ? Number(m[4]) : 8;
+    const minute = m[5] !== undefined ? Number(m[5]) : 0;
+    const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+    const p = athensParts(utcGuess);
+    const asAthensUtc = Date.UTC(
+      Number(p.year),
+      Number(p.month) - 1,
+      Number(p.day),
+      Number(p.hour === '24' ? '0' : p.hour),
+      Number(p.minute),
+      0,
+    );
+    const offsetMs = asAthensUtc - utcGuess.getTime();
+    return new Date(utcGuess.getTime() - offsetMs);
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/** "YYYY-MM-DDTHH:mm" in Europe/Athens time (never UTC, even in headless/UTC browsers). */
 export const toLocalInputValue = (date: Date | string | undefined | null): string => {
   if (!date) return '';
-  const d = new Date(date);
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(date.trim())) {
+    return date.trim();
+  }
+  const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const p = athensParts(d);
+  const hh = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}-${p.month}-${p.day}T${hh}:${p.minute}`;
 };
 
-/** Next working day (Mon-Fri) at 08:00 local time, as "YYYY-MM-DDTHH:mm". */
+/** Next working day (Mon-Fri) at 08:00 Europe/Athens time, as "YYYY-MM-DDTHH:mm". */
 export const nextWorkingDay0800 = (from: Date = new Date()): string => {
-  const d = new Date(from);
+  const p = athensParts(from);
+  const cursor = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), 12));
   do {
-    d.setDate(d.getDate() + 1);
-  } while (d.getDay() === 0 || d.getDay() === 6);
-  d.setHours(8, 0, 0, 0);
-  return toLocalInputValue(d);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  } while (cursor.getUTCDay() === 0 || cursor.getUTCDay() === 6);
+  return `${cursor.getUTCFullYear()}-${pad(cursor.getUTCMonth() + 1)}-${pad(cursor.getUTCDate())}T08:00`;
 };
 
-/** Today, next full hour (local), as "YYYY-MM-DDTHH:mm". */
+/** Today, next full hour (Europe/Athens), as "YYYY-MM-DDTHH:mm". */
 export const todayNextHour = (): string => {
-  const d = new Date();
-  d.setHours(Math.min(d.getHours() + 1, 23), 0, 0, 0);
-  return toLocalInputValue(d);
+  const p = athensParts(new Date());
+  const currentHour = Number(p.hour === '24' ? '0' : p.hour);
+  const nextH = Math.min(currentHour + 1, 23);
+  return `${p.year}-${p.month}-${p.day}T${pad(nextH)}:00`;
 };
 
 /**

@@ -1,4 +1,4 @@
-import React, { useState } from"react";
+import React, { useState, useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { useNavigate, Link, useSearchParams } from"react-router-dom";
 import { register } from"@/store/slices/authSlice";
@@ -9,6 +9,7 @@ import { Input } from"@/components/atoms/Input/Input";
 import { Card } from"@/components/atoms/Card/Card";
 import type { RootState, AppDispatch } from"@/store";
 import { css } from"@emotion/css";
+import { toast } from "react-hot-toast";
 
 const registerContainerStyle = css`
  display: flex;
@@ -73,19 +74,38 @@ export const Register: React.FC = () => {
 
  const [email, setEmail] = useState("");
  const [password, setPassword] = useState("");
+ const [confirmPassword, setConfirmPassword] = useState("");
  const [firstName, setFirstName] = useState("");
  const [lastName, setLastName] = useState("");
  const [phone, setPhone] = useState("");
 
  const [emailError, setEmailError] = useState("");
  const [passwordError, setPasswordError] = useState("");
+ const [confirmPasswordError, setConfirmPasswordError] = useState("");
  const [firstNameError, setFirstNameError] = useState("");
  const [lastNameError, setLastNameError] = useState("");
  const [phoneError, setPhoneError] = useState("");
+ const [submitError, setSubmitError] = useState("");
  const [agreedTerms, setAgreedTerms] = useState(false);
  const [termsError, setTermsError] = useState("");
  const [marketingConsent, setMarketingConsent] = useState(false);
- const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+ const [isGreek, setIsGreek] = useState(
+ () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ useEffect(() => {
+ const handleLang = () => {
+ setIsGreek(localStorage.getItem('preferredLang') === 'el');
+ };
+ window.addEventListener('storage', handleLang);
+ window.addEventListener('languagechange', handleLang);
+ const interval = setInterval(handleLang, 1000);
+ return () => {
+ window.removeEventListener('storage', handleLang);
+ window.removeEventListener('languagechange', handleLang);
+ clearInterval(interval);
+ };
+ }, []);
 
  // After registering: "check your email" screen (verification link)
  const [verificationStep, setVerificationStep] = useState(false);
@@ -102,36 +122,47 @@ export const Register: React.FC = () => {
  let isValid = true;
  setEmailError("");
  setPasswordError("");
+ setConfirmPasswordError("");
  setFirstNameError("");
  setLastNameError("");
  setPhoneError("");
  setTermsError("");
+ setSubmitError("");
 
  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
- setEmailError("Please enter a valid email address");
+ setEmailError(isGreek ? "Παρακαλούμε εισάγετε μια έγκυρη διεύθυνση email" : "Please enter a valid email address");
  isValid = false;
  }
  if (!password || password.length < 8) {
- setPasswordError("Password must be at least 8 characters");
+ setPasswordError(isGreek ? "Ο κωδικός πρόσβασης πρέπει να έχει τουλάχιστον 8 χαρακτήρες" : "Password must be at least 8 characters");
  isValid = false;
  }
- if (!firstName) {
- setFirstNameError("First name is required");
+ if (!confirmPassword || confirmPassword !== password) {
+ setConfirmPasswordError(isGreek ? "Οι κωδικοί πρόσβασης δεν ταιριάζουν" : "Passwords do not match");
  isValid = false;
  }
- if (!lastName) {
- setLastNameError("Last name is required");
+ if (!firstName.trim()) {
+ setFirstNameError(isGreek ? "Το όνομα είναι υποχρεωτικό" : "First name is required");
  isValid = false;
  }
- if (!phone) {
- setPhoneError("Phone number is required");
+ if (!lastName.trim()) {
+ setLastNameError(isGreek ? "Το επώνυμο είναι υποχρεωτικό" : "Last name is required");
  isValid = false;
- } else if (!/^\+?\d{10,15}$/.test(phone)) {
- setPhoneError("Please enter a valid phone number");
+ }
+ const cleanPhone = phone.trim().replace(/[\s()-]/g, "");
+ if (!cleanPhone) {
+ setPhoneError(isGreek ? "Ο αριθμός κινητού τηλεφώνου είναι υποχρεωτικός" : "Mobile phone number is required");
+ isValid = false;
+ } else if (!/^\+?\d{8,15}$/.test(cleanPhone)) {
+ setPhoneError(isGreek ? "Παρακαλούμε εισάγετε έναν έγκυρο αριθμό κινητού τηλεφώνου" : "Please enter a valid mobile phone number");
  isValid = false;
  }
  if (!agreedTerms) {
- setTermsError("You must read and agree to the Terms of Use and acknowledge the Privacy Policy.");
+ setTermsError(
+ isGreek
+ ? "Πρέπει να διαβάσετε και να αποδεχτείτε τους Όρους Χρήσης και την Πολιτική Απορρήτου."
+ : "You must read and agree to the Terms of Use and acknowledge the Privacy Policy."
+ );
  isValid = false;
  }
  return isValid;
@@ -139,15 +170,19 @@ export const Register: React.FC = () => {
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
- if (!validateForm()) return;
+ if (!validateForm()) {
+ toast.error(isGreek ? "Παρακαλούμε ελέγξτε τα πεδία της φόρμας." : "Please check the required fields.");
+ return;
+ }
 
  try {
  const userData: any = {
  email: email.trim(),
  password,
- firstName,
- lastName,
- phone: phone || undefined,
+ firstName: firstName.trim(),
+ lastName: lastName.trim(),
+ phone: phone.trim(),
+ marketingEmailConsent: marketingConsent,
  role:"client",
  redirect,
  };
@@ -156,17 +191,28 @@ export const Register: React.FC = () => {
  setRegisteredEmail(result?.email || email.trim());
  setVerificationMessage(result?.message ||"");
  setVerificationStep(true);
- } catch (err) {
- // Error handled in Redux
+ toast.success(
+ isGreek
+ ? "Η εγγραφή σας ολοκληρώθηκε! Ελέγξτε το email σας για επιβεβαίωση."
+ : "Registration successful! Please check your email to verify your account."
+ );
+ } catch (err: any) {
+ const msg = typeof err === "string" ? err : err?.message || (isGreek ? "Η εγγραφή απέτυχε. Δοκιμάστε ξανά." : "Registration failed. Please try again.");
+ setSubmitError(msg);
+ toast.error(msg);
  }
  };
 
  const handleResend = async () => {
  try {
  await authAPI.resendVerification(registeredEmail, redirect);
- setResendInfo("We sent a new link. / Στείλαμε νέο σύνδεσμο.");
+ const msg = isGreek ? "Στείλαμε νέο σύνδεσμο επιβεβαίωσης στο email σας." : "We sent a new verification link to your email.";
+ setResendInfo(msg);
+ toast.success(msg);
  } catch {
- setResendInfo("Please try again in a moment.");
+ const errMsg = isGreek ? "Παρακαλούμε δοκιμάστε ξανά σε λίγο." : "Please try again in a moment.";
+ setResendInfo(errMsg);
+ toast.error(errMsg);
  }
  };
 
@@ -180,30 +226,35 @@ export const Register: React.FC = () => {
  return (
  <div className={registerContainerStyle}>
  <Card className={registerCardStyle}>
+ <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", padding: "12px 16px", borderRadius: 12, marginBottom: 16, textAlign: "center", fontSize: 13, fontWeight: 600 }}>
+ {isGreek ? "Ο λογαριασμός σας δημιουργήθηκε επιτυχώς!" : "Your account has been created successfully!"}
+ </div>
  <h2 className={registerHeaderStyle} style={{ fontSize: 22 }}>
- Ελέγξτε το email σας / Check your email
+ {isGreek ? "Ελέγξτε το email σας" : "Check your email"}
  </h2>
  <p style={{ textAlign:"center", color:"#6b7280", marginBottom: 20, fontSize: 14, lineHeight: 1.6 }}>
- {verificationMessage ||"We sent a verification link to"}<br />
+ {isGreek ? "Στείλαμε σύνδεσμο επιβεβαίωσης στο:" : (verificationMessage ||"We sent a verification link to")}<br />
  <strong style={{ color:"#111" }}>{registeredEmail}</strong>
  </p>
  <p style={{ textAlign:"center", color:"#6b7280", fontSize: 14, lineHeight: 1.6 }}>
- Πατήστε τον σύνδεσμο στο email και μετά συνδεθείτε. Click the link in the email, then log in.
+ {isGreek
+ ? "Πατήστε τον σύνδεσμο στο email σας για να επιβεβαιώσετε τον λογαριασμό σας και να κλείσετε ραντεβού."
+ : "Click the link in the email to verify your account and book appointments."}
  </p>
- {resendInfo && <p style={{ textAlign:"center", color:"#15803d", fontSize: 13 }}>{resendInfo}</p>}
+ {resendInfo && <p style={{ textAlign:"center", color:"#15803d", fontSize: 13, marginTop: 10 }}>{resendInfo}</p>}
  <p style={{ textAlign:"center", marginTop: 16, fontSize: 13, color:"#9ca3af" }}>
- Δεν το λάβατε; Ελέγξτε τα ανεπιθύμητα. Didn't receive it? Check your spam folder.{" "}
+ {isGreek ? "Δεν το λάβατε; Ελέγξτε τον φάκελο ανεπιθύμητης αλληλογραφίας (Spam)." : "Didn't receive it? Check your spam folder."}{" "}
  <button
  type="button"
  onClick={handleResend}
- style={{ color:"#6366f1", background:"none", border:"none", cursor:"pointer", fontWeight: 600 }}
+ style={{ color:"#4d7c0f", background:"none", border:"none", cursor:"pointer", fontWeight: 700, textDecoration: "underline" }}
  >
- Send again
+ {isGreek ? "Αποστολή ξανά" : "Send again"}
  </button>
  </p>
- <p style={{ textAlign:"center", marginTop: 8 }}>
+ <p style={{ textAlign:"center", marginTop: 12 }}>
  <Link to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` :"/login"} className={linkStyle}>
- Σύνδεση / Log in
+ {isGreek ? "Μετάβαση στη Σύνδεση" : "Go to Login"}
  </Link>
  </p>
  </Card>
@@ -215,58 +266,81 @@ export const Register: React.FC = () => {
  return (
  <div className={registerContainerStyle}>
  <Card className={registerCardStyle}>
- <h2 className={registerHeaderStyle}>Create Your Account</h2>
- {error && <p className={errorStyle}>{error}</p>}
- <form onSubmit={handleSubmit} className={formStyle}>
+ <h2 className={registerHeaderStyle}>{isGreek ? "Δημιουργία Λογαριασμού" : "Create Your Account"}</h2>
+ {(submitError || error) && (
+ <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", padding: "10px 14px", borderRadius: 10, marginBottom: 16, textAlign: "center", fontSize: 13, fontWeight: 600 }}>
+ {submitError || error}
+ </div>
+ )}
+ <form onSubmit={handleSubmit} className={formStyle} noValidate>
  <div>
  <Input
- placeholder="First Name"
+ placeholder={isGreek ? "Όνομα *" : "First Name *"}
  value={firstName}
  onChange={(e) => setFirstName(e.target.value)}
  fullWidth
+ required
  />
  {firstNameError && <p className={errorStyle}>{firstNameError}</p>}
  </div>
  <div>
  <Input
- placeholder="Last Name"
+ placeholder={isGreek ? "Επώνυμο *" : "Last Name *"}
  value={lastName}
  onChange={(e) => setLastName(e.target.value)}
  fullWidth
+ required
  />
  {lastNameError && <p className={errorStyle}>{lastNameError}</p>}
  </div>
  <div>
  <Input
  type="email"
- placeholder="Email"
+ placeholder={isGreek ? "Διεύθυνση Email *" : "Email *"}
  value={email}
  onChange={(e) => setEmail(e.target.value)}
  fullWidth
  autoComplete="email"
+ required
  />
  {emailError && <p className={errorStyle}>{emailError}</p>}
  </div>
  <div>
  <Input
  type="password"
- placeholder="Password"
+ placeholder={isGreek ? "Κωδικός Πρόσβασης (τουλάχιστον 8 χαρακτήρες) *" : "Password (min. 8 characters) *"}
  value={password}
  onChange={(e) => setPassword(e.target.value)}
  fullWidth
  passwordToggle
  minLength={8}
  autoComplete="new-password"
+ required
  />
  {passwordError && <p className={errorStyle}>{passwordError}</p>}
  </div>
  <div>
  <Input
+ type="password"
+ placeholder={isGreek ? "Επιβεβαίωση Κωδικού Πρόσβασης *" : "Confirm Password *"}
+ value={confirmPassword}
+ onChange={(e) => setConfirmPassword(e.target.value)}
+ fullWidth
+ passwordToggle
+ minLength={8}
+ autoComplete="new-password"
+ required
+ />
+ {confirmPasswordError && <p className={errorStyle}>{confirmPasswordError}</p>}
+ </div>
+ <div>
+ <Input
  type="tel"
- placeholder="Phone Number"
+ placeholder={isGreek ? "Κινητό Τηλέφωνο (π.χ. +306912345678) *" : "Mobile Phone Number (e.g. +306912345678) *"}
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
  fullWidth
+ required
  />
  {phoneError && <p className={errorStyle}>{phoneError}</p>}
  </div>
@@ -337,13 +411,13 @@ export const Register: React.FC = () => {
  }}
  className="mt-5"
  >
- {isLoading ?"Registering..." :"Register"}
+ {isLoading ? (isGreek ? "Εγγραφή σε εξέλιξη..." : "Registering...") : (isGreek ? "Εγγραφή" : "Register")}
  </Button>
  </form>
  <p style={{ textAlign:"center", marginTop:"var(--spacing-md)" }}>
- Already have an account?{""}
+ {isGreek ? "Έχετε ήδη λογαριασμό;" : "Already have an account?"}{" "}
  <Link to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` :"/login"} className={linkStyle}>
- Login
+ {isGreek ? "Σύνδεση" : "Login"}
  </Link>
  </p>
  </Card>

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { X, Search, ArrowRight, Check, Users } from 'lucide-react';
 import { userAPI } from '../../services/api';
-import { createConversation } from '../../store/slices/messagesSlice';
+import { createConversation, setActiveConversation } from '../../store/slices/messagesSlice';
 import type { AppDispatch } from '../../store';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 interface NewChatModalProps {
  onClose: () => void;
@@ -85,12 +86,19 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  const participantIds = selectedUsers.map(u => u.id);
  const isGroup = participantIds.length > 1;
  
- await dispatch(createConversation({ 
+ try {
+ const created = await dispatch(createConversation({ 
  participantIds, 
  isGroup,
  title: isGroup ? selectedUsers.map(u => u.firstName).join(', ') : undefined
- }));
+ })).unwrap();
+ if (created?.id) {
+ dispatch(setActiveConversation(created.id));
+ }
  onClose();
+ } catch (err: any) {
+ toast.error(err?.message || 'Failed to start conversation');
+ }
  };
 
  return (
@@ -160,9 +168,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   ))}
   <div className="flex-1" />
   <button 
-  disabled={!hasAcknowledgedNotice}
-                      onClick={handleLaunchChannel}
-  className="px-4 py-1.5 bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:scale-105 active:scale-95 transition-all shadow-md"
+  type="button"
+  onClick={handleLaunchChannel}
+  className="px-4 py-1.5 bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer"
   >
   Start Chat ({selectedUsers.length})
   </button>

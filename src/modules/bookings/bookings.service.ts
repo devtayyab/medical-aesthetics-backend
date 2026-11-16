@@ -332,6 +332,20 @@ export class BookingsService {
       throw new BadRequestException('Client mobile number is mandatory for appointment booking');
     }
 
+    // Require email verification before a customer can book online (Urgent #10)
+    if (
+      actor?.role &&
+      String(actor.role).toLowerCase() === UserRole.CLIENT &&
+      userExists &&
+      userExists.role === UserRole.CLIENT &&
+      userExists.isEmailVerified === false &&
+      process.env.ENABLE_EMAIL_VERIFICATION !== 'false'
+    ) {
+      throw new ForbiddenException(
+        'Παρακαλούμε επιβεβαιώστε πρώτα το email σας πριν κλείσετε ραντεβού. / Please verify your email address before booking an appointment.',
+      );
+    }
+
     let providerId = createAppointmentDto.providerId;
 
     // The provider is the DOCTOR of the appointment (QA #34). A salesperson, owner or

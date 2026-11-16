@@ -19,7 +19,7 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.EMAIL,
     subject: 'Το αίτημα ραντεβού σας καταχωρήθηκε - {{serviceName}}',
     content:
-      'Γεια σας {{customerName}},\n\nΤο αίτημα ραντεβού σας καταχωρήθηκε:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\n\nΘα σας ενημερώσουμε μόλις επιβεβαιωθεί.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΤο αίτημα ραντεβού σας καταχωρήθηκε:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\nΔιεύθυνση: {{clinicAddress}}\nΧάρτης Google Maps: {{googleMapsUrl}}\n\nΘα σας ενημερώσουμε μόλις επιβεβαιωθεί.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_BOOKED,
@@ -38,7 +38,7 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.EMAIL,
     subject: 'Επιβεβαίωση ραντεβού - {{clinicName}}',
     content:
-      'Γεια σας {{customerName}},\n\nΤο ραντεβού σας επιβεβαιώθηκε:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΣας περιμένουμε!\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΤο ραντεβού σας επιβεβαιώθηκε:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\nΧάρτης Google Maps: {{googleMapsUrl}}\n\nΣας περιμένουμε!\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_RESCHEDULED,
@@ -51,7 +51,7 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.EMAIL,
     subject: 'Αλλαγή ραντεβού - {{appointmentDate}} {{appointmentTime}}',
     content:
-      'Γεια σας {{customerName}},\n\nΤο ραντεβού σας άλλαξε. Τα νέα στοιχεία είναι:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\n\nΑν η νέα ώρα δεν σας εξυπηρετεί, επικοινωνήστε μαζί μας.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΤο ραντεβού σας άλλαξε. Τα νέα στοιχεία είναι:\n\nΘεραπεία: {{serviceName}}\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\nΧάρτης Google Maps: {{googleMapsUrl}}\n\nΑν η νέα ώρα δεν σας εξυπηρετεί, επικοινωνήστε μαζί μας.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_CANCELED,
@@ -77,7 +77,7 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.EMAIL,
     subject: 'Υπενθύμιση: το ραντεβού σας αύριο {{appointmentDate}}, ώρα {{appointmentTime}}',
     content:
-      'Γεια σας {{customerName}},\n\nΣας υπενθυμίζουμε το ραντεβού σας:\n\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΘεραπεία: {{serviceName}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΑν χρειάζεται αλλαγή, επικοινωνήστε μαζί μας το συντομότερο.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΣας υπενθυμίζουμε το ραντεβού σας:\n\nΗμερομηνία: {{appointmentDate}}\nΏρα: {{appointmentTime}}\nΘεραπεία: {{serviceName}}\nΚλινική: {{clinicName}}\n{{clinicAddress}}\nΧάρτης Google Maps: {{googleMapsUrl}}\n\nΑν χρειάζεται αλλαγή, επικοινωνήστε μαζί μας το συντομότερο.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY,
@@ -90,7 +90,7 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.EMAIL,
     subject: 'Σήμερα {{appointmentDate}}, ώρα {{appointmentTime}}: το ραντεβού σας',
     content:
-      'Γεια σας {{customerName}},\n\nΣας περιμένουμε σήμερα {{appointmentDate}}, ώρα {{appointmentTime}} για {{serviceName}}.\n\nΚλινική: {{clinicName}}\n{{clinicAddress}}\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+      'Γεια σας {{customerName}},\n\nΣας περιμένουμε σήμερα {{appointmentDate}}, ώρα {{appointmentTime}} για {{serviceName}}.\n\nΚλινική: {{clinicName}}\n{{clinicAddress}}\nΧάρτης Google Maps: {{googleMapsUrl}}\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
   },
   {
     trigger: NotificationTrigger.POST_VISIT_THANK_YOU,

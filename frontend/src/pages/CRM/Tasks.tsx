@@ -18,6 +18,7 @@ import {
   nextWorkingDay0800,
   defaultNextCallFor,
   toLocalInputValue,
+  parseAthensWallClock,
 } from '@/constants/callOutcomes';
 
 import type { RootState, AppDispatch } from '@/store';
@@ -488,8 +489,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     const keepOpen = KEEP_TASK_OPEN_OUTCOMES.includes(effectiveOutcome);
     let nextCall: Date | null = null;
     if (keepOpen) {
-      nextCall = new Date(callbackDate || defaultNextCallFor(effectiveOutcome));
-      if (isNaN(nextCall.getTime())) {
+      nextCall = parseAthensWallClock(callbackDate || defaultNextCallFor(effectiveOutcome));
+      if (!nextCall || isNaN(nextCall.getTime())) {
         toast.error('Ορίστε έγκυρη ημερομηνία και ώρα επόμενης κλήσης.');
         return;
       }

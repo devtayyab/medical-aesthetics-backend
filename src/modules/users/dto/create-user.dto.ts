@@ -7,6 +7,8 @@ import {
   IsArray,
   IsPhoneNumber,
   IsObject,
+  IsNotEmpty,
+  Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../../common/enums/user-role.enum';
@@ -34,8 +36,10 @@ export class CreateUserDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ example: '+1234567890', required: true })
+  @ApiProperty({ example: '+306912345678', required: true })
   @IsString()
+  @IsNotEmpty({ message: 'Mobile phone number is required' })
+  @Matches(/^\+?[\d\s()-]{8,20}$/, { message: 'Please enter a valid mobile phone number' })
   phone: string;
 
   @ApiProperty({ required: false })

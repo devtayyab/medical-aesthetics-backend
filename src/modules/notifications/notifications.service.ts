@@ -562,7 +562,31 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     for (const template of templates) {
       if (options.channels && !options.channels.includes(template.type)) continue;
       const title = this.replacePlaceholders(template.subject, context);
-      const message = this.replacePlaceholders(template.content, context);
+      let message = this.replacePlaceholders(template.content, context);
+
+      // Ensure appointment confirmation/booking/reminder emails always include the Google Maps link (Urgent #6)
+      if (
+        template.type === NotificationType.EMAIL &&
+        context?.googleMapsUrl &&
+        [
+          NotificationTrigger.APPOINTMENT_CONFIRMED,
+          NotificationTrigger.APPOINTMENT_BOOKED,
+          NotificationTrigger.APPOINTMENT_RESCHEDULED,
+          NotificationTrigger.APPOINTMENT_REMINDER,
+          NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY,
+        ].includes(trigger) &&
+        !message.includes('google.com/maps') &&
+        !message.includes('maps.google')
+      ) {
+        if (context.clinicAddress && message.includes(context.clinicAddress)) {
+          message = message.replace(
+            context.clinicAddress,
+            `${context.clinicAddress}\nΧάρτης Google Maps: ${context.googleMapsUrl}`,
+          );
+        } else {
+          message = `${message}\n\nΧάρτης Google Maps: ${context.googleMapsUrl}`;
+        }
+      }
 
       const notification = await this.create(
         recipientId,

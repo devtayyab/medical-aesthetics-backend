@@ -18,35 +18,20 @@ import type { CrmAction } from '@/types';
 import { userAPI, crmAPI, clinicsAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { cn } from"@/lib/utils";
-import { CALL_OUTCOMES } from '@/constants/callOutcomes';
+import { CALL_OUTCOMES, toLocalInputValue, parseAthensWallClock, nextWorkingDay0800 } from '@/constants/callOutcomes';
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
+/** Local (Europe/Athens) "YYYY-MM-DDTHH:mm" for date/time inputs. Never UTC. */
+const toLocalInput = (value?: string | Date | null): string => toLocalInputValue(value);
 
-/** Local (browser = Europe/Athens) "YYYY-MM-DDTHH:mm" for date/time inputs. Never UTC. */
-const toLocalInput = (value?: string | Date | null): string => {
- if (!value) return '';
- // Already a bare local wall-clock value produced by the inputs below
- if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
- const d = new Date(value);
- if (isNaN(d.getTime())) return '';
- return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-};
-
-/** Local wall-clock input value -> UTC ISO string for the API. */
+/** Europe/Athens wall-clock input value -> UTC ISO string for the API. */
 const localInputToISO = (value?: string): string | undefined => {
  if (!value) return undefined;
- const d = new Date(value);
- return isNaN(d.getTime()) ? undefined : d.toISOString();
+ const d = parseAthensWallClock(value);
+ return d ? d.toISOString() : undefined;
 };
 
-/** Default due time for a new task: next working day (Mon-Fri) at 08:00 local. */
-const nextWorkingDayAt0800 = (): string => {
- const d = new Date();
- d.setDate(d.getDate() + 1);
- while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
- d.setHours(8, 0, 0, 0);
- return toLocalInput(d);
-};
+/** Default due time for a new task: next working day (Mon-Fri) at 08:00 Europe/Athens. */
+const nextWorkingDayAt0800 = (): string => nextWorkingDay0800();
 
 const todayLocalDate = (): string => toLocalInput(new Date()).split('T')[0];
 
