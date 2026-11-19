@@ -212,6 +212,8 @@ export class ClinicsService {
         sActive: true,
         cActive: true
       })
+      .andWhere('treatment.isActive = :tActive', { tActive: true })
+      .andWhere("LOWER(CAST(treatment.status AS text)) = 'approved'")
       .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' });
 
     if (params.search) {
@@ -333,10 +335,10 @@ export class ClinicsService {
         }
       });
 
-      const [services, totalTreatments] = await serviceQb
-        .take(params.limit || 50)
-        .skip(params.offset || 0)
-        .getManyAndCount();
+      // Fetch all matching active services BEFORE deduplicating by master treatment ID.
+      // Applying take(50) here previously cut off services beyond row 50 (out of 400+ active services),
+      // hiding treatments like Hydrafacial, Tummy Tuck, Gynecomastia, and Facial Spider Veins on /search.
+      const services = await serviceQb.getMany();
 
       // Transform services to Treatment Master records and DEDUPLICATE by master treatment ID.
       // Each unique treatment appears once, showing the lowest price across all clinics.
@@ -352,6 +354,7 @@ export class ClinicsService {
             id: masterId,
             serviceId: s.id,
             masterTreatmentId: masterId,
+            category: s.treatment?.categoryRef?.name || s.treatment?.category || 'Γενική Αισθητική',
             fromPrice: thisPrice,
             durationMinutes: s.durationMinutes,
             clinicId: s.clinicId,
@@ -378,50 +381,99 @@ export class ClinicsService {
         }
       }
 
-      // Also query master catalog treatments so newly created treatments (e.g. Acne / Ακμή)
+      // Also query active, approved master catalog treatments so newly created treatments
       // always appear in Search and Category views even before a clinic adds an active service for them
-      const masterTreatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
-        .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
-        .leftJoin('categoryRef.parent', 'categoryParent');
+      // (skip when clinic-only filters like location/date/rating are active so results match those clinics).
+      const hasClinicOnlyFilter = Boolean(
+        params.location ||
+        params.search_date ||
+        (params as any).rating ||
+        (params as any).brand ||
+        (params as any).salon_type ||
+        (params as any).instant_offer,
+      );
 
-      if (params.search) {
-        const normalizedSearch = normalizeGreek(params.search);
-        const searchTerm = `%${normalizedSearch}%`;
-        const searchNoSpace = `%${normalizedSearch.replace(/\s+/g, '')}%`;
-        masterTreatmentQb.andWhere(
-          `(${sqlTranslate('treatment.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.category')} ILIKE :searchTerm OR ${sqlTranslate('categoryRef.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.shortDescription')} ILIKE :searchTerm OR REPLACE(${sqlTranslate('treatment.name')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '') ILIKE :searchNoSpace)`,
-          { searchTerm, searchNoSpace }
-        );
-      }
+      if (!hasClinicOnlyFilter) {
+        const masterTreatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
+          .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+          .leftJoin('categoryRef.parent', 'categoryParent')
+          .where('treatment.isActive = :tActive', { tActive: true })
+          .andWhere("LOWER(CAST(treatment.status AS text)) = 'approved'");
 
-      if (params.category) {
-        const normalizedCategory = normalizeGreek(params.category);
-        const categoryParam = `%${normalizedCategory}%`;
-        const categoryParamDash = `%${normalizedCategory.replace(/\s+/g, '-')}%`;
-        masterTreatmentQb.andWhere(
-          `(${sqlTranslate('treatment.category')} ILIKE :categoryParam OR ${sqlTranslate('categoryRef.name')} ILIKE :categoryParam OR ${sqlTranslate('categoryParent.name')} ILIKE :categoryParam OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryParent.name')}, ' ', '-') ILIKE :categoryParamDash)`,
-          { categoryParam, categoryParamDash }
-        );
-      }
+        if (params.search) {
+          const normalizedSearch = normalizeGreek(params.search);
+          const searchTerm = `%${normalizedSearch}%`;
+          const searchNoSpace = `%${normalizedSearch.replace(/\s+/g, '')}%`;
+          masterTreatmentQb.andWhere(
+            `(${sqlTranslate('treatment.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.category')} ILIKE :searchTerm OR ${sqlTranslate('categoryRef.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.shortDescription')} ILIKE :searchTerm OR REPLACE(${sqlTranslate('treatment.name')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '') ILIKE :searchNoSpace)`,
+            { searchTerm, searchNoSpace }
+          );
+        }
 
-      const masterTreatments = await masterTreatmentQb.take(params.limit || 50).getMany();
-      for (const mt of masterTreatments) {
-        if (!treatmentMap.has(mt.id)) {
-          treatmentMap.set(mt.id, {
-            ...mt,
-            id: mt.id,
-            masterTreatmentId: mt.id,
-            category: mt.category || mt.categoryRef?.name || 'General Aesthetics',
-            fromPrice: 0,
-            durationMinutes: 30,
-            availableAt: [],
-            clinicsCount: 0,
-            imageUrl: mt.imageUrl,
-          });
+        if (params.category) {
+          const normalizedCategory = normalizeGreek(params.category);
+          const categoryParam = `%${normalizedCategory}%`;
+          const categoryParamDash = `%${normalizedCategory.replace(/\s+/g, '-')}%`;
+          masterTreatmentQb.andWhere(
+            `(${sqlTranslate('treatment.category')} ILIKE :categoryParam OR ${sqlTranslate('categoryRef.name')} ILIKE :categoryParam OR ${sqlTranslate('categoryParent.name')} ILIKE :categoryParam OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryParent.name')}, ' ', '-') ILIKE :categoryParamDash)`,
+            { categoryParam, categoryParamDash }
+          );
+        }
+
+        const masterTreatments = await masterTreatmentQb
+          .orderBy('treatment.sortOrder', 'ASC')
+          .addOrderBy('treatment.name', 'ASC')
+          .getMany();
+        for (const mt of masterTreatments) {
+          if (!treatmentMap.has(mt.id)) {
+            treatmentMap.set(mt.id, {
+              ...mt,
+              id: mt.id,
+              masterTreatmentId: mt.id,
+              category: mt.categoryRef?.name || mt.category || 'Γενική Αισθητική',
+              fromPrice: 0,
+              durationMinutes: 30,
+              availableAt: [],
+              clinicsCount: 0,
+              imageUrl: mt.imageUrl,
+            });
+          }
         }
       }
 
-      const processedTreatments = Array.from(treatmentMap.values());
+      let processedTreatments = Array.from(treatmentMap.values());
+
+      // Sort deduplicated treatments consistently (default alphabetical A-Z with no paid placement)
+      if (params.sortBy === 'price-asc') {
+        processedTreatments.sort((a, b) => {
+          const pa = a.fromPrice > 0 ? a.fromPrice : Number.POSITIVE_INFINITY;
+          const pb = b.fromPrice > 0 ? b.fromPrice : Number.POSITIVE_INFINITY;
+          return pa !== pb ? pa - pb : String(a.name || '').localeCompare(String(b.name || ''), 'el', { sensitivity: 'base' });
+        });
+      } else if (params.sortBy === 'price-desc') {
+        processedTreatments.sort((a, b) => {
+          const pa = a.fromPrice || 0;
+          const pb = b.fromPrice || 0;
+          return pa !== pb ? pb - pa : String(a.name || '').localeCompare(String(b.name || ''), 'el', { sensitivity: 'base' });
+        });
+      } else if (params.sortBy === 'alphabetical' || !params.sortBy) {
+        processedTreatments.sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''), 'el', { sensitivity: 'base' }),
+        );
+      }
+
+      const totalDeduplicatedTreatments = processedTreatments.length;
+      const explicitLimit =
+        params.limit !== undefined && params.limit !== null && String(params.limit) !== ''
+          ? Number(params.limit)
+          : undefined;
+      const parsedOffset = Number(params.offset) || 0;
+
+      if (explicitLimit && Number.isFinite(explicitLimit) && explicitLimit > 0) {
+        processedTreatments = processedTreatments.slice(parsedOffset, parsedOffset + explicitLimit);
+      } else if (parsedOffset > 0) {
+        processedTreatments = processedTreatments.slice(parsedOffset);
+      }
 
       // If user is NOT logged in:
       // "NOT logged in → only treatments, NO prices, NO doctor or clinic names."
@@ -440,24 +492,23 @@ export class ClinicsService {
         return {
           clinics: [],
           treatments: sanitizedTreatments,
-          total: sanitizedTreatments.length,
+          total: totalDeduplicatedTreatments,
           totalClinics: 0,
-          totalTreatments: sanitizedTreatments.length,
-          offset: params.offset || 0,
+          totalTreatments: totalDeduplicatedTreatments,
+          offset: parsedOffset,
         };
       }
 
       // Logged in: sanitize clinic entities (no bank IBAN for clients, no doctor personal phone/email)
       const sanitizedClinics = clinics.map((c) => this.sanitizeClinic(c, user));
-      const deduplicatedCount = processedTreatments.length;
 
       return {
         clinics: sanitizedClinics,
         treatments: processedTreatments,
-        total: totalClinics + deduplicatedCount,
+        total: totalClinics + totalDeduplicatedTreatments,
         totalClinics,
-        totalTreatments: deduplicatedCount,
-        offset: params.offset || 0,
+        totalTreatments: totalDeduplicatedTreatments,
+        offset: parsedOffset,
       };
     } catch (error) {
       console.error('Error in ClinicsService.search:', error);
