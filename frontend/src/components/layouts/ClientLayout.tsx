@@ -87,11 +87,11 @@ const navItem = css`
 const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const [isGreek, setIsGreek] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+    () => typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en'
   );
 
   useEffect(() => {
-    const handleLang = () => setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    const handleLang = () => setIsGreek(localStorage.getItem('preferredLang') !== 'en');
     window.addEventListener('storage', handleLang);
     window.addEventListener('languagechange', handleLang);
     return () => {

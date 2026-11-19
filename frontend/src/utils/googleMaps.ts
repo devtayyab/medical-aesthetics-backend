@@ -18,9 +18,9 @@ export const loadGoogleMaps = (): Promise<any> => {
 
   const language = (() => {
     try {
-      return localStorage.getItem('preferredLang') === 'el' ? 'el' : 'en';
+      return localStorage.getItem('preferredLang') === 'en' ? 'en' : 'el';
     } catch {
-      return 'en';
+      return 'el';
     }
   })();
 

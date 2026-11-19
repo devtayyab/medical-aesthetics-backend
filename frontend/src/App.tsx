@@ -132,7 +132,7 @@ const VerifyEmail = lazy(() => import('./pages/VerifyEmail/VerifyEmail'));
 
 const AuthHeader: React.FC = () => {
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
-    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+    () => (localStorage.getItem('preferredLang') === 'en' ? 'en' : 'el')
   );
 
   const handleLanguageSwitch = (lang: 'en' | 'el') => {

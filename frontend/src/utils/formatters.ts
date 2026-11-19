@@ -98,9 +98,9 @@ export const formatDateTime = (value: DateInput, timeZone: string = APP_TIMEZONE
 
 const currentLocale = (): string => {
   try {
-    return localStorage.getItem('preferredLang') === 'el' ? 'el-GR' : 'en-GB';
+    return localStorage.getItem('preferredLang') === 'en' ? 'en-GB' : 'el-GR';
   } catch {
-    return 'en-GB';
+    return 'el-GR';
   }
 };
 

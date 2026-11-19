@@ -93,12 +93,12 @@ export const Register: React.FC = () => {
  const [termsError, setTermsError] = useState("");
  const [marketingConsent, setMarketingConsent] = useState(false);
  const [isGreek, setIsGreek] = useState(
- () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ () => typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en'
  );
 
  useEffect(() => {
  const handleLang = () => {
- setIsGreek(localStorage.getItem('preferredLang') === 'el');
+ setIsGreek(localStorage.getItem('preferredLang') !== 'en');
  };
  window.addEventListener('storage', handleLang);
  window.addEventListener('languagechange', handleLang);

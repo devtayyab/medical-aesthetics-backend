@@ -99,7 +99,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
- const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+  const isGreek = typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en';
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

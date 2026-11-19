@@ -9,10 +9,10 @@ export type AppLanguage = 'en' | 'el';
 
 export const getPreferredLanguage = (): AppLanguage => {
   try {
-    // Same default as the screens (`preferredLang === 'el'` means Greek, anything else English)
-    return localStorage.getItem('preferredLang') === 'el' ? 'el' : 'en';
+    // Default language is Greek ('el') for all visitors unless explicitly switched to 'en'
+    return localStorage.getItem('preferredLang') === 'en' ? 'en' : 'el';
   } catch {
-    return 'en';
+    return 'el';
   }
 };
 
@@ -45,9 +45,17 @@ export const switchLanguage = (lang: AppLanguage) => {
   if (rendered !== lang) window.location.reload();
 };
 
-/** Call once at startup: set <html lang>, drop old machine-translation state, expose the global switcher. */
+/** Call once at startup: set <html lang>, persist Greek default for new visitors, drop old machine-translation state, expose the global switcher. */
 export const initLanguage = () => {
   clearGoogleTranslateCookie();
+  try {
+    const saved = localStorage.getItem('preferredLang');
+    if (saved !== 'en' && saved !== 'el') {
+      localStorage.setItem('preferredLang', 'el');
+    }
+  } catch {
+    /* storage blocked */
+  }
   applyDocumentLanguage();
   (window as any).switchLanguage = switchLanguage;
 };

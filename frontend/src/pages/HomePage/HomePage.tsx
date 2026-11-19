@@ -209,7 +209,7 @@ const mainCategories = [
  const { treatments: topTreatments, loading: topLoading } = useTopTreatments(8);
  const [clinicCities, setClinicCities] = useState<string[]>([]);
  const [isGreek, setIsGreek] = useState<boolean>(
-   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+   () => typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en'
  );
 
  const getCategoryLabel = (name: string) => {
@@ -222,12 +222,14 @@ const mainCategories = [
 
  useEffect(() => {
    const handleLang = () => {
-     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+     setIsGreek(localStorage.getItem('preferredLang') !== 'en');
    };
    window.addEventListener('storage', handleLang);
+   window.addEventListener('languagechange', handleLang);
    const interval = setInterval(handleLang, 1000);
    return () => {
      window.removeEventListener('storage', handleLang);
+     window.removeEventListener('languagechange', handleLang);
      clearInterval(interval);
    };
  }, []);

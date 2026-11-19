@@ -43,7 +43,16 @@
     <meta name="twitter:image" content="https://beautydoctors.gr/og-image.jpg" />
 
     <script>
-      try { document.documentElement.lang = localStorage.getItem('preferredLang') === 'el' ? 'el' : 'en'; } catch (e) {}
+      try {
+        var savedLang = localStorage.getItem('preferredLang');
+        if (savedLang !== 'en' && savedLang !== 'el') {
+          localStorage.setItem('preferredLang', 'el');
+          savedLang = 'el';
+        }
+        document.documentElement.lang = savedLang;
+      } catch (e) {
+        document.documentElement.lang = 'el';
+      }
     </script>
   </head>
   <body>

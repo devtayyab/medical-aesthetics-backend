@@ -154,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate, isCollapsed = fals
  }, [dispatch, user]);
 
   const [currentLang, setCurrentLang] = React.useState<'en' | 'el'>(
-    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+    () => (localStorage.getItem('preferredLang') === 'en' ? 'en' : 'el')
   );
 
   const handleLanguageSwitch = (lang: 'en' | 'el') => {

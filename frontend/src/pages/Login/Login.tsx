@@ -67,9 +67,9 @@ const formStyle = css`
 
 const isGreekUi = () => {
  try {
- return localStorage.getItem("preferredLang") ==="el";
+ return localStorage.getItem("preferredLang") !== "en";
  } catch {
- return false;
+ return true;
  }
 };
 

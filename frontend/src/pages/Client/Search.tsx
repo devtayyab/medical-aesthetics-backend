@@ -130,7 +130,7 @@ export const Search: React.FC = () => {
  setSearchTimeWindow(searchParams.get("search_time_window") || null);
  }, [searchParams]);
 
- const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+ const isGreek = typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en';
 
  // Filter states: Default per platform rules & lawyer terms is Alphabetical (A-Z) with no paid placement
  const [sortBy, setSortBy] = useState<'alphabetical' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('alphabetical');

@@ -8,17 +8,19 @@ import SiteLogo from"@/assets/SiteLogo.png";
 
 export const Footer: React.FC = () => {
   const [isGreek, setIsGreek] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+    () => typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en'
   );
 
   useEffect(() => {
     const handleLang = () => {
-      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+      setIsGreek(localStorage.getItem('preferredLang') !== 'en');
     };
     window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
     const interval = setInterval(handleLang, 1000);
     return () => {
       window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
       clearInterval(interval);
     };
   }, []);

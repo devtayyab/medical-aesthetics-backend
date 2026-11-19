@@ -266,7 +266,7 @@ export const Header: React.FC = () => {
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
-    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+    () => (localStorage.getItem('preferredLang') === 'en' ? 'en' : 'el')
   );
   const { categories: navCategories } = useCategoryTree();
   const isGreek = currentLang === 'el';
