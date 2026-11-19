@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { getImageUrl } from "@/utils/imageUrl";
 import { formatDate } from "@/utils/formatters";
+import { setPageMeta, stripHtmlForMeta } from "@/utils/seo";
 import { NotFound } from "@/pages/NotFound/NotFound";
 
 const heroSection = css`
@@ -97,6 +98,22 @@ export const ClinicDetails: React.FC = () => {
 
   const clinicData = selectedClinic || clinics.find((c) => c.id === id);
   const serviceData = services.length > 0 ? services : clinicData?.services || [];
+
+  useEffect(() => {
+    if (!clinicData?.name) return;
+    const isEl = localStorage.getItem("preferredLang") === "el";
+    const city = clinicData.address?.city ? ` – ${clinicData.address.city}` : "";
+    const desc =
+      stripHtmlForMeta(clinicData.description, 160) ||
+      (isEl
+        ? `Δείτε διαθέσιμες θεραπείες και κλείστε ραντεβού στην κλινική ${clinicData.name}${city} μέσω BeautyDoctors.`
+        : `Explore treatments and book an appointment at ${clinicData.name}${city} on BeautyDoctors.`);
+    setPageMeta({
+      title: `${clinicData.name} | BeautyDoctors`,
+      description: desc,
+      image: clinicData.images?.[0] ? getImageUrl(clinicData.images[0]) : undefined,
+    });
+  }, [clinicData]);
 
   useEffect(() => {
     if (activeTab === 'reviews' && id && clinicReviews.length === 0) {

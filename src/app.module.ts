@@ -27,6 +27,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
 import { HubspotModule } from './modules/hubspot/hubspot.module';
+import { SeoModule } from './modules/seo/seo.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { resolveJwtSecret } from './common/utils/jwt-secret.util';
 import { join } from 'path';
@@ -72,6 +73,7 @@ import { join } from 'path';
     UploadModule,
     GoogleCalendarModule,
     HubspotModule,
+    SeoModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'uploads'),
       serveRoot: '/api/uploads',

@@ -14,6 +14,7 @@ import BotoxImg from"@/assets/Botox.jpg";
 
 import { getImageUrl } from "@/utils/imageUrl";
 import { getPreferredLanguage } from "@/utils/language";
+import { setPageMeta, stripHtmlForMeta } from "@/utils/seo";
 
 // Category Icons
 import DermaIcon from"@/assets/Icons/TreatmentIcons/DermaIcon.svg";
@@ -138,6 +139,22 @@ export const TreatmentDetails: React.FC = () => {
  }
  window.scrollTo(0, 0);
  }, [id]);
+
+ useEffect(() => {
+ if (!treatment?.name) return;
+ const isEl = getPreferredLanguage() === "el";
+ const cat = (treatment as any).categoryRef?.name || treatment.category;
+ const desc =
+ stripHtmlForMeta(treatment.shortDescription || treatment.fullDescription, 160) ||
+ (isEl
+ ? `Ανακαλύψτε τη θεραπεία ${treatment.name}${cat ? ` (${cat})` : ""} από πιστοποιημένους ιατρούς και κλινικές στο BeautyDoctors.`
+ : `Explore ${treatment.name}${cat ? ` (${cat})` : ""} offered by verified doctors and clinics on BeautyDoctors.`);
+ setPageMeta({
+ title: `${treatment.name} | BeautyDoctors`,
+ description: desc,
+ image: treatment.imageUrl && !treatment.imageUrl.includes("placehold") ? getImageUrl(treatment.imageUrl) : undefined,
+ });
+ }, [treatment]);
 
 
  const handleSearch = (filters: any) => {

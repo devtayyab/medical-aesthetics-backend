@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Calendar, User, Tag, Clock, Sparkles, ArrowR
 import { motion, AnimatePresence } from "framer-motion";
 import { getImageUrl } from "@/utils/imageUrl";
 import { sanitizeHtml } from "@/utils/sanitizeHtml";
+import { setPageMeta, stripHtmlForMeta } from "@/utils/seo";
 
 // Custom clinical hero visual
 import HeroBg from "@/assets/image copy.png";
@@ -156,6 +157,16 @@ export const BlogPost: React.FC = () => {
     };
     fetchPost();
   }, [slug]);
+
+  useEffect(() => {
+    if (!post?.title) return;
+    setPageMeta({
+      title: `${post.title} | BeautyDoctors`,
+      description: stripHtmlForMeta(post.content, 160),
+      image: post.imageUrl ? getImageUrl(post.imageUrl) : undefined,
+      type: "article",
+    });
+  }, [post]);
 
   useEffect(() => {
     const handleScroll = () => {

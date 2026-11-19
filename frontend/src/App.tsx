@@ -123,6 +123,7 @@ import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from"@/services/firebase";
 import { isSafeRedirect } from "@/services/client";
+import { applyRouteMeta } from "@/utils/seo";
 import { GlobalDialer } from"./components/crm/GlobalDialer";
 
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
@@ -211,6 +212,11 @@ function AppContent() {
  const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
  const restoreStartedRef = useRef(false);
+
+ // Update document <title>, meta description, canonical URL, and OpenGraph tags on route change
+ useEffect(() => {
+ applyRouteMeta(location.pathname, location.search);
+ }, [location.pathname, location.search]);
 
  useEffect(() => {
  // Attempt to restore session once on initial load. React StrictMode in

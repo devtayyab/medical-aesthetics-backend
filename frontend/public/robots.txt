@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /crm
+Disallow: /clinic
+Disallow: /my-account
+Disallow: /appointments
+Disallow: /personal-details
+Disallow: /payments
+Disallow: /gift-card
+Disallow: /checkout
+Disallow: /booking-confirmation
+Disallow: /messages
+Disallow: /notifications
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://beautydoctors.gr/sitemap.xml
+
