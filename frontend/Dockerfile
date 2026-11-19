@@ -14,8 +14,10 @@ RUN pnpm install
 # Copy source code
 COPY . .
 
-# Set API URL to /api for Nginx reverse proxying
+# Set API URL to /api for Nginx reverse proxying and inject Google Maps key from build args
 ENV VITE_API_BASE_URL=/api
+ARG VITE_GOOGLE_MAPS_API_KEY=""
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
 
 # Build the React application
 RUN pnpm run build

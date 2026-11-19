@@ -34,11 +34,16 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
  const markersRef = useRef<any[]>([]);
  const infoWindowRef = useRef<any>(null);
  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
- const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+ const isGreek = typeof window === 'undefined' || localStorage.getItem('preferredLang') !== 'en';
 
  // Load Google Maps and create the map once
  useEffect(() => {
  let cancelled = false;
+ const prevAuthFailure = (window as any).gm_authFailure;
+ (window as any).gm_authFailure = () => {
+ if (!cancelled) setStatus('error');
+ if (typeof prevAuthFailure === 'function') prevAuthFailure();
+ };
  loadGoogleMaps()
  .then((google) => {
  if (cancelled || !mapContainerRef.current) return;
@@ -58,6 +63,7 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
  });
  return () => {
  cancelled = true;
+ (window as any).gm_authFailure = prevAuthFailure;
  markersRef.current.forEach((m) => m.setMap(null));
  markersRef.current = [];
  mapRef.current = null;
