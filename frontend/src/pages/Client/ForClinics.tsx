@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   CalendarCheck,
   ShieldCheck,
@@ -10,47 +10,74 @@ import {
   Clock,
   Award,
   Sparkles,
-} from 'lucide-react';
-import PartnerHeroImg from '@/assets/partner with us.jpg.jpeg';
+} from "lucide-react";
+import PartnerHeroImg from "@/assets/partner with us.jpg.jpeg";
+import { getPreferredLanguage } from "@/utils/language";
 
 export const ForClinics: React.FC = () => {
-  const [isGreek, setIsGreek] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
-  );
+  const [isGreek, setIsGreek] = useState<boolean>(() => getPreferredLanguage() === "el");
+
   useEffect(() => {
     const handleLang = () => {
-      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+      setIsGreek(getPreferredLanguage() === "el");
     };
-    window.addEventListener('storage', handleLang);
-    window.addEventListener('languagechange', handleLang);
+    window.addEventListener("storage", handleLang);
+    window.addEventListener("languagechange", handleLang);
     return () => {
-      window.removeEventListener('storage', handleLang);
-      window.removeEventListener('languagechange', handleLang);
+      window.removeEventListener("storage", handleLang);
+      window.removeEventListener("languagechange", handleLang);
     };
   }, []);
+
+  const features = isGreek
+    ? [
+        "Αυτόματος αμφίδρομος συγχρονισμός με το Google Calendar",
+        "Προφίλ ιατρών με επαληθευμένα ιατρικά διαπιστευτήρια & ειδικότητες",
+        "Προσαρμοσμένες τιμές θεραπειών, διάρκειες και προδιαγραφές πρωτοκόλλων",
+        "Μονόδρομες λειτουργικές ειδοποιήσεις πλατφόρμας",
+        "Αυτόματες υπενθυμίσεις ραντεβού μέσω SMS & Email για μείωση των ακυρώσεων",
+        "Εργαλεία συγκατάθεσης και διαχείρισης δεδομένων σχεδιασμένα για συμμόρφωση με τον GDPR",
+      ]
+    : [
+        "Automated Google Calendar two-way synchronization",
+        "Doctor profiles with verifiable medical credentials & specialties",
+        "Custom treatment pricing, durations, and protocol specifications",
+        "One-way operational platform notifications",
+        "Automated appointment reminders via SMS & Email to reduce no-shows",
+        "Consent and data-management tools designed to support GDPR-compliant workflows.",
+      ];
 
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <section className="relative bg-[#0F172A] text-white py-20 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#CBFF38_1px,transparent_1px)] [background-size:16px_16px]" />
-        
+
         <div className="max-w-[1200px] mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[#CBFF38] text-xs font-black uppercase tracking-widest">
-              <Sparkles className="size-3.5" /> For Medical Clinics & Doctors
+              <Sparkles className="size-3.5" />{" "}
+              {isGreek ? "Για Ιατρικές Κλινικές & Ιατρούς" : "For Medical Clinics & Doctors"}
             </div>
-            
+
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight uppercase tracking-tight">
               {isGreek ? (
-                <>Αναπτύξτε την ιατρική σας δραστηριότητα με <span className="text-[#CBFF38]">σιγουριά</span></>
+                <>
+                  Αναπτύξτε την ιατρική σας δραστηριότητα με{" "}
+                  <span className="text-[#CBFF38]">σιγουριά</span>
+                </>
               ) : (
-                <>Grow Your Medical Practice With <span className="text-[#CBFF38]">Confidence</span></>
+                <>
+                  Grow Your Medical Practice With{" "}
+                  <span className="text-[#CBFF38]">Confidence</span>
+                </>
               )}
             </h1>
-            
+
             <p className="text-gray-300 text-base sm:text-lg leading-relaxed max-w-xl">
-              {isGreek ? "Συνδεθείτε με ενδιαφερόμενους ασθενείς που αναζητούν εξειδικευμένες υπηρεσίες αισθητικής ιατρικής. Διαχειριστείτε ραντεβού και πληροφορίες σε μία πλατφόρμα." : "Connect with patients interested in specialized aesthetic medicine services. Manage appointments, consultations, and verified clinic credentials on one compliant platform."}
+              {isGreek
+                ? "Συνδεθείτε με ενδιαφερόμενους ασθενείς που αναζητούν εξειδικευμένες υπηρεσίες αισθητικής ιατρικής. Διαχειριστείτε ραντεβού και πληροφορίες σε μία πλατφόρμα."
+                : "Connect with patients interested in specialized aesthetic medicine services. Manage appointments, consultations, and verified clinic credentials on one compliant platform."}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-center lg:justify-start">
@@ -59,13 +86,21 @@ export const ForClinics: React.FC = () => {
                 className="inline-flex items-center justify-center bg-[#CBFF38] text-black px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white transition-all shadow-xl hover:shadow-2xl"
               >
                 <Mail className="mr-2 size-4" />
-                {isGreek ? "Επικοινωνήστε μαζί μας: info@beautydoctors.gr" : "Contact us at info@beautydoctors.gr"}
+                {isGreek
+                  ? "Επικοινωνήστε μαζί μας: info@beautydoctors.gr"
+                  : "Contact us at info@beautydoctors.gr"}
               </a>
             </div>
 
-            <div className="pt-4 flex items-center gap-6 justify-center lg:justify-start text-xs font-bold text-gray-400">
-              <span className="flex items-center gap-1.5"><ShieldCheck className="size-4 text-[#CBFF38]" /> GDPR & Ethics Compliant</span>
-              <span className="flex items-center gap-1.5"><Award className="size-4 text-[#CBFF38]" /> Verified Clinics Only</span>
+            <div className="pt-4 flex flex-wrap items-center gap-6 justify-center lg:justify-start text-xs font-bold text-gray-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="size-4 text-[#CBFF38]" />{" "}
+                {isGreek ? "Συμμόρφωση GDPR & Ιατρικής Δεοντολογίας" : "GDPR & Ethics Compliant"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Award className="size-4 text-[#CBFF38]" />{" "}
+                {isGreek ? "Μόνο Πιστοποιημένες Κλινικές" : "Verified Clinics Only"}
+              </span>
             </div>
           </div>
 
@@ -75,14 +110,18 @@ export const ForClinics: React.FC = () => {
               <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 sm:border-4 border-slate-700/80 shadow-2xl bg-slate-900">
                 <img
                   src={PartnerHeroImg}
-                  alt="Partner With Us - Medical Aesthetics Doctors & Clinics"
+                  alt={
+                    isGreek
+                      ? "Συνεργαστείτε μαζί μας - Ιατροί & Κλινικές Αισθητικής Ιατρικής"
+                      : "Partner With Us - Medical Aesthetics Doctors & Clinics"
+                  }
                   className="w-full h-[320px] sm:h-[400px] lg:h-[440px] object-cover object-top transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/70 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4 flex items-center justify-between text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-white/90 bg-black/60 backdrop-blur-md px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border border-white/10">
                   <span className="flex items-center gap-2">
                     <span className="size-2 rounded-full bg-[#CBFF38] animate-pulse" />
-                    Verified Partner Network
+                    {isGreek ? "Πιστοποιημένο Δίκτυο Συνεργατών" : "Verified Partner Network"}
                   </span>
                   <span className="text-[#CBFF38]">BeautyDoctors</span>
                 </div>
@@ -97,10 +136,14 @@ export const ForClinics: React.FC = () => {
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-2xl sm:text-4xl font-black text-gray-900 uppercase tracking-tight mb-4">
-              Designed For Specialized Medical Practices
+              {isGreek
+                ? "Σχεδιασμένο για Εξειδικευμένα Ιατρεία & Κλινικές"
+                : "Designed For Specialized Medical Practices"}
             </h2>
             <p className="text-gray-600 text-sm sm:text-base">
-              A comprehensive platform built specifically for medical aesthetics practitioners, dermatology clinics, and plastic surgeons.
+              {isGreek
+                ? "Μια ολοκληρωμένη πλατφόρμα ειδικά σχεδιασμένη για ιατρούς αισθητικής ιατρικής, δερματολογικές κλινικές και πλαστικούς χειρουργούς."
+                : "A comprehensive platform built specifically for medical aesthetics practitioners, dermatology clinics, and plastic surgeons."}
             </p>
           </div>
 
@@ -109,9 +152,13 @@ export const ForClinics: React.FC = () => {
               <div className="size-12 rounded-xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <CalendarCheck className="size-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{isGreek ? "Αιτήματα ενδιαφερόμενων ασθενών" : "Inquiries from Interested Patients"}</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {isGreek ? "Αιτήματα Ενδιαφερόμενων Ασθενών" : "Inquiries from Interested Patients"}
+              </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Receive inquiries from patients seeking verified medical aesthetic treatments in your area, with transparent consultation scheduling.
+                {isGreek
+                  ? "Λάβετε αιτήματα από ασθενείς που αναζητούν πιστοποιημένες θεραπείες αισθητικής ιατρικής στην περιοχή σας, με διαφανή προγραμματισμό ραντεβού."
+                  : "Receive inquiries from patients seeking verified medical aesthetic treatments in your area, with transparent consultation scheduling."}
               </p>
             </div>
 
@@ -119,9 +166,13 @@ export const ForClinics: React.FC = () => {
               <div className="size-12 rounded-xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <TrendingUp className="size-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Modern Practice Management</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {isGreek ? "Σύγχρονη Διαχείριση Ιατρείου" : "Modern Practice Management"}
+              </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Streamline appointments, sync Google Calendar schedules, manage doctors, treatments, and client histories seamlessly in one dashboard.
+                {isGreek
+                  ? "Οργανώστε τα ραντεβού σας, συγχρονίστε το Google Calendar, διαχειριστείτε ιατρούς, θεραπείες και ιστορικά ασθενών εύκολα από ένα ενιαίο περιβάλλον."
+                  : "Streamline appointments, sync Google Calendar schedules, manage doctors, treatments, and client histories seamlessly in one dashboard."}
               </p>
             </div>
 
@@ -129,9 +180,13 @@ export const ForClinics: React.FC = () => {
               <div className="size-12 rounded-xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <ShieldCheck className="size-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Ethical & Legal Compliance</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                {isGreek ? "Δεοντολογική & Νομική Συμμόρφωση" : "Ethical & Legal Compliance"}
+              </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                All provider profiles are subject to BeautyDoctors onboarding and credential verification before activation.
+                {isGreek
+                  ? "Όλα τα προφίλ παρόχων υποβάλλονται σε διαδικασία ένταξης και επαλήθευσης διαπιστευτηρίων από το BeautyDoctors πριν από την ενεργοποίησή τους."
+                  : "All provider profiles are subject to BeautyDoctors onboarding and credential verification before activation."}
               </p>
             </div>
           </div>
@@ -143,23 +198,22 @@ export const ForClinics: React.FC = () => {
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
-              <span className="text-xs font-black uppercase tracking-widest text-lime-600">{isGreek ? "Εργαλεία διαχείρισης κλινικής" : "Clinic Management Tools"}</span>
+              <span className="text-xs font-black uppercase tracking-widest text-lime-600">
+                {isGreek ? "Εργαλεία Διαχείρισης Κλινικής" : "Clinic Management Tools"}
+              </span>
               <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-tight">
-                Everything You Need To Manage Consultations & Treatments
+                {isGreek
+                  ? "Όλα Όσα Χρειάζεστε για τη Διαχείριση Ραντεβού & Θεραπειών"
+                  : "Everything You Need To Manage Consultations & Treatments"}
               </h2>
               <p className="text-gray-600 text-base leading-relaxed">
-                Our clinic portal gives doctors and administrators full control over their availability, treatment catalog, and patient communications.
+                {isGreek
+                  ? "Η πύλη κλινικών δίνει στους ιατρούς και τη γραμματεία πλήρη έλεγχο της διαθεσιμότητας, του καταλόγου θεραπειών και της επικοινωνίας με τους ασθενείς."
+                  : "Our clinic portal gives doctors and administrators full control over their availability, treatment catalog, and patient communications."}
               </p>
 
               <div className="space-y-4 pt-2">
-                {[
-                  'Automated Google Calendar two-way synchronization',
-                  'Doctor profiles with verifiable medical credentials & specialties',
-                  'Custom treatment pricing, durations, and protocol specifications',
-                  'One-way operational platform notifications',
-                  'Automated appointment reminders via SMS & Email to reduce no-shows',
-                  'Consent and data-management tools designed to support GDPR-compliant workflows.'
-                ].map((feature, idx) => (
+                {features.map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-3">
                     <CheckCircle2 className="size-5 text-lime-600 shrink-0 mt-0.5" />
                     <span className="text-sm font-semibold text-gray-800">{feature}</span>
@@ -172,23 +226,33 @@ export const ForClinics: React.FC = () => {
                   href="mailto:info@beautydoctors.gr"
                   className="inline-flex items-center justify-center bg-black text-[#CBFF38] px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-900 transition-all shadow-lg"
                 >
-                  {isGreek ? "Επικοινωνήστε μαζί μας: info@beautydoctors.gr" : "Contact us at info@beautydoctors.gr"}
+                  {isGreek
+                    ? "Επικοινωνήστε μαζί μας: info@beautydoctors.gr"
+                    : "Contact us at info@beautydoctors.gr"}
                   <ArrowRight className="ml-2 size-4" />
                 </a>
               </div>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-3xl p-8 sm:p-12 space-y-8">
-              <h3 className="text-2xl font-black text-gray-900 tracking-tight">How Onboarding Works</h3>
-              
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                {isGreek ? "Πώς Γίνεται η Ένταξη" : "How Onboarding Works"}
+              </h3>
+
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="size-10 rounded-full bg-black text-[#CBFF38] font-black text-sm flex items-center justify-center shrink-0">
                     1
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-1">Email Us Your Clinic Details</h4>
-                    <p className="text-gray-600 text-sm">Email info@beautydoctors.gr with your clinic profile, location, doctors, and medical license documentation. Our team creates your account.</p>
+                    <h4 className="font-bold text-gray-900 mb-1">
+                      {isGreek ? "Στείλτε μας τα Στοιχεία της Κλινικής σας" : "Email Us Your Clinic Details"}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {isGreek
+                        ? "Στείλτε email στο info@beautydoctors.gr με το προφίλ της κλινικής σας, την τοποθεσία, τους ιατρούς και τα έγγραφα άδειας ασκήσεως επαγγέλματος. Η ομάδα μας δημιουργεί τον λογαριασμό σας."
+                        : "Email info@beautydoctors.gr with your clinic profile, location, doctors, and medical license documentation. Our team creates your account."}
+                    </p>
                   </div>
                 </div>
 
@@ -197,8 +261,14 @@ export const ForClinics: React.FC = () => {
                     2
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-1">Medical Verification</h4>
-                    <p className="text-gray-600 text-sm">Our medical advisory team verifies credentials to ensure platform standards and ethical compliance.</p>
+                    <h4 className="font-bold text-gray-900 mb-1">
+                      {isGreek ? "Ιατρική Επαλήθευση" : "Medical Verification"}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {isGreek
+                        ? "Η ομάδα μας επαληθεύει τα διαπιστευτήρια ώστε να διασφαλίζονται τα πρότυπα ποιότητας και η δεοντολογική συμμόρφωση της πλατφόρμας."
+                        : "Our medical advisory team verifies credentials to ensure platform standards and ethical compliance."}
+                    </p>
                   </div>
                 </div>
 
@@ -207,15 +277,25 @@ export const ForClinics: React.FC = () => {
                     3
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-1">Launch & Manage</h4>
-                    <p className="text-gray-600 text-sm">Publish your treatment offerings, connect your schedule, and begin receiving patient consultations.</p>
+                    <h4 className="font-bold text-gray-900 mb-1">
+                      {isGreek ? "Ενεργοποίηση & Διαχείριση" : "Launch & Manage"}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {isGreek
+                        ? "Δημοσιεύστε τις θεραπείες σας, συνδέστε το πρόγραμμά σας και ξεκινήστε να δέχεστε ραντεβού ασθενών."
+                        : "Publish your treatment offerings, connect your schedule, and begin receiving patient consultations."}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <div className="p-4 rounded-xl bg-lime-50 border border-lime-200 text-lime-900 text-xs font-semibold flex items-center gap-3">
                 <Clock className="size-5 shrink-0 text-lime-700" />
-                <span>Verification is typically completed within 24–48 business hours after all required documentation has been received.</span>
+                <span>
+                  {isGreek
+                    ? "Η επαλήθευση ολοκληρώνεται συνήθως εντός 24–48 εργάσιμων ωρών από την παραλαβή όλων των απαραίτητων δικαιολογητικών."
+                    : "Verification is typically completed within 24–48 business hours after all required documentation has been received."}
+                </span>
               </div>
             </div>
           </div>
@@ -226,10 +306,14 @@ export const ForClinics: React.FC = () => {
       <section className="py-16 bg-[#0F172A] text-white">
         <div className="max-w-[1200px] mx-auto px-6 text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
-            Have Questions About Partnering With Us?
+            {isGreek
+              ? "Έχετε Ερωτήσεις για Συνεργασία Μαζί μας;"
+              : "Have Questions About Partnering With Us?"}
           </h2>
           <p className="text-gray-400 text-sm sm:text-base max-w-xl mx-auto">
-            Our clinic onboarding specialists are available to walk you through our tools, integration options, and compliance guidelines.
+            {isGreek
+              ? "Οι σύμβουλοι ένταξης κλινικών μας είναι διαθέσιμοι για να σας παρουσιάσουν τα εργαλεία μας, τις δυνατότητες διασύνδεσης και τις οδηγίες συμμόρφωσης."
+              : "Our clinic onboarding specialists are available to walk you through our tools, integration options, and compliance guidelines."}
           </p>
 
           <div className="flex flex-wrap justify-center gap-6 pt-2">
@@ -239,8 +323,8 @@ export const ForClinics: React.FC = () => {
             >
               <Mail className="size-4 text-[#CBFF38]" /> info@beautydoctors.gr
             </a>
-            <a 
-              href="tel:2112184564" 
+            <a
+              href="tel:2112184564"
               className="inline-flex items-center gap-2 text-white bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
             >
               <PhoneCall className="size-4 text-[#CBFF38]" /> +30 211 218 4564
@@ -248,7 +332,6 @@ export const ForClinics: React.FC = () => {
           </div>
         </div>
       </section>
-
     </div>
   );
 };

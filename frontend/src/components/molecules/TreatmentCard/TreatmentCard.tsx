@@ -58,6 +58,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
  const [showExplanation, setShowExplanation] = useState(false);
  const [imgError, setImgError] = useState(false);
+ const isGreek = getPreferredLanguage() === "el";
 
  const handleClick = () => {
  onSelect?.(treatment);
@@ -92,13 +93,15 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
           <div className="p-6 sm:p-7 pb-4 flex flex-col justify-start">
             <div className="flex items-center gap-1.5 text-[10px] font-black text-lime-600 uppercase tracking-[0.2em] mb-2 min-h-[1.25rem]">
               <Sparkles size={12} className="shrink-0 text-lime-500" />
-              <span className="truncate">{treatment.category || 'Clinical Treatment'}</span>
+              <span className="truncate">{treatment.category || (isGreek ? "Κλινική Θεραπεία" : "Clinical Treatment")}</span>
             </div>
             <h3 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 leading-snug mb-2 group-hover:text-lime-600 transition-colors line-clamp-2 min-h-[3.25rem] flex items-center">
               {treatment.name}
             </h3>
             <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 leading-relaxed max-w-[90%] sm:max-w-[85%] line-clamp-2 min-h-[2.5rem]">
-              {treatment.shortDescription || 'Experience our premium clinical approach with state-of-the-art technology and expert care.'}
+              {treatment.shortDescription || (isGreek
+                ? "Ανακαλύψτε την εξειδικευμένη κλινική μας προσέγγιση με σύγχρονη τεχνολογία και ιατρική φροντίδα."
+                : "Experience our premium clinical approach with state-of-the-art technology and expert care.")}
             </p>
           </div>
 
@@ -119,7 +122,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                 className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
               >
                 <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                View Treatment
+                {isGreek ? "Προβολή Θεραπείας" : "View Treatment"}
               </button>
             </div>
 
@@ -129,11 +132,13 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                 <button
                   onClick={(e) => { e.stopPropagation(); handleClick(); }}
                   className="flex items-center gap-1.5 bg-black/50 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-white hover:text-[#CBFF38] hover:border-[#CBFF38]/40 transition-all cursor-pointer shadow-lg"
-                  title="Compare clinics offering this treatment"
+                  title={isGreek ? "Σύγκριση κλινικών που προσφέρουν αυτή τη θεραπεία" : "Compare clinics offering this treatment"}
                 >
                   <Building2 size={11} className="text-[#CBFF38]" />
                   <span className="text-[9px] font-black uppercase tracking-wider">
-                    Compare {(treatment as any).clinicsCount} Clinics
+                    {isGreek
+                      ? `Σύγκριση ${(treatment as any).clinicsCount} Κλινικών`
+                      : `Compare ${(treatment as any).clinicsCount} Clinics`}
                   </span>
                 </button>
               </div>
@@ -145,20 +150,22 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                 {isAuthenticated ? (
                   <>
                     <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">
-                      {(treatment as any).fromPrice > 0 ? "Starts From" : "Treatment"}
+                      {(treatment as any).fromPrice > 0
+                        ? (isGreek ? "Ξεκινά από" : "Starts From")
+                        : (isGreek ? "Θεραπεία" : "Treatment")}
                     </p>
                     <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">
-                      {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : (getPreferredLanguage() === 'el' ? "Διαθέσιμο" : "Available")}
+                      {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : (isGreek ? "Διαθέσιμο" : "Available")}
                     </p>
                   </>
                 ) : (
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}
                     className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[#CBFF38] hover:underline"
-                    title={getPreferredLanguage() === 'el' ? "Απαιτείται σύνδεση για προβολή τιμών" : "Login required to view prices"}
+                    title={isGreek ? "Απαιτείται σύνδεση για προβολή τιμών" : "Login required to view prices"}
                   >
                     <Lock size={10} className="text-[#CBFF38]" />
-                    <span>{getPreferredLanguage() === 'el' ? "Συνδεθείτε για τιμή" : "Login for price"}</span>
+                    <span>{isGreek ? "Συνδεθείτε για τιμή" : "Login for price"}</span>
                   </button>
                 )}
               </div>
@@ -199,7 +206,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  <div className="p-6 sm:p-10 -mt-8 sm:-mt-10 relative">
  <span className="bg-[#CBFF38] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">{treatment.category}</span>
  <h3 className="text-3xl sm:text-4xl font-black tracking-tighter text-gray-900 mb-4">{treatment.name}</h3>
- <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 sm:8">{treatment.fullDescription || treatment.shortDescription ||"Our clinics offer this premium treatment using state-of-the-art methodology."}</p>
+ <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 sm:8">{treatment.fullDescription || treatment.shortDescription || (isGreek ? "Οι συνεργαζόμενες κλινικές μας προσφέρουν αυτή τη θεραπεία με σύγχρονη ιατρική μεθοδολογία." : "Our clinics offer this premium treatment using state-of-the-art methodology.")}</p>
  <button 
  className="w-full h-14 sm:h-16 bg-[#CBFF38] text-black rounded-2xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black hover:text-[#CBFF38] transition-all"
  onClick={(e) => {
@@ -208,7 +215,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  handleClick(); // This triggers onSelect which navigates
  }}
  >
- Find a Clinic <ArrowRight size={18}/>
+ {isGreek ? "Βρείτε Κλινική" : "Find a Clinic"} <ArrowRight size={18}/>
  </button>
  </div>
  </motion.div>

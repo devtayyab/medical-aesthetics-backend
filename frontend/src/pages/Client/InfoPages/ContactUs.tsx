@@ -1,319 +1,443 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
- Mail,
- Phone,
- MapPin,
- Clock,
- Send,
- MessageCircle,
- LifeBuoy,
- CheckCircle2,
- ChevronRight,
+  Mail,
+  Phone,
+  MapPin,
+  Clock,
+  Send,
+  MessageCircle,
+  LifeBuoy,
+  CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/services/api";
+import { getPreferredLanguage } from "@/utils/language";
 
-const SUBJECTS = [
- "General inquiry",
- "Booking & appointments",
- "Treatments & services",
- "Payments & refunds",
- "Feedback & complaints",
- "Other",
+const SUBJECT_OPTIONS = [
+  { value: "General inquiry", en: "General inquiry", el: "Γενική ερώτηση" },
+  { value: "Booking & appointments", en: "Booking & appointments", el: "Κρατήσεις & ραντεβού" },
+  { value: "Treatments & services", en: "Treatments & services", el: "Θεραπείες & υπηρεσίες" },
+  { value: "Payments & refunds", en: "Payments & refunds", el: "Πληρωμές & επιστροφές χρημάτων" },
+  { value: "Feedback & complaints", en: "Feedback & complaints", el: "Σχόλια & παράπονα" },
+  { value: "Other", en: "Other", el: "Άλλο" },
 ];
 
 const inputClass =
- "w-full h-12 px-4 bg-gray-50 border-2 border-transparent focus:border-[#CBFF38] focus:bg-white rounded-xl transition-all outline-none text-sm font-semibold text-gray-900 placeholder:text-gray-400 placeholder:font-medium";
+  "w-full h-12 px-4 bg-gray-50 border-2 border-transparent focus:border-[#CBFF38] focus:bg-white rounded-xl transition-all outline-none text-sm font-semibold text-gray-900 placeholder:text-gray-400 placeholder:font-medium";
 
 export const ContactUs: React.FC = () => {
- const [isGreek, setIsGreek] = useState<boolean>(
-   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
- );
+  const [isGreek, setIsGreek] = useState<boolean>(() => getPreferredLanguage() === "el");
 
- useEffect(() => {
-   const handleLang = () => {
-     setIsGreek(localStorage.getItem('preferredLang') === 'el');
-   };
-   window.addEventListener('storage', handleLang);
-   window.addEventListener('languagechange', handleLang);
-   return () => {
-     window.removeEventListener('storage', handleLang);
-     window.removeEventListener('languagechange', handleLang);
-   };
- }, []);
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(getPreferredLanguage() === "el");
+    };
+    window.addEventListener("storage", handleLang);
+    window.addEventListener("languagechange", handleLang);
+    return () => {
+      window.removeEventListener("storage", handleLang);
+      window.removeEventListener("languagechange", handleLang);
+    };
+  }, []);
 
- const [form, setForm] = useState({
- name: "",
- email: "",
- phone: "",
- subject: SUBJECTS[0],
- message: "",
- website: "", // honeypot — hidden from real users
- });
- const [errors, setErrors] = useState<Record<string, string>>({});
- const [isSubmitting, setIsSubmitting] = useState(false);
- const [sent, setSent] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: SUBJECT_OPTIONS[0].value,
+    message: "",
+    website: "", // honeypot — hidden from real users
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
 
- const set = (key: keyof typeof form) => (
- e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
- ) => {
- setForm((prev) => ({ ...prev, [key]: e.target.value }));
- if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
- };
+  const set = (key: keyof typeof form) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
+  };
 
- const validate = () => {
- const next: Record<string, string> = {};
- if (!form.name.trim()) next.name = "Please tell us your name";
- if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = "Please enter a valid email address";
- if (form.message.trim().length < 10) next.message = "Please write a few more details (at least 10 characters)";
- setErrors(next);
- return Object.keys(next).length === 0;
- };
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!form.name.trim()) {
+      next.name = isGreek ? "Παρακαλούμε εισάγετε το ονοματεπώνυμό σας" : "Please tell us your name";
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      next.email = isGreek ? "Παρακαλούμε εισάγετε μια έγκυρη διεύθυνση email" : "Please enter a valid email address";
+    }
+    if (form.message.trim().length < 10) {
+      next.message = isGreek
+        ? "Παρακαλούμε γράψτε περισσότερες λεπτομέρειες (τουλάχιστον 10 χαρακτήρες)"
+        : "Please write a few more details (at least 10 characters)";
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
- const handleSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
- if (isSubmitting || !validate()) return;
- setIsSubmitting(true);
- try {
- await api.post("/notifications/contact", {
- name: form.name.trim(),
- email: form.email.trim(),
- phone: form.phone.trim() || undefined,
- subject: form.subject,
- message: form.message.trim(),
- website: form.website,
- });
- setSent(true);
- } catch (err: any) {
- toast.error(err?.response?.data?.message || "Could not send your message. Please try again.");
- } finally {
- setIsSubmitting(false);
- }
- };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting || !validate()) return;
+    setIsSubmitting(true);
+    try {
+      await api.post("/notifications/contact", {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        subject: form.subject,
+        message: form.message.trim(),
+        website: form.website,
+      });
+      setSent(true);
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          (isGreek
+            ? "Δεν ήταν δυνατή η αποστολή του μηνύματός σας. Παρακαλούμε δοκιμάστε ξανά."
+            : "Could not send your message. Please try again.")
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
- return (
- <div className="min-h-screen bg-[#FDFDFD]">
- {/* Hero */}
- <header className="bg-[#121212] pt-14 pb-16 sm:pt-20 sm:pb-24 relative overflow-hidden">
- <div
- className="absolute -top-20 -right-20 w-96 h-96 rounded-full pointer-events-none"
- style={{ background: "radial-gradient(circle, rgba(203,255,56,0.15) 0%, transparent 70%)" }}
- />
- <div className="container mx-auto px-4 sm:px-8 relative z-10">
- <div className="flex items-center text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
- <Link to="/" className="hover:text-[#CBFF38] transition-colors">Home</Link>
- <ChevronRight size={12} className="mx-2" />
- <span className="text-gray-300">Contact</span>
- </div>
- <h1 className="text-white text-3xl sm:text-5xl font-black tracking-tighter">
- GET IN <span className="text-[#CBFF38]">TOUCH</span>
- </h1>
- <div className="h-1 w-20 bg-[#CBFF38] rounded-full my-5" />
- <p className="text-gray-300 text-sm sm:text-base max-w-2xl font-medium leading-relaxed">
- {isGreek
-   ? 'Επικοινωνήστε με την υποστήριξη BeautyDoctors για ερωτήσεις σχετικά με τον λογαριασμό σας, τα ραντεβού, τη χρήση της πλατφόρμας ή συνεργασίες. Για ιατρικές συμβουλές ή την καταλληλότητα μιας θεραπείας, απευθυνθείτε στον θεράποντα ιατρό σας.'
-   : 'Contact BeautyDoctors Support for questions about your account, appointments, platform use or partnerships. For medical advice or treatment suitability, please contact your treating doctor.'}
- </p>
- </div>
- </header>
+  const copyEmail = (toastId: string) => {
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText("info@beautydoctors.gr");
+      }
+    } catch {}
+    toast.success(
+      isGreek
+        ? "Το info@beautydoctors.gr αντιγράφηκε στο πρόχειρο!"
+        : "Copied info@beautydoctors.gr to clipboard!",
+      { id: toastId }
+    );
+  };
 
- <main className="container mx-auto px-4 sm:px-8 -mt-8 pb-20 relative z-20">
- <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
- {/* Contact channels */}
- <div className="lg:col-span-2 space-y-4">
- <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8">
- <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6">Contact Details</h2>
- <div className="space-y-5">
- <a
- href="mailto:info@beautydoctors.gr"
- onClick={() => {
-   try {
-     if (navigator.clipboard) {
-       navigator.clipboard.writeText("info@beautydoctors.gr");
-     }
-   } catch {}
-   toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "contact-email-copy" });
- }}
- className="flex items-start gap-4 group cursor-pointer"
- >
- <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
- <Mail size={18} className="text-lime-700" />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email</p>
- <p className="text-sm font-bold text-gray-900 group-hover:text-lime-700 transition-colors break-all">info@beautydoctors.gr</p>
- </div>
- </a>
- <a href="tel:+306948880498" className="flex items-start gap-4 group">
- <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
- <Phone size={18} className="text-lime-700" />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone</p>
- <p className="text-sm font-bold text-gray-900 group-hover:text-lime-700 transition-colors">+30 694 888 0498</p>
- </div>
- </a>
- <div className="flex items-start gap-4">
- <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
- <Clock size={18} className="text-lime-700" />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-   {isGreek ? 'Ώρες υποστήριξης' : 'Support hours'}
- </p>
- <p className="text-sm font-bold text-gray-900">
-   {isGreek ? 'Δευτέρα–Παρασκευή, 09:00–18:00, ώρα Ελλάδας' : 'Monday–Friday, 09:00–18:00, Greece local time'}
- </p>
- </div>
- </div>
- <div className="flex items-start gap-4">
- <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
- <MapPin size={18} className="text-lime-700" />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Office</p>
- <p className="text-sm font-bold text-gray-900">Athens, Greece</p>
- </div>
- </div>
- </div>
- </div>
+  return (
+    <div className="min-h-screen bg-[#FDFDFD]">
+      {/* Hero */}
+      <header className="bg-[#121212] pt-14 pb-16 sm:pt-20 sm:pb-24 relative overflow-hidden">
+        <div
+          className="absolute -top-20 -right-20 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(203,255,56,0.15) 0%, transparent 70%)" }}
+        />
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
+          <div className="flex items-center text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
+            <Link to="/" className="hover:text-[#CBFF38] transition-colors">
+              {isGreek ? "Αρχική" : "Home"}
+            </Link>
+            <ChevronRight size={12} className="mx-2" />
+            <span className="text-gray-300">{isGreek ? "Επικοινωνία" : "Contact"}</span>
+          </div>
+          <h1 className="text-white text-3xl sm:text-5xl font-black tracking-tighter uppercase">
+            {isGreek ? (
+              <>
+                ΕΠΙΚΟΙΝΩΝΗΣΤΕ <span className="text-[#CBFF38]">ΜΑΖΙ ΜΑΣ</span>
+              </>
+            ) : (
+              <>
+                GET IN <span className="text-[#CBFF38]">TOUCH</span>
+              </>
+            )}
+          </h1>
+          <div className="h-1 w-20 bg-[#CBFF38] rounded-full my-5" />
+          <p className="text-gray-300 text-sm sm:text-base max-w-2xl font-medium leading-relaxed">
+            {isGreek
+              ? "Επικοινωνήστε με την υποστήριξη BeautyDoctors για ερωτήσεις σχετικά με τον λογαριασμό σας, τα ραντεβού, τη χρήση της πλατφόρμας ή συνεργασίες. Για ιατρικές συμβουλές ή την καταλληλότητα μιας θεραπείας, απευθυνθείτε στον θεράποντα ιατρό σας."
+              : "Contact BeautyDoctors Support for questions about your account, appointments, platform use or partnerships. For medical advice or treatment suitability, please contact your treating doctor."}
+          </p>
+        </div>
+      </header>
 
- {/* Quick help */}
- <div className="bg-[#0B1120] rounded-3xl shadow-lg p-6 sm:p-8 text-white">
- <h2 className="text-sm font-black uppercase tracking-widest mb-4">Need a faster answer?</h2>
- <div className="space-y-3">
- <Link to="/support" className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group">
- <span className="flex items-center gap-3 text-sm font-bold">
- <LifeBuoy size={16} className="text-[#CBFF38]" /> Browse the Help Center
- </span>
- <ChevronRight size={14} className="text-gray-500 group-hover:text-[#CBFF38] transition-colors" />
- </Link>
- <a
- href="mailto:info@beautydoctors.gr"
- onClick={() => {
-   try {
-     if (navigator.clipboard) {
-       navigator.clipboard.writeText("info@beautydoctors.gr");
-     }
-   } catch {}
-   toast.success("Copied info@beautydoctors.gr to clipboard!", { id: "contact-direct-email-copy" });
- }}
- className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group cursor-pointer"
- >
- <span className="flex items-center gap-3 text-sm font-bold">
- <MessageCircle size={16} className="text-[#CBFF38]" /> Email us directly
- </span>
- <ChevronRight size={14} className="text-gray-500 group-hover:text-[#CBFF38] transition-colors" />
- </a>
- </div>
- </div>
- </div>
+      <main className="container mx-auto px-4 sm:px-8 -mt-8 pb-20 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Contact channels */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8">
+              <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-6">
+                {isGreek ? "Στοιχεία Επικοινωνίας" : "Contact Details"}
+              </h2>
+              <div className="space-y-5">
+                <a
+                  href="mailto:info@beautydoctors.gr"
+                  onClick={() => copyEmail("contact-email-copy")}
+                  className="flex items-start gap-4 group cursor-pointer"
+                >
+                  <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
+                    <Mail size={18} className="text-lime-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      Email
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-lime-700 transition-colors break-all">
+                      info@beautydoctors.gr
+                    </p>
+                  </div>
+                </a>
+                <a href="tel:+306948880498" className="flex items-start gap-4 group">
+                  <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
+                    <Phone size={18} className="text-lime-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      {isGreek ? "Τηλέφωνο" : "Phone"}
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 group-hover:text-lime-700 transition-colors">
+                      +30 694 888 0498
+                    </p>
+                  </div>
+                </a>
+                <div className="flex items-start gap-4">
+                  <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
+                    <Clock size={18} className="text-lime-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      {isGreek ? "Ώρες υποστήριξης" : "Support hours"}
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {isGreek
+                        ? "Δευτέρα–Παρασκευή, 09:00–18:00, ώρα Ελλάδας"
+                        : "Monday–Friday, 09:00–18:00, Greece local time"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="size-11 shrink-0 rounded-2xl bg-[#CBFF38]/20 flex items-center justify-center">
+                    <MapPin size={18} className="text-lime-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      {isGreek ? "Γραφείο" : "Office"}
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {isGreek ? "Αθήνα, Ελλάδα" : "Athens, Greece"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
- {/* Form */}
- <div className="lg:col-span-3">
- <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-10">
- {sent ? (
- <div className="flex flex-col items-center justify-center text-center py-16">
- <div className="size-20 bg-[#CBFF38]/20 rounded-full flex items-center justify-center mb-6">
- <CheckCircle2 size={36} className="text-lime-600" />
- </div>
- <h2 className="text-2xl font-black uppercase tracking-tight text-gray-900 mb-3">Message sent</h2>
- <p className="text-gray-500 font-medium max-w-sm mb-8">
- {isGreek ? (
-   <>Ευχαριστούμε {form.name.split(" ")[0]} — λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας στο <span className="font-bold text-gray-800">{form.email}</span>.</>
- ) : (
-   <>Thanks {form.name.split(" ")[0]} — we received your message and will get back to you at <span className="font-bold text-gray-800">{form.email}</span>.</>
- )}
- </p>
- <div className="flex gap-3">
- <Link to="/" className="px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-widest transition-colors">
- Back to Home
- </Link>
- <button
- onClick={() => { setSent(false); setForm((p) => ({ ...p, subject: SUBJECTS[0], message: "" })); }}
- className="px-6 py-3 rounded-xl bg-[#CBFF38] hover:bg-lime-400 text-black text-xs font-black uppercase tracking-widest transition-colors"
- >
- Send another
- </button>
- </div>
- </div>
- ) : (
- <>
- <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-1">Send us a message</h2>
- <p className="text-xs text-gray-400 font-medium mb-7">Fields marked * are required.</p>
- <form onSubmit={handleSubmit} noValidate>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div>
- <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Full name *</label>
- <input className={inputClass} placeholder="Jane Doe" value={form.name} onChange={set("name")} autoComplete="name" />
- {errors.name && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.name}</p>}
- </div>
- <div>
- <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Email *</label>
- <input className={inputClass} type="email" placeholder="jane@example.com" value={form.email} onChange={set("email")} autoComplete="email" />
- {errors.email && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.email}</p>}
- </div>
- <div>
- <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Phone <span className="text-gray-300 normal-case font-semibold">(optional)</span></label>
- <input className={inputClass} type="tel" placeholder="+30 6912345678" value={form.phone} onChange={set("phone")} autoComplete="tel" />
- </div>
- <div>
- <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Subject *</label>
- <select className={`${inputClass} cursor-pointer`} value={form.subject} onChange={set("subject")}>
- {SUBJECTS.map((s) => (
- <option key={s} value={s}>{s}</option>
- ))}
- </select>
- <p className="text-[11px] font-semibold text-gray-500 mt-1 pl-1">
- {isGreek ? "Κλινικές για συνεργασία: " : "Clinics interested in partnering: "}
- <a href="mailto:info@beautydoctors.gr" className="underline">info@beautydoctors.gr</a>
- </p>
- </div>
- </div>
- <div className="mt-4">
- <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">Message *</label>
- <textarea
- className={`${inputClass} h-auto py-3 resize-none leading-relaxed`}
- rows={6}
- placeholder="Tell us how we can help…"
- value={form.message}
- onChange={set("message")}
- />
- {errors.message && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.message}</p>}
- </div>
+            {/* Quick help */}
+            <div className="bg-[#0B1120] rounded-3xl shadow-lg p-6 sm:p-8 text-white">
+              <h2 className="text-sm font-black uppercase tracking-widest mb-4">
+                {isGreek ? "Χρειάζεστε πιο γρήγορη απάντηση;" : "Need a faster answer?"}
+              </h2>
+              <div className="space-y-3">
+                <Link
+                  to="/support"
+                  className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group"
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold">
+                    <LifeBuoy size={16} className="text-[#CBFF38]" />{" "}
+                    {isGreek ? "Περιηγηθείτε στο Κέντρο Βοήθειας" : "Browse the Help Center"}
+                  </span>
+                  <ChevronRight size={14} className="text-gray-500 group-hover:text-[#CBFF38] transition-colors" />
+                </Link>
+                <a
+                  href="mailto:info@beautydoctors.gr"
+                  onClick={() => copyEmail("contact-direct-email-copy")}
+                  className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-4 py-3.5 transition-colors group cursor-pointer"
+                >
+                  <span className="flex items-center gap-3 text-sm font-bold">
+                    <MessageCircle size={16} className="text-[#CBFF38]" />{" "}
+                    {isGreek ? "Στείλτε μας απευθείας email" : "Email us directly"}
+                  </span>
+                  <ChevronRight size={14} className="text-gray-500 group-hover:text-[#CBFF38] transition-colors" />
+                </a>
+              </div>
+            </div>
+          </div>
 
- {/* Honeypot — invisible to humans, catches bots */}
- <input
- type="text"
- value={form.website}
- onChange={set("website")}
- tabIndex={-1}
- autoComplete="off"
- aria-hidden="true"
- className="absolute opacity-0 h-0 w-0 pointer-events-none"
- />
+          {/* Form */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-10">
+              {sent ? (
+                <div className="flex flex-col items-center justify-center text-center py-16">
+                  <div className="size-20 bg-[#CBFF38]/20 rounded-full flex items-center justify-center mb-6">
+                    <CheckCircle2 size={36} className="text-lime-600" />
+                  </div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight text-gray-900 mb-3">
+                    {isGreek ? "Το μήνυμα εστάλη" : "Message sent"}
+                  </h2>
+                  <p className="text-gray-500 font-medium max-w-sm mb-8">
+                    {isGreek ? (
+                      <>
+                        Ευχαριστούμε {form.name.split(" ")[0]} — λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας στο{" "}
+                        <span className="font-bold text-gray-800">{form.email}</span>.
+                      </>
+                    ) : (
+                      <>
+                        Thanks {form.name.split(" ")[0]} — we received your message and will get back to you at{" "}
+                        <span className="font-bold text-gray-800">{form.email}</span>.
+                      </>
+                    )}
+                  </p>
+                  <div className="flex gap-3">
+                    <Link
+                      to="/"
+                      className="px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-widest transition-colors"
+                    >
+                      {isGreek ? "Επιστροφή στην Αρχική" : "Back to Home"}
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setSent(false);
+                        setForm((p) => ({ ...p, subject: SUBJECT_OPTIONS[0].value, message: "" }));
+                      }}
+                      className="px-6 py-3 rounded-xl bg-[#CBFF38] hover:bg-lime-400 text-black text-xs font-black uppercase tracking-widest transition-colors"
+                    >
+                      {isGreek ? "Αποστολή νέου μηνύματος" : "Send another"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-1">
+                    {isGreek ? "Στείλτε μας ένα μήνυμα" : "Send us a message"}
+                  </h2>
+                  <p className="text-xs text-gray-400 font-medium mb-7">
+                    {isGreek ? "Τα πεδία με * είναι υποχρεωτικά." : "Fields marked * are required."}
+                  </p>
+                  <form onSubmit={handleSubmit} noValidate>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">
+                          {isGreek ? "Ονοματεπώνυμο *" : "Full name *"}
+                        </label>
+                        <input
+                          className={inputClass}
+                          placeholder={isGreek ? "π.χ. Μαρία Παπαδοπούλου" : "Jane Doe"}
+                          value={form.name}
+                          onChange={set("name")}
+                          autoComplete="name"
+                        />
+                        {errors.name && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.name}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">
+                          Email *
+                        </label>
+                        <input
+                          className={inputClass}
+                          type="email"
+                          placeholder={isGreek ? "name@example.com" : "jane@example.com"}
+                          value={form.email}
+                          onChange={set("email")}
+                          autoComplete="email"
+                        />
+                        {errors.email && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.email}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">
+                          {isGreek ? "Τηλέφωνο" : "Phone"}{" "}
+                          <span className="text-gray-300 normal-case font-semibold">
+                            {isGreek ? "(προαιρετικό)" : "(optional)"}
+                          </span>
+                        </label>
+                        <input
+                          className={inputClass}
+                          type="tel"
+                          placeholder="+30 6912345678"
+                          value={form.phone}
+                          onChange={set("phone")}
+                          autoComplete="tel"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">
+                          {isGreek ? "Θέμα *" : "Subject *"}
+                        </label>
+                        <select className={`${inputClass} cursor-pointer`} value={form.subject} onChange={set("subject")}>
+                          {SUBJECT_OPTIONS.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {isGreek ? s.el : s.en}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] font-semibold text-gray-500 mt-1 pl-1">
+                          {isGreek ? "Κλινικές για συνεργασία: " : "Clinics interested in partnering: "}
+                          <a href="mailto:info@beautydoctors.gr" className="underline">
+                            info@beautydoctors.gr
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1.5 pl-1">
+                        {isGreek ? "Μήνυμα *" : "Message *"}
+                      </label>
+                      <textarea
+                        className={`${inputClass} h-auto py-3 resize-none leading-relaxed`}
+                        rows={6}
+                        placeholder={isGreek ? "Πείτε μας πώς μπορούμε να σας βοηθήσουμε…" : "Tell us how we can help…"}
+                        value={form.message}
+                        onChange={set("message")}
+                      />
+                      {errors.message && <p className="text-[11px] font-semibold text-red-500 mt-1 pl-1">{errors.message}</p>}
+                    </div>
 
- <div className="mt-7 flex flex-col sm:flex-row items-center gap-4">
- <button
- type="submit"
- disabled={isSubmitting}
- className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 h-14 bg-[#CBFF38] hover:bg-lime-400 text-black font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-[#CBFF38]/30 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
- >
- <Send size={14} />
- {isSubmitting ? "Sending…" : "Send message"}
- </button>
- <div className="text-[11px] text-gray-400 font-medium text-center sm:text-left space-y-1">
- <p>By submitting this form, you acknowledge that you have read the <Link to="/legal" className="underline hover:text-gray-600">Privacy Policy</Link>. Please do not include medical or other sensitive information in this form.</p>
- </div>
- </div>
- </form>
- </>
- )}
- </div>
- </div>
- </div>
- </main>
- </div>
- );
+                    {/* Honeypot — invisible to humans, catches bots */}
+                    <input
+                      type="text"
+                      value={form.website}
+                      onChange={set("website")}
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="absolute opacity-0 h-0 w-0 pointer-events-none"
+                    />
+
+                    <div className="mt-7 flex flex-col sm:flex-row items-center gap-4">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 h-14 bg-[#CBFF38] hover:bg-lime-400 text-black font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-[#CBFF38]/30 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <Send size={14} />
+                        {isSubmitting
+                          ? isGreek
+                            ? "Αποστολή…"
+                            : "Sending…"
+                          : isGreek
+                          ? "Αποστολή μηνύματος"
+                          : "Send message"}
+                      </button>
+                      <div className="text-[11px] text-gray-400 font-medium text-center sm:text-left space-y-1">
+                        <p>
+                          {isGreek ? (
+                            <>
+                              Υποβάλλοντας αυτή τη φόρμα, επιβεβαιώνετε ότι έχετε διαβάσει την{" "}
+                              <Link to="/privacy-policy" className="underline hover:text-gray-600">
+                                Πολιτική Απορρήτου
+                              </Link>
+                              . Παρακαλούμε μην συμπεριλαμβάνετε ιατρικές ή άλλες ευαίσθητες πληροφορίες σε αυτή τη φόρμα.
+                            </>
+                          ) : (
+                            <>
+                              By submitting this form, you acknowledge that you have read the{" "}
+                              <Link to="/privacy-policy" className="underline hover:text-gray-600">
+                                Privacy Policy
+                              </Link>
+                              . Please do not include medical or other sensitive information in this form.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 };
