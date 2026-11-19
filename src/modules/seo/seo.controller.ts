@@ -1,7 +1,6 @@
-import { Controller, Get, Headers, Query, Res } from '@nestjs/common';
+import { Controller, Get, Header, Headers, Query } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { Treatment } from '../clinics/entities/treatment.entity';
 import { TreatmentCategory } from '../clinics/entities/treatment-category.entity';
@@ -143,7 +142,9 @@ export class SeoController {
 
   @Public()
   @Get('sitemap.xml')
-  async getSitemap(@Res() res: Response) {
+  @Header('Content-Type', 'application/xml; charset=utf-8')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getSitemap(): Promise<string> {
     const today = new Date().toISOString().split('T')[0];
 
     const [treatments, categories, posts] = await Promise.all([
@@ -220,7 +221,7 @@ export class SeoController {
       });
     }
 
-    const xml = [
+    return [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
       ...urls.map(
@@ -229,10 +230,6 @@ export class SeoController {
       ),
       '</urlset>',
     ].join('\n');
-
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    return res.send(xml);
   }
 
   /**
@@ -241,11 +238,12 @@ export class SeoController {
    */
   @Public()
   @Get('og-preview')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Cache-Control', 'public, max-age=300')
   async getOgPreview(
     @Query('path') queryPath?: string,
     @Headers('x-original-uri') originalUri?: string,
-    @Res() res?: Response,
-  ) {
+  ): Promise<string> {
     const rawPath = queryPath || originalUri || '/';
     let pathname = '/';
     let searchParams = new URLSearchParams();
@@ -298,7 +296,7 @@ export class SeoController {
       description = STATIC_PAGE_META[pathname].description;
     }
 
-    const html = `<!doctype html>
+    return `<!doctype html>
 <html lang="el">
 <head>
   <meta charset="UTF-8" />
@@ -324,9 +322,5 @@ export class SeoController {
   <p>${escapeHtml(description)}</p>
 </body>
 </html>`;
-
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=300');
-    return res.send(html);
   }
 }
