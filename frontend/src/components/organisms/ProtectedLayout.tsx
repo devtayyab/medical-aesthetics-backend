@@ -12,12 +12,12 @@ export const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({
  children,
  allowedRoles = [],
 }) => {
- const { isAuthenticated, user, isLoading } = useSelector(
+ const { isAuthenticated, user, isRestoringSession } = useSelector(
  (state: RootState) => state.auth
  );
  const location = useLocation();
 
- if (isLoading) {
+ if (isRestoringSession) {
  return (
  <div className="flex justify-center items-center min-h-screen text-[var(--color-primary)]">
  Loading...

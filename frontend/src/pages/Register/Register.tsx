@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
-import { useNavigate, Link, useSearchParams } from"react-router-dom";
-import { register } from"@/store/slices/authSlice";
+import { Navigate, Link, useSearchParams } from"react-router-dom";
+import { register, clearError } from"@/store/slices/authSlice";
 import { authAPI } from"@/services/api";
 import { isSafeRedirect } from"@/services/client";
 import { Button } from"@/components/atoms/Button/Button";
@@ -67,10 +67,13 @@ const formStyle = css`
 
 export const Register: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const navigate = useNavigate();
  const { isLoading, error, isAuthenticated } = useSelector(
  (state: RootState) => state.auth
  );
+
+ useEffect(() => {
+ dispatch(clearError());
+ }, [dispatch]);
 
  const [email, setEmail] = useState("");
  const [password, setPassword] = useState("");
@@ -109,6 +112,7 @@ export const Register: React.FC = () => {
 
  // After registering: "check your email" screen (verification link)
  const [verificationStep, setVerificationStep] = useState(false);
+ const [claimedExistingAccount, setClaimedExistingAccount] = useState(false);
  const [registeredEmail, setRegisteredEmail] = useState("");
  const [verificationMessage, setVerificationMessage] = useState("");
  const [resendInfo, setResendInfo] = useState("");
@@ -189,16 +193,19 @@ export const Register: React.FC = () => {
 
  const result = await dispatch(register(userData)).unwrap();
  setRegisteredEmail(result?.email || email.trim());
- setVerificationMessage(result?.message ||"");
+ setClaimedExistingAccount(!!result?.claimedExistingAccount);
+ setVerificationMessage(result?.message || "");
  setVerificationStep(true);
+ window.scrollTo({ top: 0, behavior: "smooth" });
  toast.success(
  isGreek
- ? "Η εγγραφή σας ολοκληρώθηκε! Ελέγξτε το email σας για επιβεβαίωση."
+ ? "Η εγγραφή σας ολοκληρώθηκε επιτυχώς! Ελέγξτε το email σας για επιβεβαίωση."
  : "Registration successful! Please check your email to verify your account."
  );
  } catch (err: any) {
  const msg = typeof err === "string" ? err : err?.message || (isGreek ? "Η εγγραφή απέτυχε. Δοκιμάστε ξανά." : "Registration failed. Please try again.");
  setSubmitError(msg);
+ window.scrollTo({ top: 0, behavior: "smooth" });
  toast.error(msg);
  }
  };
@@ -217,46 +224,105 @@ export const Register: React.FC = () => {
  };
 
  if (isAuthenticated) {
- navigate(redirect ||"/");
- return null;
+ return <Navigate to={redirect || "/"} replace />;
  }
 
- // Check your email screen
+ // Check your email / Registration confirmation screen
  if (verificationStep) {
  return (
  <div className={registerContainerStyle}>
  <Card className={registerCardStyle}>
- <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", padding: "12px 16px", borderRadius: 12, marginBottom: 16, textAlign: "center", fontSize: 13, fontWeight: 600 }}>
- {isGreek ? "Ο λογαριασμός σας δημιουργήθηκε επιτυχώς!" : "Your account has been created successfully!"}
+ <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+ <div
+ style={{
+ width: 64,
+ height: 64,
+ borderRadius: "50%",
+ background: "#ecfdf5",
+ border: "2px solid #10b981",
+ display: "flex",
+ alignItems: "center",
+ justifyContent: "center",
+ color: "#059669",
+ fontSize: 32,
+ fontWeight: 800,
+ }}
+ aria-hidden="true"
+ >
+ ✓
  </div>
- <h2 className={registerHeaderStyle} style={{ fontSize: 22 }}>
+ </div>
+ <div
+ role="status"
+ style={{
+ background: "#ecfdf5",
+ border: "1px solid #a7f3d0",
+ color: "#065f46",
+ padding: "14px 16px",
+ borderRadius: 12,
+ marginBottom: 18,
+ textAlign: "center",
+ fontSize: 15,
+ fontWeight: 700,
+ }}
+ >
+ {claimedExistingAccount
+ ? (isGreek
+ ? "Έχετε ήδη λογαριασμό μαζί μας! Σας στείλαμε email για ορισμό κωδικού."
+ : "You already have an account with us! We sent you an email to set your password.")
+ : (isGreek
+ ? "Η εγγραφή σας ολοκληρώθηκε επιτυχώς!"
+ : "Your registration was successful!")}
+ </div>
+ <h2 className={registerHeaderStyle} style={{ fontSize: 22, marginBottom: 12 }}>
  {isGreek ? "Ελέγξτε το email σας" : "Check your email"}
  </h2>
- <p style={{ textAlign:"center", color:"#6b7280", marginBottom: 20, fontSize: 14, lineHeight: 1.6 }}>
- {isGreek ? "Στείλαμε σύνδεσμο επιβεβαίωσης στο:" : (verificationMessage ||"We sent a verification link to")}<br />
- <strong style={{ color:"#111" }}>{registeredEmail}</strong>
+ <p style={{ textAlign: "center", color: "#4b5563", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>
+ {claimedExistingAccount
+ ? (isGreek ? "Στείλαμε σύνδεσμο ορισμού κωδικού στο:" : (verificationMessage || "We sent a set-password link to:"))
+ : (isGreek ? "Στείλαμε σύνδεσμο επιβεβαίωσης στο:" : "We sent a verification link to:")}
+ <br />
+ <strong style={{ color: "#111827" }}>{registeredEmail}</strong>
  </p>
- <p style={{ textAlign:"center", color:"#6b7280", fontSize: 14, lineHeight: 1.6 }}>
- {isGreek
+ <p style={{ textAlign: "center", color: "#6b7280", fontSize: 14, lineHeight: 1.6 }}>
+ {claimedExistingAccount
+ ? (isGreek
+ ? "Πατήστε τον σύνδεσμο στο email σας για να ορίσετε τον κωδικό σας και να συνδεθείτε."
+ : "Click the link in the email to set your password and log in.")
+ : (isGreek
  ? "Πατήστε τον σύνδεσμο στο email σας για να επιβεβαιώσετε τον λογαριασμό σας και να κλείσετε ραντεβού."
- : "Click the link in the email to verify your account and book appointments."}
+ : "Click the link in the email to verify your account and book appointments.")}
  </p>
- {resendInfo && <p style={{ textAlign:"center", color:"#15803d", fontSize: 13, marginTop: 10 }}>{resendInfo}</p>}
- <p style={{ textAlign:"center", marginTop: 16, fontSize: 13, color:"#9ca3af" }}>
+ {resendInfo && <p style={{ textAlign: "center", color: "#15803d", fontSize: 13, marginTop: 10, fontWeight: 600 }}>{resendInfo}</p>}
+ {!claimedExistingAccount && (
+ <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#6b7280" }}>
  {isGreek ? "Δεν το λάβατε; Ελέγξτε τον φάκελο ανεπιθύμητης αλληλογραφίας (Spam)." : "Didn't receive it? Check your spam folder."}{" "}
  <button
  type="button"
  onClick={handleResend}
- style={{ color:"#4d7c0f", background:"none", border:"none", cursor:"pointer", fontWeight: 700, textDecoration: "underline" }}
+ style={{ color: "#4d7c0f", background: "none", border: "none", cursor: "pointer", fontWeight: 700, textDecoration: "underline" }}
  >
  {isGreek ? "Αποστολή ξανά" : "Send again"}
  </button>
  </p>
- <p style={{ textAlign:"center", marginTop: 12 }}>
- <Link to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` :"/login"} className={linkStyle}>
+ )}
+ <div style={{ textAlign: "center", marginTop: 20 }}>
+ <Link
+ to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
+ style={{
+ display: "inline-block",
+ backgroundColor: "#CBFF38",
+ color: "#33373F",
+ fontWeight: 700,
+ padding: "12px 28px",
+ borderRadius: 12,
+ textDecoration: "none",
+ fontSize: 14,
+ }}
+ >
  {isGreek ? "Μετάβαση στη Σύνδεση" : "Go to Login"}
  </Link>
- </p>
+ </div>
  </Card>
  </div>
  );

@@ -205,7 +205,7 @@ function AppContent() {
  const location = useLocation();
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
- const { isLoading, isAuthenticated, user } = useSelector(
+ const { isLoading, isRestoringSession, isAuthenticated, user } = useSelector(
  (state: RootState) => state.auth
  );
  const [hasRestoredSession, setHasRestoredSession] = useState(false);
@@ -291,8 +291,10 @@ function AppContent() {
  }
  }, [isAuthenticated, isLoading, location.pathname, navigate, hasRestoredSession, user?.role]);
 
- // Show loader until session is restored
- if (!hasRestoredSession || isLoading) {
+ // Show loader ONLY until initial session restoration finishes.
+ // Do NOT gate on `isLoading`, because login/register/profile actions set `isLoading = true`
+ // and unmounting <Routes> wipes component state (e.g. Register's confirmation screen and Login's errors/2FA).
+ if (!hasRestoredSession || isRestoringSession) {
  return (
  <div className="flex justify-center items-center min-h-screen bg-gray-100">
  <div className="size-12 border-4 border-t-4 border-[#2D3748] border-t-transparent rounded-full animate-spin"></div>

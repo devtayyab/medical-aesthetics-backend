@@ -15,6 +15,8 @@ export interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** True ONLY while restoreSession is running on initial app boot/tab sync. */
+  isRestoringSession: boolean;
   error: string | null;
 }
 
@@ -89,6 +91,7 @@ const initialState: AuthState = {
   // Optimistic until restoreSession confirms the cookie session on load.
   isAuthenticated: !!getStoredUser(),
   isLoading: false,
+  isRestoringSession: false,
   error: null,
 };
 
@@ -364,10 +367,12 @@ const authSlice = createSlice({
       })
       .addCase(restoreSession.pending, (state) => {
         state.isLoading = true;
+        state.isRestoringSession = true;
         state.error = null;
       })
       .addCase(restoreSession.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.isRestoringSession = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken || null;
         state.isAuthenticated = true;
@@ -376,6 +381,7 @@ const authSlice = createSlice({
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.isLoading = false;
+        state.isRestoringSession = false;
         const reason = action.payload as string | undefined;
         // No valid cookie session: treat as logged out (no error banner).
         if (reason === "401" || !state.user) {
