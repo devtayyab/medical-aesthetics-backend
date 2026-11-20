@@ -1,7 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { allowedOrigins } from './common/utils/allowed-origins';
@@ -11,8 +10,29 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // AWS SNS delivers SES bounce/complaint notifications with Content-Type: text/plain; charset=UTF-8.
-  // Parse text/plain specifically on the SNS webhook route so @Body() receives the raw JSON string.
-  app.use('/api/notifications/ses-webhook', express.text({ type: 'text/plain', limit: '2mb' }));
+  // Collect text/plain bodies on the SNS webhook without depending on a top-level `express` import.
+  app.use('/api/notifications/ses-webhook', (req: any, _res: any, next: any) => {
+    const contentType = String(req.headers?.['content-type'] || '').toLowerCase();
+    if (req.method === 'POST' && contentType.startsWith('text/plain') && !req.readableEnded) {
+      const chunks: Buffer[] = [];
+      let total = 0;
+      req.on('data', (chunk: Buffer) => {
+        total += chunk.length;
+        if (total <= 2 * 1024 * 1024) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+      });
+      req.on('end', () => {
+        const raw = Buffer.concat(chunks);
+        req.rawBody = raw;
+        req.body = raw.toString('utf8');
+        next();
+      });
+      req.on('error', (err: any) => next(err));
+      return;
+    }
+    next();
+  });
 
   // Enforce @Exclude() on entities (passwordHash, refreshToken, etc.) in all responses.
   // StripCredentialsInterceptor is outermost, so it cleans the plain copies the serializer
