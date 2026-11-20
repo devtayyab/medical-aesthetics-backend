@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 import clinicApi from '../../services/api/clinicApi';
 import { TrendingUp, DollarSign, Calendar, Award, ArrowUpRight, BarChart3, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AnalyticsPage: React.FC = () => {
+ const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
+ const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || myClinics?.[0]?.id || undefined;
  const [dateRange, setDateRange] = useState({
  startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
  endDate: new Date().toISOString().split('T')[0],
@@ -33,15 +37,16 @@ const AnalyticsPage: React.FC = () => {
 
  useEffect(() => {
  fetchAnalytics();
- }, [dateRange]);
+ }, [dateRange, activeClinicId]);
 
  const fetchAnalytics = async () => {
  setIsLoading(true);
  try {
+ const params = activeClinicId ? { ...dateRange, clinicId: activeClinicId } : dateRange;
  const [appointments, revenue, loyalty] = await Promise.all([
- clinicApi.analytics.getAppointmentAnalytics(dateRange),
- clinicApi.analytics.getRevenueAnalytics(dateRange),
- clinicApi.analytics.getLoyaltyAnalytics(dateRange),
+ clinicApi.analytics.getAppointmentAnalytics(params),
+ clinicApi.analytics.getRevenueAnalytics(params),
+ clinicApi.analytics.getLoyaltyAnalytics(params),
  ]);
 
  setAppointmentAnalytics(appointments);

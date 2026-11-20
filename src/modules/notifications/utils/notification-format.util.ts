@@ -56,11 +56,11 @@ export function isPlaceholderEmail(email?: string | null): boolean {
     e.includes('noemail') ||
     e.includes('no-email') ||
     e.includes('no_email') ||
+    e.includes('placeholder') ||
     domain === 'example.com' ||
     domain === 'example.org' ||
     domain === 'example.net' ||
     domain.endsWith('.example.com') ||
-    domain.includes('placeholder') ||
     domain.endsWith('.invalid') ||
     domain.endsWith('.local') ||
     domain.endsWith('.test') ||

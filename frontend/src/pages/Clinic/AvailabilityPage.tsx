@@ -8,6 +8,8 @@ import {
  fetchBlockedSlots,
  blockTimeSlot,
  unblockTimeSlot,
+ fetchClinicProfile,
+ fetchAppointments,
 } from"../../store/slices/clinicSlice";
 import clinicApi from"../../services/api/clinicApi";
 import { BusinessHours, BlockedSlot } from"../../types/clinic.types";
@@ -84,7 +86,7 @@ const timezoneLabel = (timeZone: string, at: Date = new Date()): string => {
 
 const AvailabilityPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { availability, isLoading } = useSelector(
+ const { availability, isLoading, profile } = useSelector(
  (state: RootState) => state.clinic
  );
  const user = useSelector((state: RootState) => state.auth.user);
@@ -132,13 +134,16 @@ const AvailabilityPage: React.FC = () => {
  // Clinic-scoped list (the CRM API is for BeautyDoctors staff only)
  const list = (await clinicApi.patients.accessibleClinics()) || [];
  setAvailableClinics(list);
- // Open the clinic being viewed (?clinicId=... or the clinic last selected in a calendar),
- // falling back to the first accessible clinic.
+ // Open the clinic being viewed (?clinicId=..., active switcher profile, or localStorage activeClinicId)
  let wanted: string | null = null;
  try {
- wanted = new URLSearchParams(window.location.search).get('clinicId') || sessionStorage.getItem('calendar.viewedClinicId');
+ wanted =
+   new URLSearchParams(window.location.search).get('clinicId') ||
+   profile?.id ||
+   localStorage.getItem('activeClinicId') ||
+   sessionStorage.getItem('calendar.viewedClinicId');
  } catch {
- wanted = null;
+ wanted = profile?.id || null;
  }
  const match = wanted ? list.find((c: any) => c.id === wanted) : null;
  if (match) {
@@ -152,6 +157,23 @@ const AvailabilityPage: React.FC = () => {
  };
  loadClinics();
  }, []);
+
+ // Keep AvailabilityPage synced whenever the user switches clinics in the top ClinicLayout bar
+ useEffect(() => {
+ if (profile?.id && availableClinics.some((c: any) => c.id === profile.id)) {
+   setSelectedClinicId((prev) => (prev === profile.id ? prev : profile.id));
+ }
+ }, [profile?.id, availableClinics]);
+
+ const handleAvailabilityClinicChange = (newClinicId: string) => {
+ setSelectedClinicId(newClinicId);
+ localStorage.setItem('activeClinicId', newClinicId);
+ try { sessionStorage.setItem('calendar.viewedClinicId', newClinicId); } catch {}
+ if (newClinicId && newClinicId !== profile?.id) {
+   dispatch(fetchClinicProfile(newClinicId));
+   dispatch(fetchAppointments({ clinicId: newClinicId }));
+ }
+ };
 
  useEffect(() => {
  if (selectedClinicId) {
@@ -342,7 +364,7 @@ const AvailabilityPage: React.FC = () => {
  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">Clinic</span>
  <select
  value={selectedClinicId}
- onChange={(e) => setSelectedClinicId(e.target.value)}
+ onChange={(e) => handleAvailabilityClinicChange(e.target.value)}
  className="bg-transparent border-none text-gray-900 font-black uppercase text-[10px] tracking-widest outline-none cursor-pointer"
  >
  {availableClinics.map(c => (

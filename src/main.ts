@@ -1,6 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { allowedOrigins } from './common/utils/allowed-origins';
@@ -8,6 +9,10 @@ import { StripCredentialsInterceptor } from './common/interceptors/strip-credent
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // AWS SNS delivers SES bounce/complaint notifications with Content-Type: text/plain; charset=UTF-8.
+  // Parse text/plain specifically on the SNS webhook route so @Body() receives the raw JSON string.
+  app.use('/api/notifications/ses-webhook', express.text({ type: 'text/plain', limit: '2mb' }));
 
   // Enforce @Exclude() on entities (passwordHash, refreshToken, etc.) in all responses.
   // StripCredentialsInterceptor is outermost, so it cleans the plain copies the serializer

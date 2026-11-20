@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { isPlaceholderEmail } from '../utils/notification-format.util';
+import { EmailSuppressionService } from './email-suppression.service';
 
 const BRAND = 'Beauty Doctors';
 
@@ -22,7 +23,10 @@ export class MailService {
   private fromAddress: string;
   private replyToAddress: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Optional() private emailSuppressionService?: EmailSuppressionService,
+  ) {
     const fromEmail = this.configService.get<string>('MAIL_FROM') || 'no-reply@beautydoctors.gr';
     const fromName = this.configService.get<string>('MAIL_FROM_NAME') || BRAND;
     // A display name improves deliverability and shows "Beauty Doctors" in the inbox.
@@ -89,6 +93,14 @@ export class MailService {
       return null;
     }
 
+    if (this.emailSuppressionService) {
+      const check = await this.emailSuppressionService.isEmailSuppressed(to);
+      if (check.suppressed) {
+        this.logger.warn(`Skipping email "${subject}" to ${to}: suppressed (${check.reason})`);
+        return null;
+      }
+    }
+
     const from = this.fromAddress;
     const htmlBody = html || this.renderLayout(subject, this.textToHtml(text));
 
@@ -112,6 +124,13 @@ export class MailService {
         return { messageId: res.MessageId };
       } catch (err: any) {
         this.logger.error(`AWS SES send failed to ${to}: ${err.message}`, err.stack);
+        if (this.emailSuppressionService) {
+          const recorded = await this.emailSuppressionService.recordSynchronousSendError(to, err, 'ses_sync');
+          if (recorded) {
+            // Permanent recipient bounce: do NOT retry via SMTP fallback
+            return null;
+          }
+        }
         // Fall through to SMTP if it is configured as well
       }
     }
@@ -130,6 +149,9 @@ export class MailService {
         return info;
       } catch (error: any) {
         this.logger.error(`SMTP send failed to ${to}: ${error.message}`);
+        if (this.emailSuppressionService) {
+          await this.emailSuppressionService.recordSynchronousSendError(to, error, 'smtp_sync');
+        }
         return null;
       }
     }

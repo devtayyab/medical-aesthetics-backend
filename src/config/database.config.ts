@@ -39,6 +39,7 @@ import { NotificationTemplate } from '../modules/notifications/entities/notifica
 import { ClinicCalendarConnection } from '../modules/google-calendar/entities/clinic-calendar-connection.entity';
 import { NotificationDispatch } from '../modules/notifications/entities/notification-dispatch.entity';
 import { ContactMessage } from '../modules/notifications/entities/contact-message.entity';
+import { EmailBounce } from '../modules/notifications/entities/email-bounce.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -93,6 +94,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         ClinicCalendarConnection,
         NotificationDispatch,
         ContactMessage,
+        EmailBounce,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

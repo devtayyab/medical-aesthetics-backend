@@ -16,9 +16,10 @@ import { getImageUrl } from "@/utils/imageUrl";
 
 const SettingsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { profile, isLoading } = useSelector(
+ const { profile, myClinics, isLoading } = useSelector(
  (state: RootState) => state.clinic
  );
+ const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || myClinics?.[0]?.id || undefined;
 
  const [formData, setFormData] = useState<Partial<ClinicProfile>>({
  name:"",
@@ -67,21 +68,23 @@ const SettingsPage: React.FC = () => {
  const [bankToast, setBankToast] = useState<{ type:"success" |"error"; msg: string } | null>(null);
 
  useEffect(() => {
- bankDetailsApi.get().then((data) => {
+ bankDetailsApi.get(activeClinicId).then((data) => {
  setBankData({
  bankIban: data.bankIban ||"",
  bankAccountHolder: data.bankAccountHolder ||"",
  bankName: data.bankName ||"",
  bankBic: data.bankBic ||"",
  });
- }).catch(() => {});
- }, []);
+ }).catch(() => {
+ setBankData({ bankIban: "", bankAccountHolder: "", bankName: "", bankBic: "" });
+ });
+ }, [activeClinicId]);
 
  const handleSaveBank = async () => {
  setIsSavingBank(true);
  setBankToast(null);
  try {
- await bankDetailsApi.update(bankData);
+ await bankDetailsApi.update(bankData, activeClinicId);
  setBankToast({
    type: "success",
    msg: isGreek ? "Τα τραπεζικά στοιχεία αποθηκεύτηκαν επιτυχώς!" : "Bank details saved successfully!",
@@ -98,8 +101,11 @@ const SettingsPage: React.FC = () => {
  };
 
  useEffect(() => {
- dispatch(fetchClinicProfile());
- }, [dispatch]);
+ // Only fetch if profile is not yet loaded — NEVER overwrite the clinic chosen in ClinicLayout with default Mavili
+ if (!profile && activeClinicId) {
+   dispatch(fetchClinicProfile(activeClinicId));
+ }
+ }, [dispatch, profile, activeClinicId]);
 
  useEffect(() => {
  if (profile) {
@@ -127,7 +133,7 @@ const SettingsPage: React.FC = () => {
  setIsSaving(true);
 
  try {
- await dispatch(updateClinicProfile(formData)).unwrap();
+ await dispatch(updateClinicProfile({ ...formData, clinicId: activeClinicId })).unwrap();
  toast.success(isGreek ? "Οι ρυθμίσεις της κλινικής ενημερώθηκαν." : "Clinic configuration updated successfully!");
  } catch (error) {
  console.error("Failed to update profile:", error);

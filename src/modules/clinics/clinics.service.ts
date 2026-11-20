@@ -849,13 +849,43 @@ export class ClinicsService {
     return all;
   }
 
+  /**
+   * Resolves a single clinic for a clinic-portal request:
+   * - If `clinicId` is given: admins/managers may target any clinic; clinic accounts
+   *   (clinic_owner, secretariat, doctor) may target any clinic returned by `findAllByOwner`.
+   * - Otherwise falls back to the user's primary clinic via `findByOwnerId`.
+   */
+  async resolveClinicForUser(ownerId: string, role?: string, clinicId?: string): Promise<Clinic> {
+    const normalizedRole = String(role || '').toLowerCase();
+    if (clinicId) {
+      if (
+        normalizedRole === UserRole.ADMIN ||
+        normalizedRole === UserRole.SUPER_ADMIN ||
+        normalizedRole === UserRole.MANAGER
+      ) {
+        return this.findById(clinicId);
+      }
+      const accessible = await this.findAllByOwner(ownerId);
+      const match = accessible.find((c) => c.id === clinicId);
+      if (!match) {
+        throw new ForbiddenException('Access denied to this clinic');
+      }
+      return this.findById(match.id);
+    }
+    return this.findByOwnerId(ownerId);
+  }
+
   async updateClinicProfile(
     ownerId: string,
-    updateClinicDto: UpdateClinicProfileDto,
+    updateClinicDto: UpdateClinicProfileDto & { clinicId?: string },
+    role?: string,
+    clinicId?: string,
   ): Promise<Clinic> {
-    const clinic = await this.findByOwnerId(ownerId);
+    const targetClinicId = clinicId || (updateClinicDto as any)?.clinicId;
+    const clinic = await this.resolveClinicForUser(ownerId, role, targetClinicId);
 
-    Object.assign(clinic, updateClinicDto);
+    const { clinicId: _ignored, ...cleanDto } = updateClinicDto as any;
+    Object.assign(clinic, cleanDto);
     return this.clinicsRepository.save(clinic);
   }
 
@@ -1325,19 +1355,7 @@ export class ClinicsService {
 
   // Service/Treatment Management
   async getClinicServices(ownerId: string, role?: string, clinicId?: string): Promise<Service[]> {
-    let clinic;
-    if (clinicId) {
-      // Permission check: Admin/SuperAdmin/Manager can see any. Owner can only see if they own it.
-      if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER) {
-        clinic = await this.findById(clinicId);
-      } else {
-        const owned = await this.findAllByOwner(ownerId);
-        clinic = owned.find(c => c.id === clinicId);
-        if (!clinic) throw new ForbiddenException('Access denied to this clinic');
-      }
-    } else {
-      clinic = await this.findByOwnerId(ownerId);
-    }
+    const clinic = await this.resolveClinicForUser(ownerId, role, clinicId);
 
     return this.servicesRepository.find({
       where: { clinicId: clinic.id },
@@ -1347,12 +1365,7 @@ export class ClinicsService {
   }
 
   async createService(ownerId: string, role: string, serviceData: CreateServiceDto & { clinicId?: string }): Promise<Service> {
-    let clinic;
-    if (serviceData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(serviceData.clinicId);
-    } else {
-      clinic = await this.findByOwnerId(ownerId);
-    }
+    const clinic = await this.resolveClinicForUser(ownerId, role, serviceData.clinicId);
 
     let treatment;
     if (serviceData.treatmentId) {
@@ -1447,12 +1460,8 @@ export class ClinicsService {
   }
 
   async deleteService(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<void> {
-    let clinic;
-    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(clinicId);
-    } else {
-      clinic = await this.findByOwnerId(ownerId);
-    }
+    const existing = await this.servicesRepository.findOne({ where: { id: serviceId } });
+    const clinic = await this.resolveClinicForUser(ownerId, role, clinicId || existing?.clinicId);
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
@@ -1516,12 +1525,8 @@ export class ClinicsService {
     serviceId: string,
     updateData: UpdateServiceDto & { clinicId?: string },
   ): Promise<Service> {
-    let clinic;
-    if (updateData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(updateData.clinicId);
-    } else {
-      clinic = await this.findByOwnerId(ownerId);
-    }
+    const existing = await this.servicesRepository.findOne({ where: { id: serviceId } });
+    const clinic = await this.resolveClinicForUser(ownerId, role, updateData.clinicId || existing?.clinicId);
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
@@ -1598,12 +1603,8 @@ export class ClinicsService {
   }
 
   async toggleServiceStatus(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<Service> {
-    let clinic;
-    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(clinicId);
-    } else {
-      clinic = await this.findByOwnerId(ownerId);
-    }
+    const existing = await this.servicesRepository.findOne({ where: { id: serviceId } });
+    const clinic = await this.resolveClinicForUser(ownerId, role, clinicId || existing?.clinicId);
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
@@ -1661,8 +1662,12 @@ export class ClinicsService {
   }
 
   // Review Management
-  async getClinicReviews(ownerId: string, query?: { limit?: number; offset?: number }): Promise<any> {
-    const clinic = await this.findByOwnerId(ownerId);
+  async getClinicReviews(
+    ownerId: string,
+    query?: { limit?: number; offset?: number; clinicId?: string },
+    role?: string,
+  ): Promise<any> {
+    const clinic = await this.resolveClinicForUser(ownerId, role, query?.clinicId);
 
     const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
       .leftJoinAndSelect('review.client', 'client')
@@ -1704,16 +1709,17 @@ export class ClinicsService {
     ownerId: string,
     reviewId: string,
     response: string,
+    role?: string,
   ): Promise<Review> {
-    const clinic = await this.findByOwnerId(ownerId);
-
     const review = await this.reviewsRepository.findOne({
-      where: { id: reviewId, clinicId: clinic.id },
+      where: { id: reviewId },
     });
 
     if (!review) {
       throw new NotFoundException('Review not found');
     }
+
+    const clinic = await this.resolveClinicForUser(ownerId, role, review.clinicId);
 
     if (!response || !response.trim()) {
       throw new BadRequestException('Response text is required');
@@ -1817,8 +1823,8 @@ export class ClinicsService {
   }
 
 
-  async getReviewStatistics(ownerId: string): Promise<any> {
-    const clinic = await this.findByOwnerId(ownerId);
+  async getReviewStatistics(ownerId: string, role?: string, clinicId?: string): Promise<any> {
+    const clinic = await this.resolveClinicForUser(ownerId, role, clinicId);
 
     const stats = await this.reviewsRepository
       .createQueryBuilder('review')

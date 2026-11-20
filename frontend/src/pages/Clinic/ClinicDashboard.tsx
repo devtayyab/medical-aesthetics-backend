@@ -90,10 +90,10 @@ const ClinicDashboard: React.FC = () => {
  const now = new Date();
  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
  const startDate = `${parts.slice(0, 7)}-01`;
- analyticsApi.getRevenueAnalytics({ startDate, endDate: parts })
+ analyticsApi.getRevenueAnalytics({ startDate, endDate: parts, ...(activeClinicId ? { clinicId: activeClinicId } : {}) })
  .then((res: any) => setPaidRevenueMtd(Number(res?.totalRevenue || 0)))
  .catch(() => setPaidRevenueMtd(0));
- }, []);
+ }, [activeClinicId]);
 
  const stats = useMemo(() => {
  const today = new Date().toISOString().split("T")[0];

@@ -34,6 +34,7 @@ import { ConversationParticipant } from '../modules/messages/entities/conversati
 import { ClinicCalendarConnection } from '../modules/google-calendar/entities/clinic-calendar-connection.entity';
 import { NotificationDispatch } from '../modules/notifications/entities/notification-dispatch.entity';
 import { ContactMessage } from '../modules/notifications/entities/contact-message.entity';
+import { EmailBounce } from '../modules/notifications/entities/email-bounce.entity';
 import * as path from 'path';
 
 config();
@@ -84,6 +85,7 @@ const AppDataSource = new DataSource({
         ClinicCalendarConnection,
         NotificationDispatch,
         ContactMessage,
+        EmailBounce,
     ],
 
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],

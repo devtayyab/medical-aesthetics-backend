@@ -2775,22 +2775,27 @@ export class BookingsService {
     const qb = this.appointmentsRepository.createQueryBuilder('appointment');
 
     // Authorization filter
-    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+    const normalizedRole = String(userRole || '').toLowerCase();
+    if (normalizedRole === 'admin' || normalizedRole === 'super_admin') {
       qb.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      const user = await this.usersRepository.findOne({
-        where: { id: userId },
-        relations: ['ownedClinics'],
-      });
-      if (!user) throw new NotFoundException('User not found');
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+      if (query.clinicId) {
+        qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      }
+    } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
+      const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
       if (clinicIds.length > 0) {
-        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+        const scopedIds = query.clinicId
+          ? clinicIds.filter((id) => id === query.clinicId)
+          : clinicIds;
+        if (scopedIds.length > 0) {
+          qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds: scopedIds });
+        } else {
+          qb.andWhere('1=0');
+        }
       } else {
         qb.andWhere('appointment.providerId = :userId', { userId });
       }
-    } else if (userRole === 'manager' && query.clinicId) {
+    } else if (normalizedRole === 'manager' && query.clinicId) {
       qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
       qb.where('appointment.providerId = :userId', { userId });
@@ -2854,10 +2859,7 @@ export class BookingsService {
     if (this.isAdminRole(role)) {
       if (query.clinicId) filters.clinicId = query.clinicId;
     } else if (role === 'clinic_owner' || role === 'secretariat' || role === 'doctor') {
-      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
-      if (!user) throw new NotFoundException('User not found');
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+      const clinicIds = await this.clinicIdsForAccount(userId, role);
       if (clinicIds.length > 0) {
         filters.clinicIds = query.clinicId ? clinicIds.filter(id => id === query.clinicId) : clinicIds;
       } else {
@@ -2995,55 +2997,43 @@ export class BookingsService {
         'client.createdAt as createdAt',
         'client.isBeautyDoctorsMember as isBeautyDoctorsMember',
         'client.invitationSentAt as invitationSentAt',
+        'client.emailBounced as emailBounced',
+        'client.emailBouncedAt as emailBouncedAt',
+        'client.emailBounceReason as emailBounceReason',
+        'client.emailBounceType as emailBounceType',
         'COUNT(appointment.id) as totalVisits',
         'SUM(appointment.totalAmount) as totalSpent',
         'MAX(appointment.startTime) as lastVisit',
       ])
       .leftJoin('appointment.client', 'client')
-      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt, client.isBeautyDoctorsMember, client.invitationSentAt');
+      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt, client.isBeautyDoctorsMember, client.invitationSentAt, client.emailBounced, client.emailBouncedAt, client.emailBounceReason, client.emailBounceType');
 
     // Filter clients based on user role and clinical association
-    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      // Admins and SUPER_ADMINs see all. No restrictions.
+    const normalizedRole = String(userRole || '').toLowerCase();
+    if (normalizedRole === 'admin' || normalizedRole === 'super_admin') {
+      // Admins and SUPER_ADMINs see all (or a selected clinic).
       baseQuery.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      // Get the user to check their clinic associations
-      const user = await this.usersRepository.findOne({
-        where: { id: userId },
-        relations: ['ownedClinics'],
-      });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
+      if (query.clinicId) {
+        baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
       }
-
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId && !clinicIds.includes(user.assignedClinicId)) {
-        clinicIds.push(user.assignedClinicId);
-      }
-
-      try {
-        const ownershipRepo = this.usersRepository.manager.getRepository('clinic_ownership');
-        const ownerships = await ownershipRepo.find({ where: { ownerUserId: userId } });
-        ownerships.forEach((o: any) => {
-          if (o.clinicId && !clinicIds.includes(o.clinicId)) clinicIds.push(o.clinicId);
-        });
-
-        const agentAccessRepo = this.usersRepository.manager.getRepository('agent_clinic_access');
-        const agentAccess = await agentAccessRepo.find({ where: { agentUserId: userId } });
-        agentAccess.forEach((a: any) => {
-          if (a.clinicId && !clinicIds.includes(a.clinicId)) clinicIds.push(a.clinicId);
-        });
-      } catch (e) {}
+    } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
+      const clinicIds = await this.clinicIdsForAccount(userId, normalizedRole);
 
       if (clinicIds.length > 0) {
-        baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
-          .where('(appointment.clinicId IN (:...clinicIds) OR appointment.providerId = :userId)', { clinicIds, userId });
+        const scopedIds = query.clinicId
+          ? clinicIds.filter((id) => id === query.clinicId)
+          : clinicIds;
+        if (scopedIds.length > 0) {
+          baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
+            .where('(appointment.clinicId IN (:...clinicIds) OR appointment.providerId = :userId)', { clinicIds: scopedIds, userId });
+        } else {
+          baseQuery = baseQuery.where('1=0');
+        }
       } else {
         // Fallback: If no clinic assigned, only show their own
         baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
       }
-    } else if (userRole === 'manager' && query.clinicId) {
+    } else if (normalizedRole === 'manager' && query.clinicId) {
       baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
       // For salespeople and others, only show those where they are provider or involved

@@ -31,10 +31,11 @@ const DEFAULT_FILTERS: StaffCalendarFilters = {
 
 interface StaffDiaryProps {
   clinicId?: string;
+  onClinicChange?: (clinicId: string) => void;
   onNewAppointment?: () => void;
 }
 
-export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
+export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onClinicChange, onNewAppointment }) => {
   const { user } = useSelector((state: RootState) => state.auth);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isDoctor = user?.role?.toLowerCase() === 'doctor';
@@ -212,9 +213,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         onSelect={isDoctor ? () => {} : setSelectedProviderId}
         clinics={clinics}
         selectedClinicId={filters.clinicId}
-        onClinicChange={(clinicId) => {
-           setFilters(prev => ({ ...prev, clinicId }));
+        onClinicChange={(nextClinicId) => {
+           setFilters(prev => ({ ...prev, clinicId: nextClinicId }));
            setSelectedProviderId(isDoctor && user?.id ? user.id : 'all');
+           onClinicChange?.(nextClinicId);
         }}
       />
 
@@ -231,7 +233,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
           onViewDateChange={setViewDate}
           onViewModeChange={setViewMode}
           onTodayClick={() => setViewDate(new Date())}
-          onFilterClinicChange={clinicId => setFilters(prev => ({ ...prev, clinicId }))}
+          onFilterClinicChange={nextClinicId => {
+            setFilters(prev => ({ ...prev, clinicId: nextClinicId }));
+            onClinicChange?.(nextClinicId);
+          }}
           onNewAppointment={handleNewAppointment}
           onBlockSlot={handleBlockSlot}
           onBlockDay={handleBlockDay}

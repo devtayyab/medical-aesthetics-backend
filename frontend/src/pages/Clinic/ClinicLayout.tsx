@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import { logout } from"@/store/slices/authSlice";
-import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices } from '@/store/slices/clinicSlice';
+import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices, fetchClients, fetchReviews, fetchReviewStatistics } from '@/store/slices/clinicSlice';
 import { getClinicLocalDate } from '@/utils/clinicTime';
 import { ChevronDown, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import {
@@ -99,11 +99,21 @@ const ClinicLayout: React.FC = () => {
  }
  }, [dispatch, user]);
 
+ const sortedClinics = React.useMemo(() => {
+   const base = myClinics && myClinics.length > 0 ? [...myClinics] : (profile ? [profile] : []);
+   return base.sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' }));
+ }, [myClinics, profile]);
+
  const handleClinicChange = async (newClinicId: string) => {
+ if (!newClinicId) return;
  localStorage.setItem('activeClinicId', newClinicId);
+ try { sessionStorage.setItem('calendar.viewedClinicId', newClinicId); } catch {}
  await dispatch(fetchClinicProfile(newClinicId));
  dispatch(fetchAppointments({ clinicId: newClinicId }));
  dispatch(fetchServices(newClinicId));
+ dispatch(fetchClients({ clinicId: newClinicId }));
+ dispatch(fetchReviews({ clinicId: newClinicId }));
+ dispatch(fetchReviewStatistics(newClinicId));
  };
 
  const menuItems = getMenuItemsForRole(user?.role || '');
@@ -229,7 +239,7 @@ const ClinicLayout: React.FC = () => {
                     : 'cursor-default opacity-90'
                 }`}
               >
-                {(myClinics && myClinics.length > 0 ? myClinics : (profile ? [profile] : [])).map((c) => (
+                {sortedClinics.map((c) => (
                   <option key={c.id} value={c.id}>
                     🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
                   </option>
@@ -393,6 +403,59 @@ const ClinicLayout: React.FC = () => {
 
  {/* Main Content */}
  <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+  {/* Always-Visible Top Clinic Switcher Bar for Multi-Clinic Users (Desktop, Tablet & Mobile) */}
+  {sortedClinics.length > 1 && (
+    <div className="shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2 flex items-center justify-between gap-3 flex-wrap z-20 shadow-2xs">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-gray-500 shrink-0">
+          <Building2 className="w-3.5 h-3.5 text-black" />
+          {currentLang === 'el' ? 'Ενεργή Κλινική' : 'Active Clinic'}
+          <span className="bg-[#CBFF38] text-black px-1.5 py-0.5 rounded text-[9px] font-black">
+            {sortedClinics.length}
+          </span>
+        </span>
+        {/* Quick-switch clinic pills on md+ screens when user has 2–5 clinics (e.g. multi-clinic secretariat) */}
+        {sortedClinics.length <= 5 && (
+          <div className="hidden md:flex items-center gap-1.5 flex-wrap">
+            {sortedClinics.map((c) => {
+              const isSelected = (profile?.id || sortedClinics[0]?.id) === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handleClinicChange(c.id)}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all whitespace-nowrap border ${
+                    isSelected
+                      ? 'bg-black text-[#CBFF38] border-black shadow-xs'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-black'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Compact dropdown always available on smaller viewports (and when > 5 clinics) */}
+      <div className={`relative ${sortedClinics.length <= 5 ? 'md:hidden' : ''} min-w-[200px]`}>
+        <select
+          aria-label={currentLang === 'el' ? 'Αλλαγή Κλινικής' : 'Switch Clinic'}
+          value={profile?.id || sortedClinics[0]?.id || ''}
+          onChange={(e) => handleClinicChange(e.target.value)}
+          className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-3 pr-8 py-1.5 text-xs font-black text-gray-900 appearance-none outline-none focus:ring-2 focus:ring-black cursor-pointer"
+        >
+          {sortedClinics.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} {c.address?.city ? `(${c.address.city})` : ''}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+      </div>
+    </div>
+  )}
   <div className={`flex-1 flex flex-col min-h-0 min-w-0 h-full ${isDiaryOrCalendar ? 'overflow-y-hidden overflow-x-auto' : 'overflow-y-auto overflow-x-auto no-scrollbar'}`}>
   <Outlet />
   </div>

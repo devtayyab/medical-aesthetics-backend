@@ -384,13 +384,13 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         let clientData = wizardClient || {};
 
         if (isWalkIn) {
-            // Create minor contact
+            // Create minor contact without generating fake placeholder/walkin.local emails
             const leadRes = await dispatch(createLead({
                 source: 'walk_in',
                 firstName: walkInForm.firstName,
                 lastName: walkInForm.lastName,
                 phone: walkInForm.phone,
-                email: `${walkInForm.firstName.toLowerCase()}${Math.random().toString(36).substr(2, 5)}@walkin.local`,
+                email: undefined,
                 status: 'new'
             })).unwrap();
             clientId = leadRes.id;

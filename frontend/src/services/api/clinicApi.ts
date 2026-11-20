@@ -40,8 +40,11 @@ export const clinicProfileApi = {
  return response.data;
  },
 
- updateProfile: async (data: Partial<ClinicProfile>): Promise<ClinicProfile> => {
- const response = await apiClient.put('/clinic/profile', data);
+ updateProfile: async (data: Partial<ClinicProfile> & { clinicId?: string }, clinicId?: string): Promise<ClinicProfile> => {
+ const targetClinicId = clinicId || data.clinicId;
+ const response = await apiClient.put('/clinic/profile', targetClinicId ? { ...data, clinicId: targetClinicId } : data, {
+   params: targetClinicId ? { clinicId: targetClinicId } : undefined,
+ });
  return response.data;
  },
 
@@ -69,8 +72,10 @@ export const servicesApi = {
  return response.data;
  },
 
- toggleStatus: async (id: string): Promise<Service> => {
- const response = await apiClient.patch(`/clinic/services/${id}/toggle`);
+ toggleStatus: async (id: string, clinicId?: string): Promise<Service> => {
+ const response = await apiClient.patch(`/clinic/services/${id}/toggle`, undefined, {
+   params: clinicId ? { clinicId } : undefined,
+ });
  return response.data;
  },
 
@@ -184,6 +189,7 @@ export const analyticsApi = {
  startDate?: string;
  endDate?: string;
  serviceId?: string;
+ clinicId?: string;
  }): Promise<AppointmentAnalytics> => {
  const response = await apiClient.get('/clinic/analytics/appointments', { params });
  return response.data;
@@ -192,6 +198,7 @@ export const analyticsApi = {
  getRevenueAnalytics: async (params?: {
  startDate?: string;
  endDate?: string;
+ clinicId?: string;
  }): Promise<RevenueAnalytics> => {
  const response = await apiClient.get('/clinic/analytics/revenue', { params });
  return response.data;
@@ -200,6 +207,7 @@ export const analyticsApi = {
  getLoyaltyAnalytics: async (params?: {
  startDate?: string;
  endDate?: string;
+ clinicId?: string;
  }): Promise<LoyaltyAnalytics> => {
  const response = await apiClient.get('/clinic/analytics/loyalty', { params });
  return response.data;
@@ -208,6 +216,7 @@ export const analyticsApi = {
  getRepeatForecast: async (params?: {
  startDate?: string;
  endDate?: string;
+ clinicId?: string;
  }): Promise<RepeatForecast> => {
  const response = await apiClient.get('/clinic/analytics/repeat-forecast', { params });
  return response.data;
@@ -218,6 +227,7 @@ export const analyticsApi = {
 export const clientsApi = {
  getAll: async (params?: {
  search?: string;
+ clinicId?: string;
  limit?: number;
  offset?: number;
  }): Promise<{ clients: any[]; total: number; limit: number; offset: number }> => {
@@ -265,7 +275,7 @@ export const patientsApi = {
 
 // Reviews API
 export const reviewsApi = {
- getAll: async (params?: { limit?: number; offset?: number }): Promise<{
+ getAll: async (params?: { limit?: number; offset?: number; clinicId?: string }): Promise<{
  reviews: Review[];
  total: number;
  averageRating: number;
@@ -274,8 +284,10 @@ export const reviewsApi = {
  return response.data;
  },
 
- getStatistics: async (): Promise<ReviewStatistics> => {
- const response = await apiClient.get('/clinic/reviews/statistics');
+ getStatistics: async (clinicId?: string): Promise<ReviewStatistics> => {
+ const response = await apiClient.get('/clinic/reviews/statistics', {
+   params: clinicId ? { clinicId } : undefined,
+ });
  return response.data;
  },
 
@@ -346,13 +358,15 @@ export const staffApi = {
 
 // Bank / Payout Details API
 export const bankDetailsApi = {
- get: async (): Promise<{
+ get: async (clinicId?: string): Promise<{
  bankIban: string | null;
  bankAccountHolder: string | null;
  bankName: string | null;
  bankBic: string | null;
  }> => {
- const response = await apiClient.get('/clinic/bank-details');
+ const response = await apiClient.get('/clinic/bank-details', {
+   params: clinicId ? { clinicId } : undefined,
+ });
  return response.data;
  },
 
@@ -361,8 +375,12 @@ export const bankDetailsApi = {
  bankAccountHolder?: string;
  bankName?: string;
  bankBic?: string;
- }): Promise<{ message: string; clinicId: string }> => {
- const response = await apiClient.patch('/clinic/bank-details', data);
+ clinicId?: string;
+ }, clinicId?: string): Promise<{ message: string; clinicId: string }> => {
+ const targetClinicId = clinicId || data.clinicId;
+ const response = await apiClient.patch('/clinic/bank-details', targetClinicId ? { ...data, clinicId: targetClinicId } : data, {
+   params: targetClinicId ? { clinicId: targetClinicId } : undefined,
+ });
  return response.data;
  },
 };

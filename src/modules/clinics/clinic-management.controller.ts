@@ -170,17 +170,23 @@ export class ClinicManagementController {
   @ApiResponse({ status: 200, description: 'Clinic profile updated successfully' })
   async updateClinicProfile(
     @Body() updateClinicProfileDto: UpdateClinicProfileDto,
+    @Query('clinicId') clinicId: string | undefined,
     @Request() req,
   ) {
-    return this.clinicsService.updateClinicProfile(req.user.id, updateClinicProfileDto);
+    return this.clinicsService.updateClinicProfile(
+      req.user.id,
+      updateClinicProfileDto,
+      req.user.role,
+      clinicId || updateClinicProfileDto?.clinicId,
+    );
   }
 
   // ─── Bank / Payout Details ────────────────────────────────────────────────
   @Get('bank-details')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic bank/IBAN details for Viva payouts' })
-  async getBankDetails(@Request() req) {
-    const owned = await this.clinicsService.findByOwnerId(req.user.id);
+  async getBankDetails(@Query('clinicId') clinicId: string | undefined, @Request() req) {
+    const owned = await this.clinicsService.resolveClinicForUser(req.user.id, req.user.role, clinicId);
     // Bank columns are select: false; load them explicitly for the owner/admin only.
     const clinic = await this.clinicsRepository.createQueryBuilder('clinic')
       .addSelect(['clinic.bankIban', 'clinic.bankBic', 'clinic.bankAccountHolder', 'clinic.bankName'])
@@ -199,9 +205,14 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Save clinic IBAN bank details for Viva payouts' })
   async updateBankDetails(
     @Body() dto: UpdateBankDetailsDto,
+    @Query('clinicId') clinicId: string | undefined,
     @Request() req,
   ) {
-    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    const clinic = await this.clinicsService.resolveClinicForUser(
+      req.user.id,
+      req.user.role,
+      clinicId || dto?.clinicId,
+    );
     await this.clinicsRepository.update(clinic.id, {
       bankIban: dto.bankIban,
       bankAccountHolder: dto.bankAccountHolder,
@@ -234,7 +245,7 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic appointments' })
   @ApiResponse({ status: 200, description: 'Appointments retrieved successfully' })
   async getClinicAppointments(
-    @Query() query: { status?: string; date?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker' },
+    @Query() query: { status?: string; date?: string; startDate?: string; endDate?: string; providerId?: string; clinicId?: string; appointmentSource?: 'clinic_own' | 'platform_broker' },
     @Request() req,
   ) {
     return this.bookingsService.findClinicAppointments(req.user.id, req.user.role, query);
@@ -582,7 +593,7 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic clients' })
   @ApiResponse({ status: 200, description: 'Clients retrieved successfully' })
   async getClinicClients(
-    @Query() query: { search?: string; limit?: number; offset?: number },
+    @Query() query: { search?: string; clinicId?: string; limit?: number; offset?: number },
     @Request() req,
   ) {
     if (isClinicAccount(req.user.role)) {
@@ -776,18 +787,18 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get clinic reviews' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   async getClinicReviews(
-    @Query() query: { limit?: number; offset?: number },
+    @Query() query: { limit?: number; offset?: number; clinicId?: string },
     @Request() req,
   ) {
-    return this.clinicsService.getClinicReviews(req.user.id, query);
+    return this.clinicsService.getClinicReviews(req.user.id, query, req.user.role);
   }
 
   @Get('reviews/statistics')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Get review statistics' })
   @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
-  async getReviewStatistics(@Request() req) {
-    return this.clinicsService.getReviewStatistics(req.user.id);
+  async getReviewStatistics(@Query('clinicId') clinicId: string | undefined, @Request() req) {
+    return this.clinicsService.getReviewStatistics(req.user.id, req.user.role, clinicId);
   }
 
   @Post('reviews/:id/respond')
@@ -799,7 +810,7 @@ export class ClinicManagementController {
     @Body() body: { response: string },
     @Request() req,
   ) {
-    return this.clinicsService.respondToReview(req.user.id, id, body.response);
+    return this.clinicsService.respondToReview(req.user.id, id, body.response, req.user.role);
   }
 
   // Hiding/publishing reviews is an admin action only (see PATCH /clinics/reviews/:id/moderate).

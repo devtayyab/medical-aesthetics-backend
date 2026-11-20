@@ -250,6 +250,24 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const fullName = `${firstName} ${lastName}`.trim();
  const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email || "";
  const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone || "";
+ const emailBounced = Boolean(
+   (customer as any)?.emailBounced || (customerRecord?.record as any)?.customer?.emailBounced
+ );
+ const emailBouncedAt =
+   (customer as any)?.emailBouncedAt || (customerRecord?.record as any)?.customer?.emailBouncedAt || null;
+ const emailBounceReason =
+   (customer as any)?.emailBounceReason || (customerRecord?.record as any)?.customer?.emailBounceReason || null;
+ const emailBounceType =
+   (customer as any)?.emailBounceType || (customerRecord?.record as any)?.customer?.emailBounceType || null;
+ const bounceUserId =
+   ((customerRecord?.record as any)?.customer?.role && (customerRecord?.record as any)?.customer?.role !== 'lead'
+     ? (customerRecord?.record as any)?.customer?.id
+     : null) ||
+   ((customer as any)?.role && (customer as any)?.role !== 'lead' ? customer.id : null) ||
+   (customerRecord?.record as any)?.metadata?.convertedToUserId ||
+   (customerRecord?.record as any)?.metadata?.convertedToCustomerId ||
+   null;
+ const [isClearingBounce, setIsClearingBounce] = useState(false);
 
  // Status can be in Lead record, on the Customer profile, or in customerStatus (synthetic lead record)
  // customerStatus is what the backend maps from lead.status in the synthetic lead record response
@@ -361,6 +379,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  setIsEditingCore(false);
  } catch (e) {
  toast.error("Failed to update properties");
+ }
+ };
+
+ const handleClearEmailBounce = async () => {
+ if (!bounceUserId) {
+   toast.error("Please update the email address to clear bounce status.");
+   return;
+ }
+ setIsClearingBounce(true);
+ try {
+   await api.post(`/notifications/bounces/clear/${bounceUserId}`);
+   toast.success("Email bounce flag cleared. Emails can resume to this address.");
+   dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+ } catch (e: any) {
+   toast.error(e?.response?.data?.message || "Failed to clear email bounce");
+ } finally {
+   setIsClearingBounce(false);
  }
  };
 
@@ -1160,6 +1195,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  ★ Beauty Doctors Member
  </span>
  )}
+ {emailBounced && (
+ <span
+   title={emailBounceReason || 'Email address bounced — all automated emails are suppressed'}
+   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200"
+ >
+   <AlertCircle className="w-3 h-3" /> Email Bounced
+ </span>
+ )}
  {/* Right side - Contact creation info */}
  <div className="ml-auto flex flex-wrap items-center gap-3">
  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
@@ -1207,7 +1250,39 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  Invitation sent: {new Date((customer as any)?.invitationSentAt || (customerRecord?.record as any)?.customer?.invitationSentAt).toLocaleString('el-GR')}
  </p>
  )}
- <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center justify-center gap-1 truncate max-w-full"><Mail className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{customer.email}</span></p>
+ <p className={`text-xs font-bold mt-0.5 flex items-center justify-center gap-1 truncate max-w-full ${emailBounced ? 'text-red-600 line-through' : 'text-slate-500'}`}><Mail className={`w-3 h-3 flex-shrink-0 ${emailBounced ? 'text-red-500' : 'text-slate-400'}`} /> <span className="truncate">{customer.email}</span></p>
+ {emailBounced && (
+ <div className="mt-2 w-full rounded-lg bg-red-50 border border-red-200 p-2.5 text-left space-y-1">
+   <div className="flex items-center justify-between gap-2">
+     <span className="text-[10px] font-black uppercase tracking-wider text-red-700 flex items-center gap-1">
+       <AlertCircle className="w-3 h-3" /> Email Bounced ({emailBounceType || 'Permanent'})
+     </span>
+     {isAdmin && bounceUserId && (
+       <button
+         type="button"
+         disabled={isClearingBounce}
+         onClick={handleClearEmailBounce}
+         className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-white border border-red-300 text-red-700 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50"
+       >
+         {isClearingBounce ? '...' : 'Clear'}
+       </button>
+     )}
+   </div>
+   <p className="text-[10px] text-red-700/90 leading-snug">
+     No further emails will be sent to this address until updated or cleared.
+   </p>
+   {emailBounceReason && (
+     <p className="text-[9px] text-red-600/80 break-words line-clamp-2" title={emailBounceReason}>
+       {emailBounceReason}
+     </p>
+   )}
+   {emailBouncedAt && (
+     <p className="text-[9px] text-red-500/80">
+       Recorded: {new Date(emailBouncedAt).toLocaleString('el-GR')}
+     </p>
+   )}
+ </div>
+ )}
  
  <div className="mt-4 w-full flex justify-center gap-2">
  <button onClick={() => setShowEmailModal(true)} className="flex flex-col items-center gap-1 group">
@@ -1312,7 +1387,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <div className="group relative">
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Email</span>
- <span className="text-xs font-bold text-blue-600 group-hover:bg-blue-50 p-1 -ml-1 rounded transition-colors block cursor-pointer truncate" onClick={() => setShowEmailModal(true)}>{customer.email}</span>
+ {isEditingCore ? (
+ <input type="email" placeholder="customer@email.com" className="w-full text-xs font-bold text-slate-800 border-b border-blue-300 focus:outline-none focus:border-blue-600 bg-transparent py-1" value={editedProperties.email || ''} onChange={(e) => setEditedProperties({...editedProperties, email: e.target.value})} />
+ ) : (
+ <span className={`text-xs font-bold p-1 -ml-1 rounded transition-colors block cursor-pointer truncate ${emailBounced ? 'text-red-600 line-through hover:bg-red-50' : 'text-blue-600 group-hover:bg-blue-50'}`} onClick={() => setShowEmailModal(true)}>{customer.email || 'N/A'}</span>
+ )}
  </div>
  <div>
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lead Status</span>

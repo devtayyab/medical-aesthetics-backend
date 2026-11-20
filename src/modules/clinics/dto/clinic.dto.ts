@@ -84,11 +84,22 @@ export class CreateClinicProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
   @IsUUID('all', { each: true })
   ownerIds?: string[];
 }
 
 export class UpdateClinicProfileDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -173,6 +184,12 @@ export class UpdateClinicProfileDto {
   @IsOptional()
   @IsString()
   photoUrl?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -287,6 +304,11 @@ export class AvailabilitySettingsDto {
 export class ClinicAnalyticsQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsDateString()
   startDate?: string;
 
@@ -302,6 +324,11 @@ export class ClinicAnalyticsQueryDto {
 }
 
 export class CreateServiceDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -346,6 +373,11 @@ export class CreateServiceDto {
 }
 
 export class UpdateServiceDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -550,6 +582,11 @@ export class UpdateCategoryDto {
 }
 
 export class UpdateBankDetailsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiPropertyOptional({ description: 'Clinic IBAN number for Viva Wallet payouts' })
   @IsOptional()
   @IsString()

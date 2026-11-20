@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { FirebaseService } from './firebase.service';
 import { MailService } from './mail.service';
+import { EmailSuppressionService } from './email-suppression.service';
 import { NotificationType } from '../../../common/enums/notification-type.enum';
 import { isPlaceholderEmail } from '../utils/notification-format.util';
 
@@ -21,6 +22,7 @@ export class NotificationDeliveryService {
     private notificationsRepository: Repository<Notification>,
     private firebaseService: FirebaseService,
     private mailService: MailService,
+    private emailSuppressionService: EmailSuppressionService,
   ) {}
 
   async deliver(notificationId: string): Promise<void> {
@@ -68,10 +70,31 @@ export class NotificationDeliveryService {
             this.logger.warn(`Email notification ${notificationId} skipped: recipient has no real email`);
             return;
           }
+          if (notification.recipient?.emailBounced) {
+            await this.notificationsRepository.update(notification.id, {
+              metadata: { ...(notification.metadata || {}), skipped: 'email_bounced' },
+            });
+            this.logger.warn(`Email notification ${notificationId} skipped: recipient email previously bounced`);
+            return;
+          }
+          const suppression = await this.emailSuppressionService.isEmailSuppressed(to);
+          if (suppression.suppressed) {
+            await this.notificationsRepository.update(notification.id, {
+              metadata: { ...(notification.metadata || {}), skipped: 'email_suppressed', reason: suppression.reason },
+            });
+            this.logger.warn(`Email notification ${notificationId} skipped: suppressed (${suppression.reason})`);
+            return;
+          }
           const mailInfo = await this.mailService.sendMail(to, notification.title, notification.message);
-          // sendMail returns null on failure/misconfig: throw so the job retries and the
-          // notification is NOT falsely marked as sent.
+          // Re-check suppression in case sendMail just caught a synchronous hard bounce
           if (!mailInfo?.messageId) {
+            const afterCheck = await this.emailSuppressionService.isEmailSuppressed(to);
+            if (afterCheck.suppressed) {
+              await this.notificationsRepository.update(notification.id, {
+                metadata: { ...(notification.metadata || {}), skipped: 'email_bounced_on_send', reason: afterCheck.reason },
+              });
+              return;
+            }
             throw new Error(`Email send failed for notification ${notificationId}`);
           }
           externalId = mailInfo.messageId;

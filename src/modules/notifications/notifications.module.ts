@@ -13,13 +13,23 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationDispatch } from './entities/notification-dispatch.entity';
 import { ContactMessage } from './entities/contact-message.entity';
+import { EmailBounce } from './entities/email-bounce.entity';
 import { NotificationDeliveryService } from './services/notification-delivery.service';
+import { EmailSuppressionService } from './services/email-suppression.service';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, NotificationTemplate, Clinic, User, NotificationDispatch, ContactMessage]),
+    TypeOrmModule.forFeature([
+      Notification,
+      NotificationTemplate,
+      Clinic,
+      User,
+      NotificationDispatch,
+      ContactMessage,
+      EmailBounce,
+    ]),
     BullModule.registerQueue({
       name: 'notifications',
     }),
@@ -31,10 +41,11 @@ import { JwtModule } from '@nestjs/jwt';
     NotificationsService,
     NotificationsGateway,
     FirebaseService,
+    EmailSuppressionService,
     MailService,
     NotificationDeliveryService,
     NotificationProcessor,
   ],
-  exports: [NotificationsService, NotificationsGateway, MailService],
+  exports: [NotificationsService, NotificationsGateway, MailService, EmailSuppressionService],
 })
 export class NotificationsModule { }

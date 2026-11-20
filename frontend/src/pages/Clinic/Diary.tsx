@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useCallback } from "react";
 import StaffDiary from "@/pages/CRM/StaffDiary";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/store";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/store";
+import { fetchClinicProfile, fetchAppointments, fetchServices } from "@/store/slices/clinicSlice";
 
 export const Diary: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const { profile, myClinics, isLoading } = useSelector((state: RootState) => state.clinic);
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -20,6 +22,18 @@ export const Diary: React.FC = () => {
     myClinics?.[0]?.id ||
     user?.assignedClinicId;
 
+  const handleDiaryClinicChange = useCallback(
+    (newClinicId: string) => {
+      if (!newClinicId || newClinicId === 'all' || newClinicId === profile?.id) return;
+      localStorage.setItem('activeClinicId', newClinicId);
+      try { sessionStorage.setItem('calendar.viewedClinicId', newClinicId); } catch {}
+      dispatch(fetchClinicProfile(newClinicId));
+      dispatch(fetchAppointments({ clinicId: newClinicId }));
+      dispatch(fetchServices(newClinicId));
+    },
+    [dispatch, profile?.id],
+  );
+
   // Wait until ClinicLayout has finished resolving the active clinic profile before mounting StaffDiary (QA NEW-8).
   if (!profile?.id && (isLoading || !activeClinicId)) {
     return (
@@ -31,7 +45,7 @@ export const Diary: React.FC = () => {
 
   return (
     <div className="h-full w-full flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50/50">
-      <StaffDiary clinicId={activeClinicId} />
+      <StaffDiary clinicId={activeClinicId} onClinicChange={handleDiaryClinicChange} />
     </div>
   );
 };

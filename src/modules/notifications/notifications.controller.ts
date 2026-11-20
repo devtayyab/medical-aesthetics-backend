@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { NotificationsService } from './notifications.service';
 import { MailService } from './services/mail.service';
+import { EmailSuppressionService } from './services/email-suppression.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
 import { Logger, BadRequestException } from '@nestjs/common';
@@ -66,8 +67,38 @@ export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
+    private readonly emailSuppressionService: EmailSuppressionService,
     private readonly configService: ConfigService,
   ) { }
+
+  @Public()
+  @Post('ses-webhook')
+  @ApiOperation({ summary: 'AWS SES -> SNS webhook for bounce & complaint suppression' })
+  async handleSesSnsWebhook(@Body() body: any, @Request() req: any) {
+    // AWS SNS sends JSON with Content-Type: text/plain; charset=UTF-8.
+    // Accept parsed object, text string, or req.rawBody buffer cleanly.
+    const rawPayload =
+      body && (typeof body === 'string' || (typeof body === 'object' && Object.keys(body).length > 0))
+        ? body
+        : req?.rawBody;
+    return this.emailSuppressionService.processSnsWebhook(rawPayload);
+  }
+
+  @Get('bounces')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'List recorded bounced/suppressed email addresses' })
+  listEmailBounces(@Query('limit') limit?: number) {
+    return this.emailSuppressionService.listRecentBounces(limit);
+  }
+
+  @Post('bounces/clear/:userId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Clear email bounce flag on a customer profile and suppression list' })
+  clearUserEmailBounce(@Param('userId') userId: string) {
+    return this.emailSuppressionService.clearBounceForUser(userId);
+  }
 
   @Public()
   @Post('contact')

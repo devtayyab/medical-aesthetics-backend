@@ -136,6 +136,19 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   invitationSentAt: Date | null;
 
+  // Email bounce suppression status recorded when SES/SMTP reports a bounce or complaint.
+  @Column({ default: false })
+  emailBounced: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  emailBouncedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  emailBounceReason: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  emailBounceType: string | null;
+
   @Column({ default: false })
   marketingEmailConsent: boolean;
 

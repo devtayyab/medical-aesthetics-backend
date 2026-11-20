@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from"react";
+import React, { useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { fetchClinicProfile } from"@/store/slices/clinicSlice";
 import { RootState } from"@/store";
@@ -6,13 +6,16 @@ import { AppDispatch } from"@/store";
 
 export const Profile: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { profile, isLoading, error } = useSelector(
+ const { profile, myClinics, isLoading, error } = useSelector(
  (state: RootState) => state.clinic
  );
+ const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || myClinics?.[0]?.id || undefined;
 
  useEffect(() => {
- dispatch(fetchClinicProfile());
- }, [dispatch]);
+ if (!profile) {
+   dispatch(fetchClinicProfile(activeClinicId));
+ }
+ }, [dispatch, profile, activeClinicId]);
 
  if (isLoading) return <div>Loading...</div>;
  if (error) return <div className="text-red-500">{error}</div>;

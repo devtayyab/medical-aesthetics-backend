@@ -39,20 +39,21 @@ const ClientsPage: React.FC = () => {
   }, []);
 
 
- const { profile } = useSelector((state: RootState) => state.clinic);
+ const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
  const user = useSelector((state: RootState) => state.auth.user);
- 
+
  const activeClinicId =
-   localStorage.getItem('activeClinicId') ||
    profile?.id ||
+   localStorage.getItem('activeClinicId') ||
+   myClinics?.[0]?.id ||
    user?.assignedClinicId ||
    (user as any)?.associatedClinicId ||
    (user as any)?.ownedClinics?.[0]?.id ||
    (user as any)?.assignedClinics?.[0]?.id;
 
  useEffect(() => {
- dispatch(fetchClients({}));
- }, [dispatch]);
+ dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
+ }, [dispatch, activeClinicId]);
 
  const filteredClients = clients.filter(
  (client) =>
@@ -174,9 +175,17 @@ const ClientsPage: React.FC = () => {
  </td>
  <td className="px-6 py-4">
  <div className="space-y-0.5">
- <div className="flex items-center gap-1.5 text-gray-600">
- <Mail size={10} className="text-[#CBFF38]" />
- <span className="text-[10px] font-bold truncate max-w-[120px]">{client.email ||"N/A"}</span>
+ <div className="flex items-center gap-1.5 text-gray-600 flex-wrap">
+ <Mail size={10} className={client.emailBounced ? "text-red-500" : "text-[#CBFF38]"} />
+ <span className={`text-[10px] font-bold truncate max-w-[140px] ${client.emailBounced ? "text-red-600 line-through" : ""}`}>{client.email ||"N/A"}</span>
+ {client.emailBounced && (
+ <span
+   title={client.emailBounceReason || (isGreek ? 'Το email επέστρεψε (bounce) – δεν αποστέλλονται emails' : 'Email bounced – further emails suppressed')}
+   className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200"
+ >
+   {isGreek ? 'Bounce' : 'Bounced'}
+ </span>
+ )}
  </div>
  </div>
  </td>
@@ -227,7 +236,7 @@ const ClientsPage: React.FC = () => {
  onClose={() => setShowAddPatient(false)}
  onSaved={() => {
  setShowAddPatient(false);
- dispatch(fetchClients({}));
+ dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
  }}
  />
  )}
@@ -244,7 +253,7 @@ const ClientsPage: React.FC = () => {
  onSuccess={() => {
  setShowBookingModal(false);
  setPrefillForBooking(null);
- dispatch(fetchClients({}));
+ dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
  }}
  />
  )}
@@ -392,9 +401,17 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment, isGreek }: any
  )}
  </div>
  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
- <div className="flex items-center gap-2">
- <Mail size={12} className="text-[#CBFF38]" />
- <a href={`mailto:${innerClient.email}`} className="text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors">{innerClient.email}</a>
+ <div className="flex items-center gap-2 flex-wrap">
+ <Mail size={12} className={innerClient.emailBounced ? "text-red-400" : "text-[#CBFF38]"} />
+ <a href={`mailto:${innerClient.email}`} className={`text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors ${innerClient.emailBounced ? "text-red-300 line-through" : ""}`}>{innerClient.email}</a>
+ {innerClient.emailBounced && (
+ <span
+   title={innerClient.emailBounceReason || 'Email bounced'}
+   className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-400/40"
+ >
+   ⚠ {isGreek ? 'Email Bounced (Μη αποστολή)' : 'Email Bounced (Suppressed)'}
+ </span>
+ )}
  </div>
  {innerClient.phone && (
  <div className="flex items-center gap-2">

@@ -111,6 +111,7 @@ export interface Service {
 }
 
 export interface CreateServiceDto {
+ clinicId?: string;
  treatmentId?: string; // If picking existing
  name?: string; // If creating new global one
  shortDescription?: string;
@@ -311,6 +312,10 @@ export interface Client {
  lastAppointment?: string;
  isBeautyDoctorsMember?: boolean;
  invitationSentAt?: string | null;
+ emailBounced?: boolean;
+ emailBouncedAt?: string | null;
+ emailBounceReason?: string | null;
+ emailBounceType?: string | null;
  createdAt: string;
 }
 

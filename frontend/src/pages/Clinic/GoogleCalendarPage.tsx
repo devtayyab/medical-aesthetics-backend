@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../../store";
+import { fetchClinicProfile, fetchAppointments } from "../../store/slices/clinicSlice";
 import GoogleCalendarSection from "../../components/organisms/GoogleCalendarSection/GoogleCalendarSection";
 import { clinicProfileApi } from "../../services/api/clinicApi";
 import type { ClinicProfile } from "../../types/clinic.types";
@@ -8,6 +11,8 @@ import type { ClinicProfile } from "../../types/clinic.types";
  * clinic's own Google Calendar. Also the landing page of the OAuth callback.
  */
 const GoogleCalendarPage: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { profile } = useSelector((state: RootState) => state.clinic);
   const [isGreek, setIsGreek] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("preferredLang") === "el"
   );
@@ -27,19 +32,21 @@ const GoogleCalendarPage: React.FC = () => {
 
   useEffect(() => {
     const fromCallback = new URLSearchParams(window.location.search).get("clinicId");
+    const saved = localStorage.getItem("activeClinicId");
     const load = async () => {
       try {
         const list = await clinicProfileApi.getMyClinics().catch(() => [] as ClinicProfile[]);
         if (Array.isArray(list) && list.length > 0) {
           setClinics(list);
-          const match = fromCallback && list.find((c) => c.id === fromCallback);
+          const wanted = fromCallback || profile?.id || saved;
+          const match = wanted && list.find((c) => c.id === wanted);
           setClinicId(match ? match.id : list[0].id);
           return;
         }
-        const profile = await clinicProfileApi.getProfile();
-        if (profile?.id) {
-          setClinics([profile]);
-          setClinicId(profile.id);
+        const p = await clinicProfileApi.getProfile();
+        if (p?.id) {
+          setClinics([p]);
+          setClinicId(p.id);
         }
       } catch {
         // No clinic assigned: the section below shows nothing to connect.
@@ -49,6 +56,22 @@ const GoogleCalendarPage: React.FC = () => {
     };
     load();
   }, []);
+
+  // Sync whenever user switches clinic from the ClinicLayout top bar
+  useEffect(() => {
+    if (profile?.id && clinics.some((c) => c.id === profile.id)) {
+      setClinicId((prev) => (prev === profile.id ? prev : profile.id));
+    }
+  }, [profile?.id, clinics]);
+
+  const handleClinicSelect = (nextId: string) => {
+    setClinicId(nextId);
+    localStorage.setItem("activeClinicId", nextId);
+    if (nextId && nextId !== profile?.id) {
+      dispatch(fetchClinicProfile(nextId));
+      dispatch(fetchAppointments({ clinicId: nextId }));
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 md:py-10 space-y-6">
@@ -66,7 +89,7 @@ const GoogleCalendarPage: React.FC = () => {
       {clinics.length > 1 && (
         <select
           value={clinicId}
-          onChange={(e) => setClinicId(e.target.value)}
+          onChange={(e) => handleClinicSelect(e.target.value)}
           className="w-full md:w-96 border border-gray-300 rounded-xl px-4 py-3 text-sm"
         >
           {clinics.map((c) => (

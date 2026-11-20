@@ -48,6 +48,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { HubspotService } from '../hubspot/hubspot.service';
 import { PlatformSettings } from '../admin/entities/platform-settings.entity';
 import { phoneMatchKey, phoneKeySql } from '../../common/utils/phone.util';
+import { EmailSuppressionService } from '../notifications/services/email-suppression.service';
 
 /** Roles a lead, customer or CRM task may be assigned to. */
 export const CRM_ASSIGNEE_ROLES = [UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -89,6 +90,7 @@ export class CrmService implements OnModuleInit {
     private leadClinicStatusesRepository: Repository<LeadClinicStatus>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
+    private emailSuppressionService: EmailSuppressionService,
     private facebookService: FacebookService,
     private duplicateDetectionService: DuplicateDetectionService,
     private customerAffiliationService: CustomerAffiliationService,
@@ -580,6 +582,9 @@ export class CrmService implements OnModuleInit {
     }
     if (Object.keys(userPatch).length > 0) {
       await this.usersRepository.update(user.id, userPatch);
+      if (userPatch.email) {
+        await this.emailSuppressionService.syncUserEmailBounceStatus(user.id, userPatch.email);
+      }
     }
 
     const fullName = `${userPatch.firstName ?? user.firstName ?? ''} ${userPatch.lastName ?? user.lastName ?? ''}`.trim();
@@ -1856,6 +1861,9 @@ export class CrmService implements OnModuleInit {
       const stats = this.computeCardStats(leadAppointments);
       const ltv = stats.lifetimeValue;
       const isRepeat = stats.completedAppointments > 1;
+      const bounceRecord = lead.email
+        ? await this.emailSuppressionService.getBounceByEmail(lead.email).catch(() => null)
+        : null;
 
       // Return synthetic record for Lead
       return {
@@ -1870,6 +1878,10 @@ export class CrmService implements OnModuleInit {
             email: lead.email,
             phone: lead.phone,
             role: 'lead', // Virtual role
+            emailBounced: Boolean(bounceRecord),
+            emailBouncedAt: bounceRecord?.bouncedAt || null,
+            emailBounceReason: bounceRecord?.reason || null,
+            emailBounceType: bounceRecord?.bounceType || null,
           },
           assignedSalespersonId: lead.assignedSalesId,
           assignedSalesperson: lead.assignedSales,

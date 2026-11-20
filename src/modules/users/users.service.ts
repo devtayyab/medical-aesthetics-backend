@@ -13,6 +13,7 @@ import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { assertPasswordPolicy } from '../../common/utils/password-policy.util';
 import { normalizeEmail } from './entities/user.entity';
+import { EmailSuppressionService } from '../notifications/services/email-suppression.service';
 
 @Injectable()
 export class UsersService {
@@ -23,6 +24,7 @@ export class UsersService {
     private consentRepository: Repository<ConsentRecord>,
     @InjectRepository(ClinicOwnership)
     private clinicOwnershipRepository: Repository<ClinicOwnership>,
+    private emailSuppressionService: EmailSuppressionService,
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -135,8 +137,13 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const existing = await this.findById(id);
     const updateData: any = { ...updateUserDto };
-    
+
+    if (updateData.email !== undefined) {
+      updateData.email = normalizeEmail(updateData.email);
+    }
+
     if (updateData.marketingEmailConsent === true) {
       updateData.marketingEmailConsentDate = new Date();
     } else if (updateData.marketingEmailConsent === false) {
@@ -144,6 +151,15 @@ export class UsersService {
     }
 
     await this.usersRepository.update(id, updateData);
+
+    // If the email address changed, re-sync bounce flags (clearing bounce for a new clean email)
+    if (
+      updateData.email !== undefined &&
+      normalizeEmail(updateData.email) !== normalizeEmail(existing.email)
+    ) {
+      await this.emailSuppressionService.syncUserEmailBounceStatus(id, updateData.email);
+    }
+
     return this.findById(id);
   }
 

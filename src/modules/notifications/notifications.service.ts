@@ -14,6 +14,7 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { User } from '../users/entities/user.entity';
 import { MailService } from './services/mail.service';
 import { NotificationDeliveryService } from './services/notification-delivery.service';
+import { EmailSuppressionService } from './services/email-suppression.service';
 import { NotificationDispatch } from './entities/notification-dispatch.entity';
 import { ContactMessage } from './entities/contact-message.entity';
 import { athensDate, athensTime, isPlaceholderEmail } from './utils/notification-format.util';
@@ -46,6 +47,7 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     private usersService: UsersService,
     private mailService: MailService,
     private deliveryService: NotificationDeliveryService,
+    private emailSuppressionService: EmailSuppressionService,
     @Inject(forwardRef(() => NotificationsGateway))
     private _gateway: NotificationsGateway,
   ) { }
@@ -102,7 +104,24 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     title: string,
     message: string,
     data?: any,
-  ): Promise<Notification> {
+  ): Promise<Notification | null> {
+    // Never store or queue EMAIL notifications for noemail/placeholder or bounced addresses.
+    if (type === NotificationType.EMAIL) {
+      const recipient = await this.userRepository.findOne({
+        where: { id: recipientId },
+        select: ['id', 'email', 'emailBounced'],
+      });
+      if (!recipient?.email || recipient.emailBounced) {
+        this.logger.debug(`Skipping EMAIL notification for user ${recipientId}: missing or bounced email`);
+        return null;
+      }
+      const suppression = await this.emailSuppressionService.isEmailSuppressed(recipient.email);
+      if (suppression.suppressed) {
+        this.logger.debug(`Skipping EMAIL notification for user ${recipientId}: ${suppression.reason}`);
+        return null;
+      }
+    }
+
     const notification = this.notificationsRepository.create({
       recipientId,
       type,
@@ -133,8 +152,31 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     message: string,
     data?: any,
   ): Promise<void> {
-    const uniqueIds = [...new Set((recipientIds || []).filter(Boolean))];
+    let uniqueIds = [...new Set((recipientIds || []).filter(Boolean))];
     if (uniqueIds.length === 0) return;
+
+    if (type === NotificationType.EMAIL) {
+      const users = await this.userRepository.find({
+        where: { id: In(uniqueIds) },
+        select: ['id', 'email', 'emailBounced'],
+      });
+      const suppressedEmails = await this.emailSuppressionService.filterSuppressedEmails(
+        users.map((u) => u.email),
+      );
+      const allowedIds = new Set(
+        users
+          .filter(
+            (u) =>
+              u.email &&
+              !u.emailBounced &&
+              !isPlaceholderEmail(u.email) &&
+              !suppressedEmails.has(u.email.trim().toLowerCase()),
+          )
+          .map((u) => u.id),
+      );
+      uniqueIds = uniqueIds.filter((id) => allowedIds.has(id));
+      if (uniqueIds.length === 0) return;
+    }
 
     const notifications = uniqueIds.map(recipientId => ({
       recipientId,
@@ -395,7 +437,7 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     message: string,
     emailBody?: string,
     data?: any,
-  ): Promise<{ push: Notification; email: Notification }> {
+  ): Promise<{ push: Notification | null; email: Notification | null }> {
     const push = await this.create(recipientId, NotificationType.PUSH, title, message, data);
     const email = await this.create(
       recipientId,
@@ -415,7 +457,7 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
   private marketingAudienceQuery() {
     return this.userRepository
       .createQueryBuilder('user')
-      .select(['user.id', 'user.email'])
+      .select(['user.id', 'user.email', 'user.emailBounced'])
       .where('user.role = :role', { role: UserRole.CLIENT })
       .andWhere('user.isActive = true')
       .andWhere('user.marketingEmailConsent = true');
@@ -442,18 +484,43 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     const ids = users.map((u) => u.id);
     const data = { type: 'broadcast', category: 'message', senderId };
 
+    let emailRecipientIds: string[] = [];
+    if (channels.email) {
+      const suppressed = await this.emailSuppressionService.filterSuppressedEmails(users.map((u) => u.email));
+      emailRecipientIds = users
+        .filter(
+          (u) =>
+            u.email &&
+            !u.emailBounced &&
+            !isPlaceholderEmail(u.email) &&
+            !suppressed.has(u.email.trim().toLowerCase()),
+        )
+        .map((u) => u.id);
+    }
+
     // Insert in chunks so a large audience does not create one huge statement.
     const chunkSize = 500;
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      const chunk = ids.slice(i, i + chunkSize);
-      if (channels.push) await this.sendBulk(chunk, NotificationType.PUSH, title.trim(), message.trim(), data);
-      if (channels.email) await this.sendBulk(chunk, NotificationType.EMAIL, title.trim(), message.trim(), data);
+    if (channels.push) {
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        await this.sendBulk(ids.slice(i, i + chunkSize), NotificationType.PUSH, title.trim(), message.trim(), data);
+      }
+    }
+    if (channels.email) {
+      for (let i = 0; i < emailRecipientIds.length; i += chunkSize) {
+        await this.sendBulk(
+          emailRecipientIds.slice(i, i + chunkSize),
+          NotificationType.EMAIL,
+          title.trim(),
+          message.trim(),
+          data,
+        );
+      }
     }
 
     return {
       recipients: ids.length,
       push: channels.push ? ids.length : 0,
-      email: channels.email ? ids.length : 0,
+      email: channels.email ? emailRecipientIds.length : 0,
     };
   }
 
@@ -595,7 +662,9 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
         message,
         { ...context, trigger },
       );
-      notifications.push(notification);
+      if (notification) {
+        notifications.push(notification);
+      }
     }
 
     return notifications;
@@ -655,7 +724,9 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     otp: string,
   ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: recipientId } });
-    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    if (!user?.email || user.emailBounced || isPlaceholderEmail(user.email)) return;
+    const suppression = await this.emailSuppressionService.isEmailSuppressed(user.email);
+    if (suppression.suppressed) return;
     const tpl = await this.templateRepository.findOne({
       where: { trigger: NotificationTrigger.EMAIL_VERIFICATION, type: NotificationType.EMAIL },
     });

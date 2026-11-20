@@ -15,6 +15,7 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { phoneKeySql, phoneMatchKey } from '../../common/utils/phone.util';
 import { isPlaceholderEmail } from '../notifications/utils/notification-format.util';
+import { EmailSuppressionService } from '../notifications/services/email-suppression.service';
 
 const CLINIC_ROLES = [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT];
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -56,6 +57,7 @@ export class ClinicPatientsService {
     @InjectRepository(Service)
     private readonly servicesRepository: Repository<Service>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly emailSuppressionService: EmailSuppressionService,
   ) {}
 
   private isAdmin(role: string): boolean {
@@ -189,6 +191,10 @@ export class ClinicPatientsService {
               u.email AS clientemail, u.phone AS clientphone, u."createdAt" AS createdat,
               u."isBeautyDoctorsMember" AS "isBeautyDoctorsMember",
               u."invitationSentAt" AS "invitationSentAt",
+              u."emailBounced" AS "emailBounced",
+              u."emailBouncedAt" AS "emailBouncedAt",
+              u."emailBounceReason" AS "emailBounceReason",
+              u."emailBounceType" AS "emailBounceType",
               COUNT(DISTINCT a.id) AS totalvisits,
               COALESCE((
                 SELECT SUM(CASE
@@ -423,6 +429,9 @@ export class ClinicPatientsService {
     }
     if (Object.keys(patch).length === 0) return this.publicPatient(client);
     await this.usersRepository.update(clientId, patch);
+    if (patch.email) {
+      await this.emailSuppressionService.syncUserEmailBounceStatus(clientId, patch.email);
+    }
 
     const updated = { ...client, ...patch } as User;
     const fullName = `${updated.firstName || ''} ${updated.lastName || ''}`.trim();
@@ -525,6 +534,10 @@ export class ClinicPatientsService {
       email: u.email,
       isBeautyDoctorsMember: Boolean((u as any).isBeautyDoctorsMember),
       invitationSentAt: (u as any).invitationSentAt || null,
+      emailBounced: Boolean((u as any).emailBounced),
+      emailBouncedAt: (u as any).emailBouncedAt || null,
+      emailBounceReason: (u as any).emailBounceReason || null,
+      emailBounceType: (u as any).emailBounceType || null,
     };
   }
 }

@@ -9,6 +9,7 @@ import { NotificationTemplate } from '../notifications/entities/notification-tem
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { MailService } from '../notifications/services/mail.service';
+import { EmailSuppressionService } from '../notifications/services/email-suppression.service';
 import { isPlaceholderEmail } from '../notifications/utils/notification-format.util';
 import { resolveJwtSecret } from '../../common/utils/jwt-secret.util';
 
@@ -49,11 +50,18 @@ export class AccountLinksService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    private readonly emailSuppressionService: EmailSuppressionService,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     @InjectRepository(NotificationTemplate)
     private readonly templateRepository: Repository<NotificationTemplate>,
   ) {}
+
+  private async isBlockedRecipient(user?: User | null): Promise<boolean> {
+    if (!user?.email || user.emailBounced || isPlaceholderEmail(user.email)) return true;
+    const check = await this.emailSuppressionService.isEmailSuppressed(user.email);
+    return check.suppressed;
+  }
 
   // Same secret the auth module uses for its default JwtService.
   private get secret(): string {
@@ -161,7 +169,7 @@ export class AccountLinksService {
   }
 
   async sendVerificationLink(user: User, redirect?: string): Promise<void> {
-    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    if (await this.isBlockedRecipient(user)) return;
     const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.EMAIL_VERIFICATION);
     if (!allowed) return;
 
@@ -185,7 +193,7 @@ export class AccountLinksService {
   }
 
   async sendPasswordResetLink(user: User): Promise<void> {
-    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    if (await this.isBlockedRecipient(user)) return;
     const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.PASSWORD_RESET);
     if (!allowed) return;
 
@@ -224,8 +232,8 @@ export class AccountLinksService {
     context: 'client' | 'staff' = 'client',
     options: AccountInvitationOptions = {},
   ): Promise<boolean> {
-    if (!user?.email || isPlaceholderEmail(user.email)) {
-      this.logger.debug(`Skipping set-password email for user ${user?.id}: missing or invalid/noemail address`);
+    if (await this.isBlockedRecipient(user)) {
+      this.logger.debug(`Skipping set-password email for user ${user?.id}: missing, invalid/noemail, or bounced address`);
       return false;
     }
 
@@ -327,7 +335,7 @@ export class AccountLinksService {
   }
 
   async sendLoginCode(user: User, code: string): Promise<void> {
-    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    if (await this.isBlockedRecipient(user)) return;
     const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.LOGIN_CODE);
     if (!allowed) return;
 

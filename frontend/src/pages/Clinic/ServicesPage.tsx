@@ -20,10 +20,16 @@ import ImageUpload from"../../components/atoms/ImageUpload";
 
 const ServicesPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { services, isLoading } = useSelector(
+ const { services, isLoading, profile, myClinics } = useSelector(
  (state: RootState) => state.clinic
  );
  const user = useSelector((state: RootState) => state.auth.user);
+ const activeClinicId =
+ profile?.id ||
+ localStorage.getItem('activeClinicId') ||
+ myClinics?.[0]?.id ||
+ (user as any)?.assignedClinicId ||
+ undefined;
 
  const [showModal, setShowModal] = useState(false);
  const [editingService, setEditingService] = useState<Service | null>(null);
@@ -46,13 +52,13 @@ const ServicesPage: React.FC = () => {
 
 
  useEffect(() => {
- dispatch(fetchServices(undefined));
- }, [dispatch]);
+ dispatch(fetchServices(activeClinicId));
+ }, [dispatch, activeClinicId]);
 
  const handleToggleStatus = async (id: string) => {
  try {
- await clinicApi.services.toggleStatus(id);
- dispatch(fetchServices(undefined));
+ await clinicApi.services.toggleStatus(id, activeClinicId);
+ dispatch(fetchServices(activeClinicId));
  } catch (error) {
  console.error("Failed to toggle service status:", error);
  }
@@ -138,6 +144,7 @@ const ServicesPage: React.FC = () => {
  {showModal && (
  <ServiceModal
  service={editingService}
+ clinicId={activeClinicId}
  onClose={() => {
  setShowModal(false);
  setEditingService(null);
@@ -145,7 +152,7 @@ const ServicesPage: React.FC = () => {
  onSave={() => {
  setShowModal(false);
  setEditingService(null);
- dispatch(fetchServices(undefined));
+ dispatch(fetchServices(activeClinicId));
  }}
  />
  )}
@@ -243,12 +250,14 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
 // Service Modal Component
 interface ServiceModalProps {
  service: Service | null;
+ clinicId?: string;
  onClose: () => void;
  onSave: () => void;
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({
  service,
+ clinicId,
  onClose,
  onSave,
 }) => {
@@ -375,6 +384,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  const payload = {
  ...formData,
  treatmentId: finalTreatmentId,
+ ...(clinicId ? { clinicId } : {}),
  };
 
  if (service) {

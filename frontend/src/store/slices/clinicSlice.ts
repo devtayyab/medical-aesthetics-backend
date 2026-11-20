@@ -78,9 +78,9 @@ export const fetchClinicProfile = createAsyncThunk(
 
 export const updateClinicProfile = createAsyncThunk(
  'clinic/updateProfile',
- async (data: Partial<ClinicProfile>, { rejectWithValue }) => {
+ async (data: Partial<ClinicProfile> & { clinicId?: string }, { rejectWithValue }) => {
  try {
- return await clinicApi.clinicProfile.updateProfile(data);
+ return await clinicApi.clinicProfile.updateProfile(data, data.clinicId);
  } catch (error: any) {
  return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
  }
@@ -170,7 +170,7 @@ export const rescheduleAppointment = createAsyncThunk(
 
 export const fetchClients = createAsyncThunk(
  'clinic/fetchClients',
- async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
+ async (params: { search?: string; clinicId?: string; limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
  try {
  const response = await clinicApi.clients.getAll(params);
  // Map raw response to Client type
@@ -185,6 +185,10 @@ export const fetchClients = createAsyncThunk(
  lastAppointment: client.lastvisit,
  isBeautyDoctorsMember: Boolean(client.isBeautyDoctorsMember ?? client.isbeautydoctorsmember),
  invitationSentAt: client.invitationSentAt ?? client.invitationsentat ?? null,
+ emailBounced: Boolean(client.emailBounced ?? client.emailbounced),
+ emailBouncedAt: client.emailBouncedAt ?? client.emailbouncedat ?? null,
+ emailBounceReason: client.emailBounceReason ?? client.emailbouncereason ?? null,
+ emailBounceType: client.emailBounceType ?? client.emailbouncetype ?? null,
  createdAt: client.createdat || new Date().toISOString(),
  }));
  return mappedClients;
@@ -196,7 +200,7 @@ export const fetchClients = createAsyncThunk(
 
 export const fetchReviews = createAsyncThunk(
  'clinic/fetchReviews',
- async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
+ async (params: { limit?: number; offset?: number; clinicId?: string } | undefined = undefined, { rejectWithValue }) => {
  try {
  const data = await clinicApi.reviews.getAll(params);
  return data;
@@ -208,9 +212,9 @@ export const fetchReviews = createAsyncThunk(
 
 export const fetchReviewStatistics = createAsyncThunk(
  'clinic/fetchReviewStatistics',
- async (_, { rejectWithValue }) => {
+ async (clinicId: string | undefined = undefined, { rejectWithValue }) => {
  try {
- return await clinicApi.reviews.getStatistics();
+ return await clinicApi.reviews.getStatistics(clinicId);
  } catch (error: any) {
  return rejectWithValue(error.response?.data?.message || 'Failed to fetch statistics');
  }

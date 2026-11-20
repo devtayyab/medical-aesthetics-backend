@@ -10,7 +10,8 @@ import { formatDate } from "@/utils/formatters";
 
 const ReviewsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { reviews, reviewStats, isLoading } = useSelector((state: RootState) => state.clinic);
+ const { reviews, reviewStats, isLoading, profile, myClinics } = useSelector((state: RootState) => state.clinic);
+ const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || myClinics?.[0]?.id || undefined;
 
  const [respondingTo, setRespondingTo] = useState<string | null>(null);
  const [responseText, setResponseText] = useState('');
@@ -33,9 +34,9 @@ const ReviewsPage: React.FC = () => {
 
 
  useEffect(() => {
- dispatch(fetchReviews(undefined));
- dispatch(fetchReviewStatistics());
- }, [dispatch]);
+ dispatch(fetchReviews(activeClinicId ? { clinicId: activeClinicId } : undefined));
+ dispatch(fetchReviewStatistics(activeClinicId));
+ }, [dispatch, activeClinicId]);
 
  const handleRespond = async (reviewId: string) => {
  if (!responseText.trim()) {
@@ -47,7 +48,7 @@ const ReviewsPage: React.FC = () => {
  await clinicApi.reviews.respond(reviewId, responseText);
  setRespondingTo(null);
  setResponseText('');
- dispatch(fetchReviews(undefined));
+ dispatch(fetchReviews(activeClinicId ? { clinicId: activeClinicId } : undefined));
  } catch (error) {
  console.error('Failed to respond to review:', error);
  }

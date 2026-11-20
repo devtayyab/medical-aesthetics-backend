@@ -67,23 +67,16 @@ export const useClinicBooking = ({
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [slotReason, setSlotReason] = useState<string | null>(null);
 
+  // Reset modal form state when opening
   useEffect(() => {
-    if (isOpen && clinicId) {
-      // A new booking ALWAYS starts empty: never carry over the treatment, provider, date,
-      // time or busy slots of a previously opened appointment / clinic.
-      setSelectedService('');
-      setSelectedProvider('');
+    if (isOpen) {
       setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
-      setAvailableSlots([]);
-      setSelectedSlot(null);
-      setSlotReason(null);
       setNotes('');
       setDisableNotifications(false);
       setSendInvitation(false);
       setCustomStartTime('');
       setCustomEndTime('');
       setError(null);
-      fetchClinicData();
       if (prefillClient) {
         setClientData({
           fullName: prefillClient.fullName || '',
@@ -96,7 +89,20 @@ export const useClinicBooking = ({
         setClientData({ fullName: '', phone: '', email: '' });
       }
     }
-  }, [isOpen, clinicId, prefillClient]);
+  }, [isOpen, prefillClient]);
+
+  // Reload clinic services/providers/timezone whenever the selected clinic changes
+  // (without wiping entered client info or jumping back to Step 1)
+  useEffect(() => {
+    if (isOpen && clinicId) {
+      setSelectedService('');
+      setSelectedProvider('');
+      setAvailableSlots([]);
+      setSelectedSlot(null);
+      setSlotReason(null);
+      fetchClinicData();
+    }
+  }, [isOpen, clinicId]);
 
   const fetchClinicData = async () => {
     setIsLoading(true);

@@ -1,6 +1,8 @@
-import React from 'react';
-import { X, User, Phone, Mail, ChevronRight, CheckCircle, Calendar, Clock } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { X, User, Phone, Mail, ChevronRight, CheckCircle, Calendar, Clock, Building2 } from 'lucide-react';
 import { useClinicBooking } from '@/hooks/useClinicBooking';
+import type { RootState } from '@/store';
 
 interface ClinicBookingModalProps {
   isOpen: boolean;
@@ -21,6 +23,24 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
   clinicId,
   prefillClient,
 }) => {
+  const { myClinics } = useSelector((state: RootState) => state.clinic);
+  const [activeClinicId, setActiveClinicId] = useState<string>(clinicId);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveClinicId(clinicId);
+    }
+  }, [isOpen, clinicId]);
+
+  const sortedClinics = useMemo(
+    () =>
+      [...(myClinics || [])].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' }),
+      ),
+    [myClinics],
+  );
+  const currentClinicName = sortedClinics.find((c) => c.id === activeClinicId)?.name;
+
   const {
     step,
     setStep,
@@ -55,7 +75,7 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
     handleSubmit,
   } = useClinicBooking({
     isOpen,
-    clinicId,
+    clinicId: activeClinicId,
     prefillClient,
     onSuccess,
     onClose,
@@ -70,7 +90,9 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  <div className="p-3 sm:p-6 border-b flex items-center justify-between bg-gray-50">
  <div>
  <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Direct Booking</h2>
- <p className="text-xs sm:text-sm text-gray-500">Add a walk-in or phone appointment</p>
+ <p className="text-xs sm:text-sm text-gray-500">
+   Add a walk-in or phone appointment{currentClinicName ? ` · ${currentClinicName}` : ''}
+ </p>
  </div>
  <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-gray-200 rounded-full transition-colors">
  <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
@@ -151,6 +173,24 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  <div className="space-y-4 animate-in fade-in duration-300">
  <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Service & Selection</h3>
  <div className="space-y-4">
+ {sortedClinics.length > 1 && (
+ <div className="space-y-1">
+ <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
+   <Building2 className="w-3.5 h-3.5 text-blue-600" /> Clinic *
+ </label>
+ <select
+   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold"
+   value={activeClinicId}
+   onChange={(e) => setActiveClinicId(e.target.value)}
+ >
+   {sortedClinics.map((c) => (
+     <option key={c.id} value={c.id}>
+       {c.name}{c.address?.city ? ` (${c.address.city})` : ''}
+     </option>
+   ))}
+ </select>
+ </div>
+ )}
  <div className="space-y-1">
  <label className="text-xs font-bold text-gray-500 uppercase">Select Service *</label>
  <select
