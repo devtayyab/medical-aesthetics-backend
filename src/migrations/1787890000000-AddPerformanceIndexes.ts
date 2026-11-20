@@ -14,7 +14,7 @@ export class AddPerformanceIndexes1787890000000 implements MigrationInterface {
             `CREATE INDEX IF NOT EXISTS "IDX_leads_lower_email" ON "leads" (LOWER("email")) WHERE "email" IS NOT NULL`,
         );
         await queryRunner.query(
-            `CREATE INDEX IF NOT EXISTS "IDX_leads_phone_key" ON "leads" (RIGHT(regexp_replace(COALESCE("phone", ''), '[^0-9]', '', 'g'), 10)) WHERE "phone" IS NOT NULL`,
+            `CREATE INDEX IF NOT EXISTS "IDX_leads_phone_key" ON "leads" (RIGHT(regexp_replace(COALESCE("phone", ''), '[^0-9]', '', 'g'), 10))`,
         );
         await queryRunner.query(
             `CREATE INDEX IF NOT EXISTS "IDX_leads_facebookLeadId" ON "leads" ("facebookLeadId") WHERE "facebookLeadId" IS NOT NULL`,
@@ -37,7 +37,7 @@ export class AddPerformanceIndexes1787890000000 implements MigrationInterface {
             `CREATE INDEX IF NOT EXISTS "IDX_users_lower_email" ON "users" (LOWER("email"))`,
         );
         await queryRunner.query(
-            `CREATE INDEX IF NOT EXISTS "IDX_users_phone_key" ON "users" (RIGHT(regexp_replace(COALESCE("phone", ''), '[^0-9]', '', 'g'), 10)) WHERE "phone" IS NOT NULL`,
+            `CREATE INDEX IF NOT EXISTS "IDX_users_phone_key" ON "users" (RIGHT(regexp_replace(COALESCE("phone", ''), '[^0-9]', '', 'g'), 10))`,
         );
         await queryRunner.query(
             `CREATE INDEX IF NOT EXISTS "IDX_users_role_active" ON "users" ("role", "isActive")`,
