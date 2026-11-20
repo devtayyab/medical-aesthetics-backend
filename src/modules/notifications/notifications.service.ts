@@ -16,7 +16,7 @@ import { MailService } from './services/mail.service';
 import { NotificationDeliveryService } from './services/notification-delivery.service';
 import { NotificationDispatch } from './entities/notification-dispatch.entity';
 import { ContactMessage } from './entities/contact-message.entity';
-import { athensDate, athensTime } from './utils/notification-format.util';
+import { athensDate, athensTime, isPlaceholderEmail } from './utils/notification-format.util';
 import { DEFAULT_TEMPLATES, LEGACY_DEFAULT_SUBJECTS, LEGACY_DEFAULT_CONTENTS, LEGACY_REMINDER_TEXT } from './notification-templates.defaults';
 
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -621,7 +621,13 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
       });
 
       if (!existing) {
-        await this.templateRepository.save(this.templateRepository.create({ ...data, isActive: true }));
+        const { defaultActive, ...templateFields } = data;
+        await this.templateRepository.save(
+          this.templateRepository.create({
+            ...templateFields,
+            isActive: defaultActive !== undefined ? defaultActive : true,
+          }),
+        );
         created++;
       } else if (
         LEGACY_DEFAULT_SUBJECTS.has(existing.subject) ||
@@ -649,7 +655,11 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     otp: string,
   ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: recipientId } });
-    if (!user?.email) return;
+    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    const tpl = await this.templateRepository.findOne({
+      where: { trigger: NotificationTrigger.EMAIL_VERIFICATION, type: NotificationType.EMAIL },
+    });
+    if (tpl && !tpl.isActive) return;
     await this.mailService.sendVerificationEmail(user.email, { userName: firstName, code: otp });
   }
 }

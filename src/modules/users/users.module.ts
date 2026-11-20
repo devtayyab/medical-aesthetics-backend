@@ -8,11 +8,12 @@ import { AccountSetupListener } from './account-setup.listener';
 import { User } from './entities/user.entity';
 import { ConsentRecord } from './entities/consent-record.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
+import { NotificationTemplate } from '../notifications/entities/notification-template.entity';
 import { MailService } from '../notifications/services/mail.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, ConsentRecord, ClinicOwnership]),
+    TypeOrmModule.forFeature([User, ConsentRecord, ClinicOwnership, NotificationTemplate]),
     // Secrets are passed per call in AccountLinksService.
     JwtModule.register({}),
   ],

@@ -43,11 +43,15 @@ export function useConflictDetection(
       }
 
       // 2. Check appointment conflicts respecting clinic.treatmentRooms capacity
+      // Include masked "Busy" appointments (status = BLOCKED, isMaskedPrivate = true) so
+      // salespeople can never book over another salesperson's or clinic's appointment.
       const activeStatuses = ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'];
       const overlappingApts: any[] = [];
       for (const apt of appointments) {
         if (excludeAppointmentId && apt.id === excludeAppointmentId) continue;
-        if (!activeStatuses.includes(String(apt.status || '').toUpperCase())) continue;
+        const st = String(apt.status || '').toUpperCase();
+        const isActiveOrBusy = activeStatuses.includes(st) || (st === 'BLOCKED' && Boolean(apt.isMaskedPrivate));
+        if (!isActiveOrBusy) continue;
 
         if (apt.clinicId !== clinicId) continue;
 

@@ -101,7 +101,43 @@ export const NotificationSettings: React.FC = () => {
  }
  };
 
+ const handleToggleActive = async (template: NotificationTemplate) => {
+ try {
+ const next = !template.isActive;
+ await notificationsAPI.updateTemplate(template.id, { ...template, isActive: next });
+ setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, isActive: next } : t)));
+ toast.success(next ? (isEl ? 'Ενεργοποιήθηκε' : 'Enabled') : (isEl ? 'Απενεργοποιήθηκε' : 'Disabled'));
+ } catch (error) {
+ toast.error(isEl ? 'Αποτυχία ενημέρωσης κατάστασης' : 'Failed to update status');
+ }
+ };
+
  const getTriggerLabel = (trigger: string) => {
+ const labels: Record<string, { el: string; en: string }> = {
+ ACCOUNT_INVITATION: { el: 'Πρόσκληση Λογαριασμού (Ορισμός Κωδικού Πελάτη)', en: 'Account Invitation (Set Your Password – Client)' },
+ STAFF_ACCOUNT_INVITATION: { el: 'Πρόσκληση Προσωπικού (Ορισμός Κωδικού)', en: 'Staff Account Invitation (Set Password)' },
+ EMAIL_VERIFICATION: { el: 'Επιβεβαίωση Email', en: 'Email Verification' },
+ PASSWORD_RESET: { el: 'Επαναφορά Κωδικού Πρόσβασης', en: 'Password Reset' },
+ LOGIN_CODE: { el: 'Κωδικός Σύνδεσης (2FA)', en: 'Login Code (2FA)' },
+ WEEKLY_CRM_REPORT: { el: 'Εβδομαδιαία Αναφορά CRM', en: 'Weekly CRM Report' },
+ APPOINTMENT_BOOKED: { el: 'Κράτηση Ραντεβού', en: 'Appointment Booked' },
+ APPOINTMENT_CONFIRMED: { el: 'Επιβεβαίωση Ραντεβού', en: 'Appointment Confirmed' },
+ APPOINTMENT_RESCHEDULED: { el: 'Αλλαγή Ραντεβού', en: 'Appointment Rescheduled' },
+ APPOINTMENT_CANCELED: { el: 'Ακύρωση Ραντεβού', en: 'Appointment Canceled' },
+ APPOINTMENT_REMINDER: { el: 'Υπενθύμιση Ραντεβού (24 ώρες)', en: 'Appointment Reminder (24h)' },
+ APPOINTMENT_REMINDER_SAME_DAY: { el: 'Υπενθύμιση Ραντεβού (Ίδια Ημέρα / 2 ώρες)', en: 'Appointment Reminder (Same Day / 2h)' },
+ POST_VISIT_THANK_YOU: { el: 'Ευχαριστήριο μετά την Επίσκεψη', en: 'Post Visit Thank You' },
+ REVIEW_REQUEST: { el: 'Αίτημα Αξιολόγησης', en: 'Review Request' },
+ PAYMENT_RECEIPT: { el: 'Απόδειξη Πληρωμής', en: 'Payment Receipt' },
+ REFUND_ISSUED: { el: 'Επιστροφή Χρημάτων', en: 'Refund Issued' },
+ WELCOME_CREDENTIALS: { el: 'Καλωσόρισμα Λογαριασμού', en: 'Welcome Credentials' },
+ CLINIC_NEW_APPOINTMENT: { el: 'Νέο Ραντεβού (Κλινική)', en: 'Clinic New Appointment' },
+ CLINIC_APPOINTMENT_CANCELLED: { el: 'Ακύρωση Ραντεβού (Κλινική)', en: 'Clinic Appointment Cancelled' },
+ ADMIN_ALERT: { el: 'Ειδοποίηση Διαχειριστή', en: 'Admin Alert' },
+ TASK_REMINDER: { el: 'Υπενθύμιση Εργασίας', en: 'Task Reminder' },
+ EXECUTION_NOTIFICATION: { el: 'Ειδοποίηση Εκτέλεσης', en: 'Execution Notification' },
+ };
+ if (labels[trigger]) return isEl ? labels[trigger].el : labels[trigger].en;
  return trigger.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
  };
 
@@ -136,9 +172,14 @@ export const NotificationSettings: React.FC = () => {
  <div>
  <h4 className="font-semibold text-blue-900">{isEl ? 'Προσαρμογή Προτύπων' : 'Customizing Templates'}</h4>
  <p className="text-sm text-blue-800 mt-1">
- {isEl ? 'Μπορείτε να χρησιμοποιήσετε μεταβλητές όπως ' : 'You can use placeholders like '}<code className="bg-blue-100 px-1 rounded">{"{{customerName}}"}</code>, 
- <code className="bg-blue-100 px-1 rounded">{"{{appointmentDate}}"}</code>, 
- <code className="bg-blue-100 px-1 rounded">{"{{appointmentTime}}"}</code>, and 
+ {isEl ? 'Μπορείτε να χρησιμοποιήσετε μεταβλητές όπως ' : 'You can use placeholders like '}<code className="bg-blue-100 px-1 rounded">{"{{name}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{customerName}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{date}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{clinic}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{link}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{phone}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{appointmentDate}}"}</code>,{' '}
+ <code className="bg-blue-100 px-1 rounded">{"{{appointmentTime}}"}</code>,{' '}
  <code className="bg-blue-100 px-1 rounded">{"{{clinicName}}"}</code>{isEl ? ' στα πρότυπά σας.' : ' in your templates.'}
  </p>
  </div>
@@ -184,11 +225,19 @@ export const NotificationSettings: React.FC = () => {
  <p className="text-sm text-gray-600 truncate max-w-md">{template.subject}</p>
  </td>
  <td className="px-6 py-4">
- <span className={`px-2 py-1 rounded-full text-xs font-medium ${
- template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
- }`}>
- {template.isActive ? (isEl ? 'Ενεργό' : 'Active') : (isEl ? 'Ανενεργό' : 'Inactive')}
- </span>
+ <button
+ type="button"
+ onClick={() => handleToggleActive(template)}
+ className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+ template.isActive
+ ? 'bg-green-100 text-green-700 hover:bg-green-200'
+ : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+ }`}
+ title={isEl ? 'Κλικ για ενεργοποίηση/απενεργοποίηση' : 'Click to toggle ON/OFF'}
+ >
+ <span className={`w-2 h-2 rounded-full ${template.isActive ? 'bg-green-600' : 'bg-gray-400'}`} />
+ {template.isActive ? (isEl ? 'ON · Ενεργό' : 'ON · Active') : (isEl ? 'OFF · Ανενεργό' : 'OFF · Inactive')}
+ </button>
  </td>
  <td className="px-6 py-4 text-right">
  <button
@@ -324,12 +373,25 @@ export const NotificationSettings: React.FC = () => {
  className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
  required
  >
+ <option value="ACCOUNT_INVITATION">Account Invitation (Set Your Password – Client)</option>
+ <option value="STAFF_ACCOUNT_INVITATION">Staff Account Invitation (Set Password)</option>
+ <option value="EMAIL_VERIFICATION">Email Verification</option>
+ <option value="PASSWORD_RESET">Password Reset</option>
+ <option value="LOGIN_CODE">Login Code (2FA)</option>
+ <option value="WEEKLY_CRM_REPORT">Weekly CRM Report</option>
  <option value="APPOINTMENT_BOOKED">Appointment Booked</option>
  <option value="APPOINTMENT_CONFIRMED">Appointment Confirmed</option>
  <option value="APPOINTMENT_RESCHEDULED">Appointment Rescheduled</option>
  <option value="APPOINTMENT_CANCELED">Appointment Canceled</option>
- <option value="APPOINTMENT_REMINDER">Appointment Reminder</option>
+ <option value="APPOINTMENT_REMINDER">Appointment Reminder (24h)</option>
+ <option value="APPOINTMENT_REMINDER_SAME_DAY">Appointment Reminder (Same Day / 2h)</option>
  <option value="POST_VISIT_THANK_YOU">Post Visit Thank You</option>
+ <option value="REVIEW_REQUEST">Review Request</option>
+ <option value="PAYMENT_RECEIPT">Payment Receipt</option>
+ <option value="REFUND_ISSUED">Refund Issued</option>
+ <option value="CLINIC_NEW_APPOINTMENT">Clinic New Appointment</option>
+ <option value="CLINIC_APPOINTMENT_CANCELLED">Clinic Appointment Cancelled</option>
+ <option value="ADMIN_ALERT">Admin Alert</option>
  <option value="TASK_REMINDER">Task Reminder</option>
  <option value="EXECUTION_NOTIFICATION">Execution Notification</option>
  <option value="WELCOME_CREDENTIALS">Welcome Credentials</option>

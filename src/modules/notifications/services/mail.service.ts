@@ -20,12 +20,17 @@ export class MailService {
   private sesClient?: SESClient;
   private readonly logger = new Logger(MailService.name);
   private fromAddress: string;
+  private replyToAddress: string;
 
   constructor(private configService: ConfigService) {
     const fromEmail = this.configService.get<string>('MAIL_FROM') || 'no-reply@beautydoctors.gr';
     const fromName = this.configService.get<string>('MAIL_FROM_NAME') || BRAND;
     // A display name improves deliverability and shows "Beauty Doctors" in the inbox.
     this.fromAddress = fromEmail.includes('<') ? fromEmail : `${fromName} <${fromEmail}>`;
+    this.replyToAddress =
+      this.configService.get<string>('MAIL_REPLY_TO') ||
+      this.configService.get<string>('SUPPORT_EMAIL') ||
+      'info@beautydoctors.gr';
 
     // 1. AWS SES SDK. Explicit keys, or MAIL_TRANSPORT=ses to use the default AWS credential
     //    chain (e.g. the EC2 instance role) without putting keys in the environment.
@@ -92,6 +97,7 @@ export class MailService {
         const command = new SendEmailCommand({
           Source: from,
           Destination: { ToAddresses: [to] },
+          ReplyToAddresses: this.replyToAddress ? [this.replyToAddress] : undefined,
           Message: {
             Subject: { Data: subject, Charset: 'UTF-8' },
             Body: {
@@ -112,7 +118,14 @@ export class MailService {
 
     if (this.transporter) {
       try {
-        const info = await this.transporter.sendMail({ from, to, subject, text, html: htmlBody });
+        const info = await this.transporter.sendMail({
+          from,
+          to,
+          replyTo: this.replyToAddress || undefined,
+          subject,
+          text,
+          html: htmlBody,
+        });
         this.logger.log(`Email dispatched via SMTP to ${to}: ${info.messageId}`);
         return info;
       } catch (error: any) {
@@ -175,11 +188,6 @@ export class MailService {
     </div>
     <div class="footer">
       <div>&copy; ${new Date().getFullYear()} ${BRAND} · info@beautydoctors.gr</div>
-      <div style="margin-top: 8px; font-size: 10px; color: #94a3b8; line-height: 1.4;">
-        Λαμβάνετε αυτό το email επειδή εγγραφήκατε στο newsletter της BeautyDoctors. <a href="https://beautydoctors.gr/my-account" style="color: #64748b; text-decoration: underline;">Διαγραφή</a>
-        &nbsp;|&nbsp;
-        You are receiving this email because you subscribed to the BeautyDoctors newsletter. <a href="https://beautydoctors.gr/my-account" style="color: #64748b; text-decoration: underline;">Unsubscribe</a>
-      </div>
     </div>
   </div>
 </body>

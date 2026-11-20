@@ -161,7 +161,8 @@ export const SalesWeekCalendar: React.FC = () => {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
   const [selectedClinicId, setSelectedClinicId] = useState<string>('all');
   const isManager = user?.role === 'manager' || user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
-  const [selectedProviderId, setSelectedProviderId] = useState<string>(user?.id || 'all');
+  // Sales calendar always opens with "All / All Staff" selected by default.
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
 
   // Drawers state
   const [isAddWizardOpen, setIsAddWizardOpen] = useState(false);

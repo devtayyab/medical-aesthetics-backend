@@ -1155,6 +1155,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </Button>
  <div className="h-6 w-px bg-slate-200"></div>
  <h2 className="text-base font-black text-slate-800 tracking-tight">{customer.firstName} {customer.lastName}</h2>
+ {Boolean((customer as any)?.isBeautyDoctorsMember || (customerRecord?.record as any)?.customer?.isBeautyDoctorsMember || customerRecord?.record || customer?.source) && (
+ <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+ ★ Beauty Doctors Member
+ </span>
+ )}
  {/* Right side - Contact creation info */}
  <div className="ml-auto flex flex-wrap items-center gap-3">
  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
@@ -1192,6 +1197,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${isConverted ? 'bg-emerald-500' : 'bg-blue-500'}`} />
  </div>
  <h1 className="text-base font-black text-slate-900 tracking-tight">{customer.firstName} {customer.lastName}</h1>
+ {Boolean((customer as any)?.isBeautyDoctorsMember || (customerRecord?.record as any)?.customer?.isBeautyDoctorsMember || customerRecord?.record || customer?.source) && (
+ <span className="mt-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+ ★ Beauty Doctors Member
+ </span>
+ )}
+ {((customer as any)?.invitationSentAt || (customerRecord?.record as any)?.customer?.invitationSentAt) && (
+ <p className="text-[10px] font-semibold text-slate-400 mt-1">
+ Invitation sent: {new Date((customer as any)?.invitationSentAt || (customerRecord?.record as any)?.customer?.invitationSentAt).toLocaleString('el-GR')}
+ </p>
+ )}
  <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center justify-center gap-1 truncate max-w-full"><Mail className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{customer.email}</span></p>
  
  <div className="mt-4 w-full flex justify-center gap-2">

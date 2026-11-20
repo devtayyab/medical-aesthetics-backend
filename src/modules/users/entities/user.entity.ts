@@ -127,6 +127,15 @@ export class User {
   @Column({ default: false })
   accountSetupPending: boolean;
 
+  // Persisted designation on the customer profile indicating a Beauty Doctors member
+  // (came from CRM lead, Facebook/website, Fresha import, or Beauty Doctors booking).
+  @Column({ default: false })
+  isBeautyDoctorsMember: boolean;
+
+  // Timestamp recording when the one-time "Set your password" account invitation email was sent.
+  @Column({ type: 'timestamptz', nullable: true })
+  invitationSentAt: Date | null;
+
   @Column({ default: false })
   marketingEmailConsent: boolean;
 

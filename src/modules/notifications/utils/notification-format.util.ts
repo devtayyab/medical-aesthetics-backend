@@ -41,17 +41,30 @@ export function personName(user: any, fallback = ''): string {
 }
 
 /**
- * Email addresses we generate for guests / leads without an email. Sending to them only
- * bounces and hurts the SES sending reputation, so the mail path skips them.
+ * Email addresses we generate for guests / leads without a real email (including any
+ * `noemail` or placeholder address). Sending to them bounces and hurts SES reputation,
+ * so every outgoing email and notification path must skip them.
  */
 export function isPlaceholderEmail(email?: string | null): boolean {
   if (!email) return true;
   const e = email.trim().toLowerCase();
+  if (!e || /\s/.test(e)) return true;
+  const parts = e.split('@');
+  if (parts.length !== 2 || !parts[0] || !parts[1] || !parts[1].includes('.')) return true;
+  const [local, domain] = parts;
   return (
-    !e.includes('@') ||
-    e.endsWith('@example.com') ||
-    e.endsWith('.invalid') ||
-    e.startsWith('guest-') ||
-    e.startsWith('temp-')
+    e.includes('noemail') ||
+    e.includes('no-email') ||
+    e.includes('no_email') ||
+    domain === 'example.com' ||
+    domain === 'example.org' ||
+    domain === 'example.net' ||
+    domain.endsWith('.example.com') ||
+    domain.includes('placeholder') ||
+    domain.endsWith('.invalid') ||
+    domain.endsWith('.local') ||
+    domain.endsWith('.test') ||
+    local.startsWith('guest-') ||
+    local.startsWith('temp-')
   );
 }

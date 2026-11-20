@@ -309,6 +309,8 @@ export interface Client {
  totalAppointments: number;
  lifetimeValue: number;
  lastAppointment?: string;
+ isBeautyDoctorsMember?: boolean;
+ invitationSentAt?: string | null;
  createdAt: string;
 }
 

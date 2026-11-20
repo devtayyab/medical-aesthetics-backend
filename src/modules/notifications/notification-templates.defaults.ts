@@ -12,6 +12,7 @@ export const DEFAULT_TEMPLATES: Array<{
   type: NotificationType;
   subject: string;
   content: string;
+  defaultActive?: boolean;
 }> = [
   // --- Client: appointment lifecycle ---
   {
@@ -164,6 +165,56 @@ export const DEFAULT_TEMPLATES: Array<{
     type: NotificationType.PUSH,
     subject: 'Υπενθύμιση εργασίας',
     content: 'Η εργασία "{{taskTitle}}" έληγε στις {{dueDate}}.',
+  },
+
+  // --- Account & Auth Emails (Greek, editable & toggleable in Settings -> Notifications) ---
+  {
+    trigger: NotificationTrigger.ACCOUNT_INVITATION,
+    type: NotificationType.EMAIL,
+    subject: 'Ο λογαριασμός σας στο Beauty Doctors',
+    content:
+      'Καλησπέρα {{name}},\n\nΜε αφορμή το ραντεβού σας στις {{date}} στο {{clinic}}, δημιουργήσαμε έναν λογαριασμό για εσάς στη νέα πλατφόρμα του Beauty Doctors.\n\nΜέσα από την πλατφόρμα μπορείτε να ανακαλύψετε όλες τις υπηρεσίες των συνεργαζόμενων κλινικών μας, να διαχειρίζεστε τα ραντεβού σας και να απολαμβάνετε αποκλειστικές προσφορές για τα μέλη μας.\n\nΓια να ενεργοποιήσετε τον λογαριασμό σας, ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n{{link}}\n\n(Ο σύνδεσμος ισχύει για 7 ημέρες.)\n\nΓια οποιαδήποτε απορία, μη διστάσετε να επικοινωνήσετε μαζί μας στο {{phone}}.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: true,
+  },
+  {
+    trigger: NotificationTrigger.STAFF_ACCOUNT_INVITATION,
+    type: NotificationType.EMAIL,
+    subject: 'Ορισμός κωδικού προσωπικού - Beauty Doctors',
+    content:
+      'Γεια σας {{name}},\n\nΔημιουργήθηκε λογαριασμός προσωπικού για εσάς στην πλατφόρμα του Beauty Doctors.\n\nΓια να ενεργοποιήσετε τον λογαριασμό σας, ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n{{link}}\n\n(Ο σύνδεσμος ισχύει για 7 ημέρες και μπορεί να χρησιμοποιηθεί μία φορά.)\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: true,
+  },
+  {
+    trigger: NotificationTrigger.EMAIL_VERIFICATION,
+    type: NotificationType.EMAIL,
+    subject: 'Επιβεβαίωση email - Beauty Doctors',
+    content:
+      'Γεια σας {{name}},\n\nΕπιβεβαιώστε τη διεύθυνση email σας για να ολοκληρωθεί η εγγραφή σας στο Beauty Doctors:\n\n{{link}}\n\nΟ σύνδεσμος ισχύει για 3 ημέρες.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: true,
+  },
+  {
+    trigger: NotificationTrigger.PASSWORD_RESET,
+    type: NotificationType.EMAIL,
+    subject: 'Επαναφορά κωδικού πρόσβασης - Beauty Doctors',
+    content:
+      'Γεια σας {{name}},\n\nΛάβαμε αίτημα επαναφοράς του κωδικού σας. Ανοίξτε τον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό:\n\n{{link}}\n\nΟ σύνδεσμος ισχύει για 1 ώρα. Αν δεν κάνατε εσείς το αίτημα, αγνοήστε αυτό το email.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: true,
+  },
+  {
+    trigger: NotificationTrigger.LOGIN_CODE,
+    type: NotificationType.EMAIL,
+    subject: '{{code}} - Κωδικός σύνδεσης - Beauty Doctors',
+    content:
+      'Ο κωδικός σύνδεσής σας είναι: {{code}}\n\nΙσχύει για 10 λεπτά. Αν δεν προσπαθήσατε να συνδεθείτε, αλλάξτε τον κωδικό σας.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: true,
+  },
+  {
+    trigger: NotificationTrigger.WEEKLY_CRM_REPORT,
+    type: NotificationType.EMAIL,
+    subject: 'Εβδομαδιαία αναφορά CRM - Beauty Doctors',
+    content:
+      'Γεια σας {{name}},\n\nΗ εβδομαδιαία αναφορά απόδοσης CRM είναι έτοιμη στην πλατφόρμα του Beauty Doctors.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors',
+    defaultActive: false,
   },
 ];
 

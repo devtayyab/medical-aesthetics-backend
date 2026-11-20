@@ -64,8 +64,10 @@ export class BookingsController {
       await this.bookingsService.findAppointmentForClinic(id, user.id, role);
     } else if (role === UserRole.SALESPERSON) {
       const isPrivate =
-        appointment.appointmentSource === 'clinic_own' ||
-        Boolean((appointment.client as any)?.profile?.clinicOwnClient);
+        !appointment.isBeautyDoctorsClient &&
+        !(appointment.client as any)?.isBeautyDoctorsMember &&
+        (appointment.appointmentSource === 'clinic_own' ||
+          Boolean((appointment.client as any)?.profile?.clinicOwnClient));
       if (isPrivate) {
         throw new ForbiddenException('This appointment is private to the clinic.');
       }

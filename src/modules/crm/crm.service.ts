@@ -33,7 +33,8 @@ import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
-import { athensDateTime } from '../notifications/utils/notification-format.util';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
+import { athensDateTime, isPlaceholderEmail } from '../notifications/utils/notification-format.util';
 import { TaskAutomationService } from './task-automation.service';
 import { FacebookService, ParsedFacebookLead } from './facebook.service';
 import { QueueService } from '../queue/queue.service';
@@ -479,7 +480,7 @@ export class CrmService implements OnModuleInit {
   /** Client account matching an email (case-insensitive) or a full phone number. */
   async findClientUserByContact(email?: string | null, phone?: string | null): Promise<User | null> {
     const phoneKey = phoneMatchKey(phone);
-    const cleanEmail = email && email.trim() && !/@example\.com$/i.test(email.trim()) ? email.trim() : '';
+    const cleanEmail = email && !isPlaceholderEmail(email) ? email.trim().toLowerCase() : '';
     if (!cleanEmail && !phoneKey) return null;
 
     const conditions: string[] = [];
@@ -501,7 +502,7 @@ export class CrmService implements OnModuleInit {
   /** The CRM card (lead) for an email or full phone number, newest submission first. */
   async findLeadByContact(email?: string | null, phone?: string | null, excludeLeadId?: string): Promise<Lead | null> {
     const phoneKey = phoneMatchKey(phone);
-    const cleanEmail = email && email.trim() ? email.trim() : '';
+    const cleanEmail = email && !isPlaceholderEmail(email) ? email.trim().toLowerCase() : '';
     if (!cleanEmail && !phoneKey) return null;
 
     const conditions: string[] = [];
@@ -2145,89 +2146,122 @@ export class CrmService implements OnModuleInit {
   }
 
   async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password?: string }> {
-    // Keep the client's REAL email (lowercase); no placeholder addresses (item 18).
-    const realEmail = typeof data.email === 'string' && data.email.trim() !== '' && !/@example\.com$/i.test(data.email.trim())
+    // Keep the client's REAL email (lowercase); never store noemail/placeholder addresses.
+    const realEmail = typeof data.email === 'string' && !isPlaceholderEmail(data.email)
       ? data.email.trim().toLowerCase()
       : null;
     data = { ...data, email: realEmail };
 
-    // Check if user already exists
-    const whereConditions: any[] = [];
-    if (realEmail) {
-      whereConditions.push({ email: realEmail });
-    }
-    if (data.phone) {
-      whereConditions.push({ phone: data.phone });
-    }
-
-    const existingUser = whereConditions.length > 0
-      ? await this.usersRepository.findOne({ where: whereConditions })
-      : null;
-
+    // Check existing client account using normalized mobile phone OR case-insensitive email
+    const existingUser = await this.findClientUserByContact(realEmail, data.phone);
     if (existingUser) {
       throw new BadRequestException('Customer with this email or phone already exists');
     }
 
-    // Unusable random password: the client sets their own through ONE emailed link
-    // (sent by AccountSetupListener). No plain-text password is mailed or returned.
+    // Check if an existing CRM lead matches this mobile or email and already links to a user
+    const existingLead = await this.findLeadByContact(realEmail, data.phone);
+    if (existingLead) {
+      const linkedUser = await this.findLinkedClientUser(existingLead);
+      if (linkedUser) {
+        throw new BadRequestException('Customer with this email or phone already exists');
+      }
+    }
+
+    // Unusable random password: no automatic "Set your password" email is sent here.
+    // Staff explicitly opts in via "Send Invitation to Customer" when booking.
     const newUser = this.usersRepository.create({
       ...data,
       role: UserRole.CLIENT,
       isActive: true,
       isEmailVerified: false,
       accountSetupPending: true,
+      isBeautyDoctorsMember: true,
       passwordHash: randomBytes(24).toString('hex'),
     } as Partial<User>);
 
     const savedUser = await this.usersRepository.save(newUser);
 
     // Create customer record
-    await this.createCustomerRecord(savedUser.id, salespersonId);
+    await this.createCustomerRecord(savedUser.id, salespersonId || existingLead?.assignedSalesId);
 
-    if (savedUser.email) {
-      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: savedUser.id });
+    // Link matched lead to the newly created user so no duplicate account can be created later
+    if (existingLead) {
+      await this.leadsRepository.update(existingLead.id, {
+        metadata: {
+          ...(existingLead.metadata || {}),
+          convertedToUserId: savedUser.id,
+          convertedToCustomerId: savedUser.id,
+        },
+      } as any);
     }
 
     return { user: savedUser };
   }
 
   /**
-   * Phone rule (item 25): a client the clinic brings in with a phone that is
-   * not known to BeautyDoctors is the doctor's OWN client. It gets a plain
-   * client account (no CRM customer record, so it is not a BD lead/customer
-   * and not in BD revenue), tagged with the clinic that owns it.
+   * Phone & Email recognition rule:
+   * - If the mobile number or email already matches ANY existing Beauty Doctors user or CRM lead,
+   *   link/create as a Beauty Doctors Member (`isBeautyDoctorsMember = true`) instead of a private clinic client.
+   * - Otherwise create the doctor's own client (never auto-sends "Set your password").
    */
   async createClinicOwnClient(
     data: { firstName: string; lastName?: string; phone?: string; email?: string },
     clinicId?: string,
   ): Promise<{ user: User; password: string }> {
-    const existing = await this.findClientUserByContact(data.email, data.phone);
+    const cleanEmail = data.email && !isPlaceholderEmail(data.email) ? data.email.trim().toLowerCase() : null;
+    const existing = await this.findClientUserByContact(cleanEmail, data.phone);
     if (existing) {
       throw new BadRequestException('A client with this email or phone already exists');
     }
+
+    // Check CRM leads by mobile or email BEFORE creating a clinic-own account
+    const matchedLead = await this.findLeadByContact(cleanEmail, data.phone);
+    if (matchedLead) {
+      const linkedUser = await this.findLinkedClientUser(matchedLead);
+      if (linkedUser) {
+        throw new BadRequestException('A client with this email or phone already exists');
+      }
+    }
+
     const password = randomBytes(24).toString('hex');
+    const isBdMember = Boolean(matchedLead);
+    const resolvedEmail = cleanEmail || (matchedLead?.email && !isPlaceholderEmail(matchedLead.email) ? matchedLead.email.trim().toLowerCase() : null);
+    const emailFree = resolvedEmail
+      ? !(await this.usersRepository.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email: resolvedEmail }).getCount())
+      : false;
+
     const newUser = this.usersRepository.create({
-      firstName: data.firstName,
-      lastName: data.lastName || '',
-      phone: data.phone || '',
-      // No placeholder addresses: the real email or none
-      email: data.email && data.email.trim() && !/@example\.com$/i.test(data.email.trim()) ? data.email.trim().toLowerCase() : null,
+      firstName: matchedLead?.firstName || data.firstName,
+      lastName: matchedLead?.lastName || data.lastName || '',
+      phone: data.phone || matchedLead?.phone || '',
+      email: emailFree ? resolvedEmail : null,
       role: UserRole.CLIENT,
       isActive: true,
-      // The client sets their own password through ONE emailed link (item 18)
       isEmailVerified: false,
       accountSetupPending: true,
+      isBeautyDoctorsMember: isBdMember,
       passwordHash: password,
-      profile: {
-        clinicOwnClient: true,
-        ownerClinicIds: clinicId ? [clinicId] : [],
-        createdAsClinicClientAt: new Date().toISOString(),
-      },
+      profile: isBdMember
+        ? { clinicPatientOf: clinicId ? [clinicId] : [] }
+        : {
+            clinicOwnClient: true,
+            ownerClinicIds: clinicId ? [clinicId] : [],
+            createdAsClinicClientAt: new Date().toISOString(),
+          },
     } as Partial<User>);
     const savedUser = await this.usersRepository.save(newUser);
-    if (savedUser.email) {
-      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: savedUser.id });
+
+    if (matchedLead) {
+      await this.createCustomerRecord(savedUser.id, matchedLead.assignedSalesId || undefined);
+      await this.leadsRepository.update(matchedLead.id, {
+        metadata: {
+          ...(matchedLead.metadata || {}),
+          convertedToUserId: savedUser.id,
+          convertedToCustomerId: savedUser.id,
+        },
+      } as any);
     }
+
     return { user: savedUser, password };
   }
 
@@ -4649,40 +4683,38 @@ export class CrmService implements OnModuleInit {
 
     let sent = 0;
 
-    // 1. Send individual reports to Salespersons
-    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+    // 1. Send individual reports to Salespersons (controlled by WEEKLY_CRM_REPORT template ON/OFF)
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON, isActive: true } });
     for (const agent of agents) {
       const kpis = await this.getSalespersonAnalytics(agent.id, { startDate, endDate });
-      await this.notificationsService.create(
+      const delivered = await this.notificationsService.sendTriggeredNotification(
+        NotificationTrigger.WEEKLY_CRM_REPORT,
         agent.id,
-        NotificationType.EMAIL,
-        'Weekly CRM Report',
-        'Your weekly performance report is ready.',
-        { kpis }
+        { name: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || 'Συνεργάτη', kpis },
+        { channels: [NotificationType.EMAIL] },
       );
-      sent++;
+      if (delivered.length > 0) sent++;
     }
 
-    // 2. Send Global Report to Managers and Admins
+    // 2. Send Global Report to Managers and Admins (controlled by WEEKLY_CRM_REPORT template ON/OFF)
     const managersAndAdmins = await this.usersRepository.find({
       where: [
-        { role: UserRole.MANAGER },
-        { role: UserRole.ADMIN },
-        { role: UserRole.SUPER_ADMIN }
-      ]
+        { role: UserRole.MANAGER, isActive: true },
+        { role: UserRole.ADMIN, isActive: true },
+        { role: UserRole.SUPER_ADMIN, isActive: true },
+      ],
     });
 
     if (managersAndAdmins.length > 0) {
       const globalKpis = await this.getManagerAgentKpis({ startDate, endDate });
       for (const user of managersAndAdmins) {
-        await this.notificationsService.create(
+        const delivered = await this.notificationsService.sendTriggeredNotification(
+          NotificationTrigger.WEEKLY_CRM_REPORT,
           user.id,
-          NotificationType.EMAIL,
-          'Weekly Global Sales Report (Manager View)',
-          'The weekly aggregate sales report for all agents is ready.',
-          { globalKpis }
+          { name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Διαχειριστή', globalKpis },
+          { channels: [NotificationType.EMAIL] },
         );
-        sent++;
+        if (delivered.length > 0) sent++;
       }
     }
 

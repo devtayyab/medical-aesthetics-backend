@@ -1,22 +1,45 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import { User } from './entities/user.entity';
+import { NotificationTemplate } from '../notifications/entities/notification-template.entity';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 import { MailService } from '../notifications/services/mail.service';
+import { isPlaceholderEmail } from '../notifications/utils/notification-format.util';
 import { resolveJwtSecret } from '../../common/utils/jwt-secret.util';
 
 export type PasswordTokenPurpose = 'password_reset' | 'password_set';
 
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+export interface AccountInvitationOptions {
+  appointmentDate?: string;
+  clinicName?: string;
+  clinicPhone?: string;
+  disableNotifications?: boolean;
+  force?: boolean;
+}
+
+const DEFAULT_CLIENT_INVITATION_SUBJECT = 'Ο λογαριασμός σας στο Beauty Doctors';
+const DEFAULT_CLIENT_INVITATION_CONTENT =
+  'Καλησπέρα {{name}},\n\n' +
+  'Με αφορμή το ραντεβού σας στις {{date}} στο {{clinic}}, δημιουργήσαμε έναν λογαριασμό για εσάς στη νέα πλατφόρμα του Beauty Doctors.\n\n' +
+  'Μέσα από την πλατφόρμα μπορείτε να ανακαλύψετε όλες τις υπηρεσίες των συνεργαζόμενων κλινικών μας, να διαχειρίζεστε τα ραντεβού σας και να απολαμβάνετε αποκλειστικές προσφορές για τα μέλη μας.\n\n' +
+  'Για να ενεργοποιήσετε τον λογαριασμό σας, ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n' +
+  '{{link}}\n\n' +
+  '(Ο σύνδεσμος ισχύει για 7 ημέρες.)\n\n' +
+  'Για οποιαδήποτε απορία, μη διστάσετε να επικοινωνήσετε μαζί μας στο {{phone}}.\n\n' +
+  'Με εκτίμηση,\nΗ ομάδα Beauty Doctors';
 
 /**
  * Signed, single-purpose links sent by email: email verification, password reset and
- * set-password (accounts created by staff or approved staff requests).
+ * set-password (client invitations & staff setup).
  *
- * Password links carry a fingerprint of the current password hash, so a link stops
- * working as soon as the password changes (single use).
+ * All emails are governed by NotificationTemplate rows in Settings -> Notifications
+ * (ON/OFF toggle + editable content), strictly skip `noemail` / placeholder addresses,
+ * and client invitations are sent at most once per customer (`users.invitationSentAt`).
  */
 @Injectable()
 export class AccountLinksService {
@@ -26,6 +49,10 @@ export class AccountLinksService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    @InjectRepository(NotificationTemplate)
+    private readonly templateRepository: Repository<NotificationTemplate>,
   ) {}
 
   // Same secret the auth module uses for its default JwtService.
@@ -109,89 +136,224 @@ export class AccountLinksService {
     return undefined;
   }
 
-  private layout(title: string, paragraphs: string[], buttonLabel?: string, url?: string): string {
-    const body = paragraphs.map((p) => `<p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 16px">${p}</p>`).join('');
-    const button = url && buttonLabel
-      ? `<p style="text-align:center;margin:28px 0"><a href="${url}" style="display:inline-block;background:#0f172a;color:#CBFF38;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:800;font-size:13px">${buttonLabel}</a></p>
-         <p style="font-size:12px;color:#64748b;word-break:break-all">${url}</p>`
-      : '';
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f8fafc;padding:24px;color:#1e293b">
-<div style="max-width:540px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:32px">
-<h1 style="font-size:20px;color:#0f172a;margin:0 0 16px">${title}</h1>${body}${button}
-<p style="font-size:11px;color:#94a3b8;margin-top:24px">BeautyDoctors</p></div></body></html>`;
+  private renderTemplateText(template: string, context: Record<string, string>): string {
+    return String(template || '').replace(/\{\{(.*?)\}\}/g, (_match, rawKey) => {
+      const key = String(rawKey || '').trim();
+      return context[key] !== undefined ? context[key] : '';
+    });
+  }
+
+  private async loadEmailTemplate(
+    trigger: NotificationTrigger,
+  ): Promise<{ allowed: boolean; template: NotificationTemplate | null }> {
+    try {
+      const tpl = await this.templateRepository.findOne({
+        where: { trigger, type: NotificationType.EMAIL },
+      });
+      if (tpl && !tpl.isActive) {
+        return { allowed: false, template: tpl };
+      }
+      return { allowed: true, template: tpl };
+    } catch (err: any) {
+      this.logger.warn(`Could not load template ${trigger}: ${err?.message || err}`);
+      return { allowed: true, template: null };
+    }
   }
 
   async sendVerificationLink(user: User, redirect?: string): Promise<void> {
-    if (!user.email) return;
+    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.EMAIL_VERIFICATION);
+    if (!allowed) return;
+
     const token = this.signEmailVerifyToken(user);
     const safe = this.safeRedirect(redirect);
     const url = `${this.frontendUrl}/verify-email?token=${encodeURIComponent(token)}${safe ? `&redirect=${encodeURIComponent(safe)}` : ''}`;
-    const name = escapeHtml(user.firstName || '');
-    const subject = 'Επιβεβαίωση email / Verify your email - BeautyDoctors';
-    const text = `Γεια σας ${name},\n\nΕπιβεβαιώστε το email σας: ${url}\n\nHello ${name},\n\nPlease verify your email address: ${url}\n\nThe link is valid for 3 days.`;
-    const html = this.layout(
-      'Επιβεβαίωση email / Verify your email',
-      [`Γεια σας ${name}, πατήστε το κουμπί για να επιβεβαιώσετε το email σας.`, `Hello ${name}, please click the button to verify your email address. The link is valid for 3 days.`],
-      'Επιβεβαίωση / Verify',
-      url,
+    const name = (user.firstName || '').trim();
+    const ctx = { name, customerName: name, link: url };
+    const subject = template?.subject
+      ? this.renderTemplateText(template.subject, ctx)
+      : 'Επιβεβαίωση email - Beauty Doctors';
+    const text = template?.content
+      ? this.renderTemplateText(template.content, ctx)
+      : `Γεια σας ${name},\n\nΕπιβεβαιώστε το email σας: ${url}\n\nΟ σύνδεσμος ισχύει για 3 ημέρες.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
+    const html = this.mailService.renderLayout(
+      subject,
+      this.mailService.textToHtml(text.replace(url, '').trim()),
+      { url, label: 'Επιβεβαίωση email' },
     );
     await this.safeSend(user.email, subject, text, html);
   }
 
   async sendPasswordResetLink(user: User): Promise<void> {
-    if (!user.email) return;
+    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.PASSWORD_RESET);
+    if (!allowed) return;
+
     const token = this.signPasswordToken(user, 'password_reset', '1h');
     const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    if (template?.subject && template?.content) {
+      const name = (user.firstName || '').trim();
+      const ctx = { name, customerName: name, link: url };
+      const subject = this.renderTemplateText(template.subject, ctx);
+      const text = this.renderTemplateText(template.content, ctx);
+      const html = this.mailService.renderLayout(
+        subject,
+        this.mailService.textToHtml(text.replace(url, '').trim()),
+        { url, label: 'Ορισμός νέου κωδικού' },
+      );
+      await this.safeSend(user.email, subject, text, html);
+      return;
+    }
+
     await this.mailService.sendPasswordResetEmail(user.email, url, user.firstName).catch((err: any) => {
       this.logger.error(`Failed to send password reset email to user ${user.id}: ${err?.message}`);
     });
   }
 
   /**
-   * One set-password link for an account somebody else created (staff-created client,
-   * approved staff member). Valid for 7 days, usable once.
+   * Sends the Greek "Set your password" invitation link.
+   *
+   * For clients:
+   *  - Governed by the editable `ACCOUNT_INVITATION` template in Settings -> Notifications.
+   *  - Never sent if `disableNotifications`, placeholder/`noemail` address, bulk-imported,
+   *    or already sent once (`user.invitationSentAt` is set).
+   *  - Records `user.invitationSentAt` when successfully sent.
    */
-  async sendSetPasswordLink(user: User, context: 'client' | 'staff' = 'client'): Promise<void> {
-    if (!user.email) return;
+  async sendSetPasswordLink(
+    user: User,
+    context: 'client' | 'staff' = 'client',
+    options: AccountInvitationOptions = {},
+  ): Promise<boolean> {
+    if (!user?.email || isPlaceholderEmail(user.email)) {
+      this.logger.debug(`Skipping set-password email for user ${user?.id}: missing or invalid/noemail address`);
+      return false;
+    }
+
+    if (context === 'client') {
+      if (options.disableNotifications || (user as any)?.profile?.disableNotifications === true) {
+        this.logger.debug(`Skipping client invitation for user ${user.id}: notifications disabled`);
+        return false;
+      }
+      if ((user as any)?.profile?.bulkImported === true) {
+        this.logger.debug(`Skipping client invitation for user ${user.id}: bulk-imported customer`);
+        return false;
+      }
+
+      // Reload latest invitationSentAt from DB so concurrent requests can never send twice.
+      const freshUser = await this.usersRepository.findOne({
+        where: { id: user.id },
+        select: ['id', 'invitationSentAt', 'isActive'] as any,
+      });
+      if (!freshUser || !freshUser.isActive) return false;
+      if (freshUser.invitationSentAt && !options.force) {
+        this.logger.debug(`Skipping client invitation for user ${user.id}: already sent at ${freshUser.invitationSentAt.toISOString()}`);
+        return false;
+      }
+
+      const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.ACCOUNT_INVITATION);
+      if (!allowed) {
+        this.logger.debug(`Skipping client invitation for user ${user.id}: ACCOUNT_INVITATION template is OFF`);
+        return false;
+      }
+
+      const token = this.signPasswordToken(user, 'password_set', '7d');
+      const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
+      const name = `${user.firstName || ''}`.trim() || 'πελάτη μας';
+      const supportPhone =
+        options.clinicPhone ||
+        this.configService.get<string>('SUPPORT_PHONE') ||
+        'info@beautydoctors.gr';
+      const apptDate = (options.appointmentDate || '').trim();
+      const clinicName = (options.clinicName || '').trim();
+
+      const ctx: Record<string, string> = {
+        name,
+        customerName: name,
+        date: apptDate,
+        appointmentDate: apptDate,
+        clinic: clinicName,
+        clinicName,
+        link: url,
+        phone: supportPhone,
+      };
+
+      const rawSubject = template?.subject || DEFAULT_CLIENT_INVITATION_SUBJECT;
+      let rawContent = template?.content || DEFAULT_CLIENT_INVITATION_CONTENT;
+
+      // When sent without an appointment context (e.g. direct online self-registration),
+      // remove the empty "Με αφορμή το ραντεβού σας στις {{date}} στο {{clinic}}, " prefix cleanly.
+      if (!apptDate || !clinicName) {
+        rawContent = rawContent.replace(
+          /Με αφορμή το ραντεβού σας στις\s*\{\{date\}\}\s*στο\s*\{\{clinic\}\},?\s*/gi,
+          '',
+        );
+      }
+
+      const subject = this.renderTemplateText(rawSubject, ctx);
+      const text = this.renderTemplateText(rawContent, ctx);
+      const htmlBody = this.mailService.textToHtml(text.replace(url, '').replace(/\n{3,}/g, '\n\n').trim());
+      const html = this.mailService.renderLayout(subject, htmlBody, {
+        url,
+        label: 'Ορισμός κωδικού',
+      });
+
+      const sent = await this.safeSend(user.email, subject, text, html);
+      if (sent) {
+        await this.usersRepository.update(user.id, { invitationSentAt: new Date() });
+      }
+      return sent;
+    }
+
+    // Staff setup link
+    const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.STAFF_ACCOUNT_INVITATION);
+    if (!allowed) return false;
+
     const token = this.signPasswordToken(user, 'password_set', '7d');
     const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
-    const name = escapeHtml(user.firstName || '');
-    const intro = context === 'staff'
-      ? ['Δημιουργήθηκε λογαριασμός προσωπικού για εσάς στο BeautyDoctors.', 'A staff account was created for you on BeautyDoctors.']
-      : ['Δημιουργήθηκε λογαριασμός για εσάς στο BeautyDoctors.', 'An account was created for you on BeautyDoctors.'];
-    const subject = 'Ορίστε τον κωδικό σας / Set your password - BeautyDoctors';
-    const text = `Γεια σας ${name},\n\n${intro[0]} Ορίστε τον κωδικό σας: ${url}\n\nHello ${name},\n\n${intro[1]} Set your password here: ${url}\n\nThe link is valid for 7 days and works once.`;
-    const html = this.layout(
-      'Ορίστε τον κωδικό σας / Set your password',
-      [`Γεια σας ${name}, ${intro[0]}`, `Hello ${name}, ${intro[1]} The link is valid for 7 days and works once.`],
-      'Ορισμός κωδικού / Set password',
-      url,
+    const name = `${user.firstName || ''}`.trim();
+    const ctx = { name, customerName: name, link: url };
+    const subject = template?.subject
+      ? this.renderTemplateText(template.subject, ctx)
+      : 'Ορισμός κωδικού προσωπικού - Beauty Doctors';
+    const text = template?.content
+      ? this.renderTemplateText(template.content, ctx)
+      : `Γεια σας ${name},\n\nΔημιουργήθηκε λογαριασμός προσωπικού για εσάς στο Beauty Doctors. Ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n${url}\n\nΟ σύνδεσμος ισχύει για 7 ημέρες και μπορεί να χρησιμοποιηθεί μία φορά.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
+    const html = this.mailService.renderLayout(
+      subject,
+      this.mailService.textToHtml(text.replace(url, '').replace(/\n{3,}/g, '\n\n').trim()),
+      { url, label: 'Ορισμός κωδικού' },
     );
-    await this.safeSend(user.email, subject, text, html);
+    return this.safeSend(user.email, subject, text, html);
   }
 
   async sendLoginCode(user: User, code: string): Promise<void> {
-    if (!user.email) return;
-    const subject = `${code} - Κωδικός σύνδεσης / Login code - BeautyDoctors`;
-    const text = `Ο κωδικός σύνδεσης σας: ${code}\nYour login code: ${code}\n\nΙσχύει για 10 λεπτά. Valid for 10 minutes.\nΑν δεν προσπαθήσατε να συνδεθείτε, αλλάξτε τον κωδικό σας.\nIf you did not try to log in, change your password.`;
-    const html = this.layout(
-      'Κωδικός σύνδεσης / Login code',
-      [
-        `<span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#0f172a">${code}</span>`,
-        'Ισχύει για 10 λεπτά. Valid for 10 minutes.',
-        'Αν δεν προσπαθήσατε να συνδεθείτε, αλλάξτε τον κωδικό σας. If you did not try to log in, change your password.',
-      ],
+    if (!user?.email || isPlaceholderEmail(user.email)) return;
+    const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.LOGIN_CODE);
+    if (!allowed) return;
+
+    const name = `${user.firstName || ''}`.trim();
+    const ctx = { name, customerName: name, code };
+    const subject = template?.subject
+      ? this.renderTemplateText(template.subject, ctx)
+      : `${code} - Κωδικός σύνδεσης - Beauty Doctors`;
+    const text = template?.content
+      ? this.renderTemplateText(template.content, ctx)
+      : `Ο κωδικός σύνδεσής σας είναι: ${code}\n\nΙσχύει για 10 λεπτά. Αν δεν προσπαθήσατε να συνδεθείτε, αλλάξτε τον κωδικό σας.`;
+    const html = this.mailService.renderLayout(
+      'Κωδικός σύνδεσης',
+      `<p style="text-align:center;font-size:32px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${code}</p>${this.mailService.textToHtml(text)}`,
     );
     await this.safeSend(user.email, subject, text, html);
   }
 
-  private async safeSend(to: string, subject: string, text: string, html: string) {
+  private async safeSend(to: string, subject: string, text: string, html: string): Promise<boolean> {
     try {
-      await this.mailService.sendMail(to, subject, text, html);
+      const res = await this.mailService.sendMail(to, subject, text, html);
+      return Boolean(res?.messageId);
     } catch (err: any) {
       // No subject or address in logs: the login-code subject contains the code itself.
       this.logger.error(`Failed to send an account email: ${err?.message}`);
+      return false;
     }
   }
 }

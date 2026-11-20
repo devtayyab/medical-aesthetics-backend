@@ -90,14 +90,8 @@ export class CrmListener {
                 }
 
                 if (convertedUser) {
-                    if (passwordToEmail && convertedUser.email) {
-                        await this.notificationsService.sendWelcomeCredentials(
-                            convertedUser.id,
-                            convertedUser.email,
-                            passwordToEmail,
-                            convertedUser.firstName || lead.firstName
-                        );
-                    }
+                    // Never send automatic welcome/password emails on lead conversion;
+                    // invitations are controlled via Settings -> Notifications and explicit opt-in.
                     await this.crmService.update(lead.id, {
                         metadata: {
                             ...lead.metadata,

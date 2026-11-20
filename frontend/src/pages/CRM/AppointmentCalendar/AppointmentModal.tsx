@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   X, Search, User, Scissors, MapPin, Clock, StickyNote,
-  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink, Lock, BellOff
+  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink, Lock, BellOff, Mail, Award
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -178,16 +178,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         paymentStatus = (paid > 0 && paid < serviceAmount) ? 'PARTIALLY_PAID' : 'PAID';
       }
 
-      // Salesperson/Booked by: assign ONLY to an actual salesperson/manager/admin representative or booker.
-      // NEVER fallback to providerId (Doctor), clinic_owner, secretariat, or client!
-      const staffRoles = ['salesperson', 'manager', 'admin', 'super_admin'];
+      // Staff / Booker resolution: include sales, admin, manager AND clinic staff
+      // (secretariat, clinic_owner, doctor) so clinic bookings never fall back to "Unassigned".
+      const staffRoles = ['salesperson', 'manager', 'admin', 'super_admin', 'secretariat', 'clinic_owner', 'doctor'];
       const repRole = String((apt as any).representative?.role || '').toLowerCase();
       const bookedRole = String((apt as any).bookedBy?.role || (apt as any).bookedByInfo?.role || '').toLowerCase();
-      const validRepId = (apt as any).representativeId && (!repRole || staffRoles.includes(repRole))
-        ? (apt as any).representativeId
-        : (apt as any).representative?.id && staffRoles.includes(repRole)
-        ? (apt as any).representative.id
-        : '';
       const validBookedId = (apt as any).bookedById && (
         staffRoles.includes(bookedRole) ||
         salespersons.some(sp => sp.id === (apt as any).bookedById)
@@ -195,9 +190,16 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         ? (apt as any).bookedById
         : (apt as any).bookedBy?.id && staffRoles.includes(bookedRole)
         ? (apt as any).bookedBy.id
+        : (apt as any).bookedByInfo?.id && staffRoles.includes(bookedRole)
+        ? (apt as any).bookedByInfo.id
+        : '';
+      const validRepId = (apt as any).representativeId && (!repRole || staffRoles.includes(repRole))
+        ? (apt as any).representativeId
+        : (apt as any).representative?.id && staffRoles.includes(repRole)
+        ? (apt as any).representative.id
         : '';
       const rawBookedId = validRepId || validBookedId || '';
-      const isClientBooker = bookedRole === 'client' ||
+      const isClientBooker = (bookedRole === 'client' && !validRepId) ||
         rawBookedId === apt.clientId ||
         rawBookedId === (apt as any).client?.id;
       const bookedPersonId = isClientBooker ? '' : rawBookedId;
@@ -222,6 +224,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         status: apt.status as any,
         notes: apt.notes || '',
         disableNotifications: Boolean((apt as any).disableNotifications),
+        sendInvitation: false,
         paymentMethod: apt.paymentMethod as any || '',
         amount: serviceAmount,
         tax: TAX_RATE,
@@ -255,6 +258,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         status: 'PENDING',
         notes: '',
         disableNotifications: false,
+        sendInvitation: false,
         paymentMethod: '',
         amount: 0,
         tax: TAX_RATE,
@@ -723,6 +727,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           status: overrideStatus || form.status,
           notes: form.notes,
           disableNotifications: Boolean(form.disableNotifications),
+          sendInvitation: Boolean(form.sendInvitation && !form.disableNotifications && !/^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')),
         };
 
         if (form.isNewPatient && form.newPatientDetails) {
@@ -986,9 +991,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     {selectedPatient.firstName?.[0]?.toUpperCase() || 'P'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-slate-800 truncate">
-                      {form.patientName}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-[12px] font-bold text-slate-800 truncate">
+                        {form.patientName}
+                      </p>
+                      {(Boolean((selectedPatient as any)?.isBeautyDoctorsMember) || Boolean((existingAppointment as any)?.isBeautyDoctorsClient)) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                          <Award className="w-2.5 h-2.5" />
+                          {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
+                        </span>
+                      )}
+                    </div>
                     {selectedPatient.phone && (
                       <p className="text-[10px] text-slate-400">{selectedPatient.phone}</p>
                     )}
@@ -1133,80 +1146,154 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             </div>
 
             {/* Assigned Staff Member / Υπεύθυνος ραντεβού */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-                <User className="inline w-3 h-3 mr-1" /> {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}
-              </label>
-              <select
-                value={form.salesPersonId}
-                onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                <option value="">{isGreek ? 'Χωρίς ανάθεση (Απευθείας Κράτηση)' : 'Unassigned (Direct Online Booking)'}</option>
-                {salespersons.map(sp => (
-                  <option key={sp.id} value={sp.id}>{sp.name}</option>
-                ))}
-                {user && !salespersons.some(sp => sp.id === user.id) && (
-                  <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`.trim()}</option>
-                )}
-                {existingAppointment?.bookedBy &&
-                  ['salesperson', 'manager', 'admin', 'super_admin'].includes(String(existingAppointment.bookedBy.role || '').toLowerCase()) &&
-                  existingAppointment.bookedBy.id !== existingAppointment.clientId &&
-                  existingAppointment.bookedBy.id !== (existingAppointment as any).client?.id &&
-                  !salespersons.some(sp => sp.id === existingAppointment.bookedBy?.id) &&
-                  existingAppointment.bookedBy?.id !== user?.id && (
-                    <option value={existingAppointment.bookedBy.id}>
-                      {`${existingAppointment.bookedBy.firstName || ''} ${existingAppointment.bookedBy.lastName || ''} (Booked by)`.trim()}
-                    </option>
-                )}
-                {(existingAppointment as any)?.representative &&
-                  ['salesperson', 'manager', 'admin', 'super_admin'].includes(String((existingAppointment as any).representative.role || '').toLowerCase()) &&
-                  (existingAppointment as any).representative.id !== existingAppointment?.clientId &&
-                  (existingAppointment as any).representative.id !== (existingAppointment as any)?.client?.id &&
-                  !salespersons.some(sp => sp.id === (existingAppointment as any).representative?.id) &&
-                  (existingAppointment as any).representative?.id !== user?.id && (
-                    <option value={(existingAppointment as any).representative.id}>
-                      {`${(existingAppointment as any).representative.firstName || ''} ${(existingAppointment as any).representative.lastName || ''}`.trim()}
-                    </option>
-                )}
-                {form.salesPersonId &&
-                  form.salesPersonId !== existingAppointment?.clientId &&
-                  form.salesPersonId !== (existingAppointment as any)?.client?.id &&
-                  !salespersons.some(sp => sp.id === form.salesPersonId) &&
-                  form.salesPersonId !== user?.id &&
-                  form.salesPersonId !== existingAppointment?.bookedBy?.id &&
-                  form.salesPersonId !== (existingAppointment as any)?.representative?.id && (
-                    <option value={form.salesPersonId}>
-                      {(existingAppointment as any)?.bookedByName || 'Assigned Staff'}
-                    </option>
-                )}
-              </select>
+            {(() => {
+              const roleBadgeLabel = (rawRole?: string) => {
+                const r = String(rawRole || '').toLowerCase();
+                if (r === 'secretariat') return isGreek ? 'Γραμματεία' : 'Secretariat';
+                if (r === 'clinic_owner') return isGreek ? 'Ιδιοκτήτης Κλινικής' : 'Clinic Owner';
+                if (r === 'doctor') return isGreek ? 'Ιατρός' : 'Doctor';
+                if (r === 'admin' || r === 'super_admin') return isGreek ? 'Διαχειριστής' : 'Admin';
+                if (r === 'manager') return isGreek ? 'Διευθυντής' : 'Manager';
+                if (r === 'salesperson') return isGreek ? 'Πωλήσεις' : 'Sales';
+                return '';
+              };
+              const clinicRoles = ['secretariat', 'clinic_owner', 'doctor'];
+              const allStaffRoles = ['salesperson', 'manager', 'admin', 'super_admin', 'secretariat', 'clinic_owner', 'doctor'];
+              const bookerObj = existingAppointment?.bookedBy || (existingAppointment as any)?.bookedByInfo;
+              const repObj = (existingAppointment as any)?.representative;
+              const bookerRole = String(bookerObj?.role || '').toLowerCase();
+              const repRole = String(repObj?.role || '').toLowerCase();
+              const isClinicBooking =
+                mode === 'edit' &&
+                existingAppointment &&
+                (existingAppointment.appointmentSource === 'clinic_own' ||
+                  clinicRoles.includes(bookerRole) ||
+                  clinicRoles.includes(repRole));
+              const isDirectOnlineBooking =
+                mode === 'edit' &&
+                existingAppointment &&
+                !isClinicBooking &&
+                !form.salesPersonId;
 
-              {/* Doctor / Specialist & Execution info display in edit mode */}
-              {mode === 'edit' && existingAppointment && (
-                <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px]">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">
-                      {isGreek ? 'Ιατρός / Ειδικός' : 'Doctor / Specialist'}:
-                    </span>
-                    <span className={`font-black ${existingAppointment.providerName ? 'text-indigo-600' : 'text-slate-400 italic'}`}>
-                      {/* Server-resolved doctor (QA #34); never the owner/secretary/sales account that booked */}
-                      {existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : (isGreek ? 'Χωρίς ανάθεση' : 'Not assigned')}
-                    </span>
+              const formatStaffLabel = (person: any) => {
+                const name = person?.name || `${person?.firstName || ''} ${person?.lastName || ''}`.trim() || 'Staff';
+                const rLabel = roleBadgeLabel(person?.role);
+                return rLabel ? `${name} – ${rLabel}` : name;
+              };
+
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide">
+                      <User className="inline w-3 h-3 mr-1" /> {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}
+                    </label>
+                    {mode === 'edit' && existingAppointment && (
+                      <span
+                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          isClinicBooking
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : isDirectOnlineBooking
+                              ? 'bg-sky-50 text-sky-700 border-sky-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        }`}
+                      >
+                        {isClinicBooking
+                          ? (isGreek ? 'Ραντεβού Κλινικής' : 'Clinic Appointment')
+                          : isDirectOnlineBooking
+                            ? (isGreek ? 'Απευθείας Online Κράτηση' : 'Direct Online Booking')
+                            : (isGreek ? 'Κράτηση Beauty Doctors' : 'Beauty Doctors Booking')}
+                      </span>
+                    )}
                   </div>
-                  {((existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName) && (
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-                      <span className="font-bold text-emerald-600 uppercase text-[9px] tracking-wider">
-                        {isGreek ? 'Εκτελέστηκε από' : 'Executed By'}:
-                      </span>
-                      <span className="font-black text-emerald-700">
-                        {(existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName}
-                      </span>
+                  <select
+                    value={form.salesPersonId}
+                    onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  >
+                    <option value="">{isGreek ? 'Χωρίς ανάθεση (Απευθείας Κράτηση)' : 'Unassigned (Direct Online Booking)'}</option>
+                    {salespersons.map(sp => (
+                      <option key={sp.id} value={sp.id}>{sp.name}</option>
+                    ))}
+                    {user && !salespersons.some(sp => sp.id === user.id) && (
+                      <option value={user.id}>
+                        {`${user.firstName || ''} ${user.lastName || ''}`.trim()}{roleBadgeLabel(user.role) ? ` – ${roleBadgeLabel(user.role)}` : ''} ({isGreek ? 'Εγώ' : 'Me'})
+                      </option>
+                    )}
+                    {existingAppointment?.bookedBy &&
+                      allStaffRoles.includes(String(existingAppointment.bookedBy.role || '').toLowerCase()) &&
+                      existingAppointment.bookedBy.id !== existingAppointment.clientId &&
+                      existingAppointment.bookedBy.id !== (existingAppointment as any).client?.id &&
+                      !salespersons.some(sp => sp.id === existingAppointment.bookedBy?.id) &&
+                      existingAppointment.bookedBy?.id !== user?.id && (
+                        <option value={existingAppointment.bookedBy.id}>
+                          {formatStaffLabel(existingAppointment.bookedBy)}
+                        </option>
+                    )}
+                    {(existingAppointment as any)?.representative &&
+                      allStaffRoles.includes(String((existingAppointment as any).representative.role || '').toLowerCase()) &&
+                      (existingAppointment as any).representative.id !== existingAppointment?.clientId &&
+                      (existingAppointment as any).representative.id !== (existingAppointment as any)?.client?.id &&
+                      (existingAppointment as any).representative.id !== existingAppointment?.bookedBy?.id &&
+                      !salespersons.some(sp => sp.id === (existingAppointment as any).representative?.id) &&
+                      (existingAppointment as any).representative?.id !== user?.id && (
+                        <option value={(existingAppointment as any).representative.id}>
+                          {formatStaffLabel((existingAppointment as any).representative)}
+                        </option>
+                    )}
+                    {form.salesPersonId &&
+                      form.salesPersonId !== existingAppointment?.clientId &&
+                      form.salesPersonId !== (existingAppointment as any)?.client?.id &&
+                      !salespersons.some(sp => sp.id === form.salesPersonId) &&
+                      form.salesPersonId !== user?.id &&
+                      form.salesPersonId !== existingAppointment?.bookedBy?.id &&
+                      form.salesPersonId !== (existingAppointment as any)?.representative?.id && (
+                        <option value={form.salesPersonId}>
+                          {(existingAppointment as any)?.bookedByInfo
+                            ? formatStaffLabel((existingAppointment as any).bookedByInfo)
+                            : ((existingAppointment as any)?.bookedByName || 'Assigned Staff')}
+                        </option>
+                    )}
+                  </select>
+
+                  {/* Doctor / Specialist & Execution info display in edit mode */}
+                  {mode === 'edit' && existingAppointment && (
+                    <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px]">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">
+                          {isGreek ? 'Τύπος Κράτησης' : 'Booking Type'}:
+                        </span>
+                        <span className="font-black text-slate-700">
+                          {isClinicBooking
+                            ? (isGreek ? 'Ραντεβού Κλινικής' : 'Clinic Appointment')
+                            : isDirectOnlineBooking
+                              ? (isGreek ? 'Απευθείας Online Κράτηση' : 'Direct Online Booking')
+                              : (isGreek ? 'Κράτηση Beauty Doctors' : 'Beauty Doctors Booking')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">
+                          {isGreek ? 'Ιατρός / Ειδικός' : 'Doctor / Specialist'}:
+                        </span>
+                        <span className={`font-black ${existingAppointment.providerName ? 'text-indigo-600' : 'text-slate-400 italic'}`}>
+                          {/* Server-resolved doctor (QA #34); never the owner/secretary/sales account that booked */}
+                          {existingAppointment.providerName ? `Dr. ${existingAppointment.providerName}` : (isGreek ? 'Χωρίς ανάθεση' : 'Not assigned')}
+                        </span>
+                      </div>
+                      {((existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName) && (
+                        <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                          <span className="font-bold text-emerald-600 uppercase text-[9px] tracking-wider">
+                            {isGreek ? 'Εκτελέστηκε από' : 'Executed By'}:
+                          </span>
+                          <span className="font-black text-emerald-700">
+                            {(existingAppointment as any).executedByName || (existingAppointment as any).executedByInfo?.name || (existingAppointment as any).appointmentCompletionReport?.recordedByName}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Target Date */}
             <div>
@@ -1381,13 +1468,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             </div>
 
             {/* Disable Notifications Toggle */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={Boolean(form.disableNotifications) || /^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')}
                   disabled={/^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')}
-                  onChange={e => setForm(prev => ({ ...prev, disableNotifications: e.target.checked }))}
+                  onChange={e => setForm(prev => ({
+                    ...prev,
+                    disableNotifications: e.target.checked,
+                    sendInvitation: e.target.checked ? false : prev.sendInvitation,
+                  }))}
                   className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <div className="flex-1 min-w-0">
@@ -1402,6 +1493,32 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   </p>
                 </div>
               </label>
+
+              {mode === 'create' && (() => {
+                const notificationsBlocked = Boolean(form.disableNotifications) || /^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '');
+                return (
+                  <label className={`flex items-start gap-2.5 pt-2.5 border-t border-slate-200 select-none ${notificationsBlocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      checked={!notificationsBlocked && Boolean(form.sendInvitation)}
+                      disabled={notificationsBlocked}
+                      onChange={e => setForm(prev => ({ ...prev, sendInvitation: e.target.checked }))}
+                      className="mt-0.5 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[12px] font-bold text-slate-700">
+                        <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{isGreek ? 'Αποστολή πρόσκλησης λογαριασμού στον πελάτη' : 'Send Invitation to Customer'}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {isGreek
+                          ? 'Στέλνει μία φορά το email ενεργοποίησης λογαριασμού ("Ορίστε τον κωδικό σας") αν ο πελάτης έχει έγκυρο email.'
+                          : 'Sends the one-time "Set your password" account invitation email if the customer has a valid email.'}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })()}
             </div>
           </div>
 

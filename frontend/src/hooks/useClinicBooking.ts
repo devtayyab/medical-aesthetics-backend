@@ -53,6 +53,7 @@ export const useClinicBooking = ({
   });
   const [notes, setNotes] = useState('');
   const [disableNotifications, setDisableNotifications] = useState(false);
+  const [sendInvitation, setSendInvitation] = useState(false);
   const [customStartTime, setCustomStartTime] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
   const [clinicTimezone, setClinicTimezone] = useState('Europe/Athens');
@@ -78,6 +79,7 @@ export const useClinicBooking = ({
       setSlotReason(null);
       setNotes('');
       setDisableNotifications(false);
+      setSendInvitation(false);
       setCustomStartTime('');
       setCustomEndTime('');
       setError(null);
@@ -213,6 +215,7 @@ export const useClinicBooking = ({
         clientDetails: clientData,
         notes: notes,
         disableNotifications: Boolean(disableNotifications),
+        sendInvitation: Boolean(sendInvitation && !disableNotifications && !/^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')),
       });
       onSuccess();
       onClose();
@@ -235,6 +238,8 @@ export const useClinicBooking = ({
     setNotes,
     disableNotifications,
     setDisableNotifications,
+    sendInvitation,
+    setSendInvitation,
     customStartTime,
     setCustomStartTime: handleCustomStartTimeChange,
     customEndTime,

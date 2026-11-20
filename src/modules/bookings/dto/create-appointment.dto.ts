@@ -60,6 +60,11 @@ export class CreateAppointmentDto {
   @IsBoolean()
   disableNotifications?: boolean;
 
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  sendInvitation?: boolean;
+
   @ApiProperty({ example: 'cash', required: false })
   @IsOptional()
   @IsString()

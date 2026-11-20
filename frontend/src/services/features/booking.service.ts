@@ -35,6 +35,7 @@ export const bookingService = {
     endTime: string;
     notes?: string;
     disableNotifications?: boolean;
+    sendInvitation?: boolean;
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
@@ -90,6 +91,7 @@ export const bookingService = {
     serviceId?: string;
     notes?: string;
     disableNotifications?: boolean;
+    sendInvitation?: boolean;
     totalAmount?: number;
     additionalServiceIds?: string[];
     representativeId?: string | null;

@@ -33,6 +33,8 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
     setNotes,
     disableNotifications,
     setDisableNotifications,
+    sendInvitation,
+    setSendInvitation,
     customStartTime,
     setCustomStartTime,
     customEndTime,
@@ -189,16 +191,31 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  onChange={(e) => setNotes(e.target.value)}
  />
  </div>
+ <div className="space-y-2">
  <label className="flex items-center gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer select-none">
    <input
      type="checkbox"
      checked={disableNotifications || /^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
      disabled={/^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
-     onChange={(e) => setDisableNotifications(e.target.checked)}
+     onChange={(e) => {
+       setDisableNotifications(e.target.checked);
+       if (e.target.checked) setSendInvitation(false);
+     }}
      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
    />
    <span className="text-xs font-bold text-gray-700">Disable automatic notifications (Email &amp; Push)</span>
  </label>
+ <label className={`flex items-center gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg select-none ${(disableNotifications || /^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+   <input
+     type="checkbox"
+     checked={!disableNotifications && !/^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '') && sendInvitation}
+     disabled={disableNotifications || /^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
+     onChange={(e) => setSendInvitation(e.target.checked)}
+     className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+   />
+   <span className="text-xs font-bold text-gray-700">Send Invitation to Customer (Set your password email)</span>
+ </label>
+ </div>
  </div>
  </div>
  )}

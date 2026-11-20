@@ -26,6 +26,8 @@ import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
 import { APPOINTMENT_NOTIFY_EVENT } from '../events/appointment-notify.event';
+import { USER_CREATED_BY_STAFF_EVENT } from '../users/account-setup.listener';
+import { athensDate, isPlaceholderEmail } from '../notifications/utils/notification-format.util';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 
@@ -322,11 +324,10 @@ export class BookingsService {
               console.log('✅ [BookingsService] CRM Customer created:', { clientId: savedUser.id });
             } catch (createErr) {
               console.error('Failed to create guest customer during booking:', createErr);
-              const retryWhere: any[] = [];
-              if (createAppointmentDto.clientDetails.email) retryWhere.push({ email: createAppointmentDto.clientDetails.email });
-              if (createAppointmentDto.clientDetails.phone) retryWhere.push({ phone: createAppointmentDto.clientDetails.phone });
-
-              const retryUser = await this.usersRepository.findOne({ where: retryWhere });
+              const retryUser = await this.crmService.findClientUserByContact(
+                createAppointmentDto.clientDetails.email,
+                createAppointmentDto.clientDetails.phone,
+              );
               if (retryUser) {
                 clientId = retryUser.id;
                 userExists = retryUser;
@@ -394,33 +395,113 @@ export class BookingsService {
       }
     }
 
-    // --- ENHANCED: Beauty Doctors Client Identification ---
+    // --- ENHANCED: Beauty Doctors Client / Member Recognition (by mobile, email, CRM record & lead) ---
     let isBeautyDoctorsClient = false;
     let representativeId = createAppointmentDto.representativeId || null;
     const isClinicOwnProfile = Boolean((userExists as any)?.profile?.clinicOwnClient);
+    const isFreshaNotes = this.isFreshaImportedNotes(createAppointmentDto.notes);
 
-    if (!representativeId && userExists && !isClinicOwnProfile) {
-      // 1. Check if user is assigned to a salesperson
-      const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } });
-      if (customerRecord?.assignedSalespersonId) {
-        isBeautyDoctorsClient = true;
-        representativeId = customerRecord.assignedSalespersonId;
-      } else if (customerRecord) {
-        isBeautyDoctorsClient = true;
+    const lookupEmail =
+      (userExists?.email && !isPlaceholderEmail(userExists.email) ? userExists.email : undefined) ||
+      (createAppointmentDto.clientDetails?.email && !isPlaceholderEmail(createAppointmentDto.clientDetails.email)
+        ? createAppointmentDto.clientDetails.email
+        : undefined);
+    const lookupPhone = userExists?.phone || createAppointmentDto.clientDetails?.phone || undefined;
+
+    // Always check existing CRM records AND CRM leads by normalized mobile / real email,
+    // regardless of whether a clinic secretariat / representativeId is set.
+    const matchedLead = (lookupPhone || lookupEmail)
+      ? await this.crmService.findLeadByContact(lookupEmail, lookupPhone).catch(() => null)
+      : null;
+
+    const existingCustomerRecord = userExists
+      ? await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } })
+      : null;
+
+    if (
+      Boolean((userExists as any)?.isBeautyDoctorsMember) ||
+      Boolean(matchedLead) ||
+      Boolean(existingCustomerRecord) ||
+      isFreshaNotes ||
+      createAppointmentDto.appointmentSource === 'platform_broker' ||
+      (!this.isClinicAccountRole(actor?.role) && !isClinicOwnProfile)
+    ) {
+      isBeautyDoctorsClient = true;
+    }
+
+    if (!representativeId && existingCustomerRecord?.assignedSalespersonId) {
+      representativeId = existingCustomerRecord.assignedSalespersonId;
+    } else if (!representativeId && matchedLead?.assignedSalesId) {
+      representativeId = matchedLead.assignedSalesId;
+    }
+
+    // Persist Beauty Doctors Member status on the customer profile and link matched lead
+    if (userExists && isBeautyDoctorsClient) {
+      const updates: Partial<User> = {};
+      if (!(userExists as any).isBeautyDoctorsMember) {
+        (userExists as any).isBeautyDoctorsMember = true;
+        updates.isBeautyDoctorsMember = true;
       }
-    } else if (!userExists) {
-      // Or if they were from a source that implies central ownership
-      if (createAppointmentDto.appointmentSource === 'platform_broker') {
-        isBeautyDoctorsClient = true;
+      if (isClinicOwnProfile && (matchedLead || existingCustomerRecord || isFreshaNotes)) {
+        const cleanedProfile = { ...((userExists as any).profile || {}) };
+        delete cleanedProfile.clinicOwnClient;
+        (userExists as any).profile = cleanedProfile;
+        updates.profile = cleanedProfile;
+      }
+      if (Object.keys(updates).length > 0) {
+        await this.usersRepository.update(userExists.id, updates as any);
+      }
+      if (!existingCustomerRecord) {
+        await this.crmService.createCustomerRecord(
+          userExists.id,
+          matchedLead?.assignedSalesId || undefined,
+        ).catch(() => undefined);
+      }
+      if (matchedLead && !(matchedLead.metadata as any)?.convertedToUserId) {
+        await this.leadsRepository.update(matchedLead.id, {
+          metadata: {
+            ...(matchedLead.metadata || {}),
+            convertedToUserId: userExists.id,
+            convertedToCustomerId: userExists.id,
+          },
+        } as any).catch(() => undefined);
       }
     }
 
     const effectiveSource: 'clinic_own' | 'platform_broker' =
-      createAppointmentDto.appointmentSource === 'clinic_own' ||
-      isClinicOwnProfile ||
-      (!isBeautyDoctorsClient && this.isClinicAccountRole(actor?.role))
+      isFreshaNotes
+        ? 'platform_broker'
+        : (createAppointmentDto.appointmentSource === 'clinic_own' ||
+            this.isClinicAccountRole(actor?.role) ||
+            (isClinicOwnProfile && !isBeautyDoctorsClient))
         ? 'clinic_own'
         : (createAppointmentDto.appointmentSource || 'platform_broker');
+
+    // Always populate clientDetails (fullName, phone, real email) so it is never saved NULL/empty
+    const incomingDetails: any = createAppointmentDto.clientDetails || {};
+    const userFullName = userExists
+      ? `${userExists.firstName || ''} ${userExists.lastName || ''}`.trim()
+      : '';
+    const leadFullName = matchedLead
+      ? `${matchedLead.firstName || ''} ${matchedLead.lastName || ''}`.trim()
+      : '';
+    const cleanIncomingEmail =
+      incomingDetails.email && !isPlaceholderEmail(incomingDetails.email)
+        ? String(incomingDetails.email).trim().toLowerCase()
+        : '';
+    const cleanUserEmail =
+      userExists?.email && !isPlaceholderEmail(userExists.email)
+        ? String(userExists.email).trim().toLowerCase()
+        : '';
+    const cleanLeadEmail =
+      matchedLead?.email && !isPlaceholderEmail(matchedLead.email)
+        ? String(matchedLead.email).trim().toLowerCase()
+        : '';
+    const resolvedClientDetails = {
+      fullName: String(incomingDetails.fullName || '').trim() || userFullName || leadFullName || 'Client',
+      phone: String(incomingDetails.phone || '').trim() || userExists?.phone || matchedLead?.phone || '',
+      email: cleanIncomingEmail || cleanUserEmail || cleanLeadEmail || '',
+    };
 
     const parsedStartTime = new Date(createAppointmentDto.startTime);
     const explicitEndTime = this.parseValidEndTime(parsedStartTime, createAppointmentDto.endTime);
@@ -432,13 +513,13 @@ export class BookingsService {
       startTime: parsedStartTime,
       endTime: explicitEndTime || parsedStartTime,
       appointmentSource: effectiveSource,
-      clientDetails: createAppointmentDto.clientDetails,
+      clientDetails: resolvedClientDetails,
       bookedById: (createAppointmentDto.bookedById && createAppointmentDto.bookedById !== clientId) ? createAppointmentDto.bookedById : null,
-      isBeautyDoctorsClient: effectiveSource === 'clinic_own' ? false : isBeautyDoctorsClient,
+      isBeautyDoctorsClient,
       representativeId,
       disableNotifications:
         Boolean((createAppointmentDto as any).disableNotifications) ||
-        this.isFreshaImportedNotes(createAppointmentDto.notes),
+        isFreshaNotes,
     };
 
     // Auto-set totalAmount based on all selected services if not already provided
@@ -704,8 +785,50 @@ export class BookingsService {
     // One notification event; recipients are decided in AppointmentNotificationsListener.
     // Sent only once the booking is final: a card booking whose payment order fails is deleted
     // again, and must not have announced itself to staff, the clinic and the client.
-    const notifyCreated = () =>
-      this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, { kind: 'created', appointmentId: savedAppointment.id, actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId });
+    const normalizedActorRole = String(actor?.role || '').toLowerCase();
+    const isStaffActor = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.MANAGER,
+      UserRole.SALESPERSON,
+      UserRole.CLINIC_OWNER,
+      UserRole.DOCTOR,
+      UserRole.SECRETARIAT,
+    ].map((r) => r.toLowerCase()).includes(normalizedActorRole);
+
+    const notifyCreated = () => {
+      this.eventEmitter.emit(APPOINTMENT_NOTIFY_EVENT, {
+        kind: 'created',
+        appointmentId: savedAppointment.id,
+        actorId: appointmentWithRelations.bookedById || appointmentWithRelations.clientId,
+      });
+
+      // Account "Set your password" invitation email:
+      // - Staff bookings: ONLY if "Send Invitation to Customer" (`sendInvitation: true`) was explicitly checked.
+      // - Online customer self-booking: ONLY if account still needs setup.
+      // - NEVER sent when `disableNotifications` is true, email is missing/noemail, or already sent once.
+      const shouldSendInvitation = isStaffActor
+        ? Boolean((createAppointmentDto as any).sendInvitation)
+        : Boolean(userExists?.accountSetupPending);
+
+      if (
+        shouldSendInvitation &&
+        !appointmentWithRelations.disableNotifications &&
+        userExists?.id &&
+        userExists?.email &&
+        !isPlaceholderEmail(userExists.email) &&
+        !(userExists as any).invitationSentAt
+      ) {
+        this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, {
+          userId: userExists.id,
+          explicitlyRequested: true,
+          appointmentDate: athensDate(appointmentWithRelations.startTime),
+          clinicName: appointmentWithRelations.clinic?.name || '',
+          clinicPhone: appointmentWithRelations.clinic?.phone || '',
+          disableNotifications: Boolean(appointmentWithRelations.disableNotifications),
+        });
+      }
+    };
 
       // If card payment, generate Viva Wallet redirect URL
       // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
@@ -1780,12 +1903,15 @@ export class BookingsService {
       // clinic where they are the only doctor and no doctor was chosen (QA #34).
       // The doctor filter is applied after the effective doctor is resolved below.
       let doctorFilterId: string | null = null;
+      let salespersonFilterId: string | null = null;
       if (query.providerId) {
         const target = await this.usersRepository.findOne({ where: { id: query.providerId }, select: ['id', 'role'] as any });
         if (target && String(target.role || '').toLowerCase() === UserRole.DOCTOR) {
           doctorFilterId = target.id;
         } else {
-          queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
+          // Do NOT drop other salespeople's or clinic appointments from the result:
+          // they must remain visible as grey "Busy" slots so nobody can double-book over them.
+          salespersonFilterId = query.providerId;
         }
       }
       if (query.appointmentSource) queryBuilder.andWhere('appointment.appointmentSource = :source', { source: query.appointmentSource });
@@ -1841,92 +1967,114 @@ export class BookingsService {
       const visibleAppointments = doctorFilterId
         ? appointments.filter(apt => appointmentDoctor(apt, displayCtx)?.id === doctorFilterId)
         : appointments;
-      const mappedAppointments = visibleAppointments.map(apt => {
-        const doctor = appointmentDoctor(apt, displayCtx);
-        const treatments = appointmentTreatments(apt, displayCtx);
-        const isClinicPrivate =
-          apt.appointmentSource === 'clinic_own' ||
-          Boolean((apt.client as any)?.profile?.clinicOwnClient) ||
-          (apt.isBeautyDoctorsClient === false &&
-            !(apt.client as any)?.customerRecords?.length &&
-            !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
-            !apt.representativeId);
+      const mappedAppointments = visibleAppointments
+        .map(apt => {
+          const doctor = appointmentDoctor(apt, displayCtx);
+          const treatments = appointmentTreatments(apt, displayCtx);
+          const isBdMember = Boolean(apt.isBeautyDoctorsClient || (apt.client as any)?.isBeautyDoctorsMember);
+          const isClinicPrivate =
+            !isBdMember &&
+            (apt.appointmentSource === 'clinic_own' ||
+              Boolean((apt.client as any)?.profile?.clinicOwnClient) ||
+              (!(apt.client as any)?.customerRecords?.length &&
+                !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
+                !apt.representativeId));
 
-        let isMasked = false;
-        // PRIVACY RULE (QA #25): Doctor/clinic private clients are masked as 'Busy' for Salespeople
-        if (normalizedRole === 'salesperson' && isClinicPrivate) {
-          isMasked = true;
-        }
+          const belongsToSelectedSalesperson =
+            !salespersonFilterId ||
+            String(apt.representativeId || '') === String(salespersonFilterId) ||
+            String(apt.bookedById || '') === String(salespersonFilterId) ||
+            String(apt.providerId || '') === String(salespersonFilterId);
 
-        if (isMasked) {
+          // When filtering by a specific salesperson, hide other people's cancelled/no-show slots
+          // (they don't occupy time), and show all other active appointments (other salespeople + clinic)
+          // as grey "Busy" so nobody can book over them.
+          const upperStatus = String(apt.status || '').toUpperCase();
+          if (salespersonFilterId && !belongsToSelectedSalesperson && ['CANCELLED', 'NO_SHOW', 'DELETED'].includes(upperStatus)) {
+            return null;
+          }
+
+          let isMasked = false;
+          // PRIVACY RULE: Doctor/clinic private clients are masked as 'Busy' for Salespeople
+          if (normalizedRole === 'salesperson' && isClinicPrivate) {
+            isMasked = true;
+          }
+          // SALES CALENDAR RULE: When a specific salesperson is selected, other salespeople's
+          // appointments and clinic appointments appear as grey 'Busy'.
+          if (salespersonFilterId && !belongsToSelectedSalesperson) {
+            isMasked = true;
+          }
+
+          if (isMasked) {
+            return {
+              id: apt.id,
+              startTime: apt.startTime,
+              endTime: apt.endTime,
+              status: 'BLOCKED',
+              clinicId: apt.clinicId,
+              clinic: apt.clinic ? { id: apt.clinic.id, name: apt.clinic.name, timezone: apt.clinic.timezone } : null,
+              isBlocked: true,
+              isMaskedPrivate: true,
+              displayName: 'Busy',
+              serviceName: 'Busy',
+              treatmentLabel: 'Busy',
+              treatmentNames: [],
+              client: null,
+              clientId: null,
+              clientDetails: null,
+              notes: null,
+              isBeautyDoctorsClient: isBdMember,
+              providerId: doctor?.id || apt.providerId || null,
+              providerName: doctor?.name || null,
+              doctorId: doctor?.id || null,
+              doctorName: doctor?.name || null,
+            };
+          }
+
+          const isStaffBooker = apt.bookedBy &&
+            apt.bookedBy.role !== 'client' &&
+            apt.bookedBy.id !== apt.clientId;
+          const staffRepresentative = apt.representative?.role !== 'client' ? apt.representative : null;
+          const booker = isStaffBooker ? apt.bookedBy : staffRepresentative;
+
           return {
-            id: apt.id,
-            startTime: apt.startTime,
-            endTime: apt.endTime,
-            status: 'BLOCKED',
-            clinicId: apt.clinicId,
-            clinic: apt.clinic ? { id: apt.clinic.id, name: apt.clinic.name, timezone: apt.clinic.timezone } : null,
-            isBlocked: true,
-            isMaskedPrivate: true,
-            displayName: 'Busy',
-            serviceName: 'Busy',
-            treatmentLabel: 'Busy',
-            treatmentNames: [],
-            client: null,
-            clientId: null,
-            clientDetails: null,
-            notes: null,
-            isBeautyDoctorsClient: false,
-            providerId: doctor?.id || apt.providerId || null,
+            ...apt,
+            displayName: doctor?.name
+              ? `${treatments.treatmentLabel || 'Appointment'} with ${doctor.name}`
+              : (treatments.treatmentLabel || 'Appointment'),
+            serviceName: apt.service?.treatment?.name,
+            // All treatments (QA #66) and total duration of the appointment
+            treatmentNames: treatments.treatmentNames,
+            treatmentLabel: treatments.treatmentLabel,
+            durationMinutes: treatments.durationMinutes,
+            // The real doctor (QA #34): never the owner/secretary/salesperson who booked it
             providerName: doctor?.name || null,
             doctorId: doctor?.id || null,
             doctorName: doctor?.name || null,
+            bookedByInfo: booker ? {
+              id: booker.id,
+              name: `${booker.firstName || ''} ${booker.lastName || ''}`.trim(),
+              role: booker.role || 'salesperson'
+            } : (apt.provider && (apt.provider.role === 'SUPER_ADMIN' || apt.provider.role === 'admin' || apt.provider.role === 'salesperson') ? {
+              id: apt.provider.id,
+              name: `${apt.provider.firstName} ${apt.provider.lastName}`,
+              role: apt.provider.role,
+            } : null),
+            executedByName: apt.executedBy ? `${apt.executedBy.firstName} ${apt.executedBy.lastName}` : null,
+            executedByInfo: apt.executedBy ? {
+              id: apt.executedBy.id,
+              name: `${apt.executedBy.firstName} ${apt.executedBy.lastName}`,
+              role: apt.executedBy.role,
+            } : null,
+            isReturned: repeatClients.has(apt.clientId),
+            isBeautyDoctorsClient: isBdMember,
+            // Enriched additional services with names for tooltip display
+            additionalServices: (apt.additionalServiceIds || [])
+              .map((id: string) => additionalServicesMap[id])
+              .filter(Boolean),
           };
-        }
-
-        const isStaffBooker = apt.bookedBy &&
-          apt.bookedBy.role !== 'client' &&
-          apt.bookedBy.id !== apt.clientId;
-        const staffRepresentative = apt.representative?.role !== 'client' ? apt.representative : null;
-        const booker = isStaffBooker ? apt.bookedBy : staffRepresentative;
-
-        return {
-          ...apt,
-          displayName: doctor?.name
-            ? `${treatments.treatmentLabel || 'Appointment'} with ${doctor.name}`
-            : (treatments.treatmentLabel || 'Appointment'),
-          serviceName: apt.service?.treatment?.name,
-          // All treatments (QA #66) and total duration of the appointment
-          treatmentNames: treatments.treatmentNames,
-          treatmentLabel: treatments.treatmentLabel,
-          durationMinutes: treatments.durationMinutes,
-          // The real doctor (QA #34): never the owner/secretary/salesperson who booked it
-          providerName: doctor?.name || null,
-          doctorId: doctor?.id || null,
-          doctorName: doctor?.name || null,
-          bookedByInfo: booker ? {
-            id: booker.id,
-            name: `${booker.firstName || ''} ${booker.lastName || ''}`.trim(),
-            role: booker.role || 'salesperson'
-          } : (apt.provider && (apt.provider.role === 'SUPER_ADMIN' || apt.provider.role === 'admin' || apt.provider.role === 'salesperson') ? {
-            id: apt.provider.id,
-            name: `${apt.provider.firstName} ${apt.provider.lastName}`,
-            role: apt.provider.role,
-          } : null),
-          executedByName: apt.executedBy ? `${apt.executedBy.firstName} ${apt.executedBy.lastName}` : null,
-          executedByInfo: apt.executedBy ? {
-            id: apt.executedBy.id,
-            name: `${apt.executedBy.firstName} ${apt.executedBy.lastName}`,
-            role: apt.executedBy.role,
-          } : null,
-          isReturned: repeatClients.has(apt.clientId),
-          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false,
-          // Enriched additional services with names for tooltip display
-          additionalServices: (apt.additionalServiceIds || [])
-            .map((id: string) => additionalServicesMap[id])
-            .filter(Boolean),
-        };
-      });
+        })
+        .filter(Boolean);
 
       // --- Fetch Blocked Slots ---
       const blockedQb = this.blockedTimeSlotsRepository
@@ -1959,7 +2107,7 @@ export class BookingsService {
       if (query.clinicId) blockedQb.andWhere('blocked.clinicId = :clinicId', { clinicId: query.clinicId });
       
       if (query.providerId) {
-        blockedQb.andWhere('blocked.providerId = :providerId', { providerId: query.providerId });
+        blockedQb.andWhere('(blocked.providerId IS NULL OR blocked.providerId = :providerId)', { providerId: query.providerId });
       }
 
       if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat') {
@@ -2845,12 +2993,14 @@ export class BookingsService {
         'client.email as clientEmail',
         'client.phone as clientPhone',
         'client.createdAt as createdAt',
+        'client.isBeautyDoctorsMember as isBeautyDoctorsMember',
+        'client.invitationSentAt as invitationSentAt',
         'COUNT(appointment.id) as totalVisits',
         'SUM(appointment.totalAmount) as totalSpent',
         'MAX(appointment.startTime) as lastVisit',
       ])
       .leftJoin('appointment.client', 'client')
-      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt');
+      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt, client.isBeautyDoctorsMember, client.invitationSentAt');
 
     // Filter clients based on user role and clinical association
     if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {

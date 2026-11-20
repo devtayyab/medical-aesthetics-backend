@@ -2,7 +2,6 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomBytes } from 'crypto';
-import { USER_CREATED_BY_STAFF_EVENT } from '../users/account-setup.listener';
 import { In, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Clinic } from './entities/clinic.entity';
@@ -15,6 +14,7 @@ import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { phoneKeySql, phoneMatchKey } from '../../common/utils/phone.util';
+import { isPlaceholderEmail } from '../notifications/utils/notification-format.util';
 
 const CLINIC_ROLES = [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT];
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -187,6 +187,8 @@ export class ClinicPatientsService {
       `SELECT u.id AS "appointment_clientId", u."firstName" AS firstname, u."lastName" AS lastname,
               COUNT(*) OVER() AS total_count,
               u.email AS clientemail, u.phone AS clientphone, u."createdAt" AS createdat,
+              u."isBeautyDoctorsMember" AS "isBeautyDoctorsMember",
+              u."invitationSentAt" AS "invitationSentAt",
               COUNT(DISTINCT a.id) AS totalvisits,
               COALESCE((
                 SELECT SUM(CASE
@@ -316,30 +318,47 @@ export class ClinicPatientsService {
     }
     if (!clinicId) throw new BadRequestException('clinicId is required');
 
-    const email = input.email && input.email.trim() ? input.email.trim() : undefined;
+    const cleanEmail = input.email && !isPlaceholderEmail(input.email) ? input.email.trim().toLowerCase() : undefined;
 
-    // 1. Existing client account (BeautyDoctors or another clinic) => link
-    const existingQb = this.usersRepository
+    // 1. Existing client account matching mobile phone OR email => link without duplicating
+    const userConds: string[] = [`${phoneKeySql('u.phone')} = :phoneKey`];
+    if (cleanEmail) userConds.push('LOWER(u.email) = LOWER(:email)');
+    const existing = await this.usersRepository
       .createQueryBuilder('u')
       .where('u.role = :role', { role: UserRole.CLIENT })
-      .andWhere(`${phoneKeySql('u.phone')} = :phoneKey`, { phoneKey });
-    const existing = await existingQb.orderBy('u.createdAt', 'ASC').getOne();
-    if (existing) {
-      await this.tieClientToClinic(existing, LINKED_CLIENT_KEY, clinicId);
-      const isBd = !!(await this.customerRecordsRepository.count({ where: { customerId: existing.id } }));
-      return { patient: this.publicPatient(existing), linkedToExisting: true, isBeautyDoctorsClient: isBd };
-    }
+      .andWhere(`(${userConds.join(' OR ')})`, { phoneKey, email: cleanEmail })
+      .orderBy('u.createdAt', 'ASC')
+      .getOne();
 
-    // 2. BeautyDoctors lead with this phone => create its client account, linked to the lead
+    // Also check CRM leads by mobile phone OR email
+    const leadConds: string[] = [`${phoneKeySql('l.phone')} = :phoneKey`];
+    if (cleanEmail) leadConds.push('LOWER(l.email) = LOWER(:email)');
     const lead = await this.leadsRepository
       .createQueryBuilder('l')
-      .where(`${phoneKeySql('l.phone')} = :phoneKey`, { phoneKey })
+      .where(`(${leadConds.join(' OR ')})`, { phoneKey, email: cleanEmail })
       .andWhere('l.status != :merged', { merged: LeadStatus.Merged })
       .orderBy('l.createdAt', 'ASC')
       .getOne();
 
-    // Real email only (no placeholders), and never one that belongs to another account
-    const candidateEmail = (email || (lead?.email && lead.email.trim() ? lead.email.trim() : undefined))?.toLowerCase();
+    if (existing) {
+      await this.tieClientToClinic(existing, LINKED_CLIENT_KEY, clinicId);
+      const hasCustomerRecord = (await this.customerRecordsRepository.count({ where: { customerId: existing.id } })) > 0;
+      const isBd = Boolean(existing.isBeautyDoctorsMember || hasCustomerRecord || lead);
+      if (isBd && !existing.isBeautyDoctorsMember) {
+        existing.isBeautyDoctorsMember = true;
+        await this.usersRepository.update(existing.id, { isBeautyDoctorsMember: true });
+      }
+      if (lead && !hasCustomerRecord) {
+        await this.customerRecordsRepository
+          .save(this.customerRecordsRepository.create({ customerId: existing.id, assignedSalespersonId: lead.assignedSalesId || null }))
+          .catch(() => undefined);
+      }
+      return { patient: this.publicPatient(existing), linkedToExisting: true, isBeautyDoctorsClient: isBd };
+    }
+
+    // 2. Real email only (no noemail/placeholders), and never one that belongs to another account
+    const leadEmail = lead?.email && !isPlaceholderEmail(lead.email) ? lead.email.trim().toLowerCase() : undefined;
+    const candidateEmail = cleanEmail || leadEmail;
     const emailFree = candidateEmail
       ? !(await this.usersRepository.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email: candidateEmail }).getCount())
       : false;
@@ -351,25 +370,24 @@ export class ClinicPatientsService {
         email: emailFree ? candidateEmail : null,
         role: UserRole.CLIENT,
         isActive: true,
-        // Unusable random password: the client sets their own through ONE emailed link (item 18)
         isEmailVerified: false,
         accountSetupPending: true,
+        isBeautyDoctorsMember: Boolean(lead),
         passwordHash: randomBytes(24).toString('hex'),
         profile: lead
           ? { [LINKED_CLIENT_KEY]: [clinicId] }
           : { clinicOwnClient: true, [OWN_CLIENT_KEY]: [clinicId], createdAsClinicClientAt: new Date().toISOString() },
       } as Partial<User>),
     );
-    if (user.email) {
-      this.eventEmitter.emit(USER_CREATED_BY_STAFF_EVENT, { userId: user.id });
-    }
+    // Do NOT auto-send "Set your password" email here — invitations are only sent
+    // when explicitly requested during booking or when the customer registers online.
 
     if (lead) {
       await this.customerRecordsRepository
         .save(this.customerRecordsRepository.create({ customerId: user.id, assignedSalespersonId: lead.assignedSalesId || null }))
         .catch(() => undefined);
       await this.leadsRepository.update(lead.id, {
-        metadata: { ...(lead.metadata || {}), convertedToUserId: user.id },
+        metadata: { ...(lead.metadata || {}), convertedToUserId: user.id, convertedToCustomerId: user.id },
       } as any);
       return { patient: this.publicPatient(user), linkedToExisting: true, isBeautyDoctorsClient: true };
     }
@@ -499,6 +517,14 @@ export class ClinicPatientsService {
   }
 
   private publicPatient(u: User) {
-    return { id: u.id, firstName: u.firstName, lastName: u.lastName, phone: u.phone, email: u.email };
+    return {
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      phone: u.phone,
+      email: u.email,
+      isBeautyDoctorsMember: Boolean((u as any).isBeautyDoctorsMember),
+      invitationSentAt: (u as any).invitationSentAt || null,
+    };
   }
 }

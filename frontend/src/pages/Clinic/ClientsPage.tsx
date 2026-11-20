@@ -158,9 +158,16 @@ const ClientsPage: React.FC = () => {
  {client.firstName?.[0] || client.email?.[0] ||"?"}
  </div>
  <div>
+ <div className="flex items-center gap-1.5 flex-wrap">
  <p className="font-black uppercase tracking-tighter text-gray-900 leading-none text-xs mb-0.5">
  {`${client.firstName} ${client.lastName}`.trim() || client.email ||"ANONYMOUS"}
  </p>
+ {client.isBeautyDoctorsMember && (
+ <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+ ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
+ </span>
+ )}
+ </div>
  <p className="text-[7px] font-black uppercase tracking-widest text-gray-300">#{client.id.slice(0, 8)}</p>
  </div>
  </div>
@@ -376,7 +383,14 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment, isGreek }: any
  {innerClient.firstName?.[0] || clientName?.[0] || "?"}
  </div>
  <div className="min-w-0">
- <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none mb-1 truncate">{clientName}</h2>
+ <div className="flex items-center gap-2 flex-wrap mb-1">
+ <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none truncate">{clientName}</h2>
+ {Boolean(innerClient?.isBeautyDoctorsMember || client?.isBeautyDoctorsMember) && (
+ <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#CBFF38] text-black">
+ ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
+ </span>
+ )}
+ </div>
  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
  <div className="flex items-center gap-2">
  <Mail size={12} className="text-[#CBFF38]" />

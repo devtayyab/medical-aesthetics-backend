@@ -155,6 +155,33 @@ export const ClinicDetails: React.FC = () => {
     navigate(bookingPath);
   };
 
+  const WEEKDAYS_EL: Array<{ key: string; label: string }> = [
+    { key: 'monday', label: 'Δευτέρα' },
+    { key: 'tuesday', label: 'Τρίτη' },
+    { key: 'wednesday', label: 'Τετάρτη' },
+    { key: 'thursday', label: 'Πέμπτη' },
+    { key: 'friday', label: 'Παρασκευή' },
+    { key: 'saturday', label: 'Σάββατο' },
+    { key: 'sunday', label: 'Κυριακή' },
+  ];
+
+  const businessHoursRows = WEEKDAYS_EL.map(({ key, label }) => {
+    const dayCfg = (clinicData as any)?.businessHours?.[key];
+    const isOpen = dayCfg && dayCfg.isOpen !== false && dayCfg.open && dayCfg.close;
+    return {
+      key,
+      label,
+      hours: isOpen ? `${dayCfg.open} – ${dayCfg.close}` : 'Κλειστά',
+      isOpen: Boolean(isOpen),
+    };
+  });
+
+  const tabLabels: Record<'privileges' | 'about' | 'reviews', string> = {
+    privileges: 'Θεραπείες',
+    about: 'Πληροφορίες',
+    reviews: 'Αξιολογήσεις',
+  };
+
   return (
     <div className="min-h-screen bg-[#F7FAFC] pb-24 w-full overflow-x-hidden">
       <div className={`${heroSection} bg-gray-900 relative`}>
@@ -174,7 +201,7 @@ export const ClinicDetails: React.FC = () => {
               <span className="text-white text-[10px] sm:text-[11px] font-black uppercase tracking-widest ml-1 drop-shadow-md">
                 {(clinicData.rating !== null && clinicData.rating !== undefined)
                   ? Number(clinicData.rating).toFixed(1)
-                  : "4.9"} ({clinicData.reviewCount || 0} Reviews)
+                  : "4.9"} ({clinicData.reviewCount || 0} Αξιολογήσεις)
               </span>
             </div>
             <h1 className="text-white text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tighter drop-shadow-2xl">
@@ -190,14 +217,14 @@ export const ClinicDetails: React.FC = () => {
           <div className="space-y-6">
             <div className={cardStyle}>
               <div className="flex gap-4 sm:gap-8 border-b border-gray-100 mb-6 sm:mb-8 overflow-x-auto no-scrollbar pb-1">
-                {['privileges', 'about', 'reviews'].map(tab => (
+                {(['privileges', 'about', 'reviews'] as const).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab as any)}
+                    onClick={() => setActiveTab(tab)}
                     className={`pb-3 sm:pb-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap min-h-[44px] flex items-center ${activeTab === tab ? 'border-lime-500 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    {tab}
+                    {tabLabels[tab]}
                   </button>
                 ))}
               </div>
@@ -215,7 +242,7 @@ export const ClinicDetails: React.FC = () => {
                             : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
                           }`}
                         >
-                          {category}
+                          {category === 'All' ? 'Όλες' : category}
                         </button>
                       ))}
                     </div>
@@ -224,10 +251,10 @@ export const ClinicDetails: React.FC = () => {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input
                         type="text"
-                        placeholder="Search privileges..."
+                        placeholder="Αναζήτηση θεραπειών..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-11 sm:h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm outline-none focus:border-lime-500 transition-all font-bold placeholder:font-black placeholder:uppercase placeholder:text-gray-400"
+                        className="w-full h-11 sm:h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm outline-none focus:border-lime-500 transition-all font-bold placeholder:font-bold placeholder:text-gray-400"
                       />
                     </div>
                   </div>
@@ -250,7 +277,7 @@ export const ClinicDetails: React.FC = () => {
                         <div key={category} className="space-y-4 sm:space-y-6">
                           <h3 className="text-lg sm:text-xl font-black text-gray-900 flex items-center gap-3">
                             <span className="w-1.5 h-5 sm:h-6 bg-lime-500 rounded-full" />
-                            {category}
+                            {category === 'All' ? 'Όλες οι Θεραπείες' : category}
                           </h3>
                           <div className="divide-y divide-gray-100 bg-gray-50/30 rounded-2xl sm:rounded-[30px] px-3 sm:px-8 py-2">
                             {categoryServices.map((service: Service) => (
@@ -271,7 +298,7 @@ export const ClinicDetails: React.FC = () => {
                   <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3">
                     <Info size={16} className="text-gray-400 shrink-0" />
                     <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
-                      * Final treatment cost may vary depending on the treatment plan determined following a medical assessment.
+                      * Το τελικό κόστος της θεραπείας ενδέχεται να διαφέρει ανάλογα με το πλάνο θεραπείας που θα καθοριστεί μετά από ιατρική αξιολόγηση.
                     </p>
                   </div>
                 </div>
@@ -281,11 +308,11 @@ export const ClinicDetails: React.FC = () => {
                 <div className="space-y-6">
                   {isLoadingReviews ? (
                     <div className="text-center py-10 text-gray-400 uppercase font-black text-xs tracking-widest animate-pulse">
-                      Analyzing Patient Feedback...
+                      Φόρτωση αξιολογήσεων...
                     </div>
                   ) : clinicReviews.length === 0 ? (
                     <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
-                      <p className="text-gray-400 text-xs sm:text-sm font-black uppercase tracking-widest">No verified transmissions yet.</p>
+                      <p className="text-gray-400 text-xs sm:text-sm font-black uppercase tracking-widest">Δεν υπάρχουν ακόμα αξιολογήσεις.</p>
                     </div>
                   ) : (
                     <div className="space-y-4 sm:space-y-6">
@@ -294,7 +321,7 @@ export const ClinicDetails: React.FC = () => {
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                               <div className="size-10 sm:size-12 rounded-2xl bg-black text-[#CBFF38] flex items-center justify-center font-black text-lg">
-                                {review.client?.firstName?.[0] || 'V'}
+                                {review.client?.firstName?.[0] || 'Π'}
                               </div>
                               <div>
                                 <div className="flex items-center gap-1 mb-0.5">
@@ -303,7 +330,7 @@ export const ClinicDetails: React.FC = () => {
                                   ))}
                                 </div>
                                 <h4 className="font-black text-gray-900 uppercase tracking-tight text-sm sm:text-base">
-                                  {review.client?.firstName || 'Verified Patient'}
+                                  {review.client?.firstName || 'Επιβεβαιωμένος Πελάτης'}
                                 </h4>
                               </div>
                             </div>
@@ -332,8 +359,8 @@ export const ClinicDetails: React.FC = () => {
                         <Shield size={22} className="text-[#CBFF38]" />
                       </div>
                       <div>
-                        <h4 className="font-black uppercase text-sm mb-1 tracking-tighter">Clinical Precision</h4>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Regulated Industry Standards</p>
+                        <h4 className="font-black uppercase text-sm mb-1 tracking-tighter">Ιατρική Ασφάλεια</h4>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Πιστοποιημένα πρότυπα φροντίδας</p>
                       </div>
                     </div>
                     <div className="flex gap-4 p-5 sm:p-6 bg-white border border-gray-100 rounded-2xl sm:rounded-[28px] shadow-xl">
@@ -341,8 +368,8 @@ export const ClinicDetails: React.FC = () => {
                         <Award size={22} className="text-black" />
                       </div>
                       <div>
-                        <h4 className="font-black uppercase text-sm mb-1 tracking-tighter text-gray-900">Elite Standing</h4>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary Market Trajectory</p>
+                        <h4 className="font-black uppercase text-sm mb-1 tracking-tighter text-gray-900">Εξειδικευμένη Ομάδα</h4>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Συνεργαζόμενη Κλινική Beauty Doctors</p>
                       </div>
                     </div>
                   </div>
@@ -354,17 +381,17 @@ export const ClinicDetails: React.FC = () => {
           {/* Sidebar Info */}
           <div className="space-y-6">
             <div className={cardStyle}>
-              <h3 className="text-lg font-black text-gray-900 uppercase mb-6 pb-3 border-b border-gray-50">Logistics & Range</h3>
+              <h3 className="text-lg font-black text-gray-900 uppercase mb-6 pb-3 border-b border-gray-50">Πληροφορίες</h3>
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="size-12 bg-black rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
                     <MapPin className="text-[#CBFF38]" size={20} />
                   </div>
                   <div>
-                    <h4 className="font-black text-gray-900 uppercase text-[10px] mb-1 tracking-widest">Ground Coordinates</h4>
+                    <h4 className="font-black text-gray-900 uppercase text-[10px] mb-1 tracking-widest">Διεύθυνση</h4>
                     <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-bold">
-                      {clinicData.address.street},<br />
-                      {clinicData.address.city}, {clinicData.address.zipCode}
+                      {clinicData.address?.street}{clinicData.address?.street ? ',' : ''}<br />
+                      {clinicData.address?.city}{clinicData.address?.zipCode ? `, ${clinicData.address.zipCode}` : ''}
                     </p>
                   </div>
                 </div>
@@ -373,11 +400,16 @@ export const ClinicDetails: React.FC = () => {
                   <div className="size-12 bg-black rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
                     <Clock className="text-[#CBFF38]" size={20} />
                   </div>
-                  <div>
-                    <h4 className="font-black text-gray-900 uppercase text-[10px] mb-1 tracking-widest">Operational Window</h4>
-                    <div className="space-y-1 mt-1">
-                      {['Mon - Fri / 09:00 - 20:00', 'Sat / 10:00 - 18:00', 'Sun / Standby Only'].map(hour => (
-                        <p key={hour} className="text-[9px] font-black uppercase text-gray-400 tracking-wider">{hour}</p>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-gray-900 uppercase text-[10px] mb-2 tracking-widest">Ωράριο</h4>
+                    <div className="space-y-1.5">
+                      {businessHoursRows.map((row) => (
+                        <div key={row.key} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="font-bold text-gray-700">{row.label}</span>
+                          <span className={`font-bold tabular-nums ${row.isOpen ? 'text-gray-900' : 'text-gray-400'}`}>
+                            {row.hours}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -388,10 +420,10 @@ export const ClinicDetails: React.FC = () => {
             <div className="bg-black text-white rounded-2xl sm:rounded-[28px] p-5 sm:p-6 shadow-xl relative overflow-hidden">
               <div className="flex items-center gap-3 text-[#CBFF38] mb-2">
                 <Info size={18} />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Intelligence Brief</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Πληροφορίες</span>
               </div>
-              <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                Reschedule for free up to <span className="text-white font-black">24 hours</span> before your protocol. Secure end-to-end encrypted payments.
+              <p className="text-xs text-gray-300 font-medium leading-relaxed">
+                Δωρεάν αλλαγή ή ακύρωση έως και <span className="text-white font-black">24 ώρες</span> πριν από το ραντεβού σας. Ασφαλείς συναλλαγές.
               </p>
             </div>
           </div>
@@ -413,19 +445,19 @@ export const ClinicDetails: React.FC = () => {
                   <ShoppingBag size={20} />
                 </div>
                 <div className="space-y-0.5">
-                  <h4 className="text-sm sm:text-lg font-black uppercase tracking-tighter leading-none">Transmission</h4>
-                  <p className="text-gray-400 text-[8px] sm:text-[9px] font-black uppercase tracking-widest">{selectedServices.length} PRIVILEGES</p>
+                  <h4 className="text-sm sm:text-lg font-black uppercase tracking-tighter leading-none">Επιλεγμένες Θεραπείες</h4>
+                  <p className="text-gray-400 text-[8px] sm:text-[9px] font-black uppercase tracking-widest">{selectedServices.length} ΘΕΡΑΠΕΙΕΣ</p>
                 </div>
                 <div className="h-8 w-px bg-white/10 hidden sm:block mx-2" />
                 <div className="text-right sm:text-left">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Payload</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Σύνολο</p>
                   <p className="text-lg sm:text-2xl font-black tracking-tighter">
                     {isAuthenticated ? (
                       <>
                         <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </>
                     ) : (
-                      <span className="text-xs sm:text-sm text-[#CBFF38] font-bold uppercase tracking-wider">Login to view</span>
+                      <span className="text-xs sm:text-sm text-[#CBFF38] font-bold uppercase tracking-wider">Συνδεθείτε για τιμές</span>
                     )}
                   </p>
                 </div>
@@ -442,7 +474,7 @@ export const ClinicDetails: React.FC = () => {
                   onClick={handleBulkBooking}
                   className="flex-1 sm:flex-none h-11 sm:h-12 px-6 sm:px-8 bg-[#CBFF38] text-black font-black uppercase text-[10px] sm:text-[11px] tracking-[0.2em] rounded-xl shadow-xl hover:bg-white transition-all flex items-center justify-center gap-3 min-h-[44px]"
                 >
-                  Deploy <ArrowRight size={14} />
+                  Κράτηση <ArrowRight size={14} />
                 </button>
               </div>
             </div>

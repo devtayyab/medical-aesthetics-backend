@@ -183,6 +183,8 @@ export const fetchClients = createAsyncThunk(
  totalAppointments: parseInt(client.totalvisits || '0', 10),
  lifetimeValue: parseFloat(client.totalspent || '0') || 0,
  lastAppointment: client.lastvisit,
+ isBeautyDoctorsMember: Boolean(client.isBeautyDoctorsMember ?? client.isbeautydoctorsmember),
+ invitationSentAt: client.invitationSentAt ?? client.invitationsentat ?? null,
  createdAt: client.createdat || new Date().toISOString(),
  }));
  return mappedClients;

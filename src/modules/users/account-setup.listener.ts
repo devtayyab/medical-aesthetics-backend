@@ -9,12 +9,17 @@ export const USER_CREATED_BY_STAFF_EVENT = 'user.created_by_staff';
 
 export interface UserCreatedByStaffPayload {
   userId: string;
+  /** Must be explicitly true (e.g. staff checked "Send Invitation to Customer" or client self-booked). */
+  explicitlyRequested?: boolean;
+  appointmentDate?: string;
+  clinicName?: string;
+  clinicPhone?: string;
+  disableNotifications?: boolean;
 }
 
 /**
- * A salesperson, doctor or admin created a client with the client's REAL email (item 18).
- * Send exactly one set-password link; the client later logs in (or "registers" with the same
- * email, which claims this account instead of creating a second one).
+ * Sends the one-time Greek "Set your password" invitation link ONLY when explicitly requested
+ * (never automatically when staff creates a customer account during manual booking).
  */
 @Injectable()
 export class AccountSetupListener {
@@ -28,11 +33,20 @@ export class AccountSetupListener {
   @OnEvent(USER_CREATED_BY_STAFF_EVENT, { async: true })
   async handle(payload: UserCreatedByStaffPayload) {
     try {
+      if (!payload?.explicitlyRequested) return;
+      if (payload.disableNotifications) return;
+
       const user = await this.usersRepository.findOne({ where: { id: payload.userId } });
-      if (!user?.email || !user.accountSetupPending || !user.isActive) return;
-      await this.accountLinks.sendSetPasswordLink(user, 'client');
+      if (!user?.email || !user.isActive) return;
+
+      await this.accountLinks.sendSetPasswordLink(user, 'client', {
+        appointmentDate: payload.appointmentDate,
+        clinicName: payload.clinicName,
+        clinicPhone: payload.clinicPhone,
+        disableNotifications: payload.disableNotifications,
+      });
     } catch (err: any) {
-      this.logger.error(`Failed to send set-password link for user ${payload.userId}: ${err?.message}`);
+      this.logger.error(`Failed to send set-password link for user ${payload?.userId}: ${err?.message}`);
     }
   }
 }
