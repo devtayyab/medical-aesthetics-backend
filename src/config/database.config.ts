@@ -98,6 +98,13 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       // If using a managed database like AWS RDS in the future, we might need to enable this again
       ssl: false,
       synchronize: this.configService.get('DB_SYNCHRONIZE') === 'true',
+      extra: {
+        max: Number(this.configService.get('DB_POOL_MAX', 30)),
+        min: 2,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        statement_timeout: 30000,
+      },
     };
   }
 }

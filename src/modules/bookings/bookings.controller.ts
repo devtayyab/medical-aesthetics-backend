@@ -97,13 +97,19 @@ export class BookingsController {
         ...(Array.isArray(query.serviceId) ? query.serviceId : String(query.serviceId || '').split(',')),
         ...(Array.isArray(query.additionalServiceIds) ? query.additionalServiceIds : String(query.additionalServiceIds || '').split(',')),
       ].map((v: string) => String(v).trim()).filter(Boolean);
+      const parsedDuration = query.durationMinutes != null ? Number(query.durationMinutes) : NaN;
+      const durationOverride =
+        this.isStaff(req?.user) && Number.isFinite(parsedDuration) && parsedDuration >= 5 && parsedDuration <= 720
+          ? Math.round(parsedDuration)
+          : null;
       const result: any = await this.availabilityService.getAvailableSlots(
         query.clinicId,
         serviceIds.length > 1 ? serviceIds : query.serviceId,
         query.providerId || null,
         query.date,
         wantsPast && this.isAdmin(req?.user),
-        query.excludeAppointmentId || null
+        query.excludeAppointmentId || null,
+        durationOverride
       );
       // Not logged in: no doctor names
       if (!req?.user && Array.isArray(result?.slots)) {
@@ -297,7 +303,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment details (provider, time, notes, price, services)' })
   async updateAppointment(
     @Param('id') id: string,
-    @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[]; representativeId?: string; bookedById?: string },
+    @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; disableNotifications?: boolean; totalAmount?: number; additionalServiceIds?: string[]; representativeId?: string; bookedById?: string },
     @Request() req,
   ) {
     // Editing appointment details (incl. price) is a staff action, and must be authorized.
@@ -317,6 +323,7 @@ export class BookingsController {
     }
     if (body.serviceId !== undefined) updateData.serviceId = body.serviceId || null;
     if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.disableNotifications !== undefined) updateData.disableNotifications = Boolean(body.disableNotifications);
     if (body.totalAmount !== undefined) updateData.totalAmount = body.totalAmount;
     if (body.additionalServiceIds !== undefined) updateData.additionalServiceIds = body.additionalServiceIds;
     if (body.representativeId !== undefined) updateData.representativeId = body.representativeId || null;

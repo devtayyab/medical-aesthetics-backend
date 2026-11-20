@@ -51,7 +51,7 @@ export class EventHandlersService {
     }
   }
 
-  @OnEvent('appointment.status.changed')
+  @OnEvent('appointment.status.changed', { async: true })
   async handleAppointmentStatusChanged(eventData: any) {
     const { appointment, oldStatus, newStatus } = eventData;
 
@@ -81,7 +81,7 @@ export class EventHandlersService {
     // Notifications for status changes are sent once by AppointmentNotificationsListener.
   }
 
-  @OnEvent('appointment.rescheduled')
+  @OnEvent('appointment.rescheduled', { async: true })
   async handleAppointmentRescheduled(eventData: any) {
     const appointment = eventData?.appointment || eventData;
     if (!appointment) return;

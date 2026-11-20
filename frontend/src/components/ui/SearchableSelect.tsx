@@ -31,7 +31,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const selectedOption = useMemo(() => options.find(o => o.value === value), [options, value]);
 
   const filteredOptions = useMemo(() => {
-    return options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
+    const normalize = (str: string) =>
+      String(str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    const q = normalize(search).trim();
+    if (!q) return options;
+    return options.filter(o => normalize(o.label).includes(q));
   }, [options, search]);
 
   useEffect(() => {

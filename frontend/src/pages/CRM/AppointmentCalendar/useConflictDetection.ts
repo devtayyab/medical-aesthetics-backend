@@ -7,6 +7,7 @@ interface ConflictCheckParams {
   salesPersonId: string;
   clinicId: string;
   excludeAppointmentId?: string;
+  treatmentRooms?: number;
 }
 
 export function useConflictDetection(
@@ -15,9 +16,10 @@ export function useConflictDetection(
 ) {
   const checkConflict = useCallback(
     (params: ConflictCheckParams): ConflictInfo => {
-      const { startTime, endTime, salesPersonId, clinicId, excludeAppointmentId } = params;
+      const { startTime, endTime, salesPersonId, clinicId, excludeAppointmentId, treatmentRooms } = params;
       const newStart = new Date(startTime).getTime();
       const newEnd = new Date(endTime).getTime();
+      const maxRooms = Math.max(1, Number(treatmentRooms) || 1);
 
       // 1. Check blocked slots
       for (const slot of blockedSlots) {
@@ -40,28 +42,30 @@ export function useConflictDetection(
         }
       }
 
-      // 2. Check appointment conflicts (same provider, overlapping time)
+      // 2. Check appointment conflicts respecting clinic.treatmentRooms capacity
       const activeStatuses = ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'];
+      const overlappingApts: any[] = [];
       for (const apt of appointments) {
         if (excludeAppointmentId && apt.id === excludeAppointmentId) continue;
-        if (!activeStatuses.includes(apt.status)) continue;
+        if (!activeStatuses.includes(String(apt.status || '').toUpperCase())) continue;
 
-        const aptProviderId = apt.providerId || (apt.provider as any)?.id;
-        // Check removed to prevent any double bookings at the clinic, regardless of provider
-        // if (aptProviderId !== salesPersonId) continue;
         if (apt.clinicId !== clinicId) continue;
 
         const aptStart = new Date(apt.startTime).getTime();
         const aptEnd = new Date(apt.endTime).getTime();
 
         if (newStart < aptEnd && newEnd > aptStart) {
-          // GDPR: never show who holds the slot.
-          return {
-            hasConflict: true,
-            message: 'This time is not available',
-            conflictingAppointment: apt,
-          };
+          overlappingApts.push(apt);
         }
+      }
+
+      if (overlappingApts.length >= maxRooms) {
+        // GDPR: never show who holds the slot.
+        return {
+          hasConflict: true,
+          message: 'This time is not available',
+          conflictingAppointment: overlappingApts[0],
+        };
       }
 
       return { hasConflict: false, message: '' };

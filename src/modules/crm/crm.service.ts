@@ -833,32 +833,76 @@ export class CrmService implements OnModuleInit {
   }
 
   /**
-   * Facebook lead ids that are already in the CRM: as a card's current lead id,
-   * an archived earlier submission, or an entry of a card's form history.
-   * Soft-deleted cards count too, so leads an admin removed are not re-imported.
+   * Loads all archived/history Facebook lead IDs from lead metadata ONCE (used by bulk sync
+   * so we never repeat 30k-row JSONB scans for each of the 265+ Facebook forms).
    */
-  async findProcessedFacebookLeadIds(fbIds: string[]): Promise<Set<string>> {
-    const ids = [...new Set((fbIds || []).filter(Boolean).map(String))];
-    if (ids.length === 0) return new Set();
+  private async loadArchivedFacebookLeadIds(): Promise<Set<string>> {
     const rows: Array<{ fb_id: string }> = await this.leadsRepository.query(
-      `SELECT "facebookLeadId" AS fb_id FROM leads WHERE "facebookLeadId" = ANY($1)
-       UNION
-       SELECT prev.fb_id FROM leads l,
+      `SELECT prev.fb_id FROM leads l,
          LATERAL jsonb_array_elements_text(
            CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'previousFacebookLeadIds') = 'array'
                 THEN l.metadata::jsonb -> 'previousFacebookLeadIds' ELSE '[]'::jsonb END
          ) AS prev(fb_id)
-       WHERE prev.fb_id = ANY($1)
+       WHERE l.metadata IS NOT NULL AND l.metadata::text LIKE '%previousFacebookLeadIds%'
        UNION
-       SELECT hist.entry ->> 'facebookLeadId' FROM leads l,
+       SELECT hist.entry ->> 'facebookLeadId' AS fb_id FROM leads l,
          LATERAL jsonb_array_elements(
            CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'formHistory') = 'array'
                 THEN l.metadata::jsonb -> 'formHistory' ELSE '[]'::jsonb END
          ) AS hist(entry)
-       WHERE hist.entry ->> 'facebookLeadId' = ANY($1)`,
-      [ids],
+       WHERE l.metadata IS NOT NULL AND l.metadata::text LIKE '%formHistory%'`,
     );
     return new Set(rows.map((r) => r.fb_id).filter(Boolean));
+  }
+
+  /**
+   * Facebook lead ids that are already in the CRM: as a card's current lead id,
+   * an archived earlier submission, or an entry of a card's form history.
+   * Soft-deleted cards count too, so leads an admin removed are not re-imported.
+   */
+  async findProcessedFacebookLeadIds(fbIds: string[], preloadedArchivedIds?: Set<string>): Promise<Set<string>> {
+    const ids = [...new Set((fbIds || []).filter(Boolean).map(String))];
+    if (ids.length === 0) return new Set();
+
+    // 1. Fast indexed lookup on leads."facebookLeadId" first
+    const directRows: Array<{ fb_id: string }> = await this.leadsRepository.query(
+      `SELECT "facebookLeadId" AS fb_id FROM leads WHERE "facebookLeadId" = ANY($1)`,
+      [ids],
+    );
+    const found = new Set(directRows.map((r) => r.fb_id).filter(Boolean));
+
+    const remaining = ids.filter((id) => !found.has(id));
+    if (remaining.length === 0) return found;
+
+    // 2. If caller preloaded archived/history IDs (e.g. during 265-form cron sync), check in O(1) memory
+    if (preloadedArchivedIds) {
+      for (const id of remaining) {
+        if (preloadedArchivedIds.has(id)) found.add(id);
+      }
+      return found;
+    }
+
+    // 3. Single-form / webhook fallback: only scan rows that actually carry metadata arrays
+    const archiveRows: Array<{ fb_id: string }> = await this.leadsRepository.query(
+      `SELECT prev.fb_id FROM leads l,
+         LATERAL jsonb_array_elements_text(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'previousFacebookLeadIds') = 'array'
+                THEN l.metadata::jsonb -> 'previousFacebookLeadIds' ELSE '[]'::jsonb END
+         ) AS prev(fb_id)
+       WHERE l.metadata IS NOT NULL AND l.metadata::text LIKE '%previousFacebookLeadIds%' AND prev.fb_id = ANY($1)
+       UNION
+       SELECT hist.entry ->> 'facebookLeadId' AS fb_id FROM leads l,
+         LATERAL jsonb_array_elements(
+           CASE WHEN jsonb_typeof(l.metadata::jsonb -> 'formHistory') = 'array'
+                THEN l.metadata::jsonb -> 'formHistory' ELSE '[]'::jsonb END
+         ) AS hist(entry)
+       WHERE l.metadata IS NOT NULL AND l.metadata::text LIKE '%formHistory%' AND hist.entry ->> 'facebookLeadId' = ANY($1)`,
+      [remaining],
+    );
+    for (const r of archiveRows) {
+      if (r.fb_id) found.add(r.fb_id);
+    }
+    return found;
   }
 
   /**
@@ -962,7 +1006,7 @@ export class CrmService implements OnModuleInit {
     return this.createLeadFromFacebook(parsedLead, leadData, isWebhook);
   }
 
-  async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string, skipTokenResolution: boolean = false): Promise<Lead[]> {
+  async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string, skipTokenResolution: boolean = false, preloadedArchivedIds?: Set<string>): Promise<Lead[]> {
     // Manual imports don't know which page the form belongs to — resolve the
     // page token so forms on secondary pages import correctly too
     if (!pageAccessToken && !skipTokenResolution) {
@@ -980,7 +1024,7 @@ export class CrmService implements OnModuleInit {
     // Dedup on the Facebook lead ID (not name/email heuristics), including
     // submissions already merged into another card's history
     const fbIds = leadsData.map((l) => l.id).filter(Boolean);
-    const alreadyImportedIds = await this.findProcessedFacebookLeadIds(fbIds);
+    const alreadyImportedIds = await this.findProcessedFacebookLeadIds(fbIds, preloadedArchivedIds);
     const existingRows = fbIds.length
       ? await this.leadsRepository.find({
           where: { facebookLeadId: In(fbIds) },
@@ -5234,7 +5278,7 @@ export class CrmService implements OnModuleInit {
         // Admins and Global Sales see all active clinics
         return this.clinicsRepository.find({
           where: { isActive: true },
-          select: ['id', 'name', 'address', 'phone', 'email', 'timezone']
+          select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms']
         });
       }
 
@@ -5277,7 +5321,7 @@ export class CrmService implements OnModuleInit {
 
       const clinics = await this.clinicsRepository.find({
         where: { id: In(Array.from(accessibleClinicIds)), isActive: true },
-        select: ['id', 'name', 'address', 'phone', 'email', 'timezone']
+        select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms']
       });
 
       return clinics.sort((a, b) =>
@@ -5409,21 +5453,28 @@ export class CrmService implements OnModuleInit {
     return standardizedActivities;
   }
 
-  @OnEvent('appointment.created')
+  @OnEvent('appointment.created', { async: true })
   async handleAppointmentCreated(appointment: Appointment) {
     if (!appointment || !appointment.clientId) return;
+    try {
+      await this.doHandleAppointmentCreated(appointment);
+    } catch (err: any) {
+      this.logger.error(`handleAppointmentCreated failed for appointment ${appointment?.id}: ${err?.message || err}`, err?.stack);
+    }
+  }
 
+  private async doHandleAppointmentCreated(appointment: Appointment) {
     const clientEmail = appointment.client?.email || appointment.clientDetails?.email;
     const clientPhone = appointment.client?.phone || appointment.clientDetails?.phone;
 
     // 1. Find the existing CRM card (lead) of this client: by id, by an explicit
-    //    link to the client account, then by email or full phone number
+    //    link to the client account (indexed via IDX_leads_converted_*), then by email or full phone number
     let lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
     if (!lead) {
       lead = await this.leadsRepository
         .createQueryBuilder('l')
         .where(
-          `(l.metadata::jsonb ->> 'convertedToUserId' = :uid OR l.metadata::jsonb ->> 'convertedToCustomerId' = :uid OR l.metadata::jsonb ->> 'existingCustomerId' = :uid)`,
+          `(l.metadata->>'convertedToUserId' = :uid OR l.metadata->>'convertedToCustomerId' = :uid OR l.metadata->>'existingCustomerId' = :uid)`,
           { uid: appointment.clientId },
         )
         .orderBy('COALESCE(l.lastMetaFormSubmittedAt, l.createdAt)', 'DESC')
@@ -6190,10 +6241,21 @@ export class CrmService implements OnModuleInit {
       errors.push(`Could not list Facebook forms: ${err.message}`);
     }
 
+    // Preload archived/history FB lead IDs ONCE for the whole sync run instead of
+    // rescanning 30k+ rows of leads.metadata for each of the 265+ Facebook forms.
+    let preloadedArchivedIds: Set<string> | undefined;
+    if (liveForms.length > 0) {
+      try {
+        preloadedArchivedIds = await this.loadArchivedFacebookLeadIds();
+      } catch (err: any) {
+        this.logger.warn(`Could not preload archived FB lead ids: ${err?.message || err}`);
+      }
+    }
+
     for (const form of liveForms) {
       formsChecked++;
       try {
-        const leads = await this.importFacebookLeads(form.id, 10000, form.page_access_token, true);
+        const leads = await this.importFacebookLeads(form.id, 10000, form.page_access_token, true, preloadedArchivedIds);
         imported += leads.length;
       } catch (err) {
         // One failing form must not abort the sync of the remaining forms

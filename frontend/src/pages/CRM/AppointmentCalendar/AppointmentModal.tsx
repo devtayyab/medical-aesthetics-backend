@@ -1,10 +1,10 @@
 import { confirmDialog, promptDialog } from '@/components/molecules/ConfirmDialog';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   X, Search, User, Scissors, MapPin, Clock, StickyNote,
-  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink, Lock
+  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink, Lock, BellOff
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -52,6 +52,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   onSuccess,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
   const isCompleted = Boolean(
@@ -114,6 +115,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     durationMinutes: 0,
     status: 'PENDING',
     notes: '',
+    disableNotifications: false,
     paymentMethod: '',
     amount: 0,
     tax: TAX_RATE,
@@ -219,6 +221,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         durationMinutes: durationMin,
         status: apt.status as any,
         notes: apt.notes || '',
+        disableNotifications: Boolean((apt as any).disableNotifications),
         paymentMethod: apt.paymentMethod as any || '',
         amount: serviceAmount,
         tax: TAX_RATE,
@@ -230,36 +233,55 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       // state: after viewing an existing appointment it still holds that
       // appointment's time/duration/clinic, which leaked into the new form.
       const defaultPersonId = initialData?.salesPersonId || effectiveUserId;
+      const initialClinicValid =
+        initialData?.clinicId &&
+        (clinics.length === 0 || clinics.some((c: any) => c.id === initialData.clinicId));
+      const resolvedClinicId = initialClinicValid
+        ? initialData!.clinicId!
+        : (clinics.length === 1 ? clinics[0].id : '');
+      const resolvedClinicName =
+        clinics.find((c: any) => c.id === resolvedClinicId)?.name || initialData?.clinicName || '';
+
       setForm({
         patientId: '',
         patientName: '',
         serviceId: '',
         additionalServiceIds: [],
         serviceName: '',
-        clinicId: '',
-        clinicName: '',
         salesPersonId: defaultPersonId,
         date: format(new Date(), 'yyyy-MM-dd'),
         startTime: '',
         durationMinutes: 0,
         status: 'PENDING',
         notes: '',
+        disableNotifications: false,
         paymentMethod: '',
         amount: 0,
         tax: TAX_RATE,
         discount: 0,
         paymentStatus: 'UNPAID',
         ...(initialData || {}),
+        clinicId: resolvedClinicId,
+        clinicName: resolvedClinicName,
       });
       setSelectedPatient(null);
       setAvailableSlots([]);
-      setAvailableServices([]);
+      if (!resolvedClinicId) {
+        setAvailableServices([]);
+      }
     }
 
     setConflict(null);
     setPatientSearch('');
     setPatientResults([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, mode, existingAppointment, initialData, currentUserId, user]);
+
+  // If clinics finish loading after the create modal opened and the user only has one clinic, select it automatically.
+  useEffect(() => {
+    if (!isOpen || mode !== 'create' || form.clinicId || clinics.length !== 1) return;
+    setForm(prev => (prev.clinicId ? prev : { ...prev, clinicId: clinics[0].id, clinicName: clinics[0].name || '' }));
+  }, [isOpen, mode, form.clinicId, clinics]);
 
   const loadPaymentSummary = useCallback(async () => {
     if (!isOpen || mode !== 'edit' || !existingAppointment?.id) {
@@ -289,21 +311,38 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     loadPaymentSummary();
   }, [loadPaymentSummary]);
 
-  // Fetch services when clinic changes
+  // Fetch services whenever modal opens or clinic changes
   useEffect(() => {
-    if (!form.clinicId) return;
+    if (!isOpen) return;
+    if (!form.clinicId) {
+      setAvailableServices([]);
+      return;
+    }
+    let cancelled = false;
     setIsLoadingServices(true);
     clinicsAPI.getServices(form.clinicId)
       .then((res: any) => {
-        const raw = res.data || [];
-        const sorted = [...raw].sort((a: any, b: any) =>
+        if (cancelled) return;
+        const raw = Array.isArray(res?.data) ? res.data : (res?.data?.data || []);
+        const normalized = raw.map((s: any) => ({
+          ...s,
+          name: s.name || s.treatment?.name || 'Unnamed Service',
+        }));
+        const sorted = [...normalized].sort((a: any, b: any) =>
           (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })
         );
         setAvailableServices(sorted);
       })
-      .catch(() => setAvailableServices([]))
-      .finally(() => setIsLoadingServices(false));
-  }, [form.clinicId]);
+      .catch(() => {
+        if (!cancelled) setAvailableServices([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingServices(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, form.clinicId]);
 
   // Fetch available slots
   useEffect(() => {
@@ -346,6 +385,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       // Past times: admins only (the server enforces this too).
       allowPast: isAdmin,
       excludeAppointmentId: mode === 'edit' && existingAppointment ? existingAppointment.id : undefined,
+      durationMinutes: form.durationMinutes > 0 ? form.durationMinutes : undefined,
     })
       .then((res: any) => {
         const slotsData = res.data?.slots || res.data?.data || res.data;
@@ -363,7 +403,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       })
       .catch(() => setAvailableSlots([]))
       .finally(() => setIsLoadingSlots(false));
-  }, [form.clinicId, form.serviceId, form.additionalServiceIds, form.date, form.salesPersonId, clinics, mode, existingAppointment, isAdmin]);
+  }, [form.clinicId, form.serviceId, form.additionalServiceIds, form.date, form.durationMinutes, form.salesPersonId, clinics, mode, existingAppointment, isAdmin]);
 
   // Patient search
   useEffect(() => {
@@ -459,9 +499,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     }));
   };
 
-    // Automatically calculate and set the exact sum of durations from selected services
+  // Auto-populate default duration from selected services ONLY when duration is not set yet (create mode).
+  // Never overwrite an existing appointment's saved custom duration or a manual user override.
   useEffect(() => {
-    if (!availableServices.length || !form.serviceId) return;
+    if (mode !== 'create' || !availableServices.length || !form.serviceId || form.durationMinutes > 0) return;
     const allSelectedIds = Array.from(new Set([form.serviceId, ...(form.additionalServiceIds || [])].filter(Boolean)));
     let calculatedDuration = 0;
     allSelectedIds.forEach(id => {
@@ -472,13 +513,36 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
     });
 
-    if (calculatedDuration > 0 && calculatedDuration !== form.durationMinutes) {
+    if (calculatedDuration > 0) {
       setForm(prev => ({
         ...prev,
         durationMinutes: calculatedDuration,
       }));
     }
-  }, [availableServices, form.serviceId, form.additionalServiceIds]);
+  }, [mode, availableServices, form.serviceId, form.additionalServiceIds, form.durationMinutes]);
+
+  // Compute exact HH:mm end time from startTime + durationMinutes
+  const computedEndTime = useMemo(() => {
+    if (!form.startTime || !form.durationMinutes || form.durationMinutes <= 0) return '';
+    const [h, m] = form.startTime.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
+    const totalMins = h * 60 + m + form.durationMinutes;
+    if (totalMins >= 24 * 60) return '23:59';
+    const endH = Math.floor(totalMins / 60);
+    const endM = totalMins % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  }, [form.startTime, form.durationMinutes]);
+
+  const handleEndTimeChange = (newEndTime: string) => {
+    if (!form.startTime || !newEndTime) return;
+    const [sh, sm] = form.startTime.split(':').map(Number);
+    const [eh, em] = newEndTime.split(':').map(Number);
+    if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) return;
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff > 0 && diff <= 720) {
+      setForm(prev => ({ ...prev, durationMinutes: diff }));
+    }
+  };
 
   const handleClinicChange = (clinicId: string) => {
     const clinic = clinics.find(c => c.id === clinicId);
@@ -529,12 +593,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return [...availableSlots, missingSlot].sort((a, b) => a.value.localeCompare(b.value));
   }, [availableSlots, form.startTime, mode]);
 
-  // Create mode: if the selected time turns out to be busy (or no longer exists)
-  // once slots load, clear it so a busy slot can't stay selected.
+  // Create mode: if a picked grid slot turns out to be explicitly busy once slots load,
+  // clear it so a busy slot can't stay selected. Allow custom off-grid times (e.g. 18:15)
+  // entered manually by staff so exact custom time windows can be scheduled.
   useEffect(() => {
     if (mode !== 'create' || !form.startTime || availableSlots.length === 0) return;
     const slot = availableSlots.find(s => s.value === form.startTime);
-    if (!slot || slot.available === false) {
+    if (slot && slot.available === false) {
       setForm(prev => ({ ...prev, startTime: '' }));
     }
   }, [availableSlots, mode, form.startTime]);
@@ -562,6 +627,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       salesPersonId: form.salesPersonId,
       clinicId: form.clinicId,
       excludeAppointmentId: mode === 'edit' ? existingAppointment?.id : undefined,
+      treatmentRooms: clinic?.treatmentRooms,
     });
 
     if (conflictResult.hasConflict) {
@@ -573,6 +639,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   }, [form, clinics, checkConflict, mode, existingAppointment]);
 
   const handleSave = async (eOrOverrideStatus?: any) => {
+    if (isSubmittingRef.current) return;
     if (isCompleted) {
       toast.error(isGreek ? 'Το ολοκληρωμένο ραντεβού είναι κλειδωμένο και δεν μπορεί να τροποποιηθεί.' : 'Completed appointments are locked and cannot be modified.');
       return;
@@ -623,6 +690,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       cancellationReason = answer.trim();
     }
     if (!validateAndCheckConflict()) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     const clinic = clinics.find(c => c.id === form.clinicId);
@@ -646,6 +715,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           endTime: endUTC.toISOString(),
           status: overrideStatus || form.status,
           notes: form.notes,
+          disableNotifications: Boolean(form.disableNotifications),
         };
 
         if (form.isNewPatient && form.newPatientDetails) {
@@ -660,7 +730,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         toast.success('Appointment created successfully!');
       } else {
         await bookingAPI.updateAppointment(existingAppointment!.id, {
-          // Clinic changes are saved too; the server recalculates price and duration.
           clinicId: form.clinicId,
           startTime: startUTC.toISOString(),
           endTime: endUTC.toISOString(),
@@ -669,6 +738,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           representativeId: form.salesPersonId || undefined,
           bookedById: form.salesPersonId || undefined,
           notes: form.notes,
+          disableNotifications: Boolean(form.disableNotifications),
         });
         // Update status separately if changed
         const finalStatus = targetStatus;
@@ -685,6 +755,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to save appointment.');
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -1190,30 +1261,58 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               )}
             </div>
 
-            {/* Duration */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide">
-                  <Clock className="inline w-3 h-3 mr-1" /> Duration
-                </label>
-                {form.durationMinutes > 0 && (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Auto: {form.durationMinutes} min
-                  </span>
-                )}
+            {/* Start Time, End Time & Duration */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
+                    <Clock className="inline w-3 h-3 mr-1" /> {isGreek ? 'Ώρα έναρξης *' : 'Start Time *'}
+                  </label>
+                  <input
+                    type="time"
+                    value={form.startTime || ''}
+                    onChange={e => setForm(prev => ({ ...prev, startTime: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
+                    <Clock className="inline w-3 h-3 mr-1" /> {isGreek ? 'Ώρα λήξης *' : 'End Time *'}
+                  </label>
+                  <input
+                    type="time"
+                    value={computedEndTime}
+                    disabled={!form.startTime}
+                    onChange={e => handleEndTimeChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                  />
+                </div>
               </div>
-              <select
-                value={form.durationMinutes}
-                onChange={e => setForm(prev => ({ ...prev, durationMinutes: parseInt(e.target.value, 10) }))}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                {!form.durationMinutes && (
-                  <option value={0} disabled>Select a treatment...</option>
-                )}
-                {durationOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide">
+                    <Clock className="inline w-3 h-3 mr-1" /> {isGreek ? 'Διάρκεια' : 'Duration'}
+                  </label>
+                  {form.durationMinutes > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {form.durationMinutes} min
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={form.durationMinutes}
+                  onChange={e => setForm(prev => ({ ...prev, durationMinutes: parseInt(e.target.value, 10) }))}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+                  {!form.durationMinutes && (
+                    <option value={0} disabled>Select a treatment...</option>
+                  )}
+                  {durationOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Status */}
@@ -1258,6 +1357,30 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 placeholder="Add any notes about this appointment..."
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
               />
+            </div>
+
+            {/* Disable Notifications Toggle */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.disableNotifications) || /^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')}
+                  disabled={/^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')}
+                  onChange={e => setForm(prev => ({ ...prev, disableNotifications: e.target.checked }))}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[12px] font-bold text-slate-700">
+                    <BellOff className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{isGreek ? 'Απενεργοποίηση ειδοποιήσεων (Email & Push)' : 'Disable Notifications (Email & Push)'}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {/^\s*(απ[όο]|from)\s+fresha\b/i.test(form.notes || '')
+                      ? (isGreek ? 'Αυτόματα απενεργοποιημένες για ραντεβού από Fresha.' : 'Automatically disabled for appointments imported from Fresha.')
+                      : (isGreek ? 'Δεν θα σταλούν αυτόματα email, push ειδοποιήσεις ή υπενθυμίσεις για αυτό το ραντεβού.' : 'No automatic emails, push notifications, or reminders will be sent for this appointment.')}
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 

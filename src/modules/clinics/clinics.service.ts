@@ -773,23 +773,13 @@ export class ClinicsService {
       return clinic;
     }
 
-    // 2. Check if user is an agent for a clinic
-    const agentAccess = await this.agentAccessRepository.findOne({
-      where: { agentUserId: ownerId },
-      relations: ['clinic'],
-    });
-
-    if (agentAccess && agentAccess.clinic) {
-      return this.findById(agentAccess.clinic.id);
-    }
-
-    // 3. Check if user is staff for a clinic (assignedClinicId)
+    // 2. Check if user is staff for a clinic (assignedClinicId takes priority over agent grants)
     const user = await this.usersRepository.findOne({ where: { id: ownerId } });
     if (user && user.assignedClinicId) {
       return this.findById(user.assignedClinicId);
     }
 
-    // 4. Check mapping table
+    // 3. Check mapping table (co-ownership)
     const ownership = await this.clinicOwnershipRepository.findOne({
       where: { ownerUserId: ownerId },
     });
@@ -798,36 +788,40 @@ export class ClinicsService {
       return this.findById(ownership.clinicId);
     }
 
+    // 4. Check agent access grants (secretariat / salespeople / managers)
+    const normalizedRole = String(user?.role || '').toLowerCase();
+    if (normalizedRole !== UserRole.CLINIC_OWNER && normalizedRole !== UserRole.DOCTOR) {
+      const agentAccess = await this.agentAccessRepository.findOne({
+        where: { agentUserId: ownerId },
+        relations: ['clinic'],
+      });
+
+      if (agentAccess && agentAccess.clinic) {
+        return this.findById(agentAccess.clinic.id);
+      }
+    }
+
     throw new NotFoundException('Clinic not found for this user');
   }
 
   async findAllByOwner(ownerId: string): Promise<Clinic[]> {
+    const user = await this.usersRepository.findOne({ where: { id: ownerId } });
+    const normalizedRole = String(user?.role || '').toLowerCase();
+
     // 1. Get clinics directly owned
     const ownedClinics = await this.clinicsRepository.find({
       where: { ownerId, isActive: true }
     });
 
-    // 2. Get clinics given agent access
-    const agentClinics = await this.agentAccessRepository.find({
-      where: { agentUserId: ownerId },
-      relations: ['clinic']
-    });
-
     const all = [...ownedClinics];
-    agentClinics.forEach(ac => {
-      if (ac.clinic && !all.find(c => c.id === ac.clinic.id)) {
-        all.push(ac.clinic);
-      }
-    });
 
-    // 3. Check if user is staff for a clinic
-    const user = await this.usersRepository.findOne({ where: { id: ownerId } });
+    // 2. Check if user is staff for a clinic (assignedClinicId first for secretariat/doctor)
     if (user && user.assignedClinicId && !all.find(c => c.id === user.assignedClinicId)) {
       const staffClinic = await this.findById(user.assignedClinicId);
       if (staffClinic) all.push(staffClinic);
     }
 
-    // 4. Mapping table
+    // 3. Mapping table (co-ownership)
     const ownerships = await this.clinicOwnershipRepository.find({
       where: { ownerUserId: ownerId },
     });
@@ -837,6 +831,19 @@ export class ClinicsService {
         const c = await this.findById(o.clinicId);
         if (c) all.push(c);
       }
+    }
+
+    // 4. Get clinics given explicit agent access (secretariat / salespeople / managers; not clinic_owner/doctor)
+    if (normalizedRole !== UserRole.CLINIC_OWNER && normalizedRole !== UserRole.DOCTOR) {
+      const agentClinics = await this.agentAccessRepository.find({
+        where: { agentUserId: ownerId },
+        relations: ['clinic']
+      });
+      agentClinics.forEach(ac => {
+        if (ac.clinic && ac.clinic.isActive !== false && !all.find(c => c.id === ac.clinic.id)) {
+          all.push(ac.clinic);
+        }
+      });
     }
 
     return all;

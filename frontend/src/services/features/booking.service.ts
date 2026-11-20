@@ -8,6 +8,7 @@ export const bookingService = {
     date: string;
     allowPast?: boolean;
     excludeAppointmentId?: string;
+    durationMinutes?: number;
   }) => api.get('/availability', {
     params,
     paramsSerializer: {
@@ -33,6 +34,7 @@ export const bookingService = {
     startTime: string;
     endTime: string;
     notes?: string;
+    disableNotifications?: boolean;
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
@@ -87,6 +89,7 @@ export const bookingService = {
     clinicId?: string;
     serviceId?: string;
     notes?: string;
+    disableNotifications?: boolean;
     totalAmount?: number;
     additionalServiceIds?: string[];
     representativeId?: string | null;

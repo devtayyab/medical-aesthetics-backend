@@ -32,6 +32,10 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
     setClientData,
     notes,
     setNotes,
+    disableNotifications,
+    setDisableNotifications,
+    customEndTime,
+    setCustomEndTime,
     services,
     providers,
     selectedService,
@@ -183,6 +187,16 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  onChange={(e) => setNotes(e.target.value)}
  />
  </div>
+ <label className="flex items-center gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer select-none">
+   <input
+     type="checkbox"
+     checked={disableNotifications || /^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
+     disabled={/^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
+     onChange={(e) => setDisableNotifications(e.target.checked)}
+     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+   />
+   <span className="text-xs font-bold text-gray-700">Disable automatic notifications (Email &amp; Push)</span>
+ </label>
  </div>
  </div>
  )}
@@ -214,7 +228,12 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
       <button
         key={i}
         disabled={isDisabled}
-        onClick={() => setSelectedSlot(slot)}
+        onClick={() => {
+          setSelectedSlot(slot);
+          if (slot.endTime) {
+            setCustomEndTime(format(new Date(slot.endTime), 'HH:mm'));
+          }
+        }}
         className={`p-2 text-xs font-bold border rounded-lg transition-all ${
           isDisabled
             ? 'bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed'
@@ -241,6 +260,17 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  </div>
  </div>
  </div>
+ {selectedSlot && (
+   <div className="pt-2 border-t border-gray-100">
+     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">End Time (Optional Override)</label>
+     <input
+       type="time"
+       value={customEndTime}
+       onChange={(e) => setCustomEndTime(e.target.value)}
+       className="w-full sm:w-48 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-semibold"
+     />
+   </div>
+ )}
  </div>
  )}
  </div>

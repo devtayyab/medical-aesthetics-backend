@@ -47,6 +47,7 @@ export interface AppointmentFormData {
   durationMinutes: number;
   status: AppointmentStatusType;
   notes: string;
+  disableNotifications?: boolean;
   // Payment
   paymentMethod: 'cash' | 'card' | 'venue' | string;
   amount: number;

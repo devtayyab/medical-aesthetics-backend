@@ -41,12 +41,12 @@ export class CalendarSyncListener {
     }
   }
 
-  @OnEvent('appointment.created')
+  @OnEvent('appointment.created', { async: true })
   async onCreated(appointment: any) {
     await this.enqueue(appointment?.id);
   }
 
-  @OnEvent('appointment.rescheduled')
+  @OnEvent('appointment.rescheduled', { async: true })
   async onRescheduled(payload: any) {
     // Two emit shapes exist in bookings.service.ts: the bare appointment
     // (reschedule()) and a wrapped { appointment, oldStartTime, ... }
@@ -54,14 +54,14 @@ export class CalendarSyncListener {
     await this.enqueue(payload?.id ?? payload?.appointment?.id);
   }
 
-  @OnEvent('appointment.status.changed')
+  @OnEvent('appointment.status.changed', { async: true })
   async onStatusChanged(payload: any) {
     await this.enqueue(payload?.appointment?.id);
   }
 
   // Dedicated signal emitted by clinic-scoped status changes and soft-deletes
   // that don't go through the shared status.changed event.
-  @OnEvent('appointment.calendar.dirty')
+  @OnEvent('appointment.calendar.dirty', { async: true })
   async onCalendarDirty(payload: any) {
     await this.enqueue(payload?.appointmentId);
   }

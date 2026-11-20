@@ -81,11 +81,21 @@ export class ClinicPatientsService {
     if (!user) throw new NotFoundException('User not found');
     if (user.assignedClinicId) ids.add(user.assignedClinicId);
 
-    if (String(role).toLowerCase() === UserRole.CLINIC_OWNER) {
+    const normalizedRole = String(role).toLowerCase();
+    if (normalizedRole === UserRole.CLINIC_OWNER) {
       const owned = await this.clinicsRepository.find({ where: { ownerId: userId }, select: ['id'] });
       owned.forEach((c) => ids.add(c.id));
       const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: userId } });
       ownerships.forEach((o) => ids.add(o.clinicId));
+    }
+    if (normalizedRole === UserRole.SECRETARIAT) {
+      const accessRows: Array<{ clinicId: string }> = await this.usersRepository.manager.query(
+        'SELECT "clinicId" FROM agent_clinic_access WHERE "agentUserId" = $1',
+        [userId],
+      );
+      accessRows.forEach((r) => {
+        if (r?.clinicId) ids.add(r.clinicId);
+      });
     }
     return [...ids];
   }
@@ -113,7 +123,7 @@ export class ClinicPatientsService {
 
   async getAccessibleClinics(userId: string, role: string): Promise<Clinic[]> {
     const ids = await this.resolveClinicIds(userId, role);
-    const select: (keyof Clinic)[] = ['id', 'name', 'address', 'phone', 'email', 'timezone'];
+    const select: (keyof Clinic)[] = ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms'];
     if (ids === null) {
       return this.clinicsRepository.find({ where: { isActive: true }, select, order: { name: 'ASC' } });
     }

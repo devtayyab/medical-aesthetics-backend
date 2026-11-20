@@ -46,21 +46,16 @@ export class AvailabilityService {
     date?: string,
     allowPast = false,
     excludeAppointmentId?: string | null,
+    durationMinutesOverride?: number | null,
   ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
-    const logPath = path.join(os.tmpdir(), 'availability-debug.log');
     const log = (msg: string, data?: any) => {
-      const timestamp = new Date().toISOString();
-      const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
-      try {
-        fs.appendFileSync(logPath, line);
-      } catch (e) {
-        // Ignore file write errors
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(msg, data ?? '');
       }
-      console.log(msg, data);
     };
 
     const serviceIds = Array.isArray(serviceId) ? serviceId : [serviceId];
-    log('🔵 Availability Request:', { clinicId, serviceIds, providerId, date });
+    log('🔵 Availability Request:', { clinicId, serviceIds, providerId, date, durationMinutesOverride });
 
     try {
       // Validate required parameters
@@ -77,7 +72,8 @@ export class AvailabilityService {
         throw new NotFoundException('Clinic not found');
       }
 
-      log('🔵 Clinic:', clinic.name);
+      const maxRooms = Math.max(1, Number((clinic as any).treatmentRooms) || 1);
+      log('🔵 Clinic:', { name: clinic.name, maxRooms });
 
       const allServices = await this.clinicsService.findServices(clinicId);
       if (!allServices || allServices.length === 0) {
@@ -89,8 +85,13 @@ export class AvailabilityService {
         throw new NotFoundException(`No matching services found for clinic ${clinicId}`);
       }
 
-      const totalDurationMinutes = services.reduce((sum, s) => sum + s.durationMinutes, 0);
-      log('🔵 Total duration:', totalDurationMinutes);
+      const serviceDurationMinutes = services.reduce((sum, s) => sum + (Number(s.durationMinutes) || 0), 0);
+      const parsedOverride = durationMinutesOverride != null ? Number(durationMinutesOverride) : NaN;
+      const totalDurationMinutes =
+        Number.isFinite(parsedOverride) && parsedOverride >= 5 && parsedOverride <= 720
+          ? Math.round(parsedOverride)
+          : serviceDurationMinutes;
+      log('🔵 Total duration:', { totalDurationMinutes, serviceDurationMinutes, durationMinutesOverride });
 
       const rawTz = clinic.timezone;
       // Same fallback as the booking checks (assertSlotBookable): business time is Europe/Athens
@@ -239,60 +240,55 @@ export class AvailabilityService {
         const slotEnd = new Date(currentSlot.getTime() + (totalDurationMinutes * 60000));
 
         if (allowPast || slotStart >= now) {
-          // Find WHICH providers are free for this specific slot
-          const availableProviders = providers.filter(provider => {
-            const pid = provider.id;
+          // 1. Clinic-wide blocks always block the entire clinic regardless of treatmentRooms.
+          const hasClinicWideBlock = (blocksByProvider['clinic'] || []).some(block =>
+            slotStart < new Date(block.endTime) && slotEnd > new Date(block.startTime)
+          );
 
-            // 1. Check provider-specific appointments
-            const hasApt = (aptsByProvider[pid] || []).some(apt =>
-              slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)
-            );
-            if (hasApt) return false;
-
-            // 2. Check provider-specific holds
-            const hasHold = (holdsByProvider[pid] || []).some(hold =>
-              slotStart < new Date(hold.endTime) && slotEnd > new Date(hold.startTime)
-            );
-            if (hasHold) return false;
-
-            // 3. Check provider-specific blocks OR clinic-wide blocks
-            const hasBlock = [...(blocksByProvider[pid] || []), ...(blocksByProvider['clinic'] || [])].some(block =>
-              slotStart < new Date(block.endTime) && slotEnd > new Date(block.startTime)
-            );
-            if (hasBlock) return false;
-
-            return true;
-          });
-
-          // Account for appointments assigned to 'clinic' (null) or external users not in the providers list
-          const unassignedApts = Object.entries(aptsByProvider).flatMap(([pid, apts]) => {
-            if (pid === 'clinic' || !providers.some(p => p.id === pid)) {
-               return apts;
-            }
-            return [];
-          });
-          
-          const overlappingUnassignedCount = unassignedApts.filter((apt: any) => 
-              slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)
+          // 2. Count total simultaneous active bookings + active holds at this clinic overlapping [slotStart, slotEnd].
+          const overlappingClinicBookings = existingAppointments.filter(apt =>
+            slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)
           ).length;
+          const overlappingClinicHolds = activeHolds.filter(hold =>
+            slotStart < new Date(hold.endTime) && slotEnd > new Date(hold.startTime)
+          ).length;
+          const totalClinicOccupancy = overlappingClinicBookings + overlappingClinicHolds;
+          const hasRoomCapacity = !hasClinicWideBlock && totalClinicOccupancy < maxRooms;
 
-          if (overlappingUnassignedCount > 0) {
-              if (overlappingUnassignedCount >= availableProviders.length) {
-                  availableProviders.length = 0;
-              } else {
-                  availableProviders.splice(0, overlappingUnassignedCount);
-              }
-          }
+          // 3. Find WHICH providers are individually free for this specific slot
+          const availableProviders = hasRoomCapacity
+            ? providers.filter(provider => {
+                const pid = provider.id;
 
-          // No specific provider requested: the clinic is treated as one calendar, exactly like
-          // booking does (an appointment without provider conflicts with ANY overlapping one).
-          // So an existing 10:00-11:00 appointment makes 10:00 (and 10:30) busy.
-          if (!providerId) {
-            const clinicBusy =
-              existingAppointments.some(apt => slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)) ||
-              activeHolds.some(hold => slotStart < new Date(hold.endTime) && slotEnd > new Date(hold.startTime));
-            if (clinicBusy) availableProviders.length = 0;
-          }
+                // Provider-specific appointments
+                const hasApt = (aptsByProvider[pid] || []).some(apt =>
+                  slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)
+                );
+                if (hasApt) return false;
+
+                // Provider-specific holds
+                const hasHold = (holdsByProvider[pid] || []).some(hold =>
+                  slotStart < new Date(hold.endTime) && slotEnd > new Date(hold.startTime)
+                );
+                if (hasHold) return false;
+
+                // Provider-specific blocks (clinic-wide blocks already checked above)
+                const hasBlock = (blocksByProvider[pid] || []).some(block =>
+                  slotStart < new Date(block.endTime) && slotEnd > new Date(block.startTime)
+                );
+                if (hasBlock) return false;
+
+                return true;
+              })
+            : [];
+
+          // A slot is available when:
+          // - A specific provider was requested: room capacity is available AND that provider is free.
+          // - No specific provider was requested: room capacity is available (up to clinic.treatmentRooms
+          //   simultaneous appointments, even if the clinic has fewer distinct provider user rows than rooms).
+          const isSlotAvailable = providerId
+            ? hasRoomCapacity && availableProviders.length > 0
+            : hasRoomCapacity;
 
             // Always format display time for the slot
             let startTimeDisplay: string;
@@ -313,17 +309,19 @@ export class AvailabilityService {
               });
             }
 
-            if (availableProviders.length > 0) {
-              // Pick a provider
-              const chosenProvider = availableProviders[0];
+            if (isSlotAvailable) {
+              // Pick a free provider if one exists; otherwise keep providerId null so a multi-room
+              // clinic with 1 registered owner/doctor can still book room #2 without double-booking that doctor.
+              const chosenProvider = availableProviders[0] || null;
 
               slots.push({
                 startTime: slotStart.toISOString(),
                 startTimeDisplay,
                 endTime: slotEnd.toISOString(),
                 available: true,
-                providerId: chosenProvider.id,
-                providerName: `${chosenProvider.firstName} ${chosenProvider.lastName}`,
+                remainingRooms: Math.max(0, maxRooms - totalClinicOccupancy),
+                providerId: chosenProvider ? chosenProvider.id : null,
+                providerName: chosenProvider ? `${chosenProvider.firstName} ${chosenProvider.lastName}` : null,
               });
             } else {
               // Time slot is completely booked/blocked

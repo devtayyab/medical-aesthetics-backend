@@ -95,12 +95,14 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     }
   }, [clinicId, isDoctor, user?.id]);
 
-  // Set default clinic when clinics load if not yet selected
+  // Set default clinic when clinics load if not yet selected or if current selection is not accessible
   useEffect(() => {
     if (clinics && clinics.length > 0) {
       setFilters(prev => {
-        if (!prev.clinicId || prev.clinicId === 'all') {
-          const targetId = (clinicId && clinicId !== 'all') ? clinicId : clinics[0].id;
+        const hasPrev = prev.clinicId && prev.clinicId !== 'all' && clinics.some((c: any) => c.id === prev.clinicId);
+        if (!hasPrev) {
+          const propValid = clinicId && clinicId !== 'all' && clinics.some((c: any) => c.id === clinicId);
+          const targetId = propValid ? clinicId : clinics[0].id;
           return { ...prev, clinicId: targetId };
         }
         return prev;

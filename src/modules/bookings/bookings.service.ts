@@ -47,15 +47,21 @@ export class BookingsService {
   private readonly logPath = path.join(process.cwd(), 'logs', 'appointment-debug.log');
 
   private logDebug(msg: string, data?: any) {
-    try {
-      const timestamp = new Date().toISOString();
-      const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
-      if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
-      fs.appendFileSync(this.logPath, line);
-    } catch {
-      // Ignore file writing permission errors inside Docker so it never crashes the request
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(msg, data ?? '');
     }
-    console.log(msg, data);
+  }
+
+  private isFreshaImportedNotes(notes?: string | null): boolean {
+    if (!notes) return false;
+    return /^\s*(απ[όο]|from)\s+fresha\b/i.test(String(notes));
+  }
+
+  private parseValidEndTime(startTime: Date, endTime?: Date | string | null): Date | null {
+    if (!endTime) return null;
+    const parsed = endTime instanceof Date ? endTime : new Date(endTime);
+    if (isNaN(parsed.getTime()) || parsed.getTime() <= startTime.getTime()) return null;
+    return parsed;
   }
   constructor(
     @InjectRepository(Appointment)
@@ -86,32 +92,52 @@ export class BookingsService {
    */
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
     const { clinicId, serviceId, additionalServiceIds, providerId, startTime, endTime } = holdSlotDto;
+    const holdStart = new Date(startTime);
+    const holdEnd = new Date(endTime);
 
-    // Check for conflicts
-    const conflictingAppointment = await this.appointmentsRepository.findOne({
-      where: {
-        clinicId,
-        providerId: providerId || undefined,
-        startTime: Between(new Date(startTime), new Date(endTime)),
-        status: AppointmentStatus.CONFIRMED,
-      },
-    });
+    const clinic: any = await this.appointmentsRepository.manager
+      .getRepository(Clinic)
+      .findOne({ where: { id: clinicId }, select: ['id', 'treatmentRooms'] as any });
+    const maxRooms = Math.max(1, Number(clinic?.treatmentRooms) || 1);
 
-    if (conflictingAppointment) {
+    // Count overlapping active appointments in this clinic
+    const overlappingAppointments = await this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .where('apt.clinicId = :clinicId', { clinicId })
+      .andWhere('apt.status IN (:...statuses)', {
+        statuses: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.ARRIVED,
+          AppointmentStatus.IN_PROGRESS,
+        ],
+      })
+      .andWhere('apt.startTime < :holdEnd', { holdEnd })
+      .andWhere('apt.endTime > :holdStart', { holdStart })
+      .getMany();
+
+    if (providerId && overlappingAppointments.some((a) => a.providerId === providerId)) {
       throw new ConflictException('Time slot is already booked');
     }
 
-    const conflictingHold = await this.holdsRepository.findOne({
-      where: {
-        clinicId,
-        providerId: providerId || undefined,
-        startTime: Between(new Date(startTime), new Date(endTime)),
-        expiresAt: MoreThan(new Date()),
-      },
-    });
+    // Count overlapping active holds in this clinic
+    const overlappingHolds = await this.holdsRepository
+      .createQueryBuilder('h')
+      .where('h.clinicId = :clinicId', { clinicId })
+      .andWhere('h.expiresAt > :now', { now: new Date() })
+      .andWhere('h.startTime < :holdEnd', { holdEnd })
+      .andWhere('h.endTime > :holdStart', { holdStart })
+      .getMany();
 
-    if (conflictingHold) {
+    if (providerId && overlappingHolds.some((h) => h.providerId === providerId)) {
       throw new ConflictException('Time slot is currently held');
+    }
+
+    if (overlappingAppointments.length + overlappingHolds.length >= maxRooms) {
+      throw new ConflictException(
+        overlappingAppointments.length >= maxRooms ? 'Time slot is already booked' : 'Time slot is currently held',
+      );
     }
 
     const hold = this.holdsRepository.create({
@@ -119,8 +145,8 @@ export class BookingsService {
       serviceId,
       additionalServiceIds,
       providerId,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
+      startTime: holdStart,
+      endTime: holdEnd,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
     });
 
@@ -396,17 +422,23 @@ export class BookingsService {
         ? 'clinic_own'
         : (createAppointmentDto.appointmentSource || 'platform_broker');
 
+    const parsedStartTime = new Date(createAppointmentDto.startTime);
+    const explicitEndTime = this.parseValidEndTime(parsedStartTime, createAppointmentDto.endTime);
+
     const appointmentData: Partial<Appointment> = {
       ...createAppointmentDto,
       clientId,
       providerId: providerId ?? null,
-      startTime: new Date(createAppointmentDto.startTime),
-      endTime: new Date(createAppointmentDto.endTime),
+      startTime: parsedStartTime,
+      endTime: explicitEndTime || parsedStartTime,
       appointmentSource: effectiveSource,
       clientDetails: createAppointmentDto.clientDetails,
       bookedById: (createAppointmentDto.bookedById && createAppointmentDto.bookedById !== clientId) ? createAppointmentDto.bookedById : null,
       isBeautyDoctorsClient: effectiveSource === 'clinic_own' ? false : isBeautyDoctorsClient,
       representativeId,
+      disableNotifications:
+        Boolean((createAppointmentDto as any).disableNotifications) ||
+        this.isFreshaImportedNotes(createAppointmentDto.notes),
     };
 
     // Auto-set totalAmount based on all selected services if not already provided
@@ -418,10 +450,16 @@ export class BookingsService {
       appointmentData.totalAmount = totalPrice;
     }
 
-    // Duration = sum of all treatments (e.g. 60 + 30 = 90 min), never just the first one.
-    const totalDurationMinutes = services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
-    if (totalDurationMinutes > 0) {
-      appointmentData.endTime = new Date(new Date(appointmentData.startTime).getTime() + totalDurationMinutes * 60000);
+    // Respect explicitly specified valid endTime across all roles (admin, salespeople,
+    // secretaries, clinics, etc.). Only fall back to the sum of treatment durations
+    // when no valid endTime was provided.
+    if (explicitEndTime) {
+      appointmentData.endTime = explicitEndTime;
+      (createAppointmentDto as any).endTime = explicitEndTime.toISOString();
+    } else {
+      const totalDurationMinutes = services.reduce((sum, s) => sum + (Number((s as any).durationMinutes) || 0), 0);
+      const fallbackMinutes = totalDurationMinutes > 0 ? totalDurationMinutes : 30;
+      appointmentData.endTime = new Date(parsedStartTime.getTime() + fallbackMinutes * 60000);
       (createAppointmentDto as any).endTime = appointmentData.endTime.toISOString();
     }
 
@@ -465,78 +503,107 @@ export class BookingsService {
       appointmentData.additionalServiceIds = createAppointmentDto.additionalServiceIds;
     }
 
-    // Check for overlapping appointments using more robust logic
-    console.log('🔍 [BookingsService] Checking for conflicting appointments (Overlap Logic)...');
-    const newStart = new Date(createAppointmentDto.startTime);
-    const newEnd = new Date(createAppointmentDto.endTime);
+    // Check for overlapping appointments respecting clinic.treatmentRooms capacity
+    const newStart = new Date(appointmentData.startTime as Date);
+    const newEnd = new Date(appointmentData.endTime as Date);
 
-    let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
+    const clinicMeta: any = await this.appointmentsRepository.manager
+      .getRepository(Clinic)
+      .findOne({ where: { id: createAppointmentDto.clinicId }, select: ['id', 'treatmentRooms'] as any });
+    const maxRooms = Math.max(1, Number(clinicMeta?.treatmentRooms) || 1);
+
+    const conflictingAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
       .andWhere('apt.status IN (:...statuses)', {
-          statuses: [
-              AppointmentStatus.CONFIRMED,
-              AppointmentStatus.PENDING,
-              AppointmentStatus.PENDING_PAYMENT,
-              AppointmentStatus.ARRIVED,
-              AppointmentStatus.IN_PROGRESS
-          ]
+        statuses: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.ARRIVED,
+          AppointmentStatus.IN_PROGRESS,
+        ],
       })
       .andWhere('apt.startTime < :newEnd', { newEnd })
-      .andWhere('apt.endTime > :newStart', { newStart });
+      .andWhere('apt.endTime > :newStart', { newStart })
+      .getMany();
 
-    // Only restrict to specific provider if one is assigned (unassigned appointments occupy the clinic)
-    if (providerId) {
-      conflictQuery = conflictQuery.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
-    }
-
-    const conflictingAppointments = await conflictQuery.getMany();
-
-    if (conflictingAppointments.length > 0) {
-      for (const apt of conflictingAppointments) {
-        // If it's a PENDING_PAYMENT appointment, check if it belongs to the same client
-        if (apt.status === AppointmentStatus.PENDING_PAYMENT) {
-          const WALK_IN_DUMMY = '00000000-0000-0000-0000-000000000000';
-          let isSameClient = false;
-          
-          if (clientId !== WALK_IN_DUMMY && apt.clientId === clientId) {
-             isSameClient = true;
-          } else if (
-             createAppointmentDto.clientDetails?.email && 
-             apt.clientDetails?.email === createAppointmentDto.clientDetails.email
-          ) {
-             isSameClient = true;
-          } else if (
-             createAppointmentDto.clientDetails?.phone && 
-             apt.clientDetails?.phone === createAppointmentDto.clientDetails.phone
-          ) {
-             isSameClient = true;
-          }
-
-          if (isSameClient) {
-            console.log(`🔄 [BookingsService] Removing previous pending payment appointment (${apt.id}) for same client so they can re-book.`);
-            // Give back the gift card the abandoned booking had claimed, or the client loses it
-            if (apt.giftCardId) {
-              await this.releaseGiftCardClaim(apt.id, {
-                id: apt.giftCardId,
-                balance: Number(apt.giftCardBalanceBefore ?? apt.giftCardAmountRedeemed ?? 0),
-              });
-            }
-            await this.appointmentsRepository.remove(apt);
-            continue;
-          }
-        }
-        
-        // If we reach here, it's a true conflict
-        this.logDebug('❌ [BookingsService] Conflict detected: Time slot already occupied.', {
-            conflictingAptId: apt.id,
-            status: apt.status,
-            requestedTime: { start: newStart, end: newEnd }
-        });
-        // GDPR: never reveal who holds the slot.
-        throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    const WALK_IN_DUMMY = '00000000-0000-0000-0000-000000000000';
+    const isSameClientApt = (apt: Appointment): boolean => {
+      if (clientId !== WALK_IN_DUMMY && apt.clientId === clientId) return true;
+      if (
+        createAppointmentDto.clientDetails?.email &&
+        apt.clientDetails?.email &&
+        apt.clientDetails.email.toLowerCase() === createAppointmentDto.clientDetails.email.toLowerCase()
+      ) {
+        return true;
       }
+      if (
+        createAppointmentDto.clientDetails?.phone &&
+        apt.clientDetails?.phone &&
+        apt.clientDetails.phone.replace(/\D/g, '').slice(-10) ===
+          createAppointmentDto.clientDetails.phone.replace(/\D/g, '').slice(-10)
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    // Idempotency & duplicate-booking protection: if the exact same client/clinic/service/slot
+    // was just created (e.g. accidental double-click or retry after a transient timeout),
+    // return the existing appointment instead of creating a duplicate (especially important
+    // for multi-room clinics where room #2 would otherwise accept the duplicate!).
+    const identicalExisting = conflictingAppointments.find(
+      (apt) =>
+        apt.status !== AppointmentStatus.PENDING_PAYMENT &&
+        isSameClientApt(apt) &&
+        String(apt.serviceId) === String(createAppointmentDto.serviceId) &&
+        new Date(apt.startTime).getTime() === newStart.getTime() &&
+        new Date(apt.endTime).getTime() === newEnd.getTime(),
+    );
+    if (identicalExisting) {
+      const ageMs = Date.now() - new Date(identicalExisting.createdAt).getTime();
+      if (ageMs >= 0 && ageMs <= 120 * 1000) {
+        console.log(`♻️ [BookingsService] Returning recently created identical appointment (${identicalExisting.id}) to prevent duplicate booking.`);
+        return this.findById(identicalExisting.id);
+      }
+      throw new ConflictException('This client already has an identical appointment booked at this time.');
     }
-    console.log('✅ [BookingsService] No conflicting appointments found.');
+
+    const activeOverlaps: Appointment[] = [];
+    for (const apt of conflictingAppointments) {
+      // Remove abandoned PENDING_PAYMENT of the same client so they can re-book cleanly
+      if (apt.status === AppointmentStatus.PENDING_PAYMENT && isSameClientApt(apt)) {
+        console.log(`🔄 [BookingsService] Removing previous pending payment appointment (${apt.id}) for same client so they can re-book.`);
+        if (apt.giftCardId) {
+          await this.releaseGiftCardClaim(apt.id, {
+            id: apt.giftCardId,
+            balance: Number(apt.giftCardBalanceBefore ?? apt.giftCardAmountRedeemed ?? 0),
+          });
+        }
+        await this.appointmentsRepository.remove(apt);
+        continue;
+      }
+      activeOverlaps.push(apt);
+    }
+
+    // Same doctor cannot be double-booked simultaneously
+    if (providerId && activeOverlaps.some((apt) => apt.providerId && String(apt.providerId) === String(providerId))) {
+      this.logDebug('❌ [BookingsService] Conflict detected: Provider already booked.', {
+        providerId,
+        requestedTime: { start: newStart, end: newEnd },
+      });
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+
+    // Clinic room capacity check: allow up to clinic.treatmentRooms simultaneous appointments
+    if (activeOverlaps.length >= maxRooms) {
+      this.logDebug('❌ [BookingsService] Conflict detected: All treatment rooms occupied.', {
+        activeOverlaps: activeOverlaps.length,
+        maxRooms,
+        requestedTime: { start: newStart, end: newEnd },
+      });
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
 
     // If holdId provided, validate and remove hold
     if (createAppointmentDto.holdId) {
@@ -843,12 +910,20 @@ export class BookingsService {
     if (!user) return [];
     const ids = new Set<string>((user.ownedClinics || []).map(c => String(c.id)));
     if (user.assignedClinicId) ids.add(String(user.assignedClinicId));
-    if (String(role || user.role || '').toLowerCase() === UserRole.CLINIC_OWNER) {
+    const normalizedRole = String(role || user.role || '').toLowerCase();
+    if (normalizedRole === UserRole.CLINIC_OWNER) {
       const rows: { clinicId: string }[] = await this.usersRepository.manager.query(
         'SELECT "clinicId" FROM clinic_ownership WHERE "ownerUserId" = $1',
         [userId],
       );
       rows.forEach(r => ids.add(String(r.clinicId)));
+    }
+    if (normalizedRole === UserRole.SECRETARIAT) {
+      const accessRows: { clinicId: string }[] = await this.usersRepository.manager.query(
+        'SELECT "clinicId" FROM agent_clinic_access WHERE "agentUserId" = $1',
+        [userId],
+      );
+      accessRows.forEach(r => ids.add(String(r.clinicId)));
     }
     return [...ids];
   }
@@ -1005,20 +1080,22 @@ export class BookingsService {
 
     if (params.skipAppointmentConflicts) return;
 
-    // Overlapping active appointments.
+    // Overlapping active appointments respecting clinic.treatmentRooms capacity.
+    const maxRooms = Math.max(1, Number(clinic.treatmentRooms) || 1);
     const aptQb = this.appointmentsRepository.createQueryBuilder('apt')
+      .select(['apt.id', 'apt.providerId'])
       .where('apt.clinicId = :clinicId', { clinicId })
       .andWhere('apt.status IN (:...statuses)', { statuses: BookingsService.ACTIVE_STATUSES })
       .andWhere('apt.startTime < :end', { end })
       .andWhere('apt.endTime > :start', { start });
-    if (providerId) {
-      // Same provider, or an unassigned appointment that occupies the clinic.
-      aptQb.andWhere('(apt.providerId = :providerId OR apt.providerId IS NULL)', { providerId });
-    }
     if (excludeAppointmentId) {
       aptQb.andWhere('apt.id != :excludeId', { excludeId: excludeAppointmentId });
     }
-    if (await aptQb.getCount() > 0) {
+    const overlappingApts = await aptQb.getMany();
+    if (providerId && overlappingApts.some(a => a.providerId && String(a.providerId) === String(providerId))) {
+      throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
+    }
+    if (overlappingApts.length >= maxRooms) {
       throw new ConflictException(BookingsService.SLOT_UNAVAILABLE_MESSAGE);
     }
   }
@@ -1133,20 +1210,24 @@ export class BookingsService {
       }
     }
 
-    // Duration = sum of treatments; otherwise keep the requested / existing end.
-    // Edits that touch neither the time nor the treatments keep the stored end, so e.g. changing the
-    // owner of an appointment with a custom length does not re-run the slot check or extend it.
+    // Respect explicitly provided valid endTime across all roles.
+    // Only fall back to service duration (when treatments changed) or existing duration
+    // (when start moved without an explicit endTime).
     const startMoved = next.startTime.getTime() !== new Date(old.startTime).getTime();
-    const totalDuration = startMoved || servicesChanged ? await this.computeServicesDuration(serviceIds) : 0;
+    const explicitEnd = this.parseValidEndTime(next.startTime, updateData.endTime);
     let nextEnd: Date;
-    if (!startMoved && !servicesChanged && !updateData.endTime) {
+    if (explicitEnd) {
+      nextEnd = explicitEnd;
+    } else if (!startMoved && !servicesChanged) {
       nextEnd = new Date(old.endTime);
-    } else if (totalDuration > 0) {
-      nextEnd = new Date(next.startTime.getTime() + totalDuration * 60000);
-    } else if (updateData.endTime) {
-      nextEnd = new Date(updateData.endTime);
+    } else if (servicesChanged) {
+      const totalDuration = await this.computeServicesDuration(serviceIds);
+      nextEnd =
+        totalDuration > 0
+          ? new Date(next.startTime.getTime() + totalDuration * 60000)
+          : new Date(next.startTime.getTime() + Math.max(60000, new Date(old.endTime).getTime() - new Date(old.startTime).getTime()));
     } else {
-      nextEnd = new Date(next.startTime.getTime() + (new Date(old.endTime).getTime() - new Date(old.startTime).getTime()));
+      nextEnd = new Date(next.startTime.getTime() + Math.max(60000, new Date(old.endTime).getTime() - new Date(old.startTime).getTime()));
     }
 
     const timeChanged =
@@ -1449,10 +1530,16 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
 
-    // Duration = sum of all treatments (a 2-treatment 60 min visit stays 60 min).
-    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
-    if (durationMinutes > 0) {
-      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
+    // Respect explicitly provided valid newEndTime; fall back to existing or service duration only when missing/invalid.
+    const explicitRescheduleEnd = this.parseValidEndTime(newStartTime, newEndTime);
+    if (explicitRescheduleEnd) {
+      newEndTime = explicitRescheduleEnd;
+    } else {
+      const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+      const fallbackMs = durationMinutes > 0
+        ? durationMinutes * 60000
+        : Math.max(60000, new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime());
+      newEndTime = new Date(newStartTime.getTime() + fallbackMs);
     }
 
     // Same checks as on create.
@@ -2974,10 +3061,16 @@ export class BookingsService {
       throw new BadRequestException('Completed appointments are locked and cannot be rescheduled.');
     }
 
-    // Duration = sum of all treatments.
-    const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
-    if (durationMinutes > 0) {
-      newEndTime = new Date(newStartTime.getTime() + durationMinutes * 60000);
+    // Respect explicitly provided valid newEndTime; fall back to service/existing duration only when missing/invalid.
+    const explicitClinicRescheduleEnd = this.parseValidEndTime(newStartTime, newEndTime);
+    if (explicitClinicRescheduleEnd) {
+      newEndTime = explicitClinicRescheduleEnd;
+    } else {
+      const durationMinutes = await this.computeServicesDuration([appointment.serviceId, ...(appointment.additionalServiceIds || [])]);
+      const fallbackMs = durationMinutes > 0
+        ? durationMinutes * 60000
+        : Math.max(60000, new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime());
+      newEndTime = new Date(newStartTime.getTime() + fallbackMs);
     }
 
     // Same checks as on create (opening hours, closing time, blocks, overlaps, past times).

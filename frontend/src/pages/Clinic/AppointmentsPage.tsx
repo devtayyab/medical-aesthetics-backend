@@ -19,7 +19,7 @@ import { formatTime } from "@/utils/formatters";
 
 const AppointmentsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { appointments, isLoading, profile } = useSelector((state: RootState) => state.clinic);
+ const { appointments, isLoading, profile, myClinics } = useSelector((state: RootState) => state.clinic);
  const user = useSelector((state: RootState) => (state.auth as AuthState).user);
 
  const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -61,7 +61,12 @@ const AppointmentsPage: React.FC = () => {
  ? (user as any)?.ownedClinics?.[0]?.id 
  : (user as any)?.assignedClinicId;
  
- const activeClinicId = profile?.id || localStorage.getItem('activeClinicId') || clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
+ const storedClinicId = localStorage.getItem('activeClinicId');
+ const validStoredId =
+   storedClinicId && (!myClinics?.length || myClinics.some((c: any) => c.id === storedClinicId))
+     ? storedClinicId
+     : null;
+ const activeClinicId = profile?.id || validStoredId || myClinics?.[0]?.id || clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
 
  const refreshAppointments = () => {
  const filters: any = {};

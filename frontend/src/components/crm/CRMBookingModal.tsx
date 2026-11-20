@@ -96,6 +96,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  } : null
  );
  const [notes, setNotes] = useState(initialAppointment?.notes || '');
+ const [disableNotifications, setDisableNotifications] = useState<boolean>(Boolean(initialAppointment?.disableNotifications));
+ const [customDurationMinutes, setCustomDurationMinutes] = useState<number | null>(null);
+ const submittingRef = React.useRef(false);
 
  useEffect(() => {
  if (propCustomerId && step === 0) {
@@ -124,6 +127,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  // We don't have the full slot object but startTime/endTime are enough for the API
  });
  setNotes(initialAppointment.notes || '');
+ setDisableNotifications(Boolean(initialAppointment.disableNotifications));
+ const initDur = initialAppointment.startTime && initialAppointment.endTime
+   ? Math.round((new Date(initialAppointment.endTime).getTime() - new Date(initialAppointment.startTime).getTime()) / 60000)
+   : null;
+ setCustomDurationMinutes(initDur && initDur > 0 ? initDur : null);
  setStep(1); // Start at clinic selection or skip if already selected? 
  // Better to let them navigate.
  }
@@ -228,21 +236,25 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  }, 0);
  return total > 0 ? total : 60;
  })();
+ const effectiveDurationMinutes = customDurationMinutes && customDurationMinutes > 0 ? customDurationMinutes : totalDurationMinutes;
  const totalPrice = selectedServiceObjects.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0);
  const additionalServiceIds = selectedServiceIds.slice(1).filter(id => !!id && id !== selectedService);
 
  const toggleService = (id: string) => {
+ setCustomDurationMinutes(null);
  setSelectedServiceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
  };
 
  if (!isOpen) return null;
 
  const handleConfirmBooking = async () => {
+ if (submittingRef.current) return;
  if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) {
  return;
  }
  
  const bookedByIdUUID = user?.id;
+ submittingRef.current = true;
  setIsLoading(true);
  try {
  const startISO = (() => {
@@ -252,8 +264,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  dt.setHours(hh, mm, 0, 0);
  return dt.toISOString();
  })();
- // End = start + sum of all selected treatment durations
- const endISO = new Date(new Date(startISO).getTime() + totalDurationMinutes * 60000).toISOString();
+ // End = start + specified duration (or sum of selected treatment durations)
+ const endISO = new Date(new Date(startISO).getTime() + effectiveDurationMinutes * 60000).toISOString();
  const bookingPayload: any = {
  clientId: finalCustomerId,
  clinicId: selectedClinic,
@@ -262,6 +274,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  startTime: startISO,
  endTime: endISO,
  notes,
+ disableNotifications: Boolean(disableNotifications),
  status: initialAppointment?.status || 'PENDING',
  providerId: selectedSlot.providerId || undefined,
  representativeId: user?.role === 'salesperson' ? user.id : undefined,
@@ -289,7 +302,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  additionalServiceIds,
  startTime: bookingPayload.startTime,
  endTime: bookingPayload.endTime,
- notes: bookingPayload.notes
+ notes: bookingPayload.notes,
+ disableNotifications: Boolean(disableNotifications),
  });
  } else {
  // CREATE branch
@@ -306,6 +320,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  console.error("Booking failed", err);
  toast.error("Failed to process appointment. Slot might be taken or invalid.");
  } finally {
+ submittingRef.current = false;
  setIsLoading(false);
  }
  };
@@ -550,6 +565,22 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  </div>
 
  <div>
+ <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 block">Duration (minutes)</label>
+ <input
+   type="number"
+   min={5}
+   max={720}
+   step={5}
+   value={effectiveDurationMinutes}
+   onChange={(e) => {
+     const v = parseInt(e.target.value, 10);
+     setCustomDurationMinutes(Number.isFinite(v) && v > 0 ? v : null);
+   }}
+   className="w-full h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+ />
+ </div>
+
+ <div>
  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 block">Special Coordination Notes</label>
  <textarea 
  value={notes} 
@@ -558,6 +589,17 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:bg-white transition-all shadow-inner"
  />
  </div>
+
+ <label className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer select-none">
+   <input
+     type="checkbox"
+     checked={disableNotifications || /^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
+     disabled={/^\s*(απ[όο]|from)\s+fresha\b/i.test(notes || '')}
+     onChange={(e) => setDisableNotifications(e.target.checked)}
+     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+   />
+   <span className="text-xs font-bold text-slate-700">Disable automatic notifications (Email &amp; Push)</span>
+ </label>
  </div>
  );
  default:

@@ -32,6 +32,8 @@ export const useClinicBooking = ({
     email: '',
   });
   const [notes, setNotes] = useState('');
+  const [disableNotifications, setDisableNotifications] = useState(false);
+  const [customEndTime, setCustomEndTime] = useState('');
 
   const [services, setServices] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
@@ -53,6 +55,8 @@ export const useClinicBooking = ({
       setSelectedSlot(null);
       setSlotReason(null);
       setNotes('');
+      setDisableNotifications(false);
+      setCustomEndTime('');
       setError(null);
       fetchClinicData();
       if (prefillClient) {
@@ -124,15 +128,28 @@ export const useClinicBooking = ({
     setIsLoading(true);
     setError(null);
     try {
+      let computedEndIso = selectedSlot.endTime;
+      if (customEndTime && selectedSlot.startTime) {
+        const startDt = new Date(selectedSlot.startTime);
+        const [eh, em] = customEndTime.split(':').map(Number);
+        if (Number.isFinite(eh) && Number.isFinite(em)) {
+          const endDt = new Date(startDt);
+          endDt.setHours(eh, em, 0, 0);
+          if (endDt.getTime() > startDt.getTime()) {
+            computedEndIso = endDt.toISOString();
+          }
+        }
+      }
       await bookingAPI.createAppointment({
         clinicId,
         serviceId: selectedService,
-        providerId: selectedSlot.providerId,
+        providerId: selectedSlot.providerId || undefined,
         clientId: '00000000-0000-0000-0000-000000000000', // Backend handles walk-in via clientDetails
         startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
+        endTime: computedEndIso,
         clientDetails: clientData,
         notes: notes,
+        disableNotifications: Boolean(disableNotifications),
       });
       onSuccess();
       onClose();
@@ -153,6 +170,10 @@ export const useClinicBooking = ({
     setClientData,
     notes,
     setNotes,
+    disableNotifications,
+    setDisableNotifications,
+    customEndTime,
+    setCustomEndTime,
     services,
     providers,
     selectedService,

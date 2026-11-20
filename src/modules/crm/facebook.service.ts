@@ -42,6 +42,8 @@ export class FacebookService {
   private readonly logger = new Logger(FacebookService.name);
   /** form id -> human form name, filled by every forms listing */
   private readonly formNameCache = new Map<string, string>();
+  /** Short-lived cache for DB Facebook credentials so sync loops don't hammer platform_settings. */
+  private cachedCreds: { data: { accessToken: string; appSecret: string; appId?: string; pageId?: string }; expiresAt: number } | null = null;
   /** Graph API failures seen since the last clearApiErrors() (sync health) */
   private lastApiErrors: Array<{ at: Date; context: string; message: string; tokenInvalid: boolean }> = [];
 
@@ -82,6 +84,10 @@ export class FacebookService {
   }
 
   async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string; pageId?: string }> {
+    if (this.cachedCreds && this.cachedCreds.expiresAt > Date.now()) {
+      return this.cachedCreds.data;
+    }
+
     let accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
     let appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
     let appId = this.configService.get<string>('FACEBOOK_APP_ID');
@@ -122,7 +128,9 @@ export class FacebookService {
       this.logger.error('Failed to load facebook settings from DB, falling back to env', err.stack);
     }
 
-    return { accessToken, appSecret, appId, pageId };
+    const result = { accessToken, appSecret, appId, pageId };
+    this.cachedCreds = { data: result, expiresAt: Date.now() + 60_000 };
+    return result;
   }
 
   async validateSignature(signature: string, payload: any): Promise<boolean> {

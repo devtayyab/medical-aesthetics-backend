@@ -66,9 +66,18 @@ const ClinicLayout: React.FC = () => {
   };
 
  React.useEffect(() => {
- dispatch(fetchMyClinics());
- const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
- dispatch(fetchClinicProfile(savedClinicId));
+ dispatch(fetchMyClinics()).then((action: any) => {
+   const list: any[] = Array.isArray(action?.payload) ? action.payload : [];
+   const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
+   const savedIsValid = savedClinicId && (list.length === 0 || list.some((c: any) => c.id === savedClinicId));
+   if (savedClinicId && !savedIsValid) {
+     localStorage.removeItem('activeClinicId');
+   }
+   const effectiveClinicId = savedIsValid
+     ? savedClinicId
+     : (list[0]?.id || (user as any)?.assignedClinicId || undefined);
+   dispatch(fetchClinicProfile(effectiveClinicId));
+ });
  if (user) {
  dispatch(fetchUnreadCount());
  }
@@ -87,6 +96,7 @@ const ClinicLayout: React.FC = () => {
  try {
  localStorage.removeItem('accessToken');
  localStorage.removeItem('refreshToken');
+ localStorage.removeItem('activeClinicId');
  await dispatch(logout());
  navigate('/login');
  } catch (error) {

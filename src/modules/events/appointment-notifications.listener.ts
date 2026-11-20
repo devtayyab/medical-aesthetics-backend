@@ -119,6 +119,7 @@ export class AppointmentNotificationsListener {
     for (const apt of appointments) {
       if (!active.includes(String(apt.status).toUpperCase())) continue;
       if (!this.hasRealClient(apt)) continue;
+      if (this.isNotificationDisabled(apt)) continue;
       // An appointment booked inside the window gets only the reminders still ahead of it:
       // e.g. booked 20h before -> no "tomorrow" reminder, only the 2h one.
       const createdLead = new Date(apt.startTime).getTime() - new Date(apt.createdAt).getTime();
@@ -182,6 +183,22 @@ export class AppointmentNotificationsListener {
     return !!apt.clientId && apt.clientId !== WALK_IN_DUMMY_ID && !!apt.client;
   }
 
+  /**
+   * Returns true when automated notifications (emails, push, reminders) must be
+   * suppressed for this appointment:
+   *  - explicitly disabled on the appointment (`disableNotifications = true`),
+   *  - imported from Fresha (notes starting with "Από Fresha" / "Απο Fresha" / "From Fresha"),
+   *  - disabled on the client's profile (`client.profile.disableNotifications = true`).
+   */
+  private isNotificationDisabled(apt: Appointment | null | undefined): boolean {
+    if (!apt) return false;
+    if ((apt as any).disableNotifications === true) return true;
+    const notes = String(apt.notes || '').trim();
+    if (/^(απ[όο]|from)\s+fresha\b/i.test(notes)) return true;
+    if ((apt.client as any)?.profile?.disableNotifications === true) return true;
+    return false;
+  }
+
   private clientContext(apt: Appointment, treatments: string) {
     const addr: any = apt.clinic?.address || {};
     const clinicAddress = [addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ');
@@ -225,6 +242,11 @@ export class AppointmentNotificationsListener {
   private async dispatch(p: AppointmentNotifyPayload) {
     const apt = await this.loadAppointment(p.appointmentId);
     if (!apt) return;
+
+    if (this.isNotificationDisabled(apt)) {
+      this.logger.debug(`Suppressing "${p.kind}" notifications for appointment ${apt.id} (disableNotifications / Fresha import)`);
+      return;
+    }
 
     const actor = await this.describeActor(p.actorId);
     const exclude = p.actorId ? [p.actorId] : [];
@@ -448,7 +470,7 @@ export class AppointmentNotificationsListener {
       if (apt?.clinicId) {
         await this.notificationsService.notifyClinicStaff(apt.clinicId, 'Νέα πληρωμή', `${euro(payment.amount)} (${method}) · ${client} · ${athensDateTime(apt.startTime)}`, data, [], exclude);
       }
-      if (clientUser && clientUser.role === UserRole.CLIENT) {
+      if (clientUser && clientUser.role === UserRole.CLIENT && !this.isNotificationDisabled(apt)) {
         await this.notificationsService.sendTriggeredNotification(
           NotificationTrigger.PAYMENT_RECEIPT,
           clientUser.id,
@@ -465,7 +487,7 @@ export class AppointmentNotificationsListener {
       // notification already covers them (and admins decide the real refund).
       if (String(payment.notes || '').startsWith('Auto-refund record')) return;
       await this.notificationsService.notifyUsers(recipients, 'Επιστροφή χρημάτων', `${euro(payment.amount)} · ${where}`, data, exclude);
-      if (clientUser && clientUser.role === UserRole.CLIENT) {
+      if (clientUser && clientUser.role === UserRole.CLIENT && !this.isNotificationDisabled(apt)) {
         await this.notificationsService.sendTriggeredNotification(
           NotificationTrigger.REFUND_ISSUED,
           clientUser.id,

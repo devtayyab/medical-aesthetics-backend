@@ -19,25 +19,41 @@ export class CrmListener {
 
     // The one automatic task per booking (confirmation call) follows the appointment:
     // created on booking, moved on reschedule, closed on cancel/no-show/complete/delete.
-    @OnEvent('appointment.created')
+    @OnEvent('appointment.created', { async: true })
     async syncConfirmationOnCreated(appointment: any) {
-        await this.taskAutomationService.syncConfirmationTask(appointment?.id);
+        try {
+            await this.taskAutomationService.syncConfirmationTask(appointment?.id);
+        } catch (err: any) {
+            this.logger.error(`syncConfirmationOnCreated failed: ${err?.message || err}`);
+        }
     }
 
-    @OnEvent('appointment.rescheduled')
+    @OnEvent('appointment.rescheduled', { async: true })
     async syncConfirmationOnRescheduled(payload: any) {
-        // Two emit shapes exist: the bare appointment and { appointment, oldStartTime, ... }
-        await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id ?? payload?.id);
+        try {
+            // Two emit shapes exist: the bare appointment and { appointment, oldStartTime, ... }
+            await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id ?? payload?.id);
+        } catch (err: any) {
+            this.logger.error(`syncConfirmationOnRescheduled failed: ${err?.message || err}`);
+        }
     }
 
-    @OnEvent('appointment.status.changed')
+    @OnEvent('appointment.status.changed', { async: true })
     async syncConfirmationOnStatusChanged(payload: any) {
-        await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id);
+        try {
+            await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id);
+        } catch (err: any) {
+            this.logger.error(`syncConfirmationOnStatusChanged failed: ${err?.message || err}`);
+        }
     }
 
-    @OnEvent('appointment.calendar.dirty')
+    @OnEvent('appointment.calendar.dirty', { async: true })
     async syncConfirmationOnCalendarDirty(payload: any) {
-        await this.taskAutomationService.syncConfirmationTask(payload?.appointmentId);
+        try {
+            await this.taskAutomationService.syncConfirmationTask(payload?.appointmentId);
+        } catch (err: any) {
+            this.logger.error(`syncConfirmationOnCalendarDirty failed: ${err?.message || err}`);
+        }
     }
 
     @OnEvent('lead.status.changed')

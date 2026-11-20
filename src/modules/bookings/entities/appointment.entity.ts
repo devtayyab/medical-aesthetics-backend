@@ -55,6 +55,11 @@ export class Appointment {
   @Column('text', { nullable: true })
   notes: string;
 
+  // Suppresses all automated emails, push notifications, and reminders for this appointment
+  // (also automatically enabled for Fresha-imported appointments).
+  @Column({ type: 'boolean', default: false })
+  disableNotifications: boolean;
+
   @Column('text', { nullable: true })
   rescheduleReason?: string;
 

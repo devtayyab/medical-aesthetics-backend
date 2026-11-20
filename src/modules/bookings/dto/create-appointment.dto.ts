@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsUUID,
   IsObject,
+  IsBoolean,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -38,9 +39,10 @@ export class CreateAppointmentDto {
   @IsDateString()
   startTime: string;
 
-  @ApiProperty({ example: '2025-01-20T11:00:00Z' })
+  @ApiProperty({ example: '2025-01-20T11:00:00Z', required: false })
+  @IsOptional()
   @IsDateString()
-  endTime: string;
+  endTime?: string;
 
   @ApiProperty({ enum: AppointmentStatus, required: false })
   @IsOptional()
@@ -52,6 +54,11 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  disableNotifications?: boolean;
 
   @ApiProperty({ example: 'cash', required: false })
   @IsOptional()
