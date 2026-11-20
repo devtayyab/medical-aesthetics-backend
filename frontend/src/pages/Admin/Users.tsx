@@ -80,8 +80,15 @@ export const Users: React.FC = () => {
  });
  }, [dispatch, loadStaffRequests]);
 
- const handleUpdateRole = (id: string, data: { role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => {
- dispatch(updateUserDetails({ id, ...data }));
+ const handleUpdateRole = async (id: string, data: { role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => {
+ try {
+ await dispatch(updateUserDetails({ id, ...data })).unwrap();
+ toast.success(t("Ο χρήστης ενημερώθηκε επιτυχώς", "User updated successfully!"));
+ await dispatch(fetchUsers());
+ } catch (err: any) {
+ toast.error(err?.message || t("Αποτυχία ενημέρωσης χρήστη", "Failed to update user."));
+ throw err;
+ }
  };
 
  const handleToggleStatus = async (id: string) => {
@@ -148,6 +155,7 @@ export const Users: React.FC = () => {
  try {
  await dispatch(createNewUser(data)).unwrap();
  toast.success(data.password ? "User created successfully!" :"User created. A set-password link was emailed.");
+ await dispatch(fetchUsers());
  } catch (err: any) {
  toast.error(err?.message ||"Failed to create user. Email might already exist.");
  throw err;

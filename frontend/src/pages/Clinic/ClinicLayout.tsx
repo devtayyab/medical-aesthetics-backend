@@ -5,6 +5,7 @@ import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import { logout } from"@/store/slices/authSlice";
 import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices } from '@/store/slices/clinicSlice';
+import { getClinicLocalDate } from '@/utils/clinicTime';
 import { ChevronDown, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import {
  LayoutDashboard,
@@ -50,8 +51,20 @@ const ClinicLayout: React.FC = () => {
   const isDiaryOrCalendar = location.pathname.includes('/diary') || location.pathname.includes('/calendar');
  const dispatch = useDispatch<AppDispatch>();
  const user = useSelector((state: RootState) => state.auth.user);
- const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
+ const { profile, myClinics, appointments } = useSelector((state: RootState) => state.clinic);
  const { unreadCount } = useSelector((state: RootState) => state.notifications);
+
+ // Live upcoming appointments counter matching AppointmentsPage's "Upcoming" tab
+ // (non-blocked, non-completed/cancelled/deleted, starting today or later in clinic local time).
+ const upcomingAppointmentsCount = React.useMemo(() => {
+   const todayLocal = getClinicLocalDate(new Date().toISOString(), (profile as any)?.timezone);
+   return (appointments || []).filter((a: any) => {
+     if (a?.isBlocked) return false;
+     const status = String(a?.status || '').toUpperCase();
+     if (['COMPLETED', 'EXECUTED', 'CANCELLED', 'NO_SHOW', 'DELETED'].includes(status)) return false;
+     return getClinicLocalDate(a.startTime, a?.clinic?.timezone || (profile as any)?.timezone) >= todayLocal;
+   }).length;
+ }, [appointments, profile]);
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('clinic_sidebar_collapsed') === 'true';
@@ -77,6 +90,9 @@ const ClinicLayout: React.FC = () => {
      ? savedClinicId
      : (list[0]?.id || (user as any)?.assignedClinicId || undefined);
    dispatch(fetchClinicProfile(effectiveClinicId));
+   if (effectiveClinicId) {
+     dispatch(fetchAppointments({ clinicId: effectiveClinicId }));
+   }
  });
  if (user) {
  dispatch(fetchUnreadCount());
@@ -251,7 +267,7 @@ const ClinicLayout: React.FC = () => {
             >
               <div className="transition-transform duration-200 group-hover:scale-105 shrink-0 relative">
                 {iconMap[item.icon]}
-                {isCollapsed && item.id === 'appointments' && (
+                {isCollapsed && item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
                   <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-white" />
                 )}
                 {isCollapsed && item.id === 'my-notifications' && unreadCount > 0 && (
@@ -263,9 +279,9 @@ const ClinicLayout: React.FC = () => {
                   <span className="text-[10px] font-black uppercase tracking-wider truncate">
                     {label}
                   </span>
-                  {item.id === 'appointments' && (
-                    <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm shrink-0">
-                      !
+                  {item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
+                    <div className="ml-auto bg-[#CBFF38] text-black text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                      {upcomingAppointmentsCount > 99 ? '99+' : upcomingAppointmentsCount}
                     </div>
                   )}
                   {item.id === 'my-notifications' && unreadCount > 0 && (

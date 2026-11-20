@@ -209,7 +209,6 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
  <div className="flex-1 space-y-3">
  <div>
  <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900 leading-none group-hover:translate-x-1 transition-transform mb-1.5">{service.treatment?.name}</h3>
- <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Deploy v4.0</p>
  </div>
 
  <p className="text-gray-500 text-[11px] font-medium line-clamp-2 leading-tight">

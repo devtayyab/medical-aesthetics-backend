@@ -909,15 +909,22 @@ export class ClinicsService {
   ): Promise<User> {
     let clinic = null;
 
-    // 1. If explicit clinicId provided, look it up (non-admins only for clinics they belong to,
-    // otherwise a doctor could file staff requests that show up as coming from another clinic)
-    if (staffData.clinicId) {
+    const isAdminRequest = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    const requestedRole = staffData.role || UserRole.DOCTOR;
+
+    const rawAssignedIds: string[] = Array.isArray(staffData.assignedClinicIds)
+      ? Array.from(new Set(staffData.assignedClinicIds.map((x: any) => String(x || '').trim()).filter(Boolean)))
+      : [];
+
+    // 1. If explicit clinicId (or first assignedClinicIds entry) provided, look it up
+    const primaryRequestedClinicId = staffData.clinicId || rawAssignedIds[0] || null;
+    if (primaryRequestedClinicId) {
       try {
-        clinic = await this.findById(staffData.clinicId);
+        clinic = await this.findById(primaryRequestedClinicId);
       } catch (err) {
-        console.warn(`[ClinicsService] Clinic with id ${staffData.clinicId} not found`);
+        console.warn(`[ClinicsService] Clinic with id ${primaryRequestedClinicId} not found`);
       }
-      if (clinic && role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) {
+      if (clinic && !isAdminRequest) {
         const myClinics = await this.findAllByOwner(ownerId);
         if (!myClinics.some((c) => c.id === clinic.id)) {
           throw new ForbiddenException('You do not have access to this clinic');
@@ -925,8 +932,8 @@ export class ClinicsService {
       }
     }
 
-    // 2. If no clinicId or not found, resolve from owner/caller context
-    if (!clinic) {
+    // 2. If no clinicId or not found, resolve from owner/caller context (non-admins, or admin creating clinic staff without explicit IDs)
+    if (!clinic && !isAdminRequest) {
       try {
         clinic = await this.findByOwnerId(ownerId);
       } catch (err) {
@@ -942,17 +949,24 @@ export class ClinicsService {
       }
     }
 
-    // 3. Fallback for single-clinic environments
-    if (!clinic) {
+    // 3. Fallback for single-clinic environments (non-admins only)
+    if (!clinic && !isAdminRequest) {
       const activeClinics = await this.clinicsRepository.find({ where: { isActive: true }, take: 2 });
       if (activeClinics.length === 1) {
         clinic = activeClinics[0];
       }
     }
 
-    if (!clinic) {
+    if (!clinic && !isAdminRequest) {
       throw new BadRequestException('Could not determine clinic to assign staff to. Please select or specify a clinic.');
     }
+
+    const effectiveClinicIds: string[] = Array.from(
+      new Set([
+        ...rawAssignedIds,
+        ...(clinic?.id ? [clinic.id] : []),
+      ]),
+    );
 
     const email = typeof staffData.email === 'string' ? staffData.email.trim().toLowerCase() : '';
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -968,9 +982,6 @@ export class ClinicsService {
     if (existingUser) {
       throw new ConflictException('An account with this email already exists. Its role was not changed. Please contact the BeautyDoctors admin.');
     }
-
-    const isAdminRequest = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
-    const requestedRole = staffData.role || UserRole.DOCTOR;
 
     if (!isAdminRequest) {
       // Clinics can only ask for clinic staff; anything else needs the admin.
@@ -992,13 +1003,14 @@ export class ClinicsService {
       assertPasswordPolicy(adminPassword);
     }
 
+    const primaryClinicId = effectiveClinicIds[0] || null;
     const newUser = this.usersRepository.create({
       email,
       firstName: staffData.firstName,
       lastName: staffData.lastName,
       phone: staffData.phone || '',
       role: requestedRole,
-      assignedClinicId: clinic.id,
+      assignedClinicId: primaryClinicId,
       passwordHash: adminPassword || randomPassword,
       // Clinic "Add staff" is only a REQUEST until an admin approves it.
       isActive: isAdminRequest,
@@ -1011,7 +1023,7 @@ export class ClinicsService {
               status: 'pending',
               requestedById: ownerId,
               requestedByName: requester ? `${requester.firstName || ''} ${requester.lastName || ''}`.trim() : null,
-              clinicId: clinic.id,
+              clinicId: primaryClinicId,
               requestedAt: new Date().toISOString(),
             },
           },
@@ -1019,19 +1031,46 @@ export class ClinicsService {
 
     const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
-    // If role is clinic_owner (admin only), also ensure mapping in clinicOwnership
-    if (isAdminRequest && (requestedRole === UserRole.CLINIC_OWNER || requestedRole === 'clinic_owner')) {
-      const existingOwnership = await this.clinicOwnershipRepository.findOne({
-        where: { clinicId: clinic.id, ownerUserId: savedUser.id },
-      });
-      if (!existingOwnership) {
-        await this.clinicOwnershipRepository.save(
-          this.clinicOwnershipRepository.create({
-            clinicId: clinic.id,
-            ownerUserId: savedUser.id,
-          }),
-        );
+    // Persist ALL mapped clinics immediately on user creation so Staff Mapping
+    // works reliably without having to edit the user afterwards.
+    if (effectiveClinicIds.length > 0) {
+      const validClinics = await this.clinicsRepository.find({ where: { id: In(effectiveClinicIds) } });
+      const validIds = validClinics.map((c) => c.id);
+
+      if (isAdminRequest && (requestedRole === UserRole.CLINIC_OWNER || requestedRole === 'clinic_owner')) {
+        for (const cid of validIds) {
+          const existingOwnership = await this.clinicOwnershipRepository.findOne({
+            where: { clinicId: cid, ownerUserId: savedUser.id },
+          });
+          if (!existingOwnership) {
+            await this.clinicOwnershipRepository.save(
+              this.clinicOwnershipRepository.create({
+                clinicId: cid,
+                ownerUserId: savedUser.id,
+                visibilityScope: 'shared',
+              }),
+            );
+          }
+        }
+      } else {
+        for (const cid of validIds) {
+          const existingAccess = await this.agentAccessRepository.findOne({
+            where: { agentUserId: savedUser.id, clinicId: cid },
+          });
+          if (!existingAccess) {
+            await this.agentAccessRepository.save(
+              this.agentAccessRepository.create({
+                agentUserId: savedUser.id,
+                clinicId: cid,
+              }),
+            );
+          }
+        }
       }
+
+      (savedUser as any).assignedClinics = validClinics;
+    } else {
+      (savedUser as any).assignedClinics = [];
     }
 
     if (isAdminRequest && !adminPassword) {

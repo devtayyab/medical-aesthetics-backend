@@ -237,6 +237,7 @@ export class AdminService {
         'user.lastName',
         'user.role',
         'user.isActive',
+        'user.assignedClinicId',
         'user.monthlyTarget',
         'user.createdAt',
         'user.lastLoginAt',
@@ -245,11 +246,9 @@ export class AdminService {
       .getMany();
 
     // Load clinic accesses for all listed users in a few batched queries
-    // (previously 1-2 queries per user, i.e. ~1,000+ queries for this page).
-    // Note: assignedClinicId is not in the select above, so the old per-user
-    // assignedClinicId fallback never fired; it is intentionally not batched.
     const ownerIds = users.filter((u) => u.role === 'clinic_owner').map((u) => u.id);
     const otherIds = users.filter((u) => u.role !== 'clinic_owner').map((u) => u.id);
+    const directClinicIds = [...new Set(users.map((u) => u.assignedClinicId).filter(Boolean) as string[])];
 
     const [ownerships, primaryOwned, accesses] = await Promise.all([
       ownerIds.length ? this.clinicOwnershipRepository.find({ where: { ownerUserId: In(ownerIds) } }) : Promise.resolve([]),
@@ -259,7 +258,7 @@ export class AdminService {
         : Promise.resolve([]),
     ]);
 
-    const mappedClinicIds = [...new Set(ownerships.map((o) => o.clinicId))];
+    const mappedClinicIds = [...new Set([...ownerships.map((o) => o.clinicId), ...directClinicIds])];
     const mappedClinics = mappedClinicIds.length
       ? await this.clinicsRepository.find({ where: { id: In(mappedClinicIds) } })
       : [];
@@ -273,10 +272,16 @@ export class AdminService {
           ? own.map((o) => clinicById.get(o.clinicId)).filter(Boolean)
           : primaryOwned.filter((c) => c.ownerId === u.id);
       } else {
-        (u as any).assignedClinics = accesses
+        const list = accesses
           .filter((a) => a.agentUserId === u.id)
           .map((a) => a.clinic)
           .filter(Boolean);
+        // Ensure assignedClinicId is also reflected even if agent_clinic_access row was missing
+        if (u.assignedClinicId && !list.some((c: any) => c.id === u.assignedClinicId)) {
+          const direct = clinicById.get(u.assignedClinicId);
+          if (direct) list.unshift(direct);
+        }
+        (u as any).assignedClinics = list;
       }
     }
 
@@ -616,38 +621,48 @@ export class AdminService {
     await this.usersRepository.update(id, dataToUpdate);
 
     if (assignedClinicIds !== undefined) {
+      const uniqueClinicIds = Array.from(
+        new Set((Array.isArray(assignedClinicIds) ? assignedClinicIds : []).map((x) => String(x || '').trim()).filter(Boolean)),
+      );
       // After update, re-fetch to get potentially updated role
       const user = await this.usersRepository.findOne({ where: { id } });
       const effectiveRole = (dataToUpdate as any).role || user?.role;
 
-      if (effectiveRole === 'clinic_owner') {
-        // Clear non-owner agent access if role changed to owner
-        await this.agentClinicAccessRepository.delete({ agentUserId: id });
-        // Update clinic_ownership mapping table for owner
-        await this.clinicOwnershipRepository.delete({ ownerUserId: id });
-        for (const clinicId of assignedClinicIds) {
-          await this.clinicOwnershipRepository.save(
-            this.clinicOwnershipRepository.create({ clinicId, ownerUserId: id, visibilityScope: 'shared' })
-          );
+      await this.usersRepository.manager.transaction(async (manager) => {
+        const ownershipRepo = manager.getRepository(ClinicOwnership);
+        const accessRepo = manager.getRepository(AgentClinicAccess);
+        const userRepo = manager.getRepository(User);
+        const clinicRepo = manager.getRepository(Clinic);
+
+        if (effectiveRole === 'clinic_owner') {
+          await accessRepo.delete({ agentUserId: id });
+          await ownershipRepo.delete({ ownerUserId: id });
+          if (uniqueClinicIds.length > 0) {
+            await ownershipRepo.save(
+              uniqueClinicIds.map((clinicId) =>
+                ownershipRepo.create({ clinicId, ownerUserId: id, visibilityScope: 'shared' }),
+              ),
+            );
+            await clinicRepo.update(uniqueClinicIds[0], { ownerId: id });
+          }
+          await userRepo.update(id, {
+            assignedClinicId: uniqueClinicIds.length > 0 ? uniqueClinicIds[0] : null,
+          });
+        } else {
+          await ownershipRepo.delete({ ownerUserId: id });
+          await accessRepo.delete({ agentUserId: id });
+          if (uniqueClinicIds.length > 0) {
+            await accessRepo.save(
+              uniqueClinicIds.map((clinicId) =>
+                accessRepo.create({ agentUserId: id, clinicId }),
+              ),
+            );
+          }
+          await userRepo.update(id, {
+            assignedClinicId: uniqueClinicIds.length > 0 ? uniqueClinicIds[0] : null,
+          });
         }
-        // Also update the primary ownerId on the first clinic if provided
-        if (assignedClinicIds.length > 0) {
-          await this.clinicsRepository.update(assignedClinicIds[0], { ownerId: id });
-        }
-      } else {
-        // Clear owner mapping if role changed to non-owner
-        await this.clinicOwnershipRepository.delete({ ownerUserId: id });
-        // For non-owners: update agent_clinic_access table
-        await this.agentClinicAccessRepository.delete({ agentUserId: id });
-        for (const clinicId of assignedClinicIds) {
-          await this.agentClinicAccessRepository.save(
-            this.agentClinicAccessRepository.create({ agentUserId: id, clinicId })
-          );
-        }
-        await this.usersRepository.update(id, {
-          assignedClinicId: assignedClinicIds.length > 0 ? assignedClinicIds[0] : null
-        });
-      }
+      });
     }
 
     return this.getUserById(id);

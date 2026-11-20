@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 interface AccessControlProps {
  users: User[];
  clinics: Clinic[];
- onUpdateUser: (id: string, data: { role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => void;
+ onUpdateUser: (id: string, data: { role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => Promise<any> | void;
  onToggleStatus: (id: string) => void;
  onCreateUser?: (data: any) => Promise<any> | void;
 }
@@ -87,14 +87,22 @@ export const AccessControl: React.FC<AccessControlProps> = ({
     }
   };
 
- const handleSaveEdit = () => {
- if (editingUser) {
- onUpdateUser(editingUser.id, {
+ const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+ const handleSaveEdit = async () => {
+ if (!editingUser || isSavingEdit) return;
+ setIsSavingEdit(true);
+ try {
+ await onUpdateUser(editingUser.id, {
  role: editForm.role,
  monthlyTarget: editForm.role ==="salesperson" && editForm.monthlyTarget ? Number(editForm.monthlyTarget) : undefined,
- assignedClinicIds: editForm.assignedClinicIds,
+ assignedClinicIds: Array.from(new Set(editForm.assignedClinicIds.filter(Boolean))),
  });
  handleCloseEdit();
+ } catch (err) {
+ console.error("Failed to update user:", err);
+ } finally {
+ setIsSavingEdit(false);
  }
  };
 
@@ -116,12 +124,11 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  try {
  const submitData: any = { ...createForm };
  if (!submitData.password) delete submitData.password;
- // For clinic_owner: send assignedClinicIds instead of clinicId
- if (['clinic_owner', 'doctor', 'secretariat', 'manager'].includes(createForm.role)) {
-        if (createForm.assignedClinicIds.length > 0) submitData.clinicId = createForm.assignedClinicIds[0];
- submitData.assignedClinicIds = createForm.assignedClinicIds;
- // keep clinicId as primary
-		if (createForm.assignedClinicIds.length > 0) submitData.clinicId = createForm.assignedClinicIds[0];
+ // Send multi-clinic Staff Mapping IDs for all clinic-mapped roles
+ if (['clinic_owner', 'doctor', 'secretariat', 'manager', 'salesperson'].includes(createForm.role)) {
+ const uniqueIds = Array.from(new Set(createForm.assignedClinicIds.filter(Boolean)));
+ submitData.assignedClinicIds = uniqueIds;
+ submitData.clinicId = uniqueIds[0] || "";
  } else {
  delete submitData.assignedClinicIds;
  }
@@ -412,9 +419,10 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  </button>
  <button
  onClick={handleSaveEdit}
- className="flex items-center gap-2 px-4 py-2 bg-[#0B1120] text-white rounded-lg hover:bg-gray-800 transition-colors"
+ disabled={isSavingEdit}
+ className="flex items-center gap-2 px-4 py-2 bg-[#0B1120] text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
  >
- <Save className="w-4 h-4" /> Save Changes
+ <Save className="w-4 h-4" /> {isSavingEdit ? "Saving..." : "Save Changes"}
  </button>
  </div>
  </div>
@@ -515,7 +523,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  {/* Clinic selection: depends on role */}
  {clinics?.length > 0 && createForm.role !== 'client' && createForm.role !== 'SUPER_ADMIN' && createForm.role !== 'admin' && (
  <div>
- {['clinic_owner', 'doctor', 'secretariat', 'manager'].includes(createForm.role) ? (
+ {['clinic_owner', 'doctor', 'secretariat', 'manager', 'salesperson'].includes(createForm.role) ? (
  <>
  <label className="block text-sm font-medium text-gray-700 mb-1">
               {createForm.role === "clinic_owner" ? "Assign Clinics (Owner of)" : "Assign Clinics (Staff Mapping)"}
