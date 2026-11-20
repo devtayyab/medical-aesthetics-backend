@@ -1,12 +1,38 @@
 import { toast } from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { X, MapPin, ChevronRight, ChevronLeft, Search, User as UserIcon } from 'lucide-react';
+import { X, MapPin, ChevronRight, ChevronLeft, Search, User as UserIcon, Clock } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { RootState } from '@/store';
 import { format } from 'date-fns';
 
 import { clinicsAPI, bookingAPI, crmAPI } from '@/services/api';
+import { createClinicUTCDateTime, getClinicLocalTime } from '@/pages/CRM/AppointmentCalendar/useCalendarData';
+
+const formatSlotHm = (value: string | undefined | null, tz: string): string => {
+  if (!value) return '';
+  if (value.includes('T')) {
+    const { hour, minute } = getClinicLocalTime(value, tz);
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+  const match = value.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const addMinutesToHm = (startHm: string, minutes: number): string => {
+  const [h, m] = startHm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(minutes) || minutes <= 0) return '';
+  const total = Math.min(23 * 60 + 59, h * 60 + m + minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const diffHmMinutes = (startHm: string, endHm: string): number => {
+  const [sh, sm] = startHm.split(':').map(Number);
+  const [eh, em] = endHm.split(':').map(Number);
+  if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) return 0;
+  return (eh * 60 + em) - (sh * 60 + sm);
+};
 
 interface CRMBookingModalProps {
  customerId?: string;
@@ -98,6 +124,12 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  const [notes, setNotes] = useState(initialAppointment?.notes || '');
  const [disableNotifications, setDisableNotifications] = useState<boolean>(Boolean(initialAppointment?.disableNotifications));
  const [customDurationMinutes, setCustomDurationMinutes] = useState<number | null>(null);
+ const [customStartTime, setCustomStartTime] = useState<string>(
+   initialAppointment?.startTime ? formatSlotHm(initialAppointment.startTime, 'Europe/Athens') : ''
+ );
+ const [customEndTime, setCustomEndTime] = useState<string>(
+   initialAppointment?.endTime ? formatSlotHm(initialAppointment.endTime, 'Europe/Athens') : ''
+ );
  const submittingRef = React.useRef(false);
 
  useEffect(() => {
@@ -132,6 +164,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
    ? Math.round((new Date(initialAppointment.endTime).getTime() - new Date(initialAppointment.startTime).getTime()) / 60000)
    : null;
  setCustomDurationMinutes(initDur && initDur > 0 ? initDur : null);
+ setCustomStartTime(initialAppointment.startTime ? formatSlotHm(initialAppointment.startTime, 'Europe/Athens') : '');
+ setCustomEndTime(initialAppointment.endTime ? formatSlotHm(initialAppointment.endTime, 'Europe/Athens') : '');
  setStep(1); // Start at clinic selection or skip if already selected? 
  // Better to let them navigate.
  }
@@ -239,6 +273,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  const effectiveDurationMinutes = customDurationMinutes && customDurationMinutes > 0 ? customDurationMinutes : totalDurationMinutes;
  const totalPrice = selectedServiceObjects.reduce((sum, svc) => sum + (Number(svc.price) || 0), 0);
  const additionalServiceIds = selectedServiceIds.slice(1).filter(id => !!id && id !== selectedService);
+ const clinicTz = clinics.find(c => c.id === selectedClinic)?.timezone || 'Europe/Athens';
+ const customTimeDiff = customStartTime && customEndTime ? diffHmMinutes(customStartTime, customEndTime) : 0;
+ const isCustomTimeInvalid = Boolean(customStartTime && customEndTime && customTimeDiff <= 0);
+ const hasValidCustomTime = Boolean(customStartTime && customEndTime && customTimeDiff > 0);
+ const hasValidTimeSelection = !isCustomTimeInvalid && Boolean(hasValidCustomTime || selectedSlot);
 
  const toggleService = (id: string) => {
  setCustomDurationMinutes(null);
@@ -249,7 +288,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
  const handleConfirmBooking = async () => {
  if (submittingRef.current) return;
- if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) {
+ if (!selectedClinic || !selectedService || !hasValidTimeSelection || !finalCustomerId) {
  return;
  }
  
@@ -257,15 +296,22 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  submittingRef.current = true;
  setIsLoading(true);
  try {
- const startISO = (() => {
- if (selectedSlot.startTime.includes('T')) return selectedSlot.startTime;
- const [hh, mm] = selectedSlot.startTime.split(':').map(Number);
- const dt = new Date(selectedDate);
- dt.setHours(hh, mm, 0, 0);
- return dt.toISOString();
+ const localDate = new Date(selectedDate + 'T00:00:00');
+ const startDateObj = (() => {
+ if (customStartTime) {
+ return createClinicUTCDateTime(localDate, customStartTime, clinicTz);
+ }
+ if (selectedSlot?.startTime?.includes('T')) return new Date(selectedSlot.startTime);
+ return createClinicUTCDateTime(localDate, formatSlotHm(selectedSlot?.startTime, clinicTz) || '10:00', clinicTz);
  })();
- // End = start + specified duration (or sum of selected treatment durations)
- const endISO = new Date(new Date(startISO).getTime() + effectiveDurationMinutes * 60000).toISOString();
+ const endDateObj = (() => {
+ if (hasValidCustomTime && customEndTime) {
+ return createClinicUTCDateTime(localDate, customEndTime, clinicTz);
+ }
+ return new Date(startDateObj.getTime() + effectiveDurationMinutes * 60000);
+ })();
+ const startISO = startDateObj.toISOString();
+ const endISO = endDateObj.toISOString();
  const bookingPayload: any = {
  clientId: finalCustomerId,
  clinicId: selectedClinic,
@@ -276,7 +322,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  notes,
  disableNotifications: Boolean(disableNotifications),
  status: initialAppointment?.status || 'PENDING',
- providerId: selectedSlot.providerId || undefined,
+ providerId: selectedSlot?.providerId || undefined,
  representativeId: user?.role === 'salesperson' ? user.id : undefined,
  clientDetails: {
  fullName: finalCustomerName || 'Unknown',
@@ -316,9 +362,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
  if (onSuccess) onSuccess();
  onClose();
- } catch (err) {
+ } catch (err: any) {
  console.error("Booking failed", err);
- toast.error("Failed to process appointment. Slot might be taken or invalid.");
+ toast.error(err?.response?.data?.message || "Failed to process appointment. Slot might be taken or invalid.");
  } finally {
  submittingRef.current = false;
  setIsLoading(false);
@@ -387,6 +433,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  setSelectedClinic(c.id); 
  setSelectedServiceIds([]);
  setSelectedSlot(null);
+ setCustomStartTime('');
+ setCustomEndTime('');
  }
  setStep(2); 
  }}
@@ -464,20 +512,27 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
  <div>
  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 block">Choose Slot</label>
- <div className="grid grid-cols-3 gap-2">
+ <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
  {slots.length === 0 ? (
- <div className="col-span-3 py-10 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No slots available for this date</div>
+ <div className="col-span-3 py-6 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No predefined slots available — enter custom time below</div>
  ) : slots.map((slot, idx) => {
  const isAvailable = slot.available !== false;
+ const slotLabel = formatSlotHm(slot.startTime, clinicTz) || slot.startTimeDisplay || slot.startTime;
+ const isSelected = selectedSlot === slot || (Boolean(customStartTime) && customStartTime === slotLabel);
  return (
  <button
  key={idx}
+ type="button"
  disabled={!isAvailable}
- onClick={() => setSelectedSlot(slot)}
+ onClick={() => {
+ setSelectedSlot(slot);
+ setCustomStartTime(slotLabel);
+ setCustomEndTime(addMinutesToHm(slotLabel, effectiveDurationMinutes));
+ }}
  className={`p-2.5 text-center text-[11px] font-black border rounded-lg transition-all 
  ${!isAvailable 
  ? 'bg-slate-50 text-slate-400 border-slate-100 cursor-not-allowed opacity-75 relative overflow-hidden' 
- : selectedSlot === slot 
+ : isSelected 
  ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' 
  : 'bg-white text-slate-700 border-slate-100 hover:border-slate-300'
  }`}
@@ -488,26 +543,69 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  </div>
  )}
  <span className={!isAvailable ? "relative z-10 opacity-60" : ""}>
- {(() => {
- const display = slot.startTimeDisplay || (slot.startTime.includes('T') ? slot.startTime.split('T')[1].substring(0, 5) : slot.startTime);
- if (/am|pm/i.test(display)) {
- const match = display.match(/(\d+):(\d+)\s*(am|pm)/i);
- if (match) {
- let hours = parseInt(match[1], 10);
- const minutes = match[2];
- const ampm = match[3].toLowerCase();
- if (ampm === 'pm' && hours < 12) hours += 12;
- if (ampm === 'am' && hours === 12) hours = 0;
- return `${hours.toString().padStart(2, '0')}:${minutes}`;
- }
- }
- return display;
- })()}
+ {slotLabel}
  </span>
  </button>
  );
  })}
  </div>
+ </div>
+
+ <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+ <div className="flex items-center justify-between">
+ <label className="text-[10px] font-black uppercase text-slate-600 tracking-widest flex items-center gap-1.5">
+ <Clock className="w-3.5 h-3.5 text-blue-600" /> Custom Start &amp; End Time (Staff)
+ </label>
+ {hasValidCustomTime && (
+ <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+ {customTimeDiff} min
+ </span>
+ )}
+ </div>
+ <p className="text-[10px] text-slate-500">
+ Select a slot above or type any custom start and end time (e.g. 17:45 – 18:00).
+ </p>
+ <div className="grid grid-cols-2 gap-3">
+ <div>
+ <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1 block">Start Time</label>
+ <input
+ type="time"
+ value={customStartTime}
+ onChange={(e) => {
+ const nextStart = e.target.value;
+ setCustomStartTime(nextStart);
+ setSelectedSlot(null);
+ if (nextStart && (!customEndTime || diffHmMinutes(nextStart, customEndTime) <= 0)) {
+ setCustomEndTime(addMinutesToHm(nextStart, effectiveDurationMinutes));
+ }
+ }}
+ className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+ />
+ </div>
+ <div>
+ <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1 block">End Time</label>
+ <input
+ type="time"
+ value={customEndTime}
+ onChange={(e) => {
+ const nextEnd = e.target.value;
+ setCustomEndTime(nextEnd);
+ if (customStartTime && nextEnd) {
+ const diff = diffHmMinutes(customStartTime, nextEnd);
+ if (diff > 0 && diff <= 720) {
+ setCustomDurationMinutes(diff);
+ }
+ }
+ }}
+ className={`w-full h-10 px-3 bg-white border rounded-xl text-xs font-bold text-slate-800 ${
+ isCustomTimeInvalid ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'
+ }`}
+ />
+ </div>
+ </div>
+ {isCustomTimeInvalid && (
+ <p className="text-[10px] font-bold text-red-600">End time must be after start time.</p>
+ )}
  </div>
  </div>
  </div>
@@ -550,10 +648,10 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  <div className="flex flex-col gap-1">
  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Reservation</span>
  <span className="text-[11px] font-black text-slate-800">
- {new Date(selectedDate).toLocaleDateString()} at {
- selectedSlot?.startTime.includes('T') 
- ? format(new Date(selectedSlot.startTime), 'HH:mm')
- : selectedSlot?.startTime
+ {new Date(selectedDate + 'T00:00:00').toLocaleDateString()} at {
+ customStartTime
+ ? `${customStartTime}${customEndTime ? ` – ${customEndTime}` : ''}`
+ : (selectedSlot ? formatSlotHm(selectedSlot.startTime, clinicTz) : '')
  }
  </span>
  </div>
@@ -574,7 +672,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
    value={effectiveDurationMinutes}
    onChange={(e) => {
      const v = parseInt(e.target.value, 10);
-     setCustomDurationMinutes(Number.isFinite(v) && v > 0 ? v : null);
+     const valid = Number.isFinite(v) && v > 0 ? v : null;
+     setCustomDurationMinutes(valid);
+     if (customStartTime && valid) {
+       setCustomEndTime(addMinutesToHm(customStartTime, valid));
+     }
    }}
    className="w-full h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
  />
@@ -678,7 +780,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  step === 0 && !selectedClient ||
  step === 1 && !selectedClinic || 
  step === 2 && !selectedService || 
- step === 3 && !selectedSlot ||
+ step === 3 && !hasValidTimeSelection ||
  isLoading
  }
  onClick={() => setStep(step + 1)} 

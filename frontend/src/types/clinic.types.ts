@@ -27,6 +27,8 @@ export interface ClinicProfile {
  website?: string;
  businessHours: BusinessHours;
  timezone: string;
+ treatmentRooms?: number;
+ slotIntervalMinutes?: number;
  isActive: boolean;
  // Visual / Media
  photoUrl?: string;
@@ -380,6 +382,7 @@ export interface AvailabilitySettings {
  reason: string;
  }>;
  timezone: string;
+ slotIntervalMinutes?: number;
 }
 
 // API Response Types

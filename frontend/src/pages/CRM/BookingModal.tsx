@@ -8,6 +8,7 @@ import { X, Calendar, Clock, User, Scissors, Building2 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { format, addMinutes } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createClinicUTCDateTime } from '@/pages/CRM/AppointmentCalendar/useCalendarData';
 
 interface BookingModalProps {
  isOpen: boolean;
@@ -41,6 +42,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  providerId: initialProviderId === 'all' ? '' : (initialProviderId || ''),
  date: format(initialDate || new Date(), 'yyyy-MM-dd'),
  time: '10:00',
+ endTime: '',
  notes: '',
  });
 
@@ -83,11 +85,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  }
 
  const selectedService = services.find(s => s.id === formData.serviceId);
+ const selectedClinicObj = clinics.find(c => c.id === formData.clinicId);
+ const clinicTz = selectedClinicObj?.timezone || 'Europe/Athens';
  const durationMinutes = selectedService?.durationMinutes || 60;
 
- // Combine date and time
- const startDateTimeObj = new Date(`${formData.date}T${formData.time}:00`);
- const endDateTimeObj = addMinutes(startDateTimeObj, durationMinutes);
+ // Combine date and time in clinic timezone
+ const localDate = new Date(`${formData.date}T00:00:00`);
+ const startDateTimeObj = createClinicUTCDateTime(localDate, formData.time, clinicTz);
+ let endDateTimeObj = addMinutes(startDateTimeObj, durationMinutes);
+ if (formData.endTime) {
+ const customEnd = createClinicUTCDateTime(localDate, formData.endTime, clinicTz);
+ if (customEnd.getTime() <= startDateTimeObj.getTime()) {
+ toast.error('End time must be after start time');
+ return;
+ }
+ endDateTimeObj = customEnd;
+ }
 
  try {
  await dispatch(createAppointment({
@@ -197,7 +210,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  </select>
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
  {/* Date */}
  <div className="space-y-1.5">
  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
@@ -212,16 +225,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  />
  </div>
 
- {/* Time */}
+ {/* Start Time */}
  <div className="space-y-1.5">
  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
- <Clock className="w-4 h-4 text-indigo-500" /> Time
+ <Clock className="w-4 h-4 text-indigo-500" /> Start Time
  </label>
  <input
  required
  type="time"
  value={formData.time}
  onChange={e => setFormData({ ...formData, time: e.target.value })}
+ className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+ />
+ </div>
+
+ {/* End Time */}
+ <div className="space-y-1.5">
+ <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+ <Clock className="w-4 h-4 text-indigo-500" /> End Time
+ </label>
+ <input
+ type="time"
+ value={formData.endTime}
+ onChange={e => setFormData({ ...formData, endTime: e.target.value })}
  className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
  />
  </div>

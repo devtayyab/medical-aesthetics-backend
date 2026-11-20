@@ -40,6 +40,9 @@ export class Clinic {
   @Column({ default: 1 })
   treatmentRooms: number;
 
+  @Column({ type: 'int', default: 30 })
+  slotIntervalMinutes: number;
+
   @Column({ nullable: true })
   email: string;
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsObject, IsUUID, IsArray, IsDateString, IsNumber, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsObject, IsUUID, IsArray, IsDateString, IsNumber, IsEnum, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AppointmentStatus } from '../../../common/enums/appointment-status.enum';
@@ -52,6 +52,19 @@ export class CreateClinicProfileDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  treatmentRooms?: number;
+
+  @ApiPropertyOptional({ default: 30, description: 'Booking slot interval in minutes (e.g. 15, 30, 45, 60)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(120)
+  slotIntervalMinutes?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -127,6 +140,19 @@ export class UpdateClinicProfileDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  treatmentRooms?: number;
+
+  @ApiPropertyOptional({ default: 30, description: 'Booking slot interval in minutes (e.g. 15, 30, 45, 60)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(120)
+  slotIntervalMinutes?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -249,6 +275,13 @@ export class AvailabilitySettingsDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @ApiPropertyOptional({ default: 30, description: 'Booking slot interval in minutes (e.g. 15, 30, 45, 60)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(120)
+  slotIntervalMinutes?: number;
 }
 
 export class ClinicAnalyticsQueryDto {

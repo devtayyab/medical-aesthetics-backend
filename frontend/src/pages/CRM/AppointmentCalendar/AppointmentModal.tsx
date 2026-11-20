@@ -533,7 +533,21 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
   }, [form.startTime, form.durationMinutes]);
 
+  const [endTimeInput, setEndTimeInput] = useState<string>('');
+  const isEndTimeInvalid = useMemo(() => {
+    if (!form.startTime || !endTimeInput) return false;
+    const [sh, sm] = form.startTime.split(':').map(Number);
+    const [eh, em] = endTimeInput.split(':').map(Number);
+    if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) return false;
+    return (eh * 60 + em) <= (sh * 60 + sm);
+  }, [form.startTime, endTimeInput]);
+
+  useEffect(() => {
+    setEndTimeInput(computedEndTime);
+  }, [computedEndTime]);
+
   const handleEndTimeChange = (newEndTime: string) => {
+    setEndTimeInput(newEndTime);
     if (!form.startTime || !newEndTime) return;
     const [sh, sm] = form.startTime.split(':').map(Number);
     const [eh, em] = newEndTime.split(':').map(Number);
@@ -593,17 +607,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return [...availableSlots, missingSlot].sort((a, b) => a.value.localeCompare(b.value));
   }, [availableSlots, form.startTime, mode]);
 
-  // Create mode: if a picked grid slot turns out to be explicitly busy once slots load,
-  // clear it so a busy slot can't stay selected. Allow custom off-grid times (e.g. 18:15)
-  // entered manually by staff so exact custom time windows can be scheduled.
-  useEffect(() => {
-    if (mode !== 'create' || !form.startTime || availableSlots.length === 0) return;
-    const slot = availableSlots.find(s => s.value === form.startTime);
-    if (slot && slot.available === false) {
-      setForm(prev => ({ ...prev, startTime: '' }));
-    }
-  }, [availableSlots, mode, form.startTime]);
-
   const validateAndCheckConflict = useCallback((): boolean => {
     if (!form.isNewPatient && !form.patientId) { toast.error('Please select a patient.'); return false; }
     if (form.isNewPatient && (!form.newPatientDetails?.fullName || !form.newPatientDetails?.phone || !form.newPatientDetails?.email?.trim())) {
@@ -613,6 +616,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!form.serviceId) { toast.error('Please select a treatment.'); return false; }
     if (!form.clinicId) { toast.error('Please select a clinic.'); return false; }
     if (!form.date || !form.startTime) { toast.error('Please set date and time.'); return false; }
+    if (isEndTimeInvalid) {
+      toast.error(isGreek ? 'Η ώρα λήξης πρέπει να είναι μετά την ώρα έναρξης.' : 'End time must be after start time.');
+      return false;
+    }
     if (!form.durationMinutes || form.durationMinutes <= 0) { toast.error('Please set a duration.'); return false; }
 
     const clinic = clinics.find(c => c.id === form.clinicId);
@@ -636,7 +643,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     }
     setConflict(null);
     return true;
-  }, [form, clinics, checkConflict, mode, existingAppointment]);
+  }, [form, clinics, checkConflict, mode, existingAppointment, isEndTimeInvalid, isGreek]);
 
   const handleSave = async (eOrOverrideStatus?: any) => {
     if (isSubmittingRef.current) return;
@@ -1259,6 +1266,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <span className="text-[12px] text-slate-400">No slots available</span>
                 </div>
               )}
+              <p className="text-[10px] text-slate-500 mt-1.5">
+                {isGreek
+                  ? 'Επιλέξτε ένα προτεινόμενο slot ή πληκτρολογήστε οποιαδήποτε ώρα έναρξης & λήξης παρακάτω (π.χ. 17:45–18:00).'
+                  : 'Select a suggested slot above or enter any custom start & end time below (e.g. 17:45–18:00).'}
+              </p>
             </div>
 
             {/* Start Time, End Time & Duration */}
@@ -1281,11 +1293,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   </label>
                   <input
                     type="time"
-                    value={computedEndTime}
+                    value={endTimeInput}
                     disabled={!form.startTime}
                     onChange={e => handleEndTimeChange(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                    className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 disabled:opacity-50 ${
+                      isEndTimeInvalid
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-slate-200 focus:ring-indigo-400'
+                    }`}
                   />
+                  {isEndTimeInvalid && (
+                    <p className="text-[10px] text-red-600 font-semibold mt-1">
+                      {isGreek ? 'Η ώρα λήξης πρέπει να είναι μετά την ώρα έναρξης.' : 'End time must be after start time.'}
+                    </p>
+                  )}
                 </div>
               </div>
 

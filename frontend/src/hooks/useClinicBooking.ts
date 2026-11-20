@@ -1,6 +1,26 @@
 import { useState, useEffect } from 'react';
 import { clinicsAPI, bookingAPI } from '@/services/api';
 import { format } from 'date-fns';
+import { createClinicUTCDateTime, getClinicLocalTime } from '@/pages/CRM/AppointmentCalendar/useCalendarData';
+
+const formatTimeInTz = (isoStr: string, tz: string): string => {
+  const { hour, minute } = getClinicLocalTime(isoStr, tz);
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
+
+const addMinutesHm = (startHm: string, minutes: number): string => {
+  const [h, m] = startHm.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || minutes <= 0) return '';
+  const total = Math.min(23 * 60 + 59, h * 60 + m + minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const diffHm = (startHm: string, endHm: string): number => {
+  const [sh, sm] = startHm.split(':').map(Number);
+  const [eh, em] = endHm.split(':').map(Number);
+  if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) return 0;
+  return (eh * 60 + em) - (sh * 60 + sm);
+};
 
 export interface UseClinicBookingOptions {
   isOpen: boolean;
@@ -33,7 +53,9 @@ export const useClinicBooking = ({
   });
   const [notes, setNotes] = useState('');
   const [disableNotifications, setDisableNotifications] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
+  const [clinicTimezone, setClinicTimezone] = useState('Europe/Athens');
 
   const [services, setServices] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
@@ -56,6 +78,7 @@ export const useClinicBooking = ({
       setSlotReason(null);
       setNotes('');
       setDisableNotifications(false);
+      setCustomStartTime('');
       setCustomEndTime('');
       setError(null);
       fetchClinicData();
@@ -76,16 +99,45 @@ export const useClinicBooking = ({
   const fetchClinicData = async () => {
     setIsLoading(true);
     try {
-      const [servicesRes, providersRes] = await Promise.all([
+      const [servicesRes, providersRes, clinicRes] = await Promise.all([
         clinicsAPI.getServices(clinicId),
         clinicsAPI.getProviders(clinicId),
+        clinicsAPI.getById(clinicId).catch(() => null),
       ]);
       setServices(servicesRes.data || []);
       setProviders(providersRes.data || []);
+      const tz = (clinicRes as any)?.data?.timezone;
+      if (tz && String(tz).trim()) {
+        setClinicTimezone(String(tz).trim());
+      }
     } catch (err) {
       console.error('Failed to fetch clinic data', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const selectedServiceObj = services.find((s) => s.id === selectedService);
+  const defaultDurationMinutes = Number(selectedServiceObj?.durationMinutes || selectedServiceObj?.duration) || 30;
+
+  const formatSlotStart = (isoStr: string) => formatTimeInTz(isoStr, clinicTimezone);
+
+  const handleSelectSlot = (slot: any) => {
+    setSelectedSlot(slot);
+    if (slot?.startTime) {
+      const startHm = formatTimeInTz(slot.startTime, clinicTimezone);
+      setCustomStartTime(startHm);
+      setCustomEndTime(
+        slot.endTime ? formatTimeInTz(slot.endTime, clinicTimezone) : addMinutesHm(startHm, defaultDurationMinutes)
+      );
+    }
+  };
+
+  const handleCustomStartTimeChange = (nextStart: string) => {
+    setCustomStartTime(nextStart);
+    setSelectedSlot(null);
+    if (nextStart && (!customEndTime || diffHm(nextStart, customEndTime) <= 0)) {
+      setCustomEndTime(addMinutesHm(nextStart, defaultDurationMinutes));
     }
   };
 
@@ -120,33 +172,44 @@ export const useClinicBooking = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedSlot || !clientData.fullName || !clientData.phone) {
-      setError('Please fill required fields (Name, Phone and Time slot)');
+    if (!clientData.fullName || !clientData.phone) {
+      setError('Please fill required fields (Name and Phone)');
+      return;
+    }
+    if (!selectedSlot && !customStartTime) {
+      setError('Please select a time slot or enter a custom start and end time');
+      return;
+    }
+
+    const localDate = new Date(selectedDate + 'T00:00:00');
+    const startDt = customStartTime
+      ? createClinicUTCDateTime(localDate, customStartTime, clinicTimezone)
+      : new Date(selectedSlot.startTime);
+
+    let endDt: Date;
+    if (customEndTime) {
+      endDt = createClinicUTCDateTime(localDate, customEndTime, clinicTimezone);
+    } else if (selectedSlot?.endTime) {
+      endDt = new Date(selectedSlot.endTime);
+    } else {
+      endDt = new Date(startDt.getTime() + defaultDurationMinutes * 60000);
+    }
+
+    if (endDt.getTime() <= startDt.getTime()) {
+      setError('End time must be after start time');
       return;
     }
 
     setIsLoading(true);
     setError(null);
     try {
-      let computedEndIso = selectedSlot.endTime;
-      if (customEndTime && selectedSlot.startTime) {
-        const startDt = new Date(selectedSlot.startTime);
-        const [eh, em] = customEndTime.split(':').map(Number);
-        if (Number.isFinite(eh) && Number.isFinite(em)) {
-          const endDt = new Date(startDt);
-          endDt.setHours(eh, em, 0, 0);
-          if (endDt.getTime() > startDt.getTime()) {
-            computedEndIso = endDt.toISOString();
-          }
-        }
-      }
       await bookingAPI.createAppointment({
         clinicId,
         serviceId: selectedService,
-        providerId: selectedSlot.providerId || undefined,
+        providerId: selectedProvider || selectedSlot?.providerId || undefined,
         clientId: '00000000-0000-0000-0000-000000000000', // Backend handles walk-in via clientDetails
-        startTime: selectedSlot.startTime,
-        endTime: computedEndIso,
+        startTime: startDt.toISOString(),
+        endTime: endDt.toISOString(),
         clientDetails: clientData,
         notes: notes,
         disableNotifications: Boolean(disableNotifications),
@@ -172,8 +235,12 @@ export const useClinicBooking = ({
     setNotes,
     disableNotifications,
     setDisableNotifications,
+    customStartTime,
+    setCustomStartTime: handleCustomStartTimeChange,
     customEndTime,
     setCustomEndTime,
+    formatSlotStart,
+    handleSelectSlot,
     services,
     providers,
     selectedService,

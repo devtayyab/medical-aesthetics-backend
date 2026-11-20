@@ -47,7 +47,7 @@ export class AvailabilityService {
     allowPast = false,
     excludeAppointmentId?: string | null,
     durationMinutesOverride?: number | null,
-  ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
+  ): Promise<{ slots: any[]; count: number; slotIntervalMinutes?: number; reason?: string; debug?: any }> {
     const log = (msg: string, data?: any) => {
       if (process.env.NODE_ENV !== 'production') {
         console.log(msg, data ?? '');
@@ -73,7 +73,12 @@ export class AvailabilityService {
       }
 
       const maxRooms = Math.max(1, Number((clinic as any).treatmentRooms) || 1);
-      log('🔵 Clinic:', { name: clinic.name, maxRooms });
+      const rawInterval = Number((clinic as any).slotIntervalMinutes);
+      const slotIntervalMinutes =
+        Number.isFinite(rawInterval) && rawInterval >= 5 && rawInterval <= 120
+          ? Math.round(rawInterval)
+          : 30;
+      log('🔵 Clinic:', { name: clinic.name, maxRooms, slotIntervalMinutes });
 
       const allServices = await this.clinicsService.findServices(clinicId);
       if (!allServices || allServices.length === 0) {
@@ -337,8 +342,8 @@ export class AvailabilityService {
             }
         }
 
-        // Move to next 30-minute slot
-        currentSlot.setTime(currentSlot.getTime() + (30 * 60000));
+        // Advance to next slot using clinic's configured interval (default 30 min, e.g. 15 min)
+        currentSlot.setTime(currentSlot.getTime() + (slotIntervalMinutes * 60000));
       }
 
       let reason: string | undefined;
@@ -359,6 +364,7 @@ export class AvailabilityService {
       return {
         slots,
         count: slots.length,
+        slotIntervalMinutes,
         reason: slots.length === 0 ? reason : undefined,
         debug: slots.length === 0 ? {
           totalSlotsChecked: slotCount,
@@ -426,6 +432,7 @@ export class AvailabilityService {
       clinicId: clinic.id,
       clinicName: clinic.name,
       timezone: clinic.timezone,
+      slotIntervalMinutes: Number((clinic as any).slotIntervalMinutes) || 30,
       businessHours: clinic.businessHours,
       blockedDates: [], // This would come from a separate blocked dates entity
       blockedTimeSlots: blockedSlots.map(slot => ({

@@ -1,6 +1,5 @@
 import React from 'react';
 import { X, User, Phone, Mail, ChevronRight, CheckCircle, Calendar, Clock } from 'lucide-react';
-import { format } from 'date-fns';
 import { useClinicBooking } from '@/hooks/useClinicBooking';
 
 interface ClinicBookingModalProps {
@@ -34,8 +33,12 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
     setNotes,
     disableNotifications,
     setDisableNotifications,
+    customStartTime,
+    setCustomStartTime,
     customEndTime,
     setCustomEndTime,
+    formatSlotStart,
+    handleSelectSlot,
     services,
     providers,
     selectedService,
@@ -46,7 +49,6 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
     setSelectedDate,
     availableSlots,
     selectedSlot,
-    setSelectedSlot,
     slotReason,
     handleSubmit,
   } = useClinicBooking({
@@ -219,21 +221,18 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  </div>
  </div>
  <div className="space-y-1">
- <label className="text-xs font-bold text-gray-500 uppercase">Select Slot *</label>
+ <label className="text-xs font-bold text-gray-500 uppercase">Select Slot</label>
  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
   {availableSlots.map((slot, i) => {
-    const isSelected = selectedSlot === slot;
+    const slotLabel = formatSlotStart(slot.startTime);
+    const isSelected = selectedSlot === slot || (Boolean(customStartTime) && customStartTime === slotLabel);
     const isDisabled = slot.available === false && !isSelected;
     return (
       <button
         key={i}
+        type="button"
         disabled={isDisabled}
-        onClick={() => {
-          setSelectedSlot(slot);
-          if (slot.endTime) {
-            setCustomEndTime(format(new Date(slot.endTime), 'HH:mm'));
-          }
-        }}
+        onClick={() => handleSelectSlot(slot)}
         className={`p-2 text-xs font-bold border rounded-lg transition-all ${
           isDisabled
             ? 'bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed'
@@ -242,14 +241,14 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
               : 'hover:bg-blue-50'
         }`}
       >
-        {format(new Date(slot.startTime), 'HH:mm')}
+        {slotLabel}
       </button>
     );
   })}
  {availableSlots.length === 0 && (
- <div className="col-span-2 flex flex-col items-center justify-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
- <Clock className="w-8 h-8 text-gray-300 mb-2" />
- <p className="text-gray-500 font-bold text-xs text-center">No slots available</p>
+ <div className="col-span-2 flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+ <Clock className="w-7 h-7 text-gray-300 mb-2" />
+ <p className="text-gray-500 font-bold text-xs text-center">No predefined slots available</p>
  {slotReason && (
  <p className="text-red-500 text-[10px] mt-1 text-center font-medium max-w-[200px]">
  {slotReason}
@@ -260,17 +259,36 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({
  </div>
  </div>
  </div>
- {selectedSlot && (
-   <div className="pt-2 border-t border-gray-100">
-     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">End Time (Optional Override)</label>
-     <input
-       type="time"
-       value={customEndTime}
-       onChange={(e) => setCustomEndTime(e.target.value)}
-       className="w-full sm:w-48 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-semibold"
-     />
+ <div className="pt-3 border-t border-gray-100 space-y-2">
+   <div className="flex items-center justify-between">
+     <label className="text-xs font-bold text-gray-700 uppercase flex items-center gap-1.5">
+       <Clock className="w-3.5 h-3.5 text-blue-600" /> Custom Start &amp; End Time
+     </label>
    </div>
- )}
+   <p className="text-[11px] text-gray-500">
+     Select a slot above or enter any custom start and end time (e.g. 17:45 – 18:00).
+   </p>
+   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+     <div className="space-y-1">
+       <label className="text-[11px] font-bold text-gray-500 uppercase block">Start Time *</label>
+       <input
+         type="time"
+         value={customStartTime}
+         onChange={(e) => setCustomStartTime(e.target.value)}
+         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-semibold"
+       />
+     </div>
+     <div className="space-y-1">
+       <label className="text-[11px] font-bold text-gray-500 uppercase block">End Time *</label>
+       <input
+         type="time"
+         value={customEndTime}
+         onChange={(e) => setCustomEndTime(e.target.value)}
+         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-semibold"
+       />
+     </div>
+   </div>
+ </div>
  </div>
  )}
  </div>

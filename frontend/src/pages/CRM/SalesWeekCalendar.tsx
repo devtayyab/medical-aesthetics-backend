@@ -195,6 +195,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
   const [wizardDate, setWizardDate] = useState(new Date());
   const [wizardTime, setWizardTime] = useState(format(new Date(), 'HH:mm'));
+  const [wizardEndTime, setWizardEndTime] = useState('');
   const [wizardProviderId, setWizardProviderId] = useState<string | null>(null);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [clinicSearchQuery, setClinicSearchQuery] = useState('');
@@ -374,6 +375,7 @@ export const SalesWeekCalendar: React.FC = () => {
   const handleOpenWizard = async (initialDate?: Date, initialTimeStr?: string) => {
     if (initialDate) setWizardDate(initialDate);
     if (initialTimeStr) setWizardTime(initialTimeStr);
+    setWizardEndTime('');
     setWizardStep(1);
     setWizardClient(null);
     setWizardServices([]);
@@ -450,7 +452,16 @@ export const SalesWeekCalendar: React.FC = () => {
       const primaryService = wizardServices[0];
       const additionalServiceIds = wizardServices.slice(1).map(s => s.id);
       const totalDuration = wizardServices.reduce((sum, s) => sum + Number(s.durationMinutes || s.duration || 30), 0);
-      const currentEndTime = new Date(currentStartTime.getTime() + totalDuration * 60000);
+      let currentEndTime = new Date(currentStartTime.getTime() + totalDuration * 60000);
+      if (wizardEndTime) {
+        const customEnd = createClinicUTCDateTime(wizardDate, wizardEndTime, tz);
+        if (customEnd.getTime() <= currentStartTime.getTime()) {
+          toast.error("End time must be after start time.");
+          setIsSubmitting(false);
+          return;
+        }
+        currentEndTime = customEnd;
+      }
 
       await bookingAPI.createAppointment({
         clientId: clientId!,
@@ -472,9 +483,10 @@ export const SalesWeekCalendar: React.FC = () => {
       setWizardClient(null);
       setWizardServices([]);
       setWizardTime("10:00");
-    } catch (error) {
+      setWizardEndTime("");
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to book appointment. The time slot might be already taken.");
+      toast.error(error?.response?.data?.message || "Failed to book appointment. The time slot might be already taken.");
     } finally {
       setIsSubmitting(false);
     }
@@ -1175,7 +1187,7 @@ export const SalesWeekCalendar: React.FC = () => {
  </select>
  </div>
 
- <div className="grid grid-cols-2 gap-3">
+ <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
  <div>
  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Target Date</label>
  <div className="relative mt-2">
@@ -1184,10 +1196,17 @@ export const SalesWeekCalendar: React.FC = () => {
  </div>
  </div>
  <div>
- <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Custom Time</label>
+ <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Start Time</label>
  <div className="relative mt-2">
  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
  <input type="time" value={wizardTime} onChange={(e) => setWizardTime(e.target.value)} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
+ </div>
+ </div>
+ <div>
+ <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">End Time (Optional)</label>
+ <div className="relative mt-2">
+ <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+ <input type="time" value={wizardEndTime} onChange={(e) => setWizardEndTime(e.target.value)} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
  </div>
  </div>
  </div>

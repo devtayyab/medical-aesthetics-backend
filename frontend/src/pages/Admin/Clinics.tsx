@@ -179,6 +179,8 @@ export const Clinics: React.FC = () => {
     bankName: "",
     bankBic: "",
     timezone: "Europe/Athens",
+    slotIntervalMinutes: 30,
+    treatmentRooms: 1,
   });
 
   const ownerSearchRef = useRef<HTMLDivElement>(null);
@@ -322,6 +324,8 @@ export const Clinics: React.FC = () => {
       setFormData({
         ...clinic,
         timezone: clinic.timezone || "Europe/Athens",
+        slotIntervalMinutes: Number((clinic as any).slotIntervalMinutes) || 30,
+        treatmentRooms: Number((clinic as any).treatmentRooms) || 1,
         ownerIds: clinic.owners?.map(o => o.id) || (clinic.ownerId ? [clinic.ownerId] : []),
         businessHours: clinic.businessHours || {
           monday: { open: "09:00", close: "18:00", isOpen: true },
@@ -355,6 +359,8 @@ export const Clinics: React.FC = () => {
         bankName: "",
         bankBic: "",
         timezone: "Europe/Athens",
+        slotIntervalMinutes: 30,
+        treatmentRooms: 1,
         businessHours: {
           monday: { open: "09:00", close: "18:00", isOpen: true },
           tuesday: { open: "09:00", close: "18:00", isOpen: true },
@@ -921,6 +927,45 @@ export const Clinics: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col justify-between gap-2 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div>
+                        <h4 className="font-bold text-gray-900">{isGreek ? 'Διάστημα ραντεβού (λεπτά)' : 'Time Slot Interval'}</h4>
+                        <p className="text-xs text-gray-500">
+                          {isGreek ? 'π.χ. 15 λεπτά εμφανίζει ώρες 17:30, 17:45, 18:00' : 'e.g. 15 min shows slots at 17:30, 17:45, 18:00'}
+                        </p>
+                      </div>
+                      <select
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none bg-white font-medium text-gray-700"
+                        value={Number((formData as any).slotIntervalMinutes) || 30}
+                        onChange={e => setFormData({ ...formData, slotIntervalMinutes: Number(e.target.value) } as any)}
+                      >
+                        <option value={15}>15 {isGreek ? 'λεπτά' : 'minutes'}</option>
+                        <option value={20}>20 {isGreek ? 'λεπτά' : 'minutes'}</option>
+                        <option value={30}>30 {isGreek ? 'λεπτά (Προεπιλογή)' : 'minutes (Default)'}</option>
+                        <option value={45}>45 {isGreek ? 'λεπτά' : 'minutes'}</option>
+                        <option value={60}>60 {isGreek ? 'λεπτά' : 'minutes'}</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col justify-between gap-2 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div>
+                        <h4 className="font-bold text-gray-900">{isGreek ? 'Αίθουσες θεραπείας' : 'Treatment Rooms'}</h4>
+                        <p className="text-xs text-gray-500">
+                          {isGreek ? 'Μέγιστος αριθμός ταυτόχρονων ραντεβού' : 'Max simultaneous appointments allowed'}
+                        </p>
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none bg-white font-medium text-gray-700"
+                        value={Number((formData as any).treatmentRooms) || 1}
+                        onChange={e => setFormData({ ...formData, treatmentRooms: Math.max(1, Number(e.target.value) || 1) } as any)}
+                      />
+                    </div>
+                  </div>
+
                   <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Business Hours</h4>
                   <div className="grid gap-4">
                     {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(day => (
@@ -1027,11 +1072,27 @@ export const Clinics: React.FC = () => {
                             <div className="space-y-1">
                               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Duration (min)</label>
                               <input
-                                type="number" required
+                                type="number" required min={5} step={5}
                                 className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none"
                                 value={serviceForm.durationMinutes}
                                 onChange={e => setServiceForm({ ...serviceForm, durationMinutes: Number(e.target.value) })}
                               />
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {[15, 30, 45, 60, 75, 90, 120].map((m) => (
+                                  <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => setServiceForm({ ...serviceForm, durationMinutes: m })}
+                                    className={`px-2 py-0.5 text-[10px] font-bold rounded-md border transition-colors ${
+                                      Number(serviceForm.durationMinutes) === m
+                                        ? 'bg-black text-[#CBFF38] border-black'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    {m}m
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </div>

@@ -5278,7 +5278,7 @@ export class CrmService implements OnModuleInit {
         // Admins and Global Sales see all active clinics
         return this.clinicsRepository.find({
           where: { isActive: true },
-          select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms']
+          select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms', 'slotIntervalMinutes']
         });
       }
 
@@ -5321,7 +5321,7 @@ export class CrmService implements OnModuleInit {
 
       const clinics = await this.clinicsRepository.find({
         where: { id: In(Array.from(accessibleClinicIds)), isActive: true },
-        select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms']
+        select: ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms', 'slotIntervalMinutes']
       });
 
       return clinics.sort((a, b) =>

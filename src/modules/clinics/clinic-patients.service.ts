@@ -123,7 +123,7 @@ export class ClinicPatientsService {
 
   async getAccessibleClinics(userId: string, role: string): Promise<Clinic[]> {
     const ids = await this.resolveClinicIds(userId, role);
-    const select: (keyof Clinic)[] = ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms'];
+    const select: (keyof Clinic)[] = ['id', 'name', 'address', 'phone', 'email', 'timezone', 'treatmentRooms', 'slotIntervalMinutes'];
     if (ids === null) {
       return this.clinicsRepository.find({ where: { isActive: true }, select, order: { name: 'ASC' } });
     }

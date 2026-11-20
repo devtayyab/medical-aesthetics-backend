@@ -551,12 +551,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs uppercase">Min</span>
  <input
  type="number"
- min="1"
+ min="5"
+ step="5"
  value={formData.durationMinutes ||""}
  onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 0 })}
  className="w-full px-4 py-3 border border-gray-100 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-300 outline-none font-black text-xl text-gray-900"
  required
  />
+ </div>
+ <div className="flex flex-wrap gap-1 pt-1">
+ {[15, 30, 45, 60, 75, 90, 120].map((m) => (
+ <button
+ key={m}
+ type="button"
+ onClick={() => setFormData({ ...formData, durationMinutes: m })}
+ className={`px-2 py-0.5 text-[10px] font-black rounded-md border transition-colors ${
+ Number(formData.durationMinutes) === m
+ ? 'bg-black text-[#CBFF38] border-black'
+ : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+ }`}
+ >
+ {m}m
+ </button>
+ ))}
  </div>
  </div>
  </div>

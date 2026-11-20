@@ -104,6 +104,7 @@ const AvailabilityPage: React.FC = () => {
  const [newBlockedDate, setNewBlockedDate] = useState("");
  const [newSlot, setNewSlot] = useState({ date:"", startTime:"09:00", endTime:"10:00" });
  const [timezone, setTimezone] = useState("UTC");
+ const [slotIntervalMinutes, setSlotIntervalMinutes] = useState<number>(30);
  const [isSaving, setIsSaving] = useState(false);
 
   const [isGreek, setIsGreek] = useState<boolean>(
@@ -206,6 +207,7 @@ const AvailabilityPage: React.FC = () => {
  }
  );
  setTimezone(availability.timezone ||"UTC");
+ setSlotIntervalMinutes(Number((availability as any).slotIntervalMinutes) || 30);
  }
  }, [availability]);
 
@@ -220,6 +222,7 @@ const AvailabilityPage: React.FC = () => {
  const payload: any = {
  businessHours,
  timezone,
+ slotIntervalMinutes,
  clinicId: selectedClinicId,
  };
 
@@ -420,7 +423,8 @@ const AvailabilityPage: React.FC = () => {
  ))}
  </div>
 
- <div className="mt-8 pt-6 border-t border-gray-100">
+ <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div>
  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 px-1">{isGreek ? "Ζώνη ώρας" : "Time Zone"}</p>
  <div className="relative">
  <select
@@ -436,6 +440,27 @@ const AvailabilityPage: React.FC = () => {
  </select>
  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
  <Clock size={12} />
+ </div>
+ </div>
+ </div>
+
+ <div>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 px-1">{isGreek ? "Διάστημα ραντεβού" : "Time Slot Interval"}</p>
+ <div className="relative">
+ <select
+ value={slotIntervalMinutes}
+ onChange={(e) => setSlotIntervalMinutes(Number(e.target.value))}
+ className="w-full h-11 pl-5 pr-10 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest appearance-none focus:outline-none cursor-pointer hover:bg-gray-100 transition-colors"
+ >
+ <option value={15}>15 {isGreek ? "λεπτά (π.χ. 17:30, 17:45)" : "minutes (e.g. 17:30, 17:45)"}</option>
+ <option value={20}>20 {isGreek ? "λεπτά" : "minutes"}</option>
+ <option value={30}>30 {isGreek ? "λεπτά (Προεπιλογή)" : "minutes (Default)"}</option>
+ <option value={45}>45 {isGreek ? "λεπτά" : "minutes"}</option>
+ <option value={60}>60 {isGreek ? "λεπτά" : "minutes"}</option>
+ </select>
+ <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+ <Clock size={12} />
+ </div>
  </div>
  </div>
  </div>

@@ -872,6 +872,12 @@ export class ClinicsService {
 
     clinic.businessHours = availabilitySettingsDto.businessHours;
     clinic.timezone = availabilitySettingsDto.timezone;
+    if (availabilitySettingsDto.slotIntervalMinutes !== undefined) {
+      const parsed = Math.round(Number(availabilitySettingsDto.slotIntervalMinutes));
+      if (Number.isFinite(parsed) && parsed >= 5 && parsed <= 120) {
+        clinic.slotIntervalMinutes = parsed;
+      }
+    }
 
     return this.clinicsRepository.save(clinic);
   }
