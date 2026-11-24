@@ -211,6 +211,19 @@ export class AccountLinksService {
   }
 
   /**
+   * Personal one-click "Set your password" link for an account that staff created and the
+   * customer has not activated yet (`accountSetupPending`). Returns null for anyone else.
+   * Used inside appointment emails; the link is single use and valid for 7 days.
+   */
+  buildAccountSetupUrl(user?: User | null): string | null {
+    if (!user?.id || !user.accountSetupPending || !user.isActive) return null;
+    if (String(user.role || '').toLowerCase() !== 'client') return null;
+    if (!user.email || isPlaceholderEmail(user.email)) return null;
+    const token = this.signPasswordToken(user, 'password_set', '7d');
+    return `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
+  }
+
+  /**
    * Sends the Greek "Set your password" invitation link.
    *
    * For clients:
@@ -234,7 +247,9 @@ export class AccountLinksService {
         this.logger.debug(`Skipping client invitation for user ${user.id}: notifications disabled`);
         return false;
       }
-      if ((user as any)?.profile?.bulkImported === true) {
+      // `force` = the customer asked for the link themselves (tried to register), so it is
+      // sent even to bulk-imported customers and even if an invitation went out before.
+      if ((user as any)?.profile?.bulkImported === true && !options.force) {
         this.logger.debug(`Skipping client invitation for user ${user.id}: bulk-imported customer`);
         return false;
       }

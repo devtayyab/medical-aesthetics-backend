@@ -1,304 +1,240 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Clock, Phone, Building2, ChevronDown, ChevronUp } from 'lucide-react';
-import { parseISO, differenceInMinutes } from 'date-fns';
-import { STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from './constants';
-import { getClinicLocalTime } from './useCalendarData';
+import React, { useEffect } from 'react';
+import { Clock, Phone, Building2, User, Sparkles, StickyNote, X, Check, CalendarClock, Ban } from 'lucide-react';
+import { STATUS_CONFIG } from './constants';
+import { getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
+import { appointmentClientName, cardStyleFor, isBusyCard, pad2 } from './calendarRows';
 import type { CalendarAppointment } from './types';
 
-const MAX_VISIBLE_SERVICES = 4;
+const timeLabel = (iso: string, timezone: string): string => {
+  const { hour, minute } = getClinicLocalTime(iso, timezone);
+  return `${pad2(hour)}:${pad2(minute)}`;
+};
+
+// ─── Card: one line, time + customer name ─────────────────────────────────────
 
 interface AppointmentCardProps {
   appointment: CalendarAppointment;
-  style: React.CSSProperties;
   timezone: string;
-  onEdit: (apt: CalendarAppointment) => void;
-  onDragStart: (e: React.MouseEvent, apt: CalendarAppointment) => void;
-  onResizeStart: (e: React.MouseEvent, apt: CalendarAppointment) => void;
+  /** Absolute position inside the day-view time grid; omit for the stacked week view. */
+  style?: React.CSSProperties;
+  onOpen: (apt: CalendarAppointment, anchor: DOMRect) => void;
 }
 
-export const AppointmentCard: React.FC<AppointmentCardProps> = ({
-  appointment,
-  style,
-  timezone,
-  onEdit,
-  onDragStart: _onDragStart,
-  onResizeStart: _onResizeStart,
-}) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [tooltipSide, setTooltipSide] = useState<'right' | 'left'>('right');
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseEnter = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    // Determine which side to show tooltip
-    if (cardRef.current) {
-      const rect = cardRef.current.getBoundingClientRect();
-      const spaceRight = window.innerWidth - rect.right;
-      setTooltipSide(spaceRight > 300 ? 'right' : 'left');
-    }
-    setShowTooltip(true);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    hideTimer.current = setTimeout(() => {
-      setShowTooltip(false);
-      setExpanded(false);
-    }, 150);
-  }, []);
-
-  const apt = appointment;
-  const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
-  const statusCfg = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.PENDING;
-  const paymentCfg = PAYMENT_STATUS_CONFIG[apt.computedPaymentStatus] || PAYMENT_STATUS_CONFIG.UNPAID;
-
-  const isMaskedPrivate = Boolean((apt as any).isMaskedPrivate);
-  const isBlocked = apt.isBlocked || isMaskedPrivate;
-  const isFullDayBlocked = isBlocked && apt.startTime?.includes('00:00:00') && (apt.endTime?.includes('23:59') || apt.endTime?.includes('23:00'));
-
-  const clientName = isMaskedPrivate
-    ? 'Busy'
-    : isBlocked
-    ? (isFullDayBlocked ? 'Clinic Closed' : 'Blocked')
-    : apt.client?.firstName
-    ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
-    : apt.clientDetails?.fullName || 'Unknown Patient';
-
-  const clinicName = apt.clinic?.name || apt.clinicName || '';
-
-  const primaryServiceName = isMaskedPrivate
-    ? 'Busy'
-    : isBlocked
-    ? 'Blocked'
-    : apt.service?.name || apt.service?.treatment?.name || (apt as any).serviceName || 'Treatment';
-
-  const additionalServices: Array<{ name: string; price?: number }> = apt.additionalServices || [];
-  const additionalServiceCount = additionalServices.length > 0 ? additionalServices.length : (apt.additionalServiceIds?.length || 0);
-  const totalServices = 1 + additionalServiceCount;
-
-  const primaryPrice = Number(apt.service?.price || apt.amount || 0);
-  const allServices: Array<{ name: string; price?: number; isPrimary?: boolean }> = [
-    { name: primaryServiceName, price: primaryPrice, isPrimary: true },
-    ...additionalServices,
-  ];
-  const legacyExtraCount = additionalServices.length === 0 && additionalServiceCount > 0 ? additionalServiceCount : 0;
-  const visibleServices = expanded ? allServices : allServices.slice(0, MAX_VISIBLE_SERVICES);
-  const hiddenCount = allServices.length - MAX_VISIBLE_SERVICES;
-
-  const clientPhone = apt.client?.phone || apt.clientDetails?.phone || '';
-
-  const startLocal = getClinicLocalTime(apt.startTime, timezone);
-  const endLocal = getClinicLocalTime(apt.endTime, timezone);
-  const startDisplay = `${startLocal.hour.toString().padStart(2, '0')}:${startLocal.minute.toString().padStart(2, '0')}`;
-  const endDisplay = `${endLocal.hour.toString().padStart(2, '0')}:${endLocal.minute.toString().padStart(2, '0')}`;
-  const durationMin = differenceInMinutes(parseISO(apt.endTime), parseISO(apt.startTime));
-
-  // ── Compact card border color from status ──
-  const borderColor = isBlocked
-    ? '#9ca3af'  // gray
-    : normalizedStatus === 'CONFIRMED' ? '#10b981'
-    : normalizedStatus === 'PENDING' ? '#f97316'
-    : normalizedStatus === 'CANCELLED' ? '#9ca3af'
-    : normalizedStatus === 'COMPLETED' ? '#8b5cf6'
-    : normalizedStatus === 'ARRIVED' ? '#3b82f6'
-    : normalizedStatus === 'IN_PROGRESS' ? '#6366f1'
-    : normalizedStatus === 'NO_SHOW' ? '#9ca3af'
-    : '#6366f1';
-
-  const bgColor = isBlocked
-    ? 'rgba(243,244,246,0.9)'
-    : normalizedStatus === 'CONFIRMED' ? 'rgba(236,253,245,0.95)'
-    : normalizedStatus === 'PENDING' ? 'rgba(255,247,237,0.95)'
-    : normalizedStatus === 'CANCELLED' ? 'rgba(243,244,246,0.9)'
-    : normalizedStatus === 'COMPLETED' ? 'rgba(245,243,255,0.95)'
-    : normalizedStatus === 'ARRIVED' ? 'rgba(239,246,255,0.95)'
-    : normalizedStatus === 'IN_PROGRESS' ? 'rgba(238,242,255,0.95)'
-    : 'rgba(249,250,251,0.95)';
-
-  const isVeryShort = durationMin <= 20;
-  // Cancelled appointments stay readable but can never be mistaken for active ones
-  const isCancelled = !isBlocked && normalizedStatus === 'CANCELLED';
+export const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment: apt, timezone, style, onOpen }) => {
+  const cfg = cardStyleFor(apt);
+  const name = appointmentClientName(apt);
+  const start = timeLabel(apt.startTime, timezone);
 
   return (
-    <div
-      ref={cardRef}
-      className={`absolute ${isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'} select-none group`}
-      style={{ ...style, zIndex: showTooltip ? 50 : 20 }}
-      onClick={e => { e.stopPropagation(); if (!isBlocked) onEdit(apt); }}
-      onMouseEnter={isBlocked ? undefined : handleMouseEnter}
-      onMouseLeave={isBlocked ? undefined : handleMouseLeave}
+    <button
+      type="button"
+      title={`${start} ${name}`}
+      onClick={e => {
+        e.stopPropagation();
+        onOpen(apt, e.currentTarget.getBoundingClientRect());
+      }}
+      className="w-full flex items-center gap-1.5 px-2 rounded-md text-left overflow-hidden transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      style={{
+        minHeight: 24,
+        background: cfg.bg,
+        color: cfg.text,
+        border: `1px ${cfg.dashed ? 'dashed' : 'solid'} ${cfg.border}`,
+        ...style,
+      }}
     >
-      {/* ── Compact Card ── */}
-      <div
-        className={`w-full h-full rounded-md overflow-hidden transition-all duration-150 group-hover:shadow-lg group-hover:scale-[1.02] ${isCancelled ? 'opacity-60 grayscale' : ''}`}
-        style={{
-          background: bgColor,
-          borderLeft: `3px solid ${borderColor}`,
-          boxShadow: `0 1px 3px rgba(0,0,0,0.08)`,
-        }}
-      >
-        <div className="flex flex-col justify-start h-full px-1.5 py-1 gap-0.5 overflow-hidden">
-          {/* Status dot + Client name */}
-          <div className="flex items-center gap-1 min-w-0">
-            <div
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: borderColor }}
-            />
-            <span className={`text-[10px] font-black truncate leading-tight notranslate ${isCancelled ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-              {clientName}
-            </span>
-            {!isBlocked && totalServices > 1 && (
-              <span className="text-[7px] font-black bg-indigo-100 text-indigo-600 rounded-full px-1 flex-shrink-0">
-                {totalServices}
-              </span>
-            )}
-          </div>
-
-          {/* Clinic name — only show if not very short */}
-          {!isVeryShort && clinicName && (
-            <div className="flex items-center gap-0.5 min-w-0">
-              <Building2 className="w-2 h-2 text-slate-400 flex-shrink-0" />
-              <span className="text-[8px] text-slate-500 truncate font-medium leading-tight">
-                {clinicName}
-              </span>
-            </div>
-          )}
-
-          {/* Time — only if enough space */}
-          {!isVeryShort && durationMin >= 30 && (
-            <div className="flex items-center gap-0.5 min-w-0 mt-auto">
-              <Clock className="w-2 h-2 text-slate-400 flex-shrink-0" />
-              <span className="text-[8px] text-slate-400 font-semibold leading-tight">
-                {startDisplay}–{endDisplay}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Rich Hover Tooltip ── */}
-      {showTooltip && (
-        <div
-          className="fixed z-[999] pointer-events-auto"
-          style={{
-            width: 280,
-            ...(tooltipSide === 'right'
-              ? { left: (cardRef.current?.getBoundingClientRect().right ?? 0) + 8, top: Math.min((cardRef.current?.getBoundingClientRect().top ?? 0), window.innerHeight - 420) }
-              : { right: window.innerWidth - (cardRef.current?.getBoundingClientRect().left ?? 0) + 8, top: Math.min((cardRef.current?.getBoundingClientRect().top ?? 0), window.innerHeight - 420) }
-            ),
-          }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-slate-100 overflow-hidden">
-            {/* Header strip */}
-            <div
-              className="px-4 py-3 flex items-center justify-between"
-              style={{ background: bgColor, borderBottom: `2px solid ${borderColor}` }}
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[13px] font-black text-slate-800 leading-tight notranslate">{clientName}</span>
-                {clinicName && (
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <Building2 className="w-3 h-3" />
-                    <span className="text-[10px] font-semibold">{clinicName}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span
-                  className="text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
-                  style={{ background: borderColor, color: 'white' }}
-                >
-                  {isBlocked ? 'BLOCKED' : statusCfg.label}
-                </span>
-                {!isBlocked && (
-                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${paymentCfg.bg} ${paymentCfg.text}`}>
-                    {paymentCfg.label}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="px-4 py-3 flex flex-col gap-3">
-              {/* Time */}
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[12px] font-black text-slate-800">{startDisplay} – {endDisplay}</span>
-                  <span className="text-[9px] text-slate-400 font-medium">{durationMin} minutes</span>
-                </div>
-              </div>
-
-              {/* Phone */}
-              {!isBlocked && clientPhone && (
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-3.5 h-3.5 text-slate-500" />
-                  </div>
-                  <span className="text-[11px] font-medium text-slate-700">{clientPhone}</span>
-                </div>
-              )}
-
-              {/* Services */}
-              {!isBlocked && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Services</span>
-                  {visibleServices.map((svc, idx) => (
-                    <div
-                      key={idx}
-                      className={`rounded-xl px-3 py-2 flex items-center justify-between ${idx === 0 ? 'bg-emerald-50' : 'bg-slate-50'}`}
-                    >
-                      <span className={`text-[10px] font-bold truncate mr-2 notranslate ${idx === 0 ? 'text-slate-700' : 'text-slate-500'}`}>
-                        {svc.name}
-                        {svc.isPrimary && totalServices > 1 && (
-                          <span className="ml-1 text-[7px] font-black text-emerald-600 bg-emerald-100 px-1 rounded-full">PRIMARY</span>
-                        )}
-                      </span>
-                      {svc.price !== undefined && (
-                        <span className="text-[11px] font-black text-emerald-600 flex-shrink-0">
-                          €{Number(svc.price).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-
-                  {legacyExtraCount > 0 && (
-                    <div className="bg-slate-50 rounded-xl px-3 py-2">
-                      <span className="text-[9px] text-slate-400 italic">+{legacyExtraCount} more — click to view</span>
-                    </div>
-                  )}
-
-                  {allServices.length > MAX_VISIBLE_SERVICES && (
-                    <button
-                      className="flex items-center justify-center gap-1 w-full py-1.5 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all text-[9px] font-black uppercase tracking-wider"
-                      onClick={e => { e.stopPropagation(); setExpanded(p => !p); }}
-                    >
-                      {expanded ? <><ChevronUp className="w-3 h-3" />Show less</> : <><ChevronDown className="w-3 h-3" />+{hiddenCount} more</>}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Divider */}
-              <div className="h-px bg-slate-100" />
-
-              {/* CTA */}
-              <button
-                className="w-full py-2 rounded-xl text-[11px] font-black text-white transition-all hover:opacity-90 active:scale-95"
-                style={{ background: `linear-gradient(135deg, ${borderColor}, ${borderColor}cc)` }}
-                onClick={e => { e.stopPropagation(); onEdit(apt); }}
-              >
-                View Full Details →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <span className="text-[11px] font-bold tabular-nums flex-shrink-0">{start}</span>
+      <span className={`text-[12px] font-semibold truncate notranslate ${cfg.strike ? 'line-through' : ''}`}>
+        {name}
+      </span>
+    </button>
   );
 };
+
+// ─── Details pop-up (opens on click) ──────────────────────────────────────────
+
+interface AppointmentPopoverProps {
+  appointment: CalendarAppointment;
+  anchor: DOMRect;
+  timezone: string;
+  salespersonName: string;
+  busyAction?: 'confirm' | 'cancel' | null;
+  onClose: () => void;
+  onConfirm: (apt: CalendarAppointment) => void;
+  onReschedule: (apt: CalendarAppointment) => void;
+  onCancel: (apt: CalendarAppointment) => void;
+}
+
+const POPOVER_WIDTH = 320;
+const POPOVER_MAX_HEIGHT = 440;
+
+export const AppointmentPopover: React.FC<AppointmentPopoverProps> = ({
+  appointment: apt,
+  anchor,
+  timezone,
+  salespersonName,
+  busyAction,
+  onClose,
+  onConfirm,
+  onReschedule,
+  onCancel,
+}) => {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const cfg = cardStyleFor(apt);
+  const masked = Boolean(apt.isMaskedPrivate);
+  const status = String(apt.status || 'PENDING').toUpperCase();
+  const statusLabel = isBusyCard(apt) && masked ? 'Busy' : STATUS_CONFIG[status]?.label || cfg.label;
+
+  const name = masked ? 'Busy' : apt.client?.firstName
+    ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
+    : apt.clientDetails?.fullName || 'Unknown';
+  const treatment =
+    apt.treatmentLabel ||
+    [apt.serviceName || apt.service?.treatment?.name || apt.service?.name, ...(apt.additionalServices || []).map((s: any) => s?.name)]
+      .filter(Boolean)
+      .join(' + ');
+  const clinicName = apt.clinic?.name || apt.clinicName || '';
+  const phone = apt.client?.phone || apt.clientDetails?.phone || '';
+  const notes = String(apt.notes || '').trim();
+  const dateStr = getClinicLocalDate(apt.startTime, timezone).split('-').reverse().join('/');
+
+  const canConfirm = !masked && status === 'PENDING';
+  const canChange = !masked && !['CANCELLED', 'COMPLETED', 'EXECUTED', 'NO_SHOW'].includes(status);
+
+  // Next to the card: right side when there is room, otherwise left; always inside the window.
+  const spaceRight = window.innerWidth - anchor.right;
+  const left =
+    spaceRight > POPOVER_WIDTH + 16
+      ? anchor.right + 8
+      : Math.max(8, Math.min(anchor.left - POPOVER_WIDTH - 8, window.innerWidth - POPOVER_WIDTH - 8));
+  const top = Math.max(8, Math.min(anchor.top, window.innerHeight - POPOVER_MAX_HEIGHT - 8));
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[998]" onClick={onClose} />
+      <div
+        className="fixed z-[999] bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.2)] border border-slate-200 overflow-hidden flex flex-col"
+        style={{ left, top, width: POPOVER_WIDTH, maxHeight: POPOVER_MAX_HEIGHT }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-4 py-3 flex items-start justify-between gap-2" style={{ background: cfg.bg, borderBottom: `2px solid ${cfg.border}` }}>
+          <div className="min-w-0">
+            <p className={`text-[14px] font-black leading-tight truncate notranslate ${cfg.strike ? 'line-through' : ''}`} style={{ color: cfg.text }}>
+              {name}
+            </p>
+            <p className="text-[11px] font-semibold mt-0.5" style={{ color: cfg.text }}>
+              {dateStr} · {timeLabel(apt.startTime, timezone)}–{timeLabel(apt.endTime, timezone)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/80" style={{ color: cfg.text }}>
+              {statusLabel}
+            </span>
+            <button type="button" onClick={onClose} aria-label="Close" className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-black/10" style={{ color: cfg.text }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="px-4 py-3 flex flex-col gap-2.5 overflow-y-auto">
+          {masked ? (
+            <p className="text-[12px] text-slate-500">
+              Clinic appointment. This time is taken{clinicName ? ` at ${clinicName}` : ''}.
+            </p>
+          ) : (
+            <>
+              <DetailRow icon={<Sparkles className="w-3.5 h-3.5" />} label="Treatment" value={treatment || '-'} />
+              <DetailRow icon={<Building2 className="w-3.5 h-3.5" />} label="Clinic" value={clinicName || '-'} />
+              <DetailRow icon={<User className="w-3.5 h-3.5" />} label="Salesperson" value={salespersonName || '-'} />
+              <DetailRow
+                icon={<Phone className="w-3.5 h-3.5" />}
+                label="Phone"
+                value={phone ? <a href={`tel:${phone}`} className="text-indigo-600 hover:underline">{phone}</a> : '-'}
+              />
+              <DetailRow icon={<StickyNote className="w-3.5 h-3.5" />} label="Notes" value={notes || '-'} multiline />
+            </>
+          )}
+        </div>
+
+        {/* Actions */}
+        {!masked && (
+          <div className="px-4 py-3 border-t border-slate-100 flex flex-col gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              <ActionButton
+                label={busyAction === 'confirm' ? '...' : 'Confirm'}
+                icon={<Check className="w-3.5 h-3.5" />}
+                disabled={!canConfirm || !!busyAction}
+                className="bg-sky-600 text-white hover:bg-sky-700"
+                onClick={() => onConfirm(apt)}
+              />
+              <ActionButton
+                label="Reschedule"
+                icon={<CalendarClock className="w-3.5 h-3.5" />}
+                disabled={!canChange || !!busyAction}
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200"
+                onClick={() => onReschedule(apt)}
+              />
+              <ActionButton
+                label={busyAction === 'cancel' ? '...' : 'Cancel'}
+                icon={<Ban className="w-3.5 h-3.5" />}
+                disabled={!canChange || !!busyAction}
+                className="bg-red-50 text-red-700 hover:bg-red-100"
+                onClick={() => onCancel(apt)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => onReschedule(apt)}
+              className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 flex items-center justify-center gap-1"
+            >
+              <Clock className="w-3 h-3" /> Open full details
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+const DetailRow: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; multiline?: boolean }> = ({
+  icon,
+  label,
+  value,
+  multiline,
+}) => (
+  <div className="flex items-start gap-2.5">
+    <div className="w-6 h-6 rounded-md bg-slate-50 text-slate-500 flex items-center justify-center flex-shrink-0 mt-0.5">{icon}</div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-none">{label}</p>
+      <div className={`text-[12px] font-semibold text-slate-800 mt-1 notranslate ${multiline ? 'whitespace-pre-wrap break-words' : 'truncate'}`}>
+        {value}
+      </div>
+    </div>
+  </div>
+);
+
+const ActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  className: string;
+  disabled?: boolean;
+  onClick: () => void;
+}> = ({ label, icon, className, disabled, onClick }) => (
+  <button
+    type="button"
+    disabled={disabled}
+    onClick={onClick}
+    className={`h-9 rounded-lg text-[11px] font-black flex items-center justify-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+  >
+    {icon}
+    {label}
+  </button>
+);

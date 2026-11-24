@@ -5,6 +5,8 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { RootState } from '@/store';
 import { bookingAPI } from '@/services/api';
+import { promptDialog } from '@/components/molecules/ConfirmDialog';
+import { LEGEND_STYLES, STRIPED_BACKGROUND } from './calendarRows';
 import { PendingList } from './PendingList';
 import { downloadXlsx, athensDateTime } from '@/utils/exportXlsx';
 
@@ -40,8 +42,9 @@ export const AppointmentCalendar: React.FC = () => {
   // ── View State ──────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
-  // A salesperson opens on their own appointments and one clinic (the last one they viewed),
-  // not "All Staff / All Clinics"; they can still widen the view. Admins keep the full view.
+  // A salesperson opens on one clinic (the last one they viewed), not "All Clinics"; they can
+  // still widen the view. Everyone sees every salesperson's row: all appointments are visible
+  // to the whole team, each in the row of the salesperson it belongs to.
   const isSalesperson = user?.role === 'salesperson';
   const lastClinicKey = `calendar.lastClinicId:${user?.id || ''}`;
   const [filters, setFilters] = useState<CalendarFilters>(() => {
@@ -55,7 +58,7 @@ export const AppointmentCalendar: React.FC = () => {
     return { ...DEFAULT_FILTERS, clinicId: last || 'all' };
   });
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<string>(
-    isSalesperson ? user?.id || 'all' : canSeeAll ? 'all' : user?.id || 'all',
+    canSeeAll ? 'all' : user?.id || 'all',
   );
   // Cancelled appointments are hidden unless the user asks for them
   const [hideCancelled, setHideCancelled] = useState(true);
@@ -86,16 +89,10 @@ export const AppointmentCalendar: React.FC = () => {
   }, [filters.clinicId, lastClinicKey]);
 
   // ── Data ────────────────────────────────────────────────────────────────────
-  const filtersWithSalesPerson = useMemo(
-    () => ({
-      ...filters,
-      salesPersonId:
-        selectedSalesPersonId !== 'all'
-          ? selectedSalesPersonId
-          : filters.salesPersonId,
-    }),
-    [filters, selectedSalesPersonId],
-  );
+  // The salesperson picked in the sidebar / filters only narrows which ROW is shown. It is not
+  // sent to the API, which would return everyone else's appointments masked as "Busy".
+  const rowSalesPersonId = selectedSalesPersonId !== 'all' ? selectedSalesPersonId : filters.salesPersonId;
+  const filtersWithSalesPerson = useMemo(() => ({ ...filters, salesPersonId: 'all' }), [filters]);
 
   const { appointments, clinics, salespersons, blockedSlots, isLoading, refreshAppointments } =
     useCalendarData({
@@ -179,14 +176,15 @@ export const AppointmentCalendar: React.FC = () => {
         date: localDateStr,
         startTime: payload.timeStr,
         clinicId: filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id || '',
+        // Clicked inside a salesperson's row / column: that salesperson.
         salesPersonId:
-          selectedSalesPersonId !== 'all' ? selectedSalesPersonId : user?.id || '',
+          payload.salesPersonId || (rowSalesPersonId !== 'all' ? rowSalesPersonId : user?.id || ''),
       });
       setAptModalMode('create');
       setSelectedApt(null);
       setIsAptModalOpen(true);
     },
-    [filters.clinicId, clinics, selectedSalesPersonId, user?.id],
+    [filters.clinicId, clinics, rowSalesPersonId, user?.id],
   );
 
   const handleAppointmentEdit = useCallback((apt: CalendarAppointment) => {
@@ -270,6 +268,53 @@ export const AppointmentCalendar: React.FC = () => {
       }
     },
     [handleRefresh],
+  );
+
+  // ── Card pop-up actions: Confirm · Cancel (Reschedule opens the appointment form) ──
+  const [popoverAction, setPopoverAction] = useState<'confirm' | 'cancel' | null>(null);
+
+  const handlePopoverConfirm = useCallback(
+    async (apt: CalendarAppointment) => {
+      setPopoverAction('confirm');
+      try {
+        await bookingAPI.updateStatus(apt.id, 'CONFIRMED');
+        toast.success('Appointment confirmed.');
+        handleRefresh();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Failed to confirm appointment.');
+      } finally {
+        setPopoverAction(null);
+      }
+    },
+    [handleRefresh],
+  );
+
+  const handlePopoverCancel = useCallback(
+    async (apt: CalendarAppointment) => {
+      // A paid appointment needs the refund decision, which lives in the appointment form.
+      const paid = Number(apt.amountPaid || 0) || Number(apt.advancePaymentAmount || 0);
+      if (paid > 0) {
+        handleAppointmentEdit(apt);
+        toast('This appointment is paid: cancel it from the form to decide about the refund.');
+        return;
+      }
+      const reason = await promptDialog({
+        message: 'Cancellation reason (optional, visible to the client):',
+        multiline: true,
+      });
+      if (reason === null) return;
+      setPopoverAction('cancel');
+      try {
+        await bookingAPI.updateStatus(apt.id, 'CANCELLED', reason.trim() ? { reason: reason.trim() } : undefined);
+        toast.success('Appointment cancelled.');
+        handleRefresh();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Failed to cancel appointment.');
+      } finally {
+        setPopoverAction(null);
+      }
+    },
+    [handleRefresh, handleAppointmentEdit],
   );
 
   const handleModalSuccess = useCallback(() => {
@@ -445,6 +490,36 @@ export const AppointmentCalendar: React.FC = () => {
           />
         </div>
 
+        {/* Legend: card colour = appointment status */}
+        {!pendingOnly && (
+          <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-x-4 gap-y-2 flex-wrap">
+            {LEGEND_STYLES.map(s => (
+              <span key={s.key} className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                <span
+                  className="w-4 h-4 rounded"
+                  style={{ background: s.bg, border: `1px ${s.dashed ? 'dashed' : 'solid'} ${s.border}` }}
+                />
+                {s.label}
+              </span>
+            ))}
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+              <span className="w-4 h-4 rounded border border-slate-200" style={STRIPED_BACKGROUND} />
+              Blocked / Closed
+            </span>
+
+            <label className="ml-auto flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-[11px] font-bold text-slate-700">Show Cancelled</span>
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={!hideCancelled}
+                onChange={e => setHideCancelled(!e.target.checked)}
+              />
+              <span className="relative w-9 h-5 rounded-full bg-slate-300 peer-checked:bg-indigo-600 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400" />
+            </label>
+          </div>
+        )}
+
         {/* Calendar Grid */}
         {pendingOnly && (
           <div className="flex-1 min-h-0 overflow-hidden bg-slate-50 flex flex-col">
@@ -464,12 +539,15 @@ export const AppointmentCalendar: React.FC = () => {
             appointments={displayAppointments}
             blockedSlots={blockedSlots}
             salespersons={salespersons}
-            selectedSalesPersonId={selectedSalesPersonId}
+            selectedSalesPersonId={rowSalesPersonId}
             clinics={clinics}
             selectedClinicId={filters.clinicId}
             clinicTimezone={effectiveClinicTimezone}
+            busyAction={popoverAction}
             onSlotClick={handleSlotClick}
             onAppointmentEdit={handleAppointmentEdit}
+            onAppointmentConfirm={handlePopoverConfirm}
+            onAppointmentCancel={handlePopoverCancel}
             onRefresh={handleRefresh}
           />
         </div>

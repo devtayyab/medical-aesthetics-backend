@@ -2018,6 +2018,16 @@ export class BookingsService {
                 !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
                 !apt.representativeId));
 
+          // Sales calendar rows: the salesperson who owns the appointment, else "Clinic"
+          // (the clinic's own customer, or entered by clinic staff), else "App / no salesperson".
+          const bookerRole = String(apt.bookedBy?.role || '').toLowerCase();
+          const ownerSalespersonId =
+            apt.representativeId ||
+            (['salesperson', 'manager', 'admin', 'super_admin'].includes(bookerRole) ? apt.bookedById : null) ||
+            null;
+          const calendarRow: 'clinic' | 'app' =
+            isClinicPrivate || ['clinic_owner', 'doctor', 'secretariat'].includes(bookerRole) ? 'clinic' : 'app';
+
           // An appointment belongs to its assigned salesperson (representative). Who typed it in
           // (bookedBy) only counts when no representative is set: an appointment the admin or a
           // colleague entered for a salesperson must show as that salesperson's, not the creator's.
@@ -2066,6 +2076,9 @@ export class BookingsService {
               clientDetails: null,
               notes: null,
               isBeautyDoctorsClient: isBdMember,
+              isClinicPrivate,
+              calendarRow,
+              ownerSalespersonId,
               providerId: doctor?.id || apt.providerId || null,
               providerName: doctor?.name || null,
               doctorId: doctor?.id || null,
@@ -2110,6 +2123,9 @@ export class BookingsService {
             } : null,
             isReturned: repeatClients.has(apt.clientId),
             isBeautyDoctorsClient: isBdMember,
+            isClinicPrivate,
+            calendarRow,
+            ownerSalespersonId,
             // Enriched additional services with names for tooltip display
             additionalServices: (apt.additionalServiceIds || [])
               .map((id: string) => additionalServicesMap[id])

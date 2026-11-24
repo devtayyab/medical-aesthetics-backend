@@ -415,7 +415,8 @@ export class AuthService {
       if (existing.role === UserRole.CLIENT && (existing.accountSetupPending || !existing.lastLoginAt) && existing.isActive) {
         await this.usersService.update(existing.id, { accountSetupPending: true } as any);
         const fresh = await this.usersService.findById(existing.id);
-        await this.accountLinks.sendSetPasswordLink(fresh, "client");
+        // The customer asked for it: always send, even if an invitation went out before.
+        await this.accountLinks.sendSetPasswordLink(fresh, "client", { force: true });
         return {
           requiresVerification: true,
           claimedExistingAccount: true,
