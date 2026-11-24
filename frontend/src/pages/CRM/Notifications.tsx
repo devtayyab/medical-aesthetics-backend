@@ -6,11 +6,13 @@ import type { RootState, AppDispatch } from"@/store";
 import { Card, CardContent } from"@/components/molecules/Card/Card";
 import { useNavigate } from"react-router-dom";
 import { openDialer } from"@/store/slices/dialerSlice";
+import { notificationTarget } from "@/utils/notificationLink";
 
 export const Notifications: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
+ const { user } = useSelector((state: RootState) => state.auth);
 
  useEffect(() => {
  dispatch(fetchNotifications(50)); // Fetch last 50 notifications
@@ -91,9 +93,8 @@ export const Notifications: React.FC = () => {
  key={notif.id}
  onClick={() => {
  if (!notif.isRead) dispatch(markAsRead(notif.id));
- const data = notif.data as any;
- const cid = data?.customerId || data?.leadId;
- if (cid) navigate(`/crm/customer/${cid}`);
+ const target = notificationTarget(notif.data, user?.role);
+ if (target) navigate(target);
  }}
  className={`group bg-white rounded-2xl p-5 border transition-all cursor-pointer relative overflow-hidden ${
  !notif.isRead 

@@ -199,7 +199,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  className={explanationModalStyle}
  >
  <div className="relative h-64 bg-gray-50">
- <img src={imageUrl} alt={treatment.name} className="w-full h-full object-contain" />
+ <img src={imageUrl} alt={treatment.name} className="w-full h-full object-cover object-center" />
  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
  <button onClick={() => setShowExplanation(false)} className="absolute top-6 right-6 size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center"><X size={20} /></button>
  </div>

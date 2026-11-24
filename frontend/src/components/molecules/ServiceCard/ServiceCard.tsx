@@ -51,7 +51,7 @@ export const ServiceCard: React.FC<{
  src={getImageUrl(service.imageUrl || service.treatment?.imageUrl)}
  alt={service.treatment?.name || service.name || 'Service image'}
  onError={(e) => { e.currentTarget.style.display = 'none'; }}
- className={`size-14 sm:size-16 rounded-xl object-contain bg-gray-50 border border-gray-100 shadow-sm transition-transform ${isSelected ? 'scale-110 shadow-lime-200' : ''}`}
+ className={`size-14 sm:size-16 shrink-0 rounded-xl object-cover object-center bg-gray-50 border border-gray-100 shadow-sm transition-transform ${isSelected ? 'scale-110 shadow-lime-200' : ''}`}
  />
  )}
  <div className="flex-1 min-w-0">

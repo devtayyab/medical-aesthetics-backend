@@ -487,14 +487,48 @@ export class AvailabilityService {
     return saved;
   }
 
-  /** Clinic accounts (owner, doctor, secretariat) may only change blocks of their own clinic(s). */
-  private async assertClinicAccountOwnsBlock(blockedSlot: BlockedTimeSlot, userId: string, userRole: string): Promise<void> {
-    const role = String(userRole || '').toLowerCase();
-    if (role !== 'clinic_owner' && role !== 'doctor' && role !== 'secretariat') return;
-    const clinics = await this.clinicsService.findAllByOwner(userId).catch(() => []);
-    if (!clinics.some((c) => String(c?.id) === String(blockedSlot.clinicId))) {
-      throw new ForbiddenException('Unauthorized to change this time slot');
+  /**
+   * True when the user works for the clinic: primary owner (clinics.ownerId), co-owner
+   * (clinic_ownership), assigned staff (users.assignedClinicId) or, for secretariat, an
+   * agent_clinic_access grant. Same rule as BookingsService.clinicIdsForAccount.
+   */
+  private async userWorksForClinic(userId: string, role: string, clinicId: string, clinicOwnerId?: string | null): Promise<boolean> {
+    if (!userId || !clinicId) return false;
+    if (clinicOwnerId && String(clinicOwnerId) === String(userId)) return true;
+
+    const user = await this.usersRepository.findOne({ where: { id: userId }, select: ['id', 'assignedClinicId'] });
+    if (user?.assignedClinicId && String(user.assignedClinicId) === String(clinicId)) return true;
+
+    const manager = this.usersRepository.manager;
+    if (role === 'clinic_owner') {
+      const rows = await manager
+        .query('SELECT 1 FROM clinic_ownership WHERE "clinicId" = $1 AND "ownerUserId" = $2 LIMIT 1', [clinicId, userId])
+        .catch(() => []);
+      if (rows?.length) return true;
     }
+    if (role === 'secretariat') {
+      const rows = await manager
+        .query('SELECT 1 FROM agent_clinic_access WHERE "clinicId" = $1 AND "agentUserId" = $2 LIMIT 1', [clinicId, userId])
+        .catch(() => []);
+      if (rows?.length) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Who may change or remove a block: admin / super admin / manager, the user who created it,
+   * and every clinic account of the block's clinic (all owners, doctors, secretariat).
+   * Salespeople keep the access they already had.
+   */
+  private async assertCanManageBlock(blockedSlot: BlockedTimeSlot, userId: string, userRole: string, action: string): Promise<void> {
+    const role = String(userRole || '').toLowerCase();
+    if (role === 'admin' || role === 'super_admin' || role === 'manager') return;
+    if (blockedSlot.blockedById && String(blockedSlot.blockedById) === String(userId)) return;
+    if (role === 'salesperson') return;
+    if (role === 'clinic_owner' || role === 'doctor' || role === 'secretariat') {
+      if (await this.userWorksForClinic(userId, role, blockedSlot.clinicId, blockedSlot.clinic?.ownerId)) return;
+    }
+    throw new ForbiddenException(`Unauthorized to ${action} this time slot`);
   }
 
   async unblockTimeSlot(blockedSlotId: string, userId: string, userRole: string): Promise<void> {
@@ -507,18 +541,8 @@ export class AvailabilityService {
       throw new NotFoundException('Blocked time slot not found');
     }
 
-    // Verify user has permission (clinic staff, owner, or admin)
-    const upperRole = userRole.toUpperCase();
-    const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
-    
-    if (!isAdmin && blockedSlot.clinic?.ownerId !== userId) {
-      // Check if user is staff of this clinic (optional but safer)
-      // For now, let's at least fix the basic role check
-      if (upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
-        throw new ForbiddenException('Unauthorized to unblock this time slot');
-      }
-    }
-    await this.assertClinicAccountOwnsBlock(blockedSlot, userId, userRole);
+    // Admins, the creator of the block and every owner / doctor / secretariat of the clinic
+    await this.assertCanManageBlock(blockedSlot, userId, userRole, 'unblock');
 
     const copy = { ...blockedSlot };
     await this.blockedTimeSlotsRepository.remove(blockedSlot);
@@ -540,13 +564,8 @@ export class AvailabilityService {
       throw new NotFoundException('Blocked time slot not found');
     }
 
-    // Reuse permission logic
-    const upperRole = userRole.toUpperCase();
-    const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
-    if (!isAdmin && blockedSlot.clinic?.ownerId !== userId && upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
-      throw new ForbiddenException('Unauthorized to update this time slot');
-    }
-    await this.assertClinicAccountOwnsBlock(blockedSlot, userId, userRole);
+    // Same permission rule as unblocking
+    await this.assertCanManageBlock(blockedSlot, userId, userRole, 'update');
 
     if (updates.startTime) blockedSlot.startTime = updates.startTime;
     if (updates.endTime) blockedSlot.endTime = updates.endTime;

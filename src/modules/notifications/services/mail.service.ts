@@ -6,6 +6,8 @@ import { isPlaceholderEmail } from '../utils/notification-format.util';
 import { EmailSuppressionService } from './email-suppression.service';
 
 const BRAND = 'Beauty Doctors';
+/** Brand name as written in the email footer (one word). */
+const BRAND_FOOTER = 'BeautyDoctors';
 
 function escapeHtml(value: string): string {
   return String(value ?? '')
@@ -175,12 +177,47 @@ export class MailService {
       .join('\n');
   }
 
+  /** Logo shown in the email header (hosted with the website; override with MAIL_LOGO_URL). */
+  private logoUrl(): string {
+    const custom = this.configService.get<string>('MAIL_LOGO_URL');
+    if (custom) return custom;
+    const site = this.configService.get<string>('APP_FRONTEND_URL') || this.configService.get<string>('FRONTEND_URL') || 'https://beautydoctors.gr';
+    let origin = 'https://beautydoctors.gr';
+    try {
+      origin = new URL(site).origin;
+    } catch {
+      // keep the default
+    }
+    // Mail clients cannot load an image from a developer machine
+    if (/localhost|127\.0\.0\.1/.test(origin)) origin = 'https://beautydoctors.gr';
+    return `${origin}/email-logo.png`;
+  }
+
+  /** The call-to-action button, with the plain link under it for clients that block buttons. */
+  private buttonHtml(button: { url: string; label: string }): string {
+    return `<div class="btn-wrap"><a href="${escapeHtml(button.url)}" class="btn" target="_blank">${escapeHtml(button.label)}</a></div>
+         <p style="font-size: 12px; color: #64748b;">Αν το κουμπί δεν λειτουργεί, αντιγράψτε τον σύνδεσμο στον browser σας:<br><a href="${escapeHtml(button.url)}" style="color: #3b82f6; word-break: break-all;">${escapeHtml(button.url)}</a></p>`;
+  }
+
+  /**
+   * Layout for a text email that contains a link: the button is placed exactly where the
+   * link stands in the text (e.g. right after "...από τον παρακάτω σύνδεσμο:"), so it comes
+   * before the closing lines and the signature, not after them.
+   */
+  renderLinkEmail(heading: string, text: string, button: { url: string; label: string }): string {
+    const idx = text.indexOf(button.url);
+    if (idx === -1) return this.renderLayout(heading, this.textToHtml(text.trim()), button);
+    const before = text.slice(0, idx).trim();
+    const after = text.slice(idx + button.url.length).replace(/\n{3,}/g, '\n\n').trim();
+    return this.renderLayout(
+      heading,
+      [this.textToHtml(before), this.buttonHtml(button), after ? this.textToHtml(after) : ''].join('\n'),
+    );
+  }
+
   /** Shared branded layout for every outgoing email. */
   renderLayout(heading: string, bodyHtml: string, button?: { url: string; label: string }): string {
-    const buttonHtml = button
-      ? `<div class="btn-wrap"><a href="${escapeHtml(button.url)}" class="btn" target="_blank">${escapeHtml(button.label)}</a></div>
-         <p style="font-size: 12px; color: #64748b;">Αν το κουμπί δεν λειτουργεί, αντιγράψτε τον σύνδεσμο στον browser σας:<br><a href="${escapeHtml(button.url)}" style="color: #3b82f6; word-break: break-all;">${escapeHtml(button.url)}</a></p>`
-      : '';
+    const buttonHtml = button ? this.buttonHtml(button) : '';
 
     return `<!DOCTYPE html>
 <html lang="el">
@@ -202,14 +239,14 @@ export class MailService {
 </head>
 <body>
   <div class="container">
-    <div class="header"><div class="logo">${BRAND}</div></div>
+    <div class="header"><img src="${escapeHtml(this.logoUrl())}" alt="${BRAND_FOOTER}" width="260" style="display:block; margin:0 auto; width:260px; max-width:80%; height:auto; border:0; color:#CBFF38; font-size:22px; font-weight:900;"></div>
     <div class="content">
       <h1>${escapeHtml(heading)}</h1>
       ${bodyHtml}
       ${buttonHtml}
     </div>
     <div class="footer">
-      <div>&copy; ${new Date().getFullYear()} ${BRAND} · info@beautydoctors.gr</div>
+      <div>&copy; ${new Date().getFullYear()} ${BRAND_FOOTER} · info@beautydoctors.gr</div>
     </div>
   </div>
 </body>

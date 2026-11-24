@@ -122,6 +122,8 @@ import { MessagesPage } from"@/pages/Messages/MessagesPage";
 import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from"@/services/firebase";
+import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { playNotificationSound } from "@/utils/notificationSound";
 import { isSafeRedirect } from "@/services/client";
 import { applyRouteMeta } from "@/utils/seo";
 import { GlobalDialer } from"./components/crm/GlobalDialer";
@@ -233,6 +235,38 @@ function AppContent() {
  if (isAuthenticated) {
  initializeFirebase(dispatch);
  }
+ }, [isAuthenticated, dispatch]);
+
+ // Keep the bell live without a page reload: check for new notifications every 30s while
+ // the tab is visible, and play a sound when the unread count goes up.
+ const unreadCount = useSelector((state: RootState) => state.notifications.unreadCount);
+ const lastUnreadRef = useRef<number | null>(null);
+ useEffect(() => {
+ if (lastUnreadRef.current !== null) lastUnreadRef.current = unreadCount;
+ }, [unreadCount]);
+ useEffect(() => {
+ if (!isAuthenticated) {
+ lastUnreadRef.current = null;
+ return;
+ }
+ const check = () => {
+ if (document.visibilityState !== "visible") return;
+ dispatch(fetchUnreadCount())
+ .unwrap()
+ .then((res: any) => {
+ const count = Number(res?.count || 0);
+ if (lastUnreadRef.current !== null && count > lastUnreadRef.current) playNotificationSound();
+ lastUnreadRef.current = count;
+ })
+ .catch(() => undefined);
+ };
+ check();
+ const timer = window.setInterval(check, 30000);
+ document.addEventListener("visibilitychange", check);
+ return () => {
+ window.clearInterval(timer);
+ document.removeEventListener("visibilitychange", check);
+ };
  }, [isAuthenticated, dispatch]);
 
  // Sync auth state across multiple browser tabs

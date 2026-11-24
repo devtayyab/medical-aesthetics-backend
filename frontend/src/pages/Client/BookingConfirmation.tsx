@@ -55,6 +55,8 @@ interface Appointment {
  startTime: string;
  endTime: string;
  status: string;
+ /** True only when the server will really email the client about this booking. */
+ confirmationEmailExpected?: boolean;
  startTimeDisplay?: string;
  serviceName?: string;
  clinic?: {
@@ -123,6 +125,9 @@ const BookingConfirmation: React.FC = () => {
  </div>
  );
  }
+
+ // Set by the create-appointment response; missing/false = no email is being sent.
+ const emailExpected = appointment.confirmationEmailExpected === true;
 
  return (
  <div className="min-h-screen bg-[#F7FAFC]">
@@ -210,18 +215,28 @@ const BookingConfirmation: React.FC = () => {
 
   <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 border-t border-gray-100 pt-4 sm:pt-8">
   <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-4">{getPreferredLanguage() === 'el' ? "Τι ακολουθεί;" : "What happens next?"}</h3>
-  <div className="grid grid-cols-3 gap-2 sm:gap-4">
+  {/* The email step appears only when the server reports that an email is really being sent
+      (confirmationEmailExpected); otherwise nothing about email is shown. */}
+  <div className={`grid ${emailExpected ? 'grid-cols-3' : 'grid-cols-2'} gap-2 sm:gap-4`}>
+ {emailExpected && (
  <div>
  <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">1</div>
- <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">Confirmation <br /> Email Sent</p>
+ <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">
+ {isGreek ? <>Στάλθηκε email <br /> επιβεβαίωσης</> : <>Confirmation <br /> Email Sent</>}
+ </p>
+ </div>
+ )}
+ <div>
+ <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">{emailExpected ? 2 : 1}</div>
+ <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">
+ {isGreek ? <>Προσθήκη στο <br /> ημερολόγιό σας</> : <>Sync to <br /> Your Calendar</>}
+ </p>
  </div>
  <div>
- <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">2</div>
- <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">Sync to <br /> Your Calendar</p>
- </div>
- <div>
- <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">3</div>
- <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">Arrival 10m <br /> Prior Treatment</p>
+ <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">{emailExpected ? 3 : 2}</div>
+ <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">
+ {isGreek ? <>Άφιξη 10 λεπτά <br /> πριν τη θεραπεία</> : <>Arrival 10m <br /> Prior Treatment</>}
+ </p>
  </div>
  </div>
  </div>

@@ -98,11 +98,29 @@ export class TaskAutomationService {
   }
 
   /**
-   * Owner of the confirmation task: whoever booked it when that is BD staff
-   * (salesperson/manager/admin); otherwise (online client booking, doctor/clinic
-   * booking) an admin. Never a doctor or clinic account.
+   * A booking made by the client (app / website) or by the system: nobody from staff
+   * created it. These get NO confirmation-call task; they are confirmed in the platform.
+   */
+  private async isSelfBooking(appointment: Appointment): Promise<boolean> {
+    if (!appointment.bookedById || appointment.bookedById === appointment.clientId) return true;
+    const booker = appointment.bookedBy?.role
+      ? appointment.bookedBy
+      : await this.usersRepository.findOne({ where: { id: appointment.bookedById } });
+    return !booker || String(booker.role || '').toLowerCase() === UserRole.CLIENT;
+  }
+
+  /**
+   * Owner of the confirmation task: the representative (salesperson) of the appointment;
+   * else whoever booked it when that is BD staff (salesperson/manager/admin); else, for a
+   * doctor/clinic booking, an admin. Never a doctor or clinic account.
    */
   private async resolveOwnerId(appointment: Appointment): Promise<string | null> {
+    if (appointment.representativeId) {
+      const rep = await this.usersRepository.findOne({ where: { id: appointment.representativeId } });
+      if (rep && TASK_OWNER_ROLES.includes(rep.role) && rep.isActive !== false) {
+        return rep.id;
+      }
+    }
     if (appointment.bookedById) {
       const booker = appointment.bookedBy?.role
         ? appointment.bookedBy
@@ -141,14 +159,17 @@ export class TaskAutomationService {
    * create (once), move on reschedule, close on cancel/no-show/complete.
    * Safe to call any number of times (idempotent).
    */
-  async syncConfirmationTask(appointmentOrId: string | { id?: string } | null | undefined): Promise<void> {
+  async syncConfirmationTask(
+    appointmentOrId: string | { id?: string } | null | undefined,
+    opts: { justConfirmed?: boolean } = {},
+  ): Promise<void> {
     const appointmentId = typeof appointmentOrId === 'string' ? appointmentOrId : appointmentOrId?.id;
     if (!appointmentId) return;
 
     // Event handlers and the hourly reconcile can sync the same appointment at once: run them one after
     // the other so both don't see "no task yet" and create two
     const previous = this.syncLocks.get(appointmentId) ?? Promise.resolve();
-    const current = previous.then(() => this.doSyncConfirmationTask(appointmentId));
+    const current = previous.then(() => this.doSyncConfirmationTask(appointmentId, opts));
     this.syncLocks.set(appointmentId, current);
     try {
       await current;
@@ -157,7 +178,7 @@ export class TaskAutomationService {
     }
   }
 
-  private async doSyncConfirmationTask(appointmentId: string): Promise<void> {
+  private async doSyncConfirmationTask(appointmentId: string, opts: { justConfirmed?: boolean } = {}): Promise<void> {
     try {
       const appointment = await this.appointmentsRepository.findOne({
         where: { id: appointmentId },
@@ -182,6 +203,30 @@ export class TaskAutomationService {
 
       if (!ACTIVE_STATUSES.includes(status)) return; // e.g. PENDING_PAYMENT, ARRIVED, IN_PROGRESS: leave as is
       if (!appointment.clientId || appointment.clientId === WALK_IN_DUMMY_ID) return;
+
+      // Status just changed to CONFIRMED: the confirmation is done, so is its task
+      if (opts.justConfirmed && status === AppointmentStatus.CONFIRMED) {
+        for (const task of openTasks) {
+          await this.crmActionsRepository.update(task.id, {
+            status: 'completed',
+            completedAt: new Date(),
+            metadata: { ...(task.metadata || {}), closedBy: 'system', closedReason: 'appointment_confirmed' },
+          } as any);
+        }
+        return;
+      }
+
+      // Booked by the client (app / website): no confirmation-call task. Automatic ones
+      // created by older code are cancelled; tasks staff created by hand are left alone.
+      if (await this.isSelfBooking(appointment)) {
+        for (const task of openTasks.filter(t => t.metadata?.createdBy === 'system' || t.metadata?.automationRule === CONFIRMATION_RULE_ID)) {
+          await this.crmActionsRepository.update(task.id, {
+            status: 'cancelled',
+            metadata: { ...(task.metadata || {}), closedBy: 'system', closedReason: 'client_self_booking' },
+          } as any);
+        }
+        return;
+      }
 
       const startIso = new Date(appointment.startTime).toISOString();
       const now = new Date();

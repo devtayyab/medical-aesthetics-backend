@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus, Lock,
-  SlidersHorizontal, RefreshCw,
+  SlidersHorizontal, RefreshCw, Clock, Download,
 } from 'lucide-react';
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
@@ -25,6 +25,13 @@ interface CalendarToolbarProps {
   onBlockDay: () => void;
   onOpenFilters: () => void;
   onRefresh: () => void;
+  /** Pending-only toggle: shown only where the page supports it (Global Calendar). */
+  pendingOnly?: boolean;
+  pendingCount?: number;
+  onTogglePendingOnly?: () => void;
+  /** Admin backup: download all appointments as Excel (button hidden when not provided). */
+  onExportExcel?: () => void;
+  isExporting?: boolean;
 }
 
 export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
@@ -43,6 +50,11 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onBlockDay,
   onOpenFilters,
   onRefresh,
+  pendingOnly = false,
+  pendingCount = 0,
+  onTogglePendingOnly,
+  onExportExcel,
+  isExporting,
 }) => {
   const [showBlockMenu, setShowBlockMenu] = useState(false);
 
@@ -149,6 +161,29 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
             ))}
           </div>
 
+          {/* Pending Only: all appointments awaiting confirmation, every clinic */}
+          {onTogglePendingOnly && (
+          <button
+            onClick={onTogglePendingOnly}
+            title="Show only appointments awaiting confirmation, across all clinics"
+            className={`h-9 px-3 flex items-center gap-1.5 text-[11px] font-bold rounded-lg border transition-colors ${
+              pendingOnly
+                ? 'bg-orange-500 border-orange-500 text-white'
+                : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Pending Only (PENDING)</span>
+            {pendingCount > 0 && (
+              <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black flex items-center justify-center ${
+                pendingOnly ? 'bg-white text-orange-600' : 'bg-orange-500 text-white'
+              }`}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
+          )}
+
           {/* Filters */}
           <button
             onClick={onOpenFilters}
@@ -173,6 +208,18 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+
+          {onExportExcel && (
+            <button
+              onClick={onExportExcel}
+              disabled={isExporting}
+              title="Download all appointments (every clinic, all dates) as an Excel file"
+              className="h-9 px-3 flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Excel'}</span>
+            </button>
+          )}
 
           {/* Block Slot menu (admins, clinic staff and salespeople) */}
           {(

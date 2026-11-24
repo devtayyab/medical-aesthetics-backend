@@ -326,7 +326,7 @@ export const Login: React.FC = () => {
 
  {step ==="password" && (
  <p style={{ textAlign:"center", marginTop:"var(--spacing-md)" }}>
- {t("Δεν έχετε λογαριασμό;","Don't have an account?")}{""}
+ {t("Δεν έχετε λογαριασμό;","Don't have an account?")}{" "}
  <Link
  to={registerHref}
  className={linkStyle}

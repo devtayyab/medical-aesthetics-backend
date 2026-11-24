@@ -284,7 +284,7 @@ export const CheckoutPage: React.FC = () => {
       <FaInfoCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
       <p>
         {isGreek
-          ? "Αν δεν επιθυμείτε να δώσετε συγκατάθεση, μπορείτε να επικοινωνήσετε απευθείας με τον γιατρό."
+          ? "Αν δεν επιθυμείτε να δώσετε συγκατάθεση, μπορείτε να κλείσετε το ραντεβού σας τηλεφωνικά στο 2112184564."
           : "If you do not wish to give your consent, you can contact the doctor directly."}
       </p>
     </div>
@@ -483,7 +483,11 @@ export const CheckoutPage: React.FC = () => {
               <FaInfoCircle className="text-blue-600 shrink-0 mt-0.5" size={16} />
               <div className="space-y-1">
                 <p className="text-[11px] text-blue-950 font-bold leading-relaxed">
-                  {isGreek ? (
+                  {paymentMethod === 'venue' ? (
+                    isGreek
+                      ? "Η πληρωμή γίνεται στο ιατρείο. Την απόδειξη την εκδίδει ο γιατρός."
+                      : "Payment is made at the clinic. The receipt is issued by the doctor."
+                  ) : isGreek ? (
                     <>
                       Η πληρωμή γίνεται μέσω Viva απευθείας στον/στην{" "}
                       <span className="font-black underline">{selectedClinic?.name || "πάροχο"}</span>

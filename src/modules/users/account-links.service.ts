@@ -184,11 +184,7 @@ export class AccountLinksService {
     const text = template?.content
       ? this.renderTemplateText(template.content, ctx)
       : `Γεια σας ${name},\n\nΕπιβεβαιώστε το email σας: ${url}\n\nΟ σύνδεσμος ισχύει για 3 ημέρες.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
-    const html = this.mailService.renderLayout(
-      subject,
-      this.mailService.textToHtml(text.replace(url, '').trim()),
-      { url, label: 'Επιβεβαίωση email' },
-    );
+    const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Επιβεβαίωση email' });
     await this.safeSend(user.email, subject, text, html);
   }
 
@@ -204,11 +200,7 @@ export class AccountLinksService {
       const ctx = { name, customerName: name, link: url };
       const subject = this.renderTemplateText(template.subject, ctx);
       const text = this.renderTemplateText(template.content, ctx);
-      const html = this.mailService.renderLayout(
-        subject,
-        this.mailService.textToHtml(text.replace(url, '').trim()),
-        { url, label: 'Ορισμός νέου κωδικού' },
-      );
+      const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός νέου κωδικού' });
       await this.safeSend(user.email, subject, text, html);
       return;
     }
@@ -299,11 +291,8 @@ export class AccountLinksService {
 
       const subject = this.renderTemplateText(rawSubject, ctx);
       const text = this.renderTemplateText(rawContent, ctx);
-      const htmlBody = this.mailService.textToHtml(text.replace(url, '').replace(/\n{3,}/g, '\n\n').trim());
-      const html = this.mailService.renderLayout(subject, htmlBody, {
-        url,
-        label: 'Ορισμός κωδικού',
-      });
+      // Button right after "...από τον παρακάτω σύνδεσμο:", before the closing lines
+      const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός κωδικού' });
 
       const sent = await this.safeSend(user.email, subject, text, html);
       if (sent) {
@@ -326,11 +315,7 @@ export class AccountLinksService {
     const text = template?.content
       ? this.renderTemplateText(template.content, ctx)
       : `Γεια σας ${name},\n\nΔημιουργήθηκε λογαριασμός προσωπικού για εσάς στο Beauty Doctors. Ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n${url}\n\nΟ σύνδεσμος ισχύει για 7 ημέρες και μπορεί να χρησιμοποιηθεί μία φορά.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
-    const html = this.mailService.renderLayout(
-      subject,
-      this.mailService.textToHtml(text.replace(url, '').replace(/\n{3,}/g, '\n\n').trim()),
-      { url, label: 'Ορισμός κωδικού' },
-    );
+    const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός κωδικού' });
     return this.safeSend(user.email, subject, text, html);
   }
 

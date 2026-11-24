@@ -212,9 +212,13 @@ export const Clinics: React.FC = () => {
   const fetchClinicServices = async (clinicId: string) => {
     try {
       const res = await adminAPI.getClinicServices(clinicId);
-      setClinicServices(res.data);
-    } catch (err) {
+      const list = Array.isArray(res.data) ? res.data : (res.data as any)?.data;
+      setClinicServices(Array.isArray(list) ? list : []);
+    } catch (err: any) {
+      // Never show "No services yet" for a failed request: say that loading failed.
       console.error("Failed to fetch clinic services", err);
+      setClinicServices([]);
+      toast.error(err?.response?.data?.message || (isGreek ? "Η φόρτωση των υπηρεσιών απέτυχε." : "Failed to load the clinic's services."));
     }
   };
 
@@ -241,7 +245,22 @@ export const Clinics: React.FC = () => {
     if (!payload.treatmentId) delete payload.treatmentId;
     try {
       if (editingService) {
-        await adminAPI.updateClinicService(editingService.id, payload);
+        // Send price and duration, plus only the catalog texts the admin really changed:
+        // sending unchanged name/description would put the shared therapy back to "pending".
+        const original = {
+          name: editingService.treatment?.name || editingService.name || "",
+          shortDescription: editingService.treatment?.shortDescription || editingService.description || "",
+          imageUrl: editingService.treatment?.imageUrl || editingService.imageUrl || "",
+        };
+        const updatePayload: any = {
+          clinicId: editingClinic.id,
+          price: Number(serviceForm.price),
+          durationMinutes: Number(serviceForm.durationMinutes),
+        };
+        (["name", "shortDescription", "imageUrl"] as const).forEach((key) => {
+          if ((serviceForm[key] || "") !== original[key]) updatePayload[key] = serviceForm[key];
+        });
+        await adminAPI.updateClinicService(editingService.id, updatePayload);
       } else {
         await adminAPI.createClinicService(payload);
       }
@@ -318,6 +337,11 @@ export const Clinics: React.FC = () => {
   };
 
   const handleOpenModal = (clinic?: Clinic) => {
+    // Start clean so another clinic's services / half-filled service form never show here.
+    setClinicServices([]);
+    setIsAddingService(false);
+    setEditingService(null);
+    setServiceForm(emptyServiceForm);
     if (clinic) {
       setEditingClinic(clinic);
       setActiveTab("profile");
@@ -389,8 +413,10 @@ export const Clinics: React.FC = () => {
       toast.error("Please select at least one clinic owner before saving.");
       return;
     }
+    // Relations are managed on their own tabs/endpoints: never send them with the clinic profile.
+    const { services: _services, owners: _owners, owner: _owner, appointments: _appointments, staff: _staff, ...profileData } = formData as any;
     const submissionData = {
-      ...formData,
+      ...profileData,
       ownerIds: currentOwnerIds,
       ownerId: currentOwnerIds[0] || formData.ownerId || "",
     };

@@ -374,7 +374,7 @@ export const Register: React.FC = () => {
  <div>
  <Input
  type="password"
- placeholder={isGreek ? "Κωδικός Πρόσβασης (τουλάχιστον 8 χαρακτήρες) *" : "Password (min. 8 characters) *"}
+ placeholder={isGreek ? "Κωδικός (8+ χαρακτήρες) *" : "Password (min. 8 characters) *"}
  value={password}
  onChange={(e) => setPassword(e.target.value)}
  fullWidth
@@ -402,7 +402,7 @@ export const Register: React.FC = () => {
  <div>
  <Input
  type="tel"
- placeholder={isGreek ? "Κινητό Τηλέφωνο (π.χ. +306912345678) *" : "Mobile Phone Number (e.g. +306912345678) *"}
+ placeholder={isGreek ? "Κινητό (π.χ. 69xxxxxxxx) *" : "Mobile Phone Number (e.g. +306912345678) *"}
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
  fullWidth

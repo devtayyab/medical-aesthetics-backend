@@ -258,12 +258,54 @@ export class AppointmentNotificationsListener {
 
     switch (p.kind) {
       case 'created': {
-        await this.notificationsService.notifyAllStaff(
-          'Νέο ραντεβού',
-          `${client} · ${treatments} · ${clinicName} · ${when} · Καταχώρηση: ${actor.label}`,
-          data,
-          exclude,
-        );
+        // Booked by the client (app / website), not by staff: admins must act on it.
+        const selfBooked = !apt.bookedById || apt.bookedById === apt.clientId || actor.isClient;
+        const isPending = String(apt.status).toUpperCase() !== AppointmentStatus.CONFIRMED;
+        const phone = apt.client?.phone || apt.clientDetails?.phone || '';
+        const dateStr = athensDate(apt.startTime);
+        const timeStr = athensTime(apt.startTime);
+        // In-app (bell) + mobile push; clicking opens this appointment in the calendar.
+        const staffData = { ...data, link: `/crm/calendar?appointmentId=${apt.id}` };
+        const details = [
+          client,
+          `Τηλ: ${phone || '-'}`,
+          `Θεραπεία: ${treatments}`,
+          `Κλινική: ${clinicName}`,
+          `Ημ/νία: ${dateStr}`,
+          `Ώρα: ${timeStr}`,
+        ].join(' · ');
+        if (selfBooked) {
+          // Client bookings go ONLY to the admins (push + bell + email), never to salespeople.
+          await this.notificationsService.notifyAdmins(
+            'Νέο ραντεβού από πελάτη',
+            `${details}${isPending ? ' · Αναμένει επιβεβαίωση' : ''}`,
+            staffData,
+            exclude,
+          );
+        } else {
+          await this.notificationsService.notifyAllStaff(
+            'Νέο ραντεβού',
+            `${details} · Καταχώρηση: ${actor.label}`,
+            staffData,
+            exclude,
+          );
+        }
+        if (selfBooked) {
+          try {
+            await this.notificationsService.sendAdminNewBookingEmail({
+              appointmentId: apt.id,
+              clientName: client,
+              clientPhone: phone,
+              treatment: treatments,
+              clinicName,
+              date: dateStr,
+              time: timeStr,
+              pending: isPending,
+            });
+          } catch (err: any) {
+            this.logger.error(`New booking email failed for ${apt.id}: ${err?.message || err}`);
+          }
+        }
         if (apt.clinicId) {
           await this.notificationsService.notifyClinicStaff(
             apt.clinicId,

@@ -858,12 +858,17 @@ export class ClinicsService {
   async resolveClinicForUser(ownerId: string, role?: string, clinicId?: string): Promise<Clinic> {
     const normalizedRole = String(role || '').toLowerCase();
     if (clinicId) {
+      // Compare case-insensitively: UserRole.SUPER_ADMIN is 'SUPER_ADMIN' (upper case), so a
+      // lower-cased role never matched it and super admins were refused with 403.
       if (
-        normalizedRole === UserRole.ADMIN ||
-        normalizedRole === UserRole.SUPER_ADMIN ||
-        normalizedRole === UserRole.MANAGER
+        normalizedRole === String(UserRole.ADMIN).toLowerCase() ||
+        normalizedRole === String(UserRole.SUPER_ADMIN).toLowerCase() ||
+        normalizedRole === String(UserRole.MANAGER).toLowerCase()
       ) {
-        return this.findById(clinicId);
+        // Admins manage any clinic, including a deactivated one (findById only returns active clinics).
+        const anyClinic = await this.clinicsRepository.findOne({ where: { id: clinicId } });
+        if (!anyClinic) throw new NotFoundException('Clinic not found');
+        return anyClinic;
       }
       const accessible = await this.findAllByOwner(ownerId);
       const match = accessible.find((c) => c.id === clinicId);
@@ -932,8 +937,22 @@ export class ClinicsService {
       clinicIdToUse = clinic.id;
     }
 
+    // Every owner of the clinic (clinics.ownerId + all clinic_ownership rows) plus the assigned
+    // staff. Co-owners are not always linked through users.assignedClinicId, so they were missing.
+    const clinic = await this.clinicsRepository.findOne({
+      where: { id: clinicIdToUse },
+      select: ['id', 'ownerId'],
+    });
+    const ownerships = await this.clinicOwnershipRepository.find({ where: { clinicId: clinicIdToUse } });
+    const ownerIds = [
+      ...new Set([clinic?.ownerId, ...ownerships.map((o) => o.ownerUserId)].filter(Boolean) as string[]),
+    ];
+
+    // One query with OR conditions, so a user matching both is returned once.
     return this.usersRepository.find({
-      where: { assignedClinicId: clinicIdToUse },
+      where: ownerIds.length
+        ? [{ assignedClinicId: clinicIdToUse }, { id: In(ownerIds) }]
+        : { assignedClinicId: clinicIdToUse },
       order: { firstName: 'ASC' },
     });
   }

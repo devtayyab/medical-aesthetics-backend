@@ -34,6 +34,13 @@ import { analyticsApi } from"../../services/api/clinicApi";
 
 
 
+/** Europe/Athens calendar day ("yyyy-MM-dd") of a date; '' when the value is not a date. */
+const athensDay = (value: string | Date): string => {
+ const d = value instanceof Date ? value : new Date(value);
+ if (isNaN(d.getTime())) return '';
+ return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+};
+
 const ClinicDashboard: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
@@ -83,6 +90,15 @@ const ClinicDashboard: React.FC = () => {
  dispatch(fetchAppointments(savedClinicId ? { clinicId: savedClinicId } : undefined));
  }, [dispatch, user, navigate]);
 
+ // No clinic chosen in the switcher yet (multi-clinic account, first visit): the request above
+ // returns the appointments of ALL the account's clinics, while the header, the revenue card and
+ // Statistics & Reports show the profile's clinic. Scope the list to that same clinic.
+ useEffect(() => {
+ if (profile?.id && !localStorage.getItem('activeClinicId')) {
+ dispatch(fetchAppointments({ clinicId: profile.id }));
+ }
+ }, [dispatch, profile?.id]);
+
  // Revenue: ONE figure from the payments ledger (paid only, EUR, this month, own clinic),
  // the same number the analytics page and admin pages show.
  const [paidRevenueMtd, setPaidRevenueMtd] = useState<number>(0);
@@ -96,24 +112,21 @@ const ClinicDashboard: React.FC = () => {
  }, [activeClinicId]);
 
  const stats = useMemo(() => {
- const today = new Date().toISOString().split("T")[0];
- const now = new Date();
- const currentYear = now.getFullYear();
- const currentMonth = now.getMonth();
+ // Days, months and years are Europe/Athens calendar periods (same as Statistics & Reports),
+ // not UTC or the browser's zone, so both pages count the same appointments.
+ const today = athensDay(new Date());
 
  const todayAppointments = appointments.filter(
- (apt) => apt.startTime.split("T")[0] === today
+ (apt) => athensDay(apt.startTime) === today
  );
 
- const mtdAppointments = appointments.filter((apt) => {
- const d = new Date(apt.startTime);
- return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
- });
+ const mtdAppointments = appointments.filter(
+ (apt) => athensDay(apt.startTime).slice(0, 7) === today.slice(0, 7)
+ );
 
- const ytdAppointments = appointments.filter((apt) => {
- const d = new Date(apt.startTime);
- return d.getFullYear() === currentYear;
- });
+ const ytdAppointments = appointments.filter(
+ (apt) => athensDay(apt.startTime).slice(0, 4) === today.slice(0, 4)
+ );
 
  return {
  totalToday: todayAppointments.length,
@@ -284,7 +297,7 @@ const ClinicDashboard: React.FC = () => {
  {appointments
  .filter((apt) => {
  if (queueType === 'today') {
- return apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0];
+ return athensDay(apt.startTime) === athensDay(new Date());
  }
  return apt.status === AppointmentStatus.PENDING;
  })
@@ -299,7 +312,7 @@ const ClinicDashboard: React.FC = () => {
  ))}
 
  {appointments.filter(apt => {
- if (queueType === 'today') return apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0];
+ if (queueType === 'today') return athensDay(apt.startTime) === athensDay(new Date());
  return apt.status === AppointmentStatus.PENDING;
  }).length === 0 && (
  <motion.div
@@ -323,7 +336,7 @@ const ClinicDashboard: React.FC = () => {
  onClose={() => setSelectedApt(null)}
  onComplete={() => {
  setSelectedApt(null);
- dispatch(fetchAppointments(undefined));
+ dispatch(fetchAppointments(activeClinicId ? { clinicId: activeClinicId } : undefined));
  }}
  />
  )}
@@ -447,7 +460,7 @@ const ClinicDashboard: React.FC = () => {
  onClose={() => setShowBookingModal(false)}
  onSuccess={() => {
  setShowBookingModal(false);
- dispatch(fetchAppointments(undefined));
+ dispatch(fetchAppointments(activeClinicId ? { clinicId: activeClinicId } : undefined));
  }}
  />
  )}

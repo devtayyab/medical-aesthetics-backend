@@ -136,7 +136,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  }}
  />
  <span className={inputSubLabel}>
- Choose your treatment
+ {isGreek ? "Επιλέξτε θεραπεία" : "Choose your treatment"}
  </span>
  </div>
  </div>

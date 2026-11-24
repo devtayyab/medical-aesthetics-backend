@@ -41,6 +41,7 @@ import {
   Star, PhoneOff, XCircle, CheckCircle2, Search, Bell, ListTodo, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { downloadXlsx, athensDateTime } from '@/utils/exportXlsx';
 
 // --- Dialer Component (Reused from OneCustomerDetail) ---
 const DialerModal = ({
@@ -450,6 +451,64 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   // Filtering, search and paging happen on the server
   const filteredTasks = tasks;
 
+  // Admin backup: every task matching the current filters (all pages) as an Excel file
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+      const all: any[] = [];
+      for (let p = 1; p <= 200; p++) {
+        const res = await crmAPI.getActions(sid, {
+          page: p,
+          limit: 500,
+          search: debouncedSearch || undefined,
+          status: filterStatus,
+          actionType: filterType,
+          dateRange: filterDateRange,
+        });
+        const body: any = res.data;
+        const rows: any[] = Array.isArray(body) ? body : body?.data || [];
+        all.push(...rows);
+        if (Array.isArray(body) || rows.length === 0 || all.length >= Number(body?.total || 0)) break;
+      }
+      const personName = (id?: string) => {
+        const sp: any = (salespersons as any[]).find((s: any) => s.id === id);
+        return sp ? `${sp.firstName || ''} ${sp.lastName || ''}`.trim() : '';
+      };
+      downloadXlsx(
+        `tasks_${new Date().toISOString().slice(0, 10)}`,
+        'Tasks',
+        ['Title', 'Type', 'Status', 'Priority', 'Due', 'Completed', 'Client / Lead', 'Phone', 'Assigned to', 'Clinic', 'Treatment', 'Description', 'Created', 'ID'],
+        all.map((t: any) => {
+          const person = t.customer?.customer || t.relatedLead || {};
+          return [
+            t.title,
+            t.actionType,
+            t.status,
+            t.priority,
+            athensDateTime(t.dueDate),
+            athensDateTime(t.completedAt),
+            `${person.firstName || ''} ${person.lastName || ''}`.trim(),
+            person.phone || '',
+            personName(t.salespersonId) || (t.salesperson ? `${t.salesperson.firstName || ''} ${t.salesperson.lastName || ''}`.trim() : ''),
+            t.clinic,
+            t.therapy,
+            t.description,
+            athensDateTime(t.createdAt),
+            t.id,
+          ];
+        }),
+      );
+      toast.success(`${all.length} tasks exported`);
+    } catch (err) {
+      console.error('Task export failed', err);
+      toast.error(isGreek ? 'Η εξαγωγή απέτυχε' : 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   const resetInteractionState = () => {
     setShowInteractionModal(false);
@@ -676,6 +735,15 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         <div className="flex items-center gap-2">
           {isAdmin && (
             <>
+              <Button
+                variant="outline"
+                onClick={handleExportExcel}
+                disabled={isExporting}
+                className="h-7 text-xs px-2.5 py-0 rounded-md"
+                title="Download all tasks matching the current filters as an Excel file"
+              >
+                {isExporting ? (isGreek ? 'Εξαγωγή...' : 'Exporting...') : (isGreek ? 'Εξαγωγή Excel' : 'Export Excel')}
+              </Button>
               <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvSelected} />
               <Button
                 variant="outline"

@@ -41,7 +41,11 @@ export class CrmListener {
     @OnEvent('appointment.status.changed', { async: true })
     async syncConfirmationOnStatusChanged(payload: any) {
         try {
-            await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id);
+            // PENDING -> CONFIRMED completes the confirmation task automatically
+            const justConfirmed =
+                String(payload?.newStatus || '').toUpperCase() === 'CONFIRMED' &&
+                String(payload?.oldStatus || '').toUpperCase() !== 'CONFIRMED';
+            await this.taskAutomationService.syncConfirmationTask(payload?.appointment?.id, { justConfirmed });
         } catch (err: any) {
             this.logger.error(`syncConfirmationOnStatusChanged failed: ${err?.message || err}`);
         }

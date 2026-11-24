@@ -348,6 +348,50 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     };
   }
 
+  /**
+   * Email to the platform inbox (info@beautydoctors.gr) for a booking made by a client.
+   * Sent directly, not through an editable template, so it cannot be switched off in
+   * Notification Settings. Override the address with ADMIN_BOOKING_EMAIL.
+   */
+  async sendAdminNewBookingEmail(details: {
+    appointmentId: string;
+    clientName: string;
+    clientPhone: string;
+    treatment: string;
+    clinicName: string;
+    date: string;
+    time: string;
+    pending: boolean;
+  }): Promise<boolean> {
+    const to = (process.env.ADMIN_BOOKING_EMAIL || 'info@beautydoctors.gr').trim();
+    const base = (process.env.APP_FRONTEND_URL || process.env.FRONTEND_URL || 'https://beautydoctors.gr').replace(/\/$/, '');
+    const url = `${base}/crm/calendar?appointmentId=${details.appointmentId}`;
+    const subject = `Νέο ραντεβού από πελάτη: ${details.clientName} · ${details.date} ${details.time}`;
+    const text = [
+      'Ένας πελάτης έκλεισε νέο ραντεβού μέσω της εφαρμογής / ιστοσελίδας:',
+      '',
+      `Πελάτης: ${details.clientName}`,
+      `Τηλέφωνο: ${details.clientPhone || '-'}`,
+      `Θεραπεία: ${details.treatment}`,
+      `Κλινική: ${details.clinicName}`,
+      `Ημερομηνία: ${details.date}`,
+      `Ώρα: ${details.time}`,
+      '',
+      details.pending ? 'Το ραντεβού αναμένει επιβεβαίωση.' : 'Το ραντεβού είναι επιβεβαιωμένο.',
+    ].join('\n');
+    const html = this.mailService.renderLayout(
+      'Νέο ραντεβού από πελάτη',
+      this.mailService.textToHtml(text),
+      { url, label: details.pending ? 'Άνοιγμα & επιβεβαίωση ραντεβού' : 'Άνοιγμα ραντεβού' },
+    );
+    const info = await this.mailService.sendMail(to, subject, `${text}\n\n${url}`, html);
+    if (!info?.messageId) {
+      this.logger.error(`New booking email to ${to} was NOT sent (appointment ${details.appointmentId})`);
+      return false;
+    }
+    return true;
+  }
+
   // ---------------------------------------------------------------------------
   // One-off dispatch flags (reminders, review requests)
   // ---------------------------------------------------------------------------
@@ -612,6 +656,25 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
   async updateTemplate(id: string, data: any) {
     await this.templateRepository.update(id, data);
     return this.templateRepository.findOne({ where: { id } });
+  }
+
+  /**
+   * Read-only: would sendTriggeredNotification() queue an EMAIL for this trigger and user?
+   * True only with an active EMAIL template and a real, non-bounced, non-suppressed address
+   * (the same checks sendTriggeredNotification() + create() apply). Sends nothing.
+   */
+  async isTriggerEmailDeliverable(trigger: NotificationTrigger, recipientId: string): Promise<boolean> {
+    const template = await this.templateRepository.findOne({
+      where: { trigger, type: NotificationType.EMAIL, isActive: true },
+    });
+    if (!template) return false;
+    const recipient = await this.userRepository.findOne({
+      where: { id: recipientId },
+      select: ['id', 'email', 'emailBounced'],
+    });
+    if (!recipient?.email || recipient.emailBounced) return false;
+    const suppression = await this.emailSuppressionService.isEmailSuppressed(recipient.email);
+    return !suppression.suppressed;
   }
 
   async sendTriggeredNotification(

@@ -1,7 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import type { RootState } from '@/store';
+import { bookingAPI } from '@/services/api';
+import { PendingList } from './PendingList';
+import { downloadXlsx, athensDateTime } from '@/utils/exportXlsx';
 
 import { CalendarToolbar } from './CalendarToolbar';
 import { SalesPersonSidebar } from './SalesPersonSidebar';
@@ -183,9 +188,153 @@ export const AppointmentCalendar: React.FC = () => {
     setIsBlockDayOpen(true);
   }, []);
 
-  const handleModalSuccess = useCallback(() => {
+  // ── Pending Only (PENDING): everything awaiting confirmation, all clinics & dates ──
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [pendingAppointments, setPendingAppointments] = useState<CalendarAppointment[]>([]);
+  const [isPendingLoading, setIsPendingLoading] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const loadPending = useCallback(async () => {
+    setIsPendingLoading(true);
+    try {
+      const res: any = await bookingAPI.getClinicAppointments({ status: 'PENDING' });
+      const list = (Array.isArray(res?.data) ? res.data : [])
+        .filter((a: any) => !a.isBlocked && !a.isMaskedPrivate && String(a.status || '').toUpperCase() === 'PENDING')
+        .map((a: any) => ({ computedPaymentStatus: 'UNPAID', colorIndex: 0, ...a }));
+      setPendingAppointments(list);
+    } catch (err) {
+      console.error('Failed to load pending appointments', err);
+    } finally {
+      setIsPendingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
+
+  const visiblePending = useMemo(
+    () =>
+      filters.clinicId === 'all'
+        ? pendingAppointments
+        : pendingAppointments.filter(a => (a.clinicId || a.clinic?.id) === filters.clinicId),
+    [pendingAppointments, filters.clinicId],
+  );
+
+  const handleRefresh = useCallback(() => {
     refreshAppointments();
-  }, [refreshAppointments]);
+    loadPending();
+  }, [refreshAppointments, loadPending]);
+
+  const handleConfirmPending = useCallback(
+    async (apt: CalendarAppointment) => {
+      setConfirmingId(apt.id);
+      try {
+        await bookingAPI.updateStatus(apt.id, 'CONFIRMED');
+        toast.success('Appointment confirmed.');
+        handleRefresh();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Failed to confirm appointment.');
+      } finally {
+        setConfirmingId(null);
+      }
+    },
+    [handleRefresh],
+  );
+
+  const handleModalSuccess = useCallback(() => {
+    handleRefresh();
+  }, [handleRefresh]);
+
+  // ── Admin backup: all appointments (every clinic, all dates) as an Excel file ──
+  const isAdminUser = isSuperAdmin || user?.role === 'admin';
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportExcel = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const res: any = await bookingAPI.getClinicAppointments({});
+      const list: any[] = (Array.isArray(res?.data) ? res.data : []).filter((a: any) => !a.isBlocked);
+      const fullName = (u: any) => (u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : '');
+      downloadXlsx(
+        `appointments_${new Date().toISOString().slice(0, 10)}`,
+        'Appointments',
+        ['Date / time', 'End', 'Status', 'Client', 'Phone', 'Email', 'Treatment', 'Clinic', 'Doctor', 'Representative', 'Booked by', 'Total', 'Paid', 'Payment method', 'Source', 'Notes', 'Created', 'ID'],
+        list.map((a: any) => [
+          athensDateTime(a.startTime),
+          athensDateTime(a.endTime),
+          a.status,
+          fullName(a.client) || a.clientDetails?.fullName || a.displayName || '',
+          a.client?.phone || a.clientDetails?.phone || '',
+          a.client?.email || a.clientDetails?.email || '',
+          [a.serviceName || a.service?.treatment?.name || a.service?.name, ...(a.additionalServices || []).map((s: any) => s?.name || s?.treatment?.name)].filter(Boolean).join(' + '),
+          a.clinic?.name || '',
+          a.doctorName || a.providerName || '',
+          fullName(a.representative),
+          fullName(a.bookedBy),
+          Number(a.totalAmount || 0),
+          Number(a.amountPaid || 0),
+          a.paymentMethod || '',
+          a.appointmentSource || '',
+          a.notes || '',
+          athensDateTime(a.createdAt),
+          a.id,
+        ]),
+      );
+      toast.success(`${list.length} appointments exported`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Export failed.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
+
+  // ── Deep link from a notification / email: /crm/calendar?appointmentId=... ──
+  // Jumps to the appointment's date and opens it (with the Confirm button when pending).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedAppointmentId = searchParams.get('appointmentId');
+  const [linkedAppointment, setLinkedAppointment] = useState<CalendarAppointment | null>(null);
+
+  useEffect(() => {
+    if (!linkedAppointmentId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res: any = await bookingAPI.getAppointment(linkedAppointmentId);
+        if (cancelled || !res?.data?.id) return;
+        setViewDate(new Date(res.data.startTime));
+        setLinkedAppointment({ computedPaymentStatus: 'UNPAID', colorIndex: 0, ...res.data });
+      } catch (err: any) {
+        if (!cancelled) toast.error(err?.response?.data?.message || 'Appointment not found.');
+      } finally {
+        if (!cancelled) {
+          const next = new URLSearchParams(searchParams);
+          next.delete('appointmentId');
+          setSearchParams(next, { replace: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedAppointmentId]);
+
+  useEffect(() => {
+    if (!linkedAppointment) return;
+    // Prefer the calendar's own (enriched) copy once its week has loaded; if it is not in
+    // the list (e.g. hidden by a filter), open what was fetched directly.
+    const inCalendar = appointments.find((a: CalendarAppointment) => a.id === linkedAppointment.id);
+    if (inCalendar) {
+      handleAppointmentEdit(inCalendar);
+      setLinkedAppointment(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      handleAppointmentEdit(linkedAppointment);
+      setLinkedAppointment(null);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [linkedAppointment, appointments, handleAppointmentEdit]);
 
   return (
     <div className="flex flex-1 h-full w-full min-h-0 bg-slate-50 overflow-hidden">
@@ -219,7 +368,12 @@ export const AppointmentCalendar: React.FC = () => {
           onBlockSlot={handleBlockSlot}
           onBlockDay={handleBlockDay}
           onOpenFilters={() => setIsFiltersOpen(true)}
-          onRefresh={refreshAppointments}
+          onRefresh={handleRefresh}
+          pendingOnly={pendingOnly}
+          pendingCount={pendingAppointments.length}
+          onTogglePendingOnly={() => setPendingOnly(v => !v)}
+          onExportExcel={isAdminUser ? handleExportExcel : undefined}
+          isExporting={isExporting}
         />
 
         {/* Stats Strip */}
@@ -262,7 +416,18 @@ export const AppointmentCalendar: React.FC = () => {
         </div>
 
         {/* Calendar Grid */}
-        <div className="flex-1 min-h-0 overflow-hidden bg-white flex flex-col">
+        {pendingOnly && (
+          <div className="flex-1 min-h-0 overflow-hidden bg-slate-50 flex flex-col">
+            <PendingList
+              appointments={visiblePending}
+              isLoading={isPendingLoading}
+              confirmingId={confirmingId}
+              onOpen={handleAppointmentEdit}
+              onConfirm={handleConfirmPending}
+            />
+          </div>
+        )}
+        <div className={`flex-1 min-h-0 overflow-hidden bg-white flex-col ${pendingOnly ? 'hidden' : 'flex'}`}>
           <CalendarGrid
             viewDate={viewDate}
             viewMode={viewMode}
@@ -275,7 +440,7 @@ export const AppointmentCalendar: React.FC = () => {
             clinicTimezone={effectiveClinicTimezone}
             onSlotClick={handleSlotClick}
             onAppointmentEdit={handleAppointmentEdit}
-            onRefresh={refreshAppointments}
+            onRefresh={handleRefresh}
           />
         </div>
       </div>
