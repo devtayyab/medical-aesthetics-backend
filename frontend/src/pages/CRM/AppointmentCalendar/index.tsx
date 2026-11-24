@@ -40,10 +40,25 @@ export const AppointmentCalendar: React.FC = () => {
   // ── View State ──────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
-  const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_FILTERS);
+  // A salesperson opens on their own appointments and one clinic (the last one they viewed),
+  // not "All Staff / All Clinics"; they can still widen the view. Admins keep the full view.
+  const isSalesperson = user?.role === 'salesperson';
+  const lastClinicKey = `calendar.lastClinicId:${user?.id || ''}`;
+  const [filters, setFilters] = useState<CalendarFilters>(() => {
+    if (!isSalesperson) return DEFAULT_FILTERS;
+    let last = '';
+    try {
+      last = localStorage.getItem(lastClinicKey) || '';
+    } catch {
+      // storage unavailable
+    }
+    return { ...DEFAULT_FILTERS, clinicId: last || 'all' };
+  });
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<string>(
-    canSeeAll ? 'all' : user?.id || 'all',
+    isSalesperson ? user?.id || 'all' : canSeeAll ? 'all' : user?.id || 'all',
   );
+  // Cancelled appointments are hidden unless the user asks for them
+  const [hideCancelled, setHideCancelled] = useState(true);
 
   // ── Modal State ─────────────────────────────────────────────────────────────
   const [isAptModalOpen, setIsAptModalOpen] = useState(false);
@@ -61,11 +76,14 @@ export const AppointmentCalendar: React.FC = () => {
   // Remember the clinic being viewed so Availability opens on it too.
   React.useEffect(() => {
     try {
-      if (filters.clinicId && filters.clinicId !== 'all') sessionStorage.setItem('calendar.viewedClinicId', filters.clinicId);
+      if (filters.clinicId && filters.clinicId !== 'all') {
+        sessionStorage.setItem('calendar.viewedClinicId', filters.clinicId);
+        localStorage.setItem(lastClinicKey, filters.clinicId);
+      }
     } catch {
       // storage unavailable: nothing to remember
     }
-  }, [filters.clinicId]);
+  }, [filters.clinicId, lastClinicKey]);
 
   // ── Data ────────────────────────────────────────────────────────────────────
   const filtersWithSalesPerson = useMemo(
@@ -94,11 +112,23 @@ export const AppointmentCalendar: React.FC = () => {
 
   // ── Filtered appointments (by payment status, which isn't server-side) ──────
   const displayAppointments = useMemo(() => {
-    if (filters.paymentStatus === 'all') return appointments;
-    return appointments.filter(
-      (apt: CalendarAppointment) => apt.computedPaymentStatus === filters.paymentStatus,
-    );
-  }, [appointments, filters.paymentStatus]);
+    // Asking for the CANCELLED status explicitly shows them regardless of the toggle
+    const dropCancelled = hideCancelled && filters.status !== 'CANCELLED';
+    return appointments.filter((apt: CalendarAppointment) => {
+      if (dropCancelled && String(apt.status || '').toUpperCase() === 'CANCELLED') return false;
+      return filters.paymentStatus === 'all' || apt.computedPaymentStatus === filters.paymentStatus;
+    });
+  }, [appointments, filters.paymentStatus, filters.status, hideCancelled]);
+
+  // Salesperson's first visit (no last clinic yet) or a remembered clinic that no longer
+  // exists: open on the first clinic of the list instead of all clinics at once.
+  const defaultClinicApplied = React.useRef(false);
+  useEffect(() => {
+    if (!isSalesperson || defaultClinicApplied.current || clinics.length === 0) return;
+    defaultClinicApplied.current = true;
+    const known = filters.clinicId !== 'all' && clinics.some((c: any) => c.id === filters.clinicId);
+    if (!known) setFilters(prev => ({ ...prev, clinicId: clinics[0].id }));
+  }, [isSalesperson, clinics, filters.clinicId]);
 
   // ── Effective clinic timezone for the current time red line ─────────────────
   // When a specific clinic is selected, use its timezone so the red line
@@ -487,6 +517,8 @@ export const AppointmentCalendar: React.FC = () => {
         salespersons={salespersons}
         onFiltersChange={setFilters}
         onClose={() => setIsFiltersOpen(false)}
+        hideCancelled={hideCancelled}
+        onHideCancelledChange={setHideCancelled}
       />
     </div>
   );

@@ -204,8 +204,12 @@ export class TaskAutomationService {
       if (!ACTIVE_STATUSES.includes(status)) return; // e.g. PENDING_PAYMENT, ARRIVED, IN_PROGRESS: leave as is
       if (!appointment.clientId || appointment.clientId === WALK_IN_DUMMY_ID) return;
 
-      // Status just changed to CONFIRMED: the confirmation is done, so is its task
-      if (opts.justConfirmed && status === AppointmentStatus.CONFIRMED) {
+      // The appointment went PENDING -> CONFIRMED: the confirmation is done, so is its task.
+      // Not every endpoint that confirms an appointment emits the status-changed event
+      // (clinic portal, online payment), so the status seen at the previous sync is also
+      // kept on the task (metadata.appointmentStatus) and compared here.
+      const wasPending = openTasks.some(t => t.metadata?.appointmentStatus === AppointmentStatus.PENDING);
+      if (status === AppointmentStatus.CONFIRMED && (opts.justConfirmed || wasPending)) {
         for (const task of openTasks) {
           await this.crmActionsRepository.update(task.id, {
             status: 'completed',
@@ -220,9 +224,12 @@ export class TaskAutomationService {
       // created by older code are cancelled; tasks staff created by hand are left alone.
       if (await this.isSelfBooking(appointment)) {
         for (const task of openTasks.filter(t => t.metadata?.createdBy === 'system' || t.metadata?.automationRule === CONFIRMATION_RULE_ID)) {
+          // Already confirmed in the platform: that is a finished confirmation, not a dropped one
+          const confirmed = status === AppointmentStatus.CONFIRMED;
           await this.crmActionsRepository.update(task.id, {
-            status: 'cancelled',
-            metadata: { ...(task.metadata || {}), closedBy: 'system', closedReason: 'client_self_booking' },
+            status: confirmed ? 'completed' : 'cancelled',
+            completedAt: confirmed ? new Date() : task.completedAt,
+            metadata: { ...(task.metadata || {}), closedBy: 'system', closedReason: confirmed ? 'appointment_confirmed' : 'client_self_booking' },
           } as any);
         }
         return;
@@ -276,6 +283,11 @@ export class TaskAutomationService {
         if (!ownerIsStaff && (isOpen || updates.status === 'pending')) {
           const ownerId = await this.resolveOwnerId(appointment);
           if (ownerId) updates.salespersonId = ownerId;
+        }
+        // Remember the status seen now, to notice a later PENDING -> CONFIRMED
+        const stillOpen = updates.status ? updates.status === 'pending' : isOpen;
+        if (stillOpen && primary.metadata?.appointmentStatus !== status) {
+          updates.metadata = { ...(updates.metadata || primary.metadata || {}), appointmentStatus: status };
         }
         if (Object.keys(updates).length) {
           await this.crmActionsRepository.update(primary.id, updates as any);
@@ -334,6 +346,7 @@ export class TaskAutomationService {
             createdBy: 'system',
             appointmentId: appointment.id,
             appointmentStart: startIso,
+            appointmentStatus: status,
             workflow: 'call_center_confirmation',
           },
         }),

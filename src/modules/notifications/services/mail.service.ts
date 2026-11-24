@@ -169,11 +169,23 @@ export class MailService {
     return { messageId: `mock-dev-${Date.now()}` };
   }
 
+  /**
+   * A Google Maps URL in the text (optionally labelled "Χάρτης Google Maps:") becomes one
+   * short link instead of a long address wrapping over several lines. Input is already
+   * HTML-escaped, so the URL can go into href as it is.
+   */
+  private static linkifyMaps(escaped: string): string {
+    return escaped.replace(
+      /(?:Χάρτης Google Maps:\s*)?(https:\/\/(?:www\.)?(?:google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl)[^\s<]*)/gi,
+      (_match, url) => `<a href="${url}" target="_blank" style="color: #0f172a; font-weight: 700;">📍 Άνοιγμα στο Google Maps</a>`,
+    );
+  }
+
   /** Plain text (with blank-line paragraphs) to simple HTML paragraphs. */
   textToHtml(text: string): string {
     return String(text || '')
       .split(/\n{2,}/)
-      .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
+      .map((p) => `<p>${MailService.linkifyMaps(escapeHtml(p)).replace(/\n/g, '<br>')}</p>`)
       .join('\n');
   }
 

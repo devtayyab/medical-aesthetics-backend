@@ -31,7 +31,7 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BlockSlotFormData>({
-    clinicId: clinics[0]?.id || '',
+    clinicId: '',
     salesPersonId: '',
     date: initialDate || format(new Date(), 'yyyy-MM-dd'),
     startTime: initialTime || '10:00',
@@ -45,7 +45,10 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
       setForm(prev => ({
         ...prev,
         // Always the clinic being viewed; never a stale/first clinic when one is selected.
-        clinicId: (initialClinicId && initialClinicId !== 'all' ? initialClinicId : '') || prev.clinicId || clinics[0]?.id || '',
+        // With "All Clinics" selected there is no clinic to assume: the user must choose one.
+        // (It used to fall back to the first clinic in the list, so the block was saved in a
+        // clinic nobody was looking at.)
+        clinicId: initialClinicId && initialClinicId !== 'all' ? initialClinicId : (clinics.length === 1 ? clinics[0].id : ''),
         date: initialDate || format(new Date(), 'yyyy-MM-dd'),
         startTime: initialTime || '10:00',
       }));

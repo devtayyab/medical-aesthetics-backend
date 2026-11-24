@@ -392,6 +392,79 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     return true;
   }
 
+  /**
+   * Clinic emails (new appointment / cancellation): sent to the clinic's own email address
+   * and to every owner of the clinic (clinics.ownerId and clinic_ownership), once per
+   * address. Users in excludeIds (whoever made the change) are skipped.
+   * Uses the editable template of the trigger; a template switched off in Notification
+   * Settings stops the email, a missing one falls back to the built-in default text.
+   */
+  async sendClinicEmail(
+    clinicId: string,
+    trigger: NotificationTrigger,
+    context: any,
+    excludeIds: string[] = [],
+  ): Promise<{ sent: string[]; skipped: string[] }> {
+    const result = { sent: [] as string[], skipped: [] as string[] };
+    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
+    if (!clinic) return result;
+
+    const stored = await this.templateRepository.findOne({ where: { trigger, type: NotificationType.EMAIL } });
+    if (stored && !stored.isActive) {
+      this.logger.warn(`Clinic email ${trigger} not sent for clinic ${clinicId}: the template is switched off in Notification Settings`);
+      return result;
+    }
+    const template = stored || DEFAULT_TEMPLATES.find((t) => t.trigger === trigger && t.type === NotificationType.EMAIL);
+    if (!template) {
+      this.logger.warn(`Clinic email ${trigger} not sent: no template`);
+      return result;
+    }
+
+    let ownerIds: string[] = clinic.ownerId ? [clinic.ownerId] : [];
+    try {
+      const rows = await this.userRepository.manager.query(
+        'SELECT "ownerUserId" FROM clinic_ownership WHERE "clinicId" = $1',
+        [clinicId],
+      );
+      ownerIds = [...ownerIds, ...(rows || []).map((r: any) => r.ownerUserId).filter(Boolean)];
+    } catch {
+      // Table may not exist in older databases
+    }
+    const exclude = new Set(excludeIds.filter(Boolean));
+    const owners = ownerIds.length
+      ? await this.userRepository.find({ where: { id: In([...new Set(ownerIds)]) }, select: ['id', 'email', 'isActive', 'emailBounced'] })
+      : [];
+    const excludedEmails = new Set(
+      owners.filter((u) => exclude.has(u.id)).map((u) => String(u.email || '').trim().toLowerCase()),
+    );
+
+    const addresses = new Set<string>();
+    const add = (email?: string | null) => {
+      const e = String(email || '').trim().toLowerCase();
+      if (e && !isPlaceholderEmail(e) && !excludedEmails.has(e)) addresses.add(e);
+    };
+    add(clinic.email);
+    owners.filter((u) => u.isActive !== false && !u.emailBounced && !exclude.has(u.id)).forEach((u) => add(u.email));
+
+    if (addresses.size === 0) {
+      this.logger.warn(`Clinic email ${trigger} not sent for clinic ${clinicId}: the clinic has no email address and no owner with one`);
+      return result;
+    }
+
+    const subject = this.replacePlaceholders(template.subject, context);
+    const text = this.replacePlaceholders(template.content, context);
+    for (const to of addresses) {
+      const info = await this.mailService.sendMail(to, subject, text).catch((err: any) => {
+        this.logger.error(`Clinic email ${trigger} to ${to} failed: ${err?.message || err}`);
+        return null;
+      });
+      if (info?.messageId) result.sent.push(to);
+      else result.skipped.push(to);
+    }
+    this.logger.log(`Clinic email ${trigger} for clinic ${clinicId}: sent to ${result.sent.length}, not sent to ${result.skipped.length}`);
+    return result;
+  }
+
   // ---------------------------------------------------------------------------
   // One-off dispatch flags (reminders, review requests)
   // ---------------------------------------------------------------------------

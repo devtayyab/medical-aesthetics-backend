@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, ConflictException, HttpException, HttpStatus } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
-import { createHmac, randomInt, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomInt, randomUUID, timingSafeEqual } from "crypto";
+import { DataSource } from "typeorm";
+import { sessionHours } from "./auth-cookies";
 import { UsersService } from "../users/users.service";
 import { AccountLinksService } from "../users/account-links.service";
 import { User, normalizeEmail } from "../users/entities/user.entity";
@@ -45,7 +47,49 @@ export class AuthService {
     private bookingsService: BookingsService,
     private notificationsService: NotificationsService,
     private accountLinks: AccountLinksService,
+    private dataSource: DataSource,
   ) { }
+
+  // ---------------------------------------------------------------------------
+  // Sessions: one row per logged-in device, so a login on the phone does not end the
+  // session on the desktop (a single users.refreshToken could only hold one device).
+  // ---------------------------------------------------------------------------
+
+  private sessionsTableReady?: Promise<void>;
+
+  /** The table also has a migration; creating it here keeps logins working if that has not run yet. */
+  private ensureSessionsTable(): Promise<void> {
+    if (!this.sessionsTableReady) {
+      this.sessionsTableReady = this.dataSource
+        .query(
+          `CREATE TABLE IF NOT EXISTS "user_sessions" (
+            "tokenHash" varchar(64) NOT NULL,
+            "userId" uuid NOT NULL,
+            "expiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+            "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "lastUsedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "PK_user_sessions" PRIMARY KEY ("tokenHash")
+          )`,
+        )
+        .then(() => this.dataSource.query(`CREATE INDEX IF NOT EXISTS "IDX_user_sessions_userId" ON "user_sessions" ("userId")`))
+        .then(() => undefined)
+        .catch((err: any) => {
+          this.sessionsTableReady = undefined;
+          throw err;
+        });
+    }
+    return this.sessionsTableReady;
+  }
+
+  /** Only a hash of the refresh token is stored, never the token itself. */
+  private hashToken(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  private async revokeAllSessions(userId: string): Promise<void> {
+    await this.ensureSessionsTable();
+    await this.dataSource.query(`DELETE FROM "user_sessions" WHERE "userId" = $1`, [userId]);
+  }
 
   // ---------------------------------------------------------------------------
   // Step 1: password check (with lockout)
@@ -219,16 +263,40 @@ export class AuthService {
   // ---------------------------------------------------------------------------
 
   /** Issues the access + refresh token pair. Only called after both login steps. */
-  async login(user: User): Promise<IssuedSession> {
+  async login(user: User, replacesTokenHash?: string): Promise<IssuedSession> {
     const payload = { email: user.email, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>("JWT_ACCESS_SECRET"),
       expiresIn: "15m",
     });
-    const refreshToken = this.jwtService.sign({ ...payload, type: "refresh" }, {
+    // The session stays alive for SESSION_HOURS (default 12) after the last refresh; an
+    // active user refreshes every 15 minutes, so they are never logged out while working.
+    const ttlSeconds = sessionHours() * 60 * 60;
+    const refreshToken = this.jwtService.sign({ ...payload, type: "refresh", jti: randomUUID() }, {
       secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-      expiresIn: "7d",
+      expiresIn: ttlSeconds,
     });
+
+    await this.ensureSessionsTable();
+    const tokenHash = this.hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    if (replacesTokenHash) {
+      // Refresh: the same device keeps its session, with a new token
+      await this.dataSource.query(
+        `UPDATE "user_sessions" SET "tokenHash" = $1, "expiresAt" = $2, "lastUsedAt" = CURRENT_TIMESTAMP WHERE "tokenHash" = $3`,
+        [tokenHash, expiresAt, replacesTokenHash],
+      );
+    } else {
+      // New login. users.refreshToken = NULL means every session was revoked (password change,
+      // deactivation): make sure none of the old devices comes back with this login.
+      if (!user.refreshToken) await this.dataSource.query(`DELETE FROM "user_sessions" WHERE "userId" = $1`, [user.id]);
+      await this.dataSource.query(`DELETE FROM "user_sessions" WHERE "userId" = $1 AND "expiresAt" < CURRENT_TIMESTAMP`, [user.id]);
+      await this.dataSource.query(
+        `INSERT INTO "user_sessions" ("tokenHash", "userId", "expiresAt") VALUES ($1, $2, $3) ON CONFLICT ("tokenHash") DO NOTHING`,
+        [tokenHash, user.id, expiresAt],
+      );
+    }
+    // Kept as the "sessions not revoked" marker (and for sessions issued before this change).
     await this.usersService.updateRefreshToken(user.id, refreshToken);
     return {
       accessToken,
@@ -304,13 +372,23 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException("Invalid refresh token");
     }
-    if (!user || user.refreshToken !== refreshToken) {
+    // NULL = all sessions revoked (password change, deactivation, "log out everywhere")
+    if (!user || !user.refreshToken) {
       throw new UnauthorizedException("Session expired. Please log in again.");
     }
     if (!user.isActive) {
       throw new UnauthorizedException("This account has been deactivated.");
     }
-    return this.login(user);
+    await this.ensureSessionsTable();
+    const tokenHash = this.hashToken(refreshToken);
+    const rows = await this.dataSource.query(
+      `SELECT 1 FROM "user_sessions" WHERE "tokenHash" = $1 AND "userId" = $2 AND "expiresAt" > CURRENT_TIMESTAMP`,
+      [tokenHash, user.id],
+    );
+    if (rows.length > 0) return this.login(user, tokenHash);
+    // Session issued before per-device sessions existed: accept it once and register it.
+    if (user.refreshToken === refreshToken) return this.login(user);
+    throw new UnauthorizedException("Session expired. Please log in again.");
   }
 
   // ---------------------------------------------------------------------------
@@ -430,8 +508,10 @@ export class AuthService {
     return { verified: true, email: user.email, message: "Your email is verified. You can now log in." };
   }
 
+  /** Ends every session of the user, on all devices. */
   async logout(userId: string) {
     this.forgetRecentRefreshes(userId);
+    await this.revokeAllSessions(userId);
     await this.usersService.updateRefreshToken(userId, null);
   }
 
@@ -441,10 +521,20 @@ export class AuthService {
       const payload: any = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
       });
-      this.forgetRecentRefreshes(payload.sub);
-      const user = await this.usersService.findById(payload.sub);
-      if (user && user.refreshToken === refreshToken) {
-        await this.usersService.updateRefreshToken(user.id, null);
+      this.recentRefreshes.delete(refreshToken);
+      // Only this device is logged out; the user's other devices keep their sessions.
+      await this.ensureSessionsTable();
+      const deleted = await this.dataSource.query(
+        `DELETE FROM "user_sessions" WHERE "tokenHash" = $1 AND "userId" = $2 RETURNING "tokenHash"`,
+        [this.hashToken(refreshToken), payload.sub],
+      );
+      const removed = Array.isArray(deleted?.[0]) ? deleted[0].length : (deleted?.length || 0);
+      if (!removed) {
+        // Session from before per-device sessions: the old single-token behaviour
+        const user = await this.usersService.findById(payload.sub);
+        if (user && user.refreshToken === refreshToken) {
+          await this.usersService.updateRefreshToken(user.id, null);
+        }
       }
     } catch {
       // Expired or unknown token: nothing to revoke.

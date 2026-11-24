@@ -2018,11 +2018,15 @@ export class BookingsService {
                 !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
                 !apt.representativeId));
 
+          // An appointment belongs to its assigned salesperson (representative). Who typed it in
+          // (bookedBy) only counts when no representative is set: an appointment the admin or a
+          // colleague entered for a salesperson must show as that salesperson's, not the creator's.
           const belongsToSelectedSalesperson =
             !salespersonFilterId ||
-            String(apt.representativeId || '') === String(salespersonFilterId) ||
-            String(apt.bookedById || '') === String(salespersonFilterId) ||
-            String(apt.providerId || '') === String(salespersonFilterId);
+            (apt.representativeId
+              ? String(apt.representativeId) === String(salespersonFilterId)
+              : String(apt.bookedById || '') === String(salespersonFilterId) ||
+                String(apt.providerId || '') === String(salespersonFilterId));
 
           // When filtering by a specific salesperson, hide other people's cancelled/no-show slots
           // (they don't occupy time), and show all other active appointments (other salespeople + clinic)
