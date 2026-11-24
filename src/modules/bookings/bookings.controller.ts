@@ -154,6 +154,9 @@ export class BookingsController {
       // (Sending a bookedById must not lift this: only staff may set either.)
       if (!callerIsStaff) {
         delete payload.status;
+        // Booked by the client (app / website): never assigned to a salesperson.
+        payload.representativeId = undefined;
+        payload.selfBooked = true;
       }
       // A logged-in client always books for themselves, never under another client's account.
       if (caller && String(caller.role || '').toLowerCase() === UserRole.CLIENT) {

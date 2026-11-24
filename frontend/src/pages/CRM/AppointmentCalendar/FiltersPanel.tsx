@@ -10,6 +10,9 @@ interface FiltersPanelProps {
   salespersons: any[];
   onFiltersChange: (filters: CalendarFilters) => void;
   onClose: () => void;
+  /** "Hide cancelled appointments" toggle (shown only when the page supports it). */
+  hideCancelled?: boolean;
+  onHideCancelledChange?: (value: boolean) => void;
 }
 
 const PAYMENT_STATUS_OPTIONS = [
@@ -26,6 +29,8 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
   salespersons,
   onFiltersChange,
   onClose,
+  hideCancelled,
+  onHideCancelledChange,
 }) => {
   const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
 
@@ -178,6 +183,20 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
               })}
             </div>
           </div>
+
+          {onHideCancelledChange && (
+            <label className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+              <span className="text-[12px] font-semibold text-slate-700">
+                {isGreek ? 'Απόκρυψη ακυρωμένων ραντεβού' : 'Hide Cancelled Appointments'}
+              </span>
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-indigo-600"
+                checked={!!hideCancelled}
+                onChange={e => onHideCancelledChange(e.target.checked)}
+              />
+            </label>
+          )}
 
           {/* Payment Status Filter */}
           <div>

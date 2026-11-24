@@ -124,7 +124,9 @@ export class AppointmentNotificationsListener {
       // e.g. booked 20h before -> no "tomorrow" reminder, only the 2h one.
       const createdLead = new Date(apt.startTime).getTime() - new Date(apt.createdAt).getTime();
       if (kind === 'reminder_24h' && createdLead < 24 * 60 * 60 * 1000) continue;
-      if (kind === 'reminder_2h' && createdLead < 3 * 60 * 60 * 1000) continue;
+      // Only skipped when booked inside the 2 hours themselves (it was 3h, which silently
+      // dropped the reminder for anything booked 2-3 hours ahead).
+      if (kind === 'reminder_2h' && createdLead < 2 * 60 * 60 * 1000) continue;
 
       const key = `${kind}:${apt.id}:${new Date(apt.startTime).toISOString()}`;
       if (!(await this.notificationsService.claimDispatch(key, kind, apt.id))) continue;
@@ -206,9 +208,12 @@ export class AppointmentNotificationsListener {
     const lat = Number(apt.clinic?.latitude);
     const lng = Number(apt.clinic?.longitude);
     const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+    // The clinic's coordinates always point at the right place; a name/address search can
+    // land on a different business. Fall back to the address only when there are none.
     const mapQuery = encodeURIComponent(
-      [apt.clinic?.name, addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ') ||
-      (hasCoords ? `${lat},${lng}` : 'Athens, Greece'),
+      hasCoords
+        ? `${lat},${lng}`
+        : [apt.clinic?.name, addr.street, addr.city, addr.zipCode].filter(Boolean).join(', ') || 'Athens, Greece',
     );
     const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
     return {
@@ -226,15 +231,27 @@ export class AppointmentNotificationsListener {
     };
   }
 
+  /** Context for emails to the clinic: the client's full name, not just the first name. */
+  private clinicContext(apt: Appointment, treatments: string) {
+    return { ...this.clientContext(apt, treatments), customerName: this.clientName(apt) };
+  }
+
   private async notifyClient(apt: Appointment, trigger: NotificationTrigger, treatments: string) {
     if (!this.hasRealClient(apt)) return;
     await this.notificationsService.sendTriggeredNotification(trigger, apt.clientId, this.clientContext(apt, treatments));
   }
 
-  /** Clinic owner gets the email copy of clinic notifications (in-app goes to all clinic staff). */
-  private async emailClinicOwner(clinicOwnerId: string | undefined, trigger: NotificationTrigger, context: any, excludeIds: string[]) {
-    if (!clinicOwnerId || excludeIds.includes(clinicOwnerId)) return;
-    await this.notificationsService.sendTriggeredNotification(trigger, clinicOwnerId, context, { channels: [NotificationType.EMAIL] });
+  /**
+   * Email copy of a clinic notification: to the clinic's own email address and to every
+   * owner of the clinic (in-app goes to all clinic staff).
+   */
+  private async emailClinic(clinicId: string | undefined, trigger: NotificationTrigger, context: any, excludeIds: string[]) {
+    if (!clinicId) return;
+    try {
+      await this.notificationsService.sendClinicEmail(clinicId, trigger, context, excludeIds);
+    } catch (err: any) {
+      this.logger.error(`Clinic email ${trigger} failed for clinic ${clinicId}: ${err?.message || err}`);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -258,12 +275,54 @@ export class AppointmentNotificationsListener {
 
     switch (p.kind) {
       case 'created': {
-        await this.notificationsService.notifyAllStaff(
-          'Νέο ραντεβού',
-          `${client} · ${treatments} · ${clinicName} · ${when} · Καταχώρηση: ${actor.label}`,
-          data,
-          exclude,
-        );
+        // Booked by the client (app / website), not by staff: admins must act on it.
+        const selfBooked = !apt.bookedById || apt.bookedById === apt.clientId || actor.isClient;
+        const isPending = String(apt.status).toUpperCase() !== AppointmentStatus.CONFIRMED;
+        const phone = apt.client?.phone || apt.clientDetails?.phone || '';
+        const dateStr = athensDate(apt.startTime);
+        const timeStr = athensTime(apt.startTime);
+        // In-app (bell) + mobile push; clicking opens this appointment in the calendar.
+        const staffData = { ...data, link: `/crm/calendar?appointmentId=${apt.id}` };
+        const details = [
+          client,
+          `Τηλ: ${phone || '-'}`,
+          `Θεραπεία: ${treatments}`,
+          `Κλινική: ${clinicName}`,
+          `Ημ/νία: ${dateStr}`,
+          `Ώρα: ${timeStr}`,
+        ].join(' · ');
+        if (selfBooked) {
+          // Client bookings go ONLY to the admins (push + bell + email), never to salespeople.
+          await this.notificationsService.notifyAdmins(
+            'Νέο ραντεβού από πελάτη',
+            `${details}${isPending ? ' · Αναμένει επιβεβαίωση' : ''}`,
+            staffData,
+            exclude,
+          );
+        } else {
+          await this.notificationsService.notifyAllStaff(
+            'Νέο ραντεβού',
+            `${details} · Καταχώρηση: ${actor.label}`,
+            staffData,
+            exclude,
+          );
+        }
+        if (selfBooked) {
+          try {
+            await this.notificationsService.sendAdminNewBookingEmail({
+              appointmentId: apt.id,
+              clientName: client,
+              clientPhone: phone,
+              treatment: treatments,
+              clinicName,
+              date: dateStr,
+              time: timeStr,
+              pending: isPending,
+            });
+          } catch (err: any) {
+            this.logger.error(`New booking email failed for ${apt.id}: ${err?.message || err}`);
+          }
+        }
         if (apt.clinicId) {
           await this.notificationsService.notifyClinicStaff(
             apt.clinicId,
@@ -273,7 +332,7 @@ export class AppointmentNotificationsListener {
             [],
             exclude,
           );
-          await this.emailClinicOwner(apt.clinic?.ownerId, NotificationTrigger.CLINIC_NEW_APPOINTMENT, this.clientContext(apt, treatments), exclude);
+          await this.emailClinic(apt.clinicId, NotificationTrigger.CLINIC_NEW_APPOINTMENT, this.clinicContext(apt, treatments), exclude);
         }
         const confirmed = String(apt.status).toUpperCase() === AppointmentStatus.CONFIRMED;
         await this.notifyClient(apt, confirmed ? NotificationTrigger.APPOINTMENT_CONFIRMED : NotificationTrigger.APPOINTMENT_BOOKED, treatments);
@@ -331,8 +390,7 @@ export class AppointmentNotificationsListener {
             [],
             exclude,
           );
-          const oldClinicOwner = (await this.appointmentsRepository.manager.query('SELECT "ownerId" FROM clinics WHERE id = $1', [prev.clinicId]))?.[0]?.ownerId;
-          await this.emailClinicOwner(oldClinicOwner, NotificationTrigger.CLINIC_APPOINTMENT_CANCELLED, {
+          await this.emailClinic(prev.clinicId, NotificationTrigger.CLINIC_APPOINTMENT_CANCELLED, {
             appointmentDate: athensDate(oldDate),
             appointmentTime: athensTime(oldDate),
             clinicName: oldClinicName,
@@ -340,7 +398,7 @@ export class AppointmentNotificationsListener {
 
           // New clinic: a new appointment
           await this.notificationsService.notifyClinicStaff(apt.clinicId, 'Νέο ραντεβού', `${client} · ${treatments} · ${when}`, data, [], exclude);
-          await this.emailClinicOwner(apt.clinic?.ownerId, NotificationTrigger.CLINIC_NEW_APPOINTMENT, this.clientContext(apt, treatments), exclude);
+          await this.emailClinic(apt.clinicId, NotificationTrigger.CLINIC_NEW_APPOINTMENT, this.clinicContext(apt, treatments), exclude);
         } else if (timeChanged || treatmentChanged || providerChanged) {
           await this.notificationsService.notifyClinicStaff(
             apt.clinicId,
@@ -373,7 +431,7 @@ export class AppointmentNotificationsListener {
             [],
             exclude,
           );
-          await this.emailClinicOwner(apt.clinic?.ownerId, NotificationTrigger.CLINIC_APPOINTMENT_CANCELLED, this.clientContext(apt, treatments), exclude);
+          await this.emailClinic(apt.clinicId, NotificationTrigger.CLINIC_APPOINTMENT_CANCELLED, this.clinicContext(apt, treatments), exclude);
         }
         // Always send cancellation confirmation email/notification to the client (even when the client cancels their own appointment)
         await this.notifyClient(apt, NotificationTrigger.APPOINTMENT_CANCELED, treatments);

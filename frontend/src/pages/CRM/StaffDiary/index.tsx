@@ -210,13 +210,13 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onClinicChange
         }
         isManager={isSuperAdmin}
         userRole={user?.role}
-        onSelect={isDoctor ? () => {} : setSelectedProviderId}
+        onSelect={isDoctor ? () => { } : setSelectedProviderId}
         clinics={clinics}
         selectedClinicId={filters.clinicId}
         onClinicChange={(nextClinicId) => {
-           setFilters(prev => ({ ...prev, clinicId: nextClinicId }));
-           setSelectedProviderId(isDoctor && user?.id ? user.id : 'all');
-           onClinicChange?.(nextClinicId);
+          setFilters(prev => ({ ...prev, clinicId: nextClinicId }));
+          setSelectedProviderId(isDoctor && user?.id ? user.id : 'all');
+          onClinicChange?.(nextClinicId);
         }}
       />
 

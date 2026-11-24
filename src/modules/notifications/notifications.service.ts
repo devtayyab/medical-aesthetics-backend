@@ -348,6 +348,123 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
     };
   }
 
+  /**
+   * Email to the platform inbox (info@beautydoctors.gr) for a booking made by a client.
+   * Sent directly, not through an editable template, so it cannot be switched off in
+   * Notification Settings. Override the address with ADMIN_BOOKING_EMAIL.
+   */
+  async sendAdminNewBookingEmail(details: {
+    appointmentId: string;
+    clientName: string;
+    clientPhone: string;
+    treatment: string;
+    clinicName: string;
+    date: string;
+    time: string;
+    pending: boolean;
+  }): Promise<boolean> {
+    const to = (process.env.ADMIN_BOOKING_EMAIL || 'info@beautydoctors.gr').trim();
+    const base = (process.env.APP_FRONTEND_URL || process.env.FRONTEND_URL || 'https://beautydoctors.gr').replace(/\/$/, '');
+    const url = `${base}/crm/calendar?appointmentId=${details.appointmentId}`;
+    const subject = `Νέο ραντεβού από πελάτη: ${details.clientName} · ${details.date} ${details.time}`;
+    const text = [
+      'Ένας πελάτης έκλεισε νέο ραντεβού μέσω της εφαρμογής / ιστοσελίδας:',
+      '',
+      `Πελάτης: ${details.clientName}`,
+      `Τηλέφωνο: ${details.clientPhone || '-'}`,
+      `Θεραπεία: ${details.treatment}`,
+      `Κλινική: ${details.clinicName}`,
+      `Ημερομηνία: ${details.date}`,
+      `Ώρα: ${details.time}`,
+      '',
+      details.pending ? 'Το ραντεβού αναμένει επιβεβαίωση.' : 'Το ραντεβού είναι επιβεβαιωμένο.',
+    ].join('\n');
+    const html = this.mailService.renderLayout(
+      'Νέο ραντεβού από πελάτη',
+      this.mailService.textToHtml(text),
+      { url, label: details.pending ? 'Άνοιγμα & επιβεβαίωση ραντεβού' : 'Άνοιγμα ραντεβού' },
+    );
+    const info = await this.mailService.sendMail(to, subject, `${text}\n\n${url}`, html);
+    if (!info?.messageId) {
+      this.logger.error(`New booking email to ${to} was NOT sent (appointment ${details.appointmentId})`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Clinic emails (new appointment / cancellation): sent to the clinic's own email address
+   * and to every owner of the clinic (clinics.ownerId and clinic_ownership), once per
+   * address. Users in excludeIds (whoever made the change) are skipped.
+   * Uses the editable template of the trigger; a template switched off in Notification
+   * Settings stops the email, a missing one falls back to the built-in default text.
+   */
+  async sendClinicEmail(
+    clinicId: string,
+    trigger: NotificationTrigger,
+    context: any,
+    excludeIds: string[] = [],
+  ): Promise<{ sent: string[]; skipped: string[] }> {
+    const result = { sent: [] as string[], skipped: [] as string[] };
+    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
+    if (!clinic) return result;
+
+    const stored = await this.templateRepository.findOne({ where: { trigger, type: NotificationType.EMAIL } });
+    if (stored && !stored.isActive) {
+      this.logger.warn(`Clinic email ${trigger} not sent for clinic ${clinicId}: the template is switched off in Notification Settings`);
+      return result;
+    }
+    const template = stored || DEFAULT_TEMPLATES.find((t) => t.trigger === trigger && t.type === NotificationType.EMAIL);
+    if (!template) {
+      this.logger.warn(`Clinic email ${trigger} not sent: no template`);
+      return result;
+    }
+
+    let ownerIds: string[] = clinic.ownerId ? [clinic.ownerId] : [];
+    try {
+      const rows = await this.userRepository.manager.query(
+        'SELECT "ownerUserId" FROM clinic_ownership WHERE "clinicId" = $1',
+        [clinicId],
+      );
+      ownerIds = [...ownerIds, ...(rows || []).map((r: any) => r.ownerUserId).filter(Boolean)];
+    } catch {
+      // Table may not exist in older databases
+    }
+    const exclude = new Set(excludeIds.filter(Boolean));
+    const owners = ownerIds.length
+      ? await this.userRepository.find({ where: { id: In([...new Set(ownerIds)]) }, select: ['id', 'email', 'isActive', 'emailBounced'] })
+      : [];
+    const excludedEmails = new Set(
+      owners.filter((u) => exclude.has(u.id)).map((u) => String(u.email || '').trim().toLowerCase()),
+    );
+
+    const addresses = new Set<string>();
+    const add = (email?: string | null) => {
+      const e = String(email || '').trim().toLowerCase();
+      if (e && !isPlaceholderEmail(e) && !excludedEmails.has(e)) addresses.add(e);
+    };
+    add(clinic.email);
+    owners.filter((u) => u.isActive !== false && !u.emailBounced && !exclude.has(u.id)).forEach((u) => add(u.email));
+
+    if (addresses.size === 0) {
+      this.logger.warn(`Clinic email ${trigger} not sent for clinic ${clinicId}: the clinic has no email address and no owner with one`);
+      return result;
+    }
+
+    const subject = this.replacePlaceholders(template.subject, context);
+    const text = this.replacePlaceholders(template.content, context);
+    for (const to of addresses) {
+      const info = await this.mailService.sendMail(to, subject, text).catch((err: any) => {
+        this.logger.error(`Clinic email ${trigger} to ${to} failed: ${err?.message || err}`);
+        return null;
+      });
+      if (info?.messageId) result.sent.push(to);
+      else result.skipped.push(to);
+    }
+    this.logger.log(`Clinic email ${trigger} for clinic ${clinicId}: sent to ${result.sent.length}, not sent to ${result.skipped.length}`);
+    return result;
+  }
+
   // ---------------------------------------------------------------------------
   // One-off dispatch flags (reminders, review requests)
   // ---------------------------------------------------------------------------
@@ -612,6 +729,25 @@ export class NotificationsService implements OnModuleInit, OnApplicationBootstra
   async updateTemplate(id: string, data: any) {
     await this.templateRepository.update(id, data);
     return this.templateRepository.findOne({ where: { id } });
+  }
+
+  /**
+   * Read-only: would sendTriggeredNotification() queue an EMAIL for this trigger and user?
+   * True only with an active EMAIL template and a real, non-bounced, non-suppressed address
+   * (the same checks sendTriggeredNotification() + create() apply). Sends nothing.
+   */
+  async isTriggerEmailDeliverable(trigger: NotificationTrigger, recipientId: string): Promise<boolean> {
+    const template = await this.templateRepository.findOne({
+      where: { trigger, type: NotificationType.EMAIL, isActive: true },
+    });
+    if (!template) return false;
+    const recipient = await this.userRepository.findOne({
+      where: { id: recipientId },
+      select: ['id', 'email', 'emailBounced'],
+    });
+    if (!recipient?.email || recipient.emailBounced) return false;
+    const suppression = await this.emailSuppressionService.isEmailSuppressed(recipient.email);
+    return !suppression.suppressed;
   }
 
   async sendTriggeredNotification(

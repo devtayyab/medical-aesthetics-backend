@@ -48,6 +48,12 @@ export class FirebaseService {
         return 'firebase-not-initialized';
       }
 
+      // Tapping the push opens the page it is about (e.g. the appointment); FCM needs an
+      // absolute https URL here, a relative one is rejected.
+      const base = (process.env.APP_FRONTEND_URL || process.env.FRONTEND_URL || 'https://beautydoctors.gr').replace(/\/$/, '');
+      const path = typeof data?.link === 'string' && data.link.startsWith('/') ? data.link : '/';
+      const link = `${base}${path}`;
+
       const payload = {
         notification: {
           title,
@@ -57,7 +63,8 @@ export class FirebaseService {
         // the whole send fail, so the push never arrived.
         data: FirebaseService.toStringMap(data),
         webpush: {
-          notification: { icon: '/logo.png' },
+          notification: { icon: `${base}/logo.png` },
+          ...(link.startsWith('https://') ? { fcmOptions: { link } } : {}),
         },
         token,
       };

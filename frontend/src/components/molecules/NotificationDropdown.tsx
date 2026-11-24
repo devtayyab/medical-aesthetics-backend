@@ -1,4 +1,6 @@
-import React, { useEffect, useRef } from"react";
+import React, { useEffect, useRef, useState } from"react";
+import { toast } from "react-hot-toast";
+import { enablePushNotifications, getPushStatus, type PushStatus } from "@/services/firebase";
 import { useSelector, useDispatch } from"react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, CheckCircle, Clock, ExternalLink } from"lucide-react";
@@ -6,6 +8,7 @@ import { css } from"@emotion/css";
 import type { RootState, AppDispatch } from"@/store";
 import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from"@/store/slices/notificationsSlice";
 import { openDialer } from"@/store/slices/dialerSlice";
+import { notificationTarget } from "@/utils/notificationLink";
 
 const dropdownStyle = css`
  position: absolute;
@@ -90,6 +93,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  const { notifications } = useSelector((state: RootState) => state.notifications);
  const { user } = useSelector((state: RootState) => state.auth);
  const dropdownRef = useRef<HTMLDivElement>(null);
+ const [pushStatus, setPushStatus] = useState<PushStatus>(() => getPushStatus());
+ const [isEnablingPush, setIsEnablingPush] = useState(false);
+
+ const handleEnablePush = async () => {
+ setIsEnablingPush(true);
+ const result = await enablePushNotifications(dispatch);
+ setIsEnablingPush(false);
+ if (result === 'granted') toast.success('Οι ειδοποιήσεις push ενεργοποιήθηκαν σε αυτή τη συσκευή.');
+ else if (result === 'error') toast.error('Η ενεργοποίηση των ειδοποιήσεων απέτυχε. Δοκιμάστε ξανά.');
+ setPushStatus(result === 'error' ? getPushStatus() : result);
+ };
 
  const getNotificationsLink = () => {
  const role = user?.role || '';
@@ -132,9 +146,12 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
  useEffect(() => {
  const handleClickOutside = (event: MouseEvent) => {
- if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+ const target = event.target as Node;
+ if (!dropdownRef.current || dropdownRef.current.contains(target)) return;
+ // The bell button sits next to the dropdown in the same wrapper. Leave clicks on it to
+ // its own toggle: closing here too would make that toggle reopen the dropdown at once.
+ if (dropdownRef.current.parentElement?.contains(target)) return;
  onClose();
- }
  };
 
  if (isOpen) {
@@ -169,6 +186,31 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
  </div>
 
+ {/* Push on this device: the permission prompt only appears in response to a tap */}
+ {pushStatus !== 'granted' && pushStatus !== 'unsupported' && pushStatus !== 'not-configured' && (
+ <div className="px-6 py-4 bg-amber-50 border-b border-amber-100">
+ {pushStatus === 'default' && (
+ <button
+ onClick={handleEnablePush}
+ disabled={isEnablingPush}
+ className="w-full h-10 bg-gray-900 text-[#CBFF38] rounded-xl font-black uppercase tracking-widest text-[10px] disabled:opacity-50"
+ >
+ Ενεργοποίηση ειδοποιήσεων push
+ </button>
+ )}
+ {pushStatus === 'denied' && (
+ <p className="text-[11px] font-bold text-amber-800">
+ Οι ειδοποιήσεις push είναι απενεργοποιημένες για αυτή τη συσκευή. Ενεργοποιήστε τις από τις ρυθμίσεις του browser / του κινητού.
+ </p>
+ )}
+ {pushStatus === 'needs-install' && (
+ <p className="text-[11px] font-bold text-amber-800">
+ Για ειδοποιήσεις push στο iPhone: Κοινή χρήση → «Προσθήκη στην οθόνη Αφετηρίας», ανοίξτε την εφαρμογή από εκεί και πατήστε ξανά το καμπανάκι.
+ </p>
+ )}
+ </div>
+ )}
+
  <div className={scrollAreaStyle}>
  {notifications.length === 0 ? (
  <div className="py-20 text-center flex flex-col items-center justify-center px-8">
@@ -188,12 +230,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
  dispatch(markAsRead(notif.id));
  }
  
- // Old Logic: Navigate to customer detail page
- const data = notif.data as any;
- const cid = data?.customerId || data?.leadId;
- if (cid) {
- navigate(`/crm/customer/${cid}`);
- }
+ // Appointment -> opens it in the calendar; customer / lead -> customer page
+ const target = notificationTarget(notif.data, user?.role);
+ if (target) navigate(target);
  
  onClose();
  }}

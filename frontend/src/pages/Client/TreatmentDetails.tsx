@@ -178,14 +178,23 @@ export const TreatmentDetails: React.FC = () => {
 
  if (!treatment) return <NotFound homePath="/treatments" message={{ el: "Η θεραπεία δεν βρέθηκε.", en: "This treatment was not found." }} />;
 
+ // The API returns no offerings (clinics, coordinates) to logged-out visitors, so there is
+ // nothing to put on the map: do not render the map box at all without located clinics.
+ const hasMapData = (treatment.offerings || []).some((o: any) => {
+ const lat = Number(o?.latitude);
+ const lng = Number(o?.longitude);
+ return o?.latitude != null && o?.longitude != null && Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+ });
+ const mapVisible = showMap && hasMapData;
+
  return (
  <div className="min-h-screen bg-white text-gray-900">
  {/* Split Hero Section - Compact Version */}
- <div className={heroContainer(showMap)}>
+ <div className={heroContainer(mapVisible)}>
  {/* Left: Info Card */}
  <motion.div 
  layout
- className={infoSide(showMap)}
+ className={infoSide(mapVisible)}
  >
  <div className={glassOverlay} />
  <motion.img 
@@ -207,13 +216,13 @@ export const TreatmentDetails: React.FC = () => {
  </motion.div>
  
  {/* Toggle Map Button */}
- <button 
+ {hasMapData && <button
  onClick={() => setShowMap(!showMap)}
  className="size-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#CBFF38] hover:bg-[#CBFF38] hover:text-black transition-all group hidden lg:flex"
  title={showMap ?"Hide Map" :"Show Map"}
  >
  {showMap ? <Layout size={18} /> : <MapIcon size={18} />}
- </button>
+ </button>}
  </div>
 
 
@@ -233,8 +242,8 @@ export const TreatmentDetails: React.FC = () => {
  {getPreferredLanguage() === 'el' ? 'Βρείτε Ιατρούς' : 'Find Clinicians'} <ChevronRight size={14} />
  </button>
  
- {!showMap && (
- <button 
+ {!showMap && hasMapData && (
+ <button
  onClick={() => setShowMap(true)}
  className="px-6 h-12 bg-white/5 border border-white/10 text-white rounded-xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex lg:hidden items-center justify-center gap-2"
  >
@@ -247,7 +256,7 @@ export const TreatmentDetails: React.FC = () => {
 
  {/* Right: Map */}
  <AnimatePresence>
- {showMap && (
+ {mapVisible && (
  <motion.div 
  initial={{ width: 0, opacity: 0 }}
  animate={{ width: 'auto', opacity: 1 }}
@@ -339,7 +348,7 @@ export const TreatmentDetails: React.FC = () => {
                         <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 leading-none mb-0 sm:mb-1">
                           <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
                         </div>
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}m</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}'</span>
                       </div>
                     </div>
 

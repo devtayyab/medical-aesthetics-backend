@@ -1,26 +1,26 @@
-import React, { useEffect, useState } from"react";
-import { useDispatch, useSelector } from"react-redux";
-import { AppDispatch, RootState } from"../../store";
-import { fetchClients } from"../../store/slices/clinicSlice";
-import clinicApi from"../../services/api/clinicApi";
-import { Users, Search, Calendar, Euro, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from"lucide-react";
-import { motion, AnimatePresence } from"framer-motion";
-import ClinicBookingModal from"../../components/clinic/ClinicBookingModal";
-import toast from"react-hot-toast";
-import { exportMedicalRecordPdf } from"../../utils/medicalRecordPdf";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import { fetchClients } from "../../store/slices/clinicSlice";
+import clinicApi from "../../services/api/clinicApi";
+import { Users, Search, Calendar, Euro, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import ClinicBookingModal from "../../components/clinic/ClinicBookingModal";
+import toast from "react-hot-toast";
+import { exportMedicalRecordPdf } from "../../utils/medicalRecordPdf";
 
 const ClientsPage: React.FC = () => {
- const dispatch = useDispatch<AppDispatch>();
- const { clients, isLoading } = useSelector(
- (state: RootState) => state.clinic
- );
+  const dispatch = useDispatch<AppDispatch>();
+  const { clients, isLoading } = useSelector(
+    (state: RootState) => state.clinic
+  );
 
- const [searchTerm, setSearchTerm] = useState("");
- const [selectedClient, setSelectedClient] = useState<any>(null);
- const [showDetailsModal, setShowDetailsModal] = useState(false);
- const [showBookingModal, setShowBookingModal] = useState(false);
- const [prefillForBooking, setPrefillForBooking] = useState<any>(null);
- const [showAddPatient, setShowAddPatient] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [prefillForBooking, setPrefillForBooking] = useState<any>(null);
+  const [showAddPatient, setShowAddPatient] = useState(false);
 
   const [isGreek, setIsGreek] = useState<boolean>(
     () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
@@ -39,503 +39,501 @@ const ClientsPage: React.FC = () => {
   }, []);
 
 
- const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
- const user = useSelector((state: RootState) => state.auth.user);
+  const { profile, myClinics } = useSelector((state: RootState) => state.clinic);
+  const user = useSelector((state: RootState) => state.auth.user);
 
- const activeClinicId =
-   profile?.id ||
-   localStorage.getItem('activeClinicId') ||
-   myClinics?.[0]?.id ||
-   user?.assignedClinicId ||
-   (user as any)?.associatedClinicId ||
-   (user as any)?.ownedClinics?.[0]?.id ||
-   (user as any)?.assignedClinics?.[0]?.id;
+  const activeClinicId =
+    profile?.id ||
+    localStorage.getItem('activeClinicId') ||
+    myClinics?.[0]?.id ||
+    user?.assignedClinicId ||
+    (user as any)?.associatedClinicId ||
+    (user as any)?.ownedClinics?.[0]?.id ||
+    (user as any)?.assignedClinics?.[0]?.id;
 
- useEffect(() => {
- dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
- }, [dispatch, activeClinicId]);
+  useEffect(() => {
+    dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
+  }, [dispatch, activeClinicId]);
 
- const filteredClients = clients.filter(
- (client) =>
- searchTerm ==="" ||
- `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
- client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
- client.phone?.includes(searchTerm)
- );
+  const filteredClients = clients.filter(
+    (client) =>
+      searchTerm === "" ||
+      `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phone?.includes(searchTerm)
+  );
 
- const handleViewDetails = async (clientId: string) => {
- try {
- const details = await clinicApi.clients.getById(clientId);
- setSelectedClient(details);
- setShowDetailsModal(true);
- } catch (error) {
- console.error("Failed to fetch client details:", error);
- }
- };
+  const handleViewDetails = async (clientId: string) => {
+    try {
+      const details = await clinicApi.clients.getById(clientId);
+      setSelectedClient(details);
+      setShowDetailsModal(true);
+    } catch (error) {
+      console.error("Failed to fetch client details:", error);
+    }
+  };
 
- const totalRevenue = clients.reduce((sum, c) => sum + (Number(c.lifetimeValue) || 0), 0);
- const totalAppointments = clients.reduce((sum, c) => sum + (c.totalAppointments || 0), 0);
- const avgLTV = clients.length > 0 ? totalRevenue / clients.length : 0;
+  const totalRevenue = clients.reduce((sum, c) => sum + (Number(c.lifetimeValue) || 0), 0);
+  const totalAppointments = clients.reduce((sum, c) => sum + (c.totalAppointments || 0), 0);
+  const avgLTV = clients.length > 0 ? totalRevenue / clients.length : 0;
 
- return (
- <div className="min-h-screen bg-[#F8FAFC]">
- {/* Refined Minimal Header */}
- <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
- <div className="max-w-7xl mx-auto relative z-10">
- <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
- <div className="space-y-3">
- <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
- <div className="size-1.5 rounded-full bg-green-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">CRM Database</span>
- </div>
- <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Μητρώο ασθενών" : "Patient Directory"}</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Προβολή στοιχείων ασθενών και ιστορικού ραντεβού." : "View patient profiles and appointment history."}</p>
- </div>
- </div>
- 
- <div className="flex w-full md:w-auto items-center gap-3">
- <button
- onClick={() => setShowAddPatient(true)}
- className="h-11 px-5 shrink-0 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:bg-gray-900 transition-all"
- >
- <Plus size={14} /> {isGreek ? 'Νέος ασθενής' : 'Add patient'}
- </button>
- <div className="relative w-full md:w-96">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
- <input
- type="text"
- placeholder="Search..."
- value={searchTerm}
- onChange={(e) => setSearchTerm(e.target.value)}
- className="w-full pl-10 pr-4 h-11 bg-gray-50 border-none rounded-xl text-gray-900 font-semibold text-xs focus:ring-1 focus:ring-black transition-all outline-none"
- />
- </div>
- </div>
- </div>
- </div>
- </div>
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Refined Minimal Header */}
+      <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                <div className="size-1.5 rounded-full bg-green-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">CRM Database</span>
+              </div>
+              <div className="space-y-1">
+                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Μητρώο ασθενών" : "Patient Directory"}</h1>
+                <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Προβολή στοιχείων ασθενών και ιστορικού ραντεβού." : "View patient profiles and appointment history."}</p>
+              </div>
+            </div>
 
- <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
- {/* Stats Grid */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
- <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} highlight />
- <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} />
- <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} />
- <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} />
- </div>
+            <div className="flex w-full md:w-auto items-center gap-3">
+              <button
+                onClick={() => setShowAddPatient(true)}
+                className="h-11 px-5 shrink-0 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:bg-gray-900 transition-all"
+              >
+                <Plus size={14} /> {isGreek ? 'Νέος ασθενής' : 'Add patient'}
+              </button>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 h-11 bg-gray-50 border-none rounded-xl text-gray-900 font-semibold text-xs focus:ring-1 focus:ring-black transition-all outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
- {/* Clients Table/Grid */}
- {isLoading ? (
- <div className="flex flex-col items-center justify-center py-40 gap-4 bg-white rounded-[48px] shadow-sm border border-gray-100">
- <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing patient records...</p>
- </div>
- ) : filteredClients.length === 0 ? (
- <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
- <Users className="w-16 h-16 text-gray-100 mx-auto mb-6" />
- <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-2">Registry is Clear</h3>
- <p className="text-gray-400 font-medium max-w-sm mx-auto">No patients match your current search parameters in the database.</p>
- </div>
- ) : (
- <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
- <div className="overflow-x-auto">
- <table className="w-full text-left border-collapse">
- <thead>
- <tr className="border-b border-gray-50 bg-gray-50/20">
- <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Patient</th>
- <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Contact</th>
- <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Activity</th>
- <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">LTV</th>
- <th className="px-6 py-4 text-right text-[9px] font-black uppercase tracking-widest text-gray-400">Action</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-gray-50">
- {filteredClients.map((client) => (
- <tr key={client.id} className="group hover:bg-gray-50/50 transition-all cursor-pointer" onClick={() => handleViewDetails(client.id)}>
- <td className="px-6 py-4">
- <div className="flex items-center gap-3">
- <div className="size-9 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center font-black shadow-sm group-hover:scale-105 transition-transform">
- {client.firstName?.[0] || client.email?.[0] ||"?"}
- </div>
- <div>
- <div className="flex items-center gap-1.5 flex-wrap">
- <p className="font-black uppercase tracking-tighter text-gray-900 leading-none text-xs mb-0.5">
- {`${client.firstName} ${client.lastName}`.trim() || client.email ||"ANONYMOUS"}
- </p>
- {client.isBeautyDoctorsMember && (
- <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
- ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
- </span>
- )}
- </div>
- <p className="text-[7px] font-black uppercase tracking-widest text-gray-300">#{client.id.slice(0, 8)}</p>
- </div>
- </div>
- </td>
- <td className="px-6 py-4">
- <div className="space-y-0.5">
- <div className="flex items-center gap-1.5 text-gray-600 flex-wrap">
- <Mail size={10} className={client.emailBounced ? "text-red-500" : "text-[#CBFF38]"} />
- <span className={`text-[10px] font-bold truncate max-w-[140px] ${client.emailBounced ? "text-red-600 line-through" : ""}`}>{client.email ||"N/A"}</span>
- {client.emailBounced && (
- <span
-   title={client.emailBounceReason || (isGreek ? 'Το email επέστρεψε (bounce) – δεν αποστέλλονται emails' : 'Email bounced – further emails suppressed')}
-   className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200"
- >
-   {isGreek ? 'Bounce' : 'Bounced'}
- </span>
- )}
- </div>
- </div>
- </td>
- <td className="px-6 py-4">
- <span className="text-[10px] font-black text-gray-900 leading-none">{client.totalAppointments || 0} Visits</span>
- <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest">
- Avg: €{client.totalAppointments > 0 ? ((Number(client.lifetimeValue) || 0) / client.totalAppointments).toFixed(0) : 0}
- </p>
- </td>
- <td className="px-6 py-4">
- <span className="text-[11px] font-black text-gray-900">€{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
- </td>
- <td className="px-6 py-4 text-right">
- <button className="h-8 px-4 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-[#CBFF38] transition-all text-[9px] font-black uppercase tracking-widest">
- View Detail
- </button>
- </td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- </div>
- )}
- </div>
+      <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} highlight />
+          <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} />
+          <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} />
+          <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} />
+        </div>
 
- <AnimatePresence>
- {showDetailsModal && selectedClient && (
- <ClientDetailsModal
- client={selectedClient}
- isGreek={isGreek}
- onClose={() => {
- setShowDetailsModal(false);
- setSelectedClient(null);
- }}
- onBookAppointment={(clientData: any) => {
- setPrefillForBooking(clientData);
- setShowBookingModal(true);
- }}
- />
- )}
- </AnimatePresence>
+        {/* Clients Table/Grid */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-40 gap-4 bg-white rounded-[48px] shadow-sm border border-gray-100">
+            <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing patient records...</p>
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
+            <Users className="w-16 h-16 text-gray-100 mx-auto mb-6" />
+            <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-2">Registry is Clear</h3>
+            <p className="text-gray-400 font-medium max-w-sm mx-auto">No patients match your current search parameters in the database.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-50 bg-gray-50/20">
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Patient</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Contact</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Activity</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">LTV</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black uppercase tracking-widest text-gray-400">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredClients.map((client) => (
+                    <tr key={client.id} className="group hover:bg-gray-50/50 transition-all cursor-pointer" onClick={() => handleViewDetails(client.id)}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center font-black shadow-sm group-hover:scale-105 transition-transform">
+                            {client.firstName?.[0] || client.email?.[0] || "?"}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-black uppercase tracking-tighter text-gray-900 leading-none text-xs mb-0.5">
+                                {`${client.firstName} ${client.lastName}`.trim() || client.email || "ANONYMOUS"}
+                              </p>
+                              {client.isBeautyDoctorsMember && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[7px] font-black uppercase tracking-widest text-gray-300">#{client.id.slice(0, 8)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-gray-600 flex-wrap">
+                            <Mail size={10} className={client.emailBounced ? "text-red-500" : "text-[#CBFF38]"} />
+                            <span className={`text-[10px] font-bold truncate max-w-[140px] ${client.emailBounced ? "text-red-600 line-through" : ""}`}>{client.email || "N/A"}</span>
+                            {client.emailBounced && (
+                              <span
+                                title={client.emailBounceReason || (isGreek ? 'Το email επέστρεψε (bounce) – δεν αποστέλλονται emails' : 'Email bounced – further emails suppressed')}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200"
+                              >
+                                {isGreek ? 'Bounce' : 'Bounced'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-black text-gray-900 leading-none">{client.totalAppointments || 0} Visits</span>
+                        <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest">
+                          Avg: €{client.totalAppointments > 0 ? ((Number(client.lifetimeValue) || 0) / client.totalAppointments).toFixed(0) : 0}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-[11px] font-black text-gray-900">€{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button className="h-8 px-4 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-[#CBFF38] transition-all text-[9px] font-black uppercase tracking-widest">
+                          View Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
- {showAddPatient && (
- <AddPatientModal
- clinicId={activeClinicId || undefined}
- isGreek={isGreek}
- onClose={() => setShowAddPatient(false)}
- onSaved={() => {
- setShowAddPatient(false);
- dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
- }}
- />
- )}
+      <AnimatePresence>
+        {showDetailsModal && selectedClient && (
+          <ClientDetailsModal
+            client={selectedClient}
+            isGreek={isGreek}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedClient(null);
+            }}
+            onBookAppointment={(clientData: any) => {
+              setPrefillForBooking(clientData);
+              setShowBookingModal(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
- {showBookingModal && activeClinicId && (
- <ClinicBookingModal
- isOpen={showBookingModal}
- clinicId={activeClinicId}
- onClose={() => {
- setShowBookingModal(false);
- setPrefillForBooking(null);
- }}
- prefillClient={prefillForBooking}
- onSuccess={() => {
- setShowBookingModal(false);
- setPrefillForBooking(null);
- dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
- }}
- />
- )}
- </div>
- );
+      {showAddPatient && (
+        <AddPatientModal
+          clinicId={activeClinicId || undefined}
+          isGreek={isGreek}
+          onClose={() => setShowAddPatient(false)}
+          onSaved={() => {
+            setShowAddPatient(false);
+            dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
+          }}
+        />
+      )}
+
+      {showBookingModal && activeClinicId && (
+        <ClinicBookingModal
+          isOpen={showBookingModal}
+          clinicId={activeClinicId}
+          onClose={() => {
+            setShowBookingModal(false);
+            setPrefillForBooking(null);
+          }}
+          prefillClient={prefillForBooking}
+          onSuccess={() => {
+            setShowBookingModal(false);
+            setPrefillForBooking(null);
+            dispatch(fetchClients(activeClinicId ? { clinicId: activeClinicId } : {}));
+          }}
+        />
+      )}
+    </div>
+  );
 };
 
 
 // Medical record export: own-clinic appointments only (server-scoped),
 // downloaded as a real PDF file (see utils/medicalRecordPdf).
 const exportMedicalRecord = async (clientId: string, isGreek: boolean) => {
- const record = await clinicApi.patients.medicalRecord(clientId);
- await exportMedicalRecordPdf(record, isGreek);
+  const record = await clinicApi.patients.medicalRecord(clientId);
+  await exportMedicalRecordPdf(record, isGreek);
 };
 
 // "Add patient" (phone rule): a phone BeautyDoctors already knows is linked to
 // that contact; a new phone becomes the clinic's own patient.
 const AddPatientModal = ({ clinicId, isGreek, onClose, onSaved }: { clinicId?: string; isGreek: boolean; onClose: () => void; onSaved: () => void }) => {
- const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
- const [saving, setSaving] = useState(false);
- const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
- const submit = async (e: React.FormEvent) => {
- e.preventDefault();
- setError(null);
- const digits = form.phone.replace(/\D/g, '');
- if (!form.firstName.trim()) return setError(isGreek ? 'Το όνομα είναι υποχρεωτικό' : 'First name is required');
- if (digits.length < 10) return setError(isGreek ? 'Συμπληρώστε ολόκληρο τον αριθμό κινητού' : 'Enter the full mobile number');
- setSaving(true);
- try {
- const res = await clinicApi.patients.create({ ...form, clinicId });
- toast.success(res.linkedToExisting
- ? (isGreek ? 'Ο αριθμός υπάρχει ήδη: ο ασθενής συνδέθηκε με την υπάρχουσα επαφή' : 'Phone already known: linked to the existing contact')
- : (isGreek ? 'Ο ασθενής προστέθηκε' : 'Patient added'));
- onSaved();
- } catch (err: any) {
- setError(err?.response?.data?.message || err?.message || 'Failed to add patient');
- } finally {
- setSaving(false);
- }
- };
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const digits = form.phone.replace(/\D/g, '');
+    if (!form.firstName.trim()) return setError(isGreek ? 'Το όνομα είναι υποχρεωτικό' : 'First name is required');
+    if (digits.length < 10) return setError(isGreek ? 'Συμπληρώστε ολόκληρο τον αριθμό κινητού' : 'Enter the full mobile number');
+    setSaving(true);
+    try {
+      const res = await clinicApi.patients.create({ ...form, clinicId });
+      toast.success(res.linkedToExisting
+        ? (isGreek ? 'Ο αριθμός υπάρχει ήδη: ο ασθενής συνδέθηκε με την υπάρχουσα επαφή' : 'Phone already known: linked to the existing contact')
+        : (isGreek ? 'Ο ασθενής προστέθηκε' : 'Patient added'));
+      onSaved();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to add patient');
+    } finally {
+      setSaving(false);
+    }
+  };
 
- const field = (key: keyof typeof form, label: string, type = 'text') => (
- <label className="block">
- <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</span>
- <input
- type={type}
- name={`patient-${key}`}
- autoComplete="off"
- value={form[key]}
- onChange={(e) => setForm({ ...form, [key]: e.target.value })}
- className="mt-1 w-full h-11 px-4 bg-gray-50 rounded-xl text-sm font-semibold text-gray-900 outline-none focus:ring-1 focus:ring-black"
- />
- </label>
- );
+  const field = (key: keyof typeof form, label: string, type = 'text') => (
+    <label className="block">
+      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</span>
+      <input
+        type={type}
+        name={`patient-${key}`}
+        autoComplete="off"
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        className="mt-1 w-full h-11 px-4 bg-gray-50 rounded-xl text-sm font-semibold text-gray-900 outline-none focus:ring-1 focus:ring-black"
+      />
+    </label>
+  );
 
- return (
- <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1002] p-4">
- <form onSubmit={submit} autoComplete="off" className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4">
- <div className="flex items-center justify-between">
- <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900">{isGreek ? 'Νέος ασθενής' : 'Add patient'}</h2>
- <button type="button" onClick={onClose} className="size-9 rounded-xl bg-gray-50 flex items-center justify-center"><X size={18} /></button>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
- {field('firstName', isGreek ? 'Όνομα' : 'First name')}
- {field('lastName', isGreek ? 'Επώνυμο' : 'Last name')}
- </div>
- {field('phone', isGreek ? 'Κινητό (ολόκληρο)' : 'Mobile (full number)', 'tel')}
- {field('email', 'Email', 'email')}
- <p className="text-[11px] text-gray-500">
- {isGreek
- ? 'Αν ο αριθμός υπάρχει ήδη, ο ασθενής συνδέεται με την υπάρχουσα επαφή. Νέος αριθμός = δικός σας ασθενής.'
- : 'If the phone already exists, the patient is linked to that contact. A new phone becomes your own patient.'}
- </p>
- {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
- <button type="submit" disabled={saving} className="w-full h-11 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[11px] tracking-widest disabled:opacity-50">
- {saving ? '...' : (isGreek ? 'Αποθήκευση' : 'Save patient')}
- </button>
- </form>
- </div>
- );
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1002] p-4">
+      <form onSubmit={submit} autoComplete="off" className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900">{isGreek ? 'Νέος ασθενής' : 'Add patient'}</h2>
+          <button type="button" onClick={onClose} className="size-9 rounded-xl bg-gray-50 flex items-center justify-center"><X size={18} /></button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {field('firstName', isGreek ? 'Όνομα' : 'First name')}
+          {field('lastName', isGreek ? 'Επώνυμο' : 'Last name')}
+        </div>
+        {field('phone', isGreek ? 'Κινητό (ολόκληρο)' : 'Mobile (full number)', 'tel')}
+        {field('email', 'Email', 'email')}
+        <p className="text-[11px] text-gray-500">
+          {isGreek
+            ? 'Αν ο αριθμός υπάρχει ήδη, ο ασθενής συνδέεται με την υπάρχουσα επαφή. Νέος αριθμός = δικός σας ασθενής.'
+            : 'If the phone already exists, the patient is linked to that contact. A new phone becomes your own patient.'}
+        </p>
+        {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+        <button type="submit" disabled={saving} className="w-full h-11 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[11px] tracking-widest disabled:opacity-50">
+          {saving ? '...' : (isGreek ? 'Αποθήκευση' : 'Save patient')}
+        </button>
+      </form>
+    </div>
+  );
 };
 
 const StatCard = ({ title, value, icon, trend, highlight }: any) => (
- <div className={`bg-white p-5 rounded-2xl border transition-all duration-300 group relative overflow-hidden ${
- highlight ? 'border-[#CBFF38] shadow-sm shadow-lime-500/5' : 'border-gray-100 hover:border-gray-200'
- }`}>
- <div className="flex items-start justify-between mb-4">
- <div className={`size-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
- {icon}
- </div>
- {trend && <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>}
- </div>
- <div>
- <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5">{title}</p>
- <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900">{value}</h3>
- </div>
- </div>
+  <div className={`bg-white p-5 rounded-2xl border transition-all duration-300 group relative overflow-hidden ${highlight ? 'border-[#CBFF38] shadow-sm shadow-lime-500/5' : 'border-gray-100 hover:border-gray-200'
+    }`}>
+    <div className="flex items-start justify-between mb-4">
+      <div className={`size-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
+        {icon}
+      </div>
+      {trend && <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full">{trend}</div>}
+    </div>
+    <div>
+      <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5">{title}</p>
+      <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900">{value}</h3>
+    </div>
+  </div>
 );
 
 const ClientDetailsModal = ({ client, onClose, onBookAppointment, isGreek }: any) => {
- const innerClient = client.client || client;
- const firstName = innerClient.firstName ||"";
- const lastName = innerClient.lastName ||"";
- const clientName = (firstName || lastName) 
- ? `${firstName} ${lastName}`.trim() 
- : (innerClient.email ||(isGreek ? "Ασθενής" : "Patient"));
- const appointments = client.appointments || [];
+  const innerClient = client.client || client;
+  const firstName = innerClient.firstName || "";
+  const lastName = innerClient.lastName || "";
+  const clientName = (firstName || lastName)
+    ? `${firstName} ${lastName}`.trim()
+    : (innerClient.email || (isGreek ? "Ασθενής" : "Patient"));
+  const appointments = client.appointments || [];
 
- const handleBook = () => {
- onBookAppointment({
- fullName: `${firstName} ${lastName}`.trim() || innerClient.email,
- phone: innerClient.phone ||"",
- email: innerClient.email ||""
- });
- };
+  const handleBook = () => {
+    onBookAppointment({
+      fullName: `${firstName} ${lastName}`.trim() || innerClient.email,
+      phone: innerClient.phone || "",
+      email: innerClient.email || ""
+    });
+  };
 
- return (
- <motion.div 
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- exit={{ opacity: 0 }}
- className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[1001] p-3 sm:p-6 overflow-y-auto"
- >
- <motion.div 
- initial={{ scale: 0.95, opacity: 0, y: 20 }}
- animate={{ scale: 1, opacity: 1, y: 0 }}
- exit={{ scale: 0.95, opacity: 0, y: 20 }}
- className="bg-white rounded-[28px] md:rounded-[40px] shadow-2xl max-w-5xl w-full max-h-[86vh] overflow-hidden flex flex-col my-auto border border-white/20"
- >
- <div className="bg-black text-white p-6 md:p-10 flex items-center justify-between relative overflow-hidden shrink-0">
- <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#CBFF38]/20 to-transparent" />
- <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full gap-6">
- <div className="flex items-center gap-4 md:gap-6 min-w-0">
- <div className="size-14 md:size-20 rounded-2xl md:rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-xl md:text-3xl shadow-lg shrink-0">
- {innerClient.firstName?.[0] || clientName?.[0] || "?"}
- </div>
- <div className="min-w-0">
- <div className="flex items-center gap-2 flex-wrap mb-1">
- <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none truncate">{clientName}</h2>
- {Boolean(innerClient?.isBeautyDoctorsMember || client?.isBeautyDoctorsMember) && (
- <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#CBFF38] text-black">
- ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
- </span>
- )}
- </div>
- <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
- <div className="flex items-center gap-2 flex-wrap">
- <Mail size={12} className={innerClient.emailBounced ? "text-red-400" : "text-[#CBFF38]"} />
- <a href={`mailto:${innerClient.email}`} className={`text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors ${innerClient.emailBounced ? "text-red-300 line-through" : ""}`}>{innerClient.email}</a>
- {innerClient.emailBounced && (
- <span
-   title={innerClient.emailBounceReason || 'Email bounced'}
-   className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-400/40"
- >
-   ⚠ {isGreek ? 'Email Bounced (Μη αποστολή)' : 'Email Bounced (Suppressed)'}
- </span>
- )}
- </div>
- {innerClient.phone && (
- <div className="flex items-center gap-2">
- <Phone size={12} className="text-[#CBFF38]" />
- <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.phone}</span>
- </div>
- )}
- </div>
- </div>
- </div>
- <div className="flex flex-wrap items-center gap-3 md:gap-4">
- <button
- onClick={handleBook}
- className="px-4 md:px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
- >
- <Plus size={14} /> {isGreek ? "ΝΕΟ ΡΑΝΤΕΒΟΥ" : "New Appointment"}
- </button>
- <button onClick={onClose} className="size-11 md:size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
- <X size={24} />
- </button>
- </div>
- </div>
- </div>
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[1001] p-3 sm:p-6 overflow-y-auto"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        className="bg-white rounded-[28px] md:rounded-[40px] shadow-2xl max-w-5xl w-full max-h-[86vh] overflow-hidden flex flex-col my-auto border border-white/20"
+      >
+        <div className="bg-black text-white p-6 md:p-10 flex items-center justify-between relative overflow-hidden shrink-0">
+          <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#CBFF38]/20 to-transparent" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full gap-6">
+            <div className="flex items-center gap-4 md:gap-6 min-w-0">
+              <div className="size-14 md:size-20 rounded-2xl md:rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-xl md:text-3xl shadow-lg shrink-0">
+                {innerClient.firstName?.[0] || clientName?.[0] || "?"}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none truncate">{clientName}</h2>
+                  {Boolean(innerClient?.isBeautyDoctorsMember || client?.isBeautyDoctorsMember) && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#CBFF38] text-black">
+                      ★ {isGreek ? 'Μέλος Beauty Doctors' : 'Beauty Doctors Member'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Mail size={12} className={innerClient.emailBounced ? "text-red-400" : "text-[#CBFF38]"} />
+                    <a href={`mailto:${innerClient.email}`} className={`text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors ${innerClient.emailBounced ? "text-red-300 line-through" : ""}`}>{innerClient.email}</a>
+                    {innerClient.emailBounced && (
+                      <span
+                        title={innerClient.emailBounceReason || 'Email bounced'}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-400/40"
+                      >
+                        ⚠ {isGreek ? 'Email Bounced (Μη αποστολή)' : 'Email Bounced (Suppressed)'}
+                      </span>
+                    )}
+                  </div>
+                  {innerClient.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone size={12} className="text-[#CBFF38]" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 md:gap-4">
+              <button
+                onClick={handleBook}
+                className="px-4 md:px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
+              >
+                <Plus size={14} /> {isGreek ? "ΝΕΟ ΡΑΝΤΕΒΟΥ" : "New Appointment"}
+              </button>
+              <button onClick={onClose} className="size-11 md:size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+        </div>
 
- <div className="p-5 md:p-10 flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
- <div className="lg:col-span-2 space-y-8">
- <section>
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
- <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4">{isGreek ? "ΙΣΤΟΡΙΚΟ ΘΕΡΑΠΕΙΩΝ" : "Treatment History"}</h3>
- <div className="px-4 py-1.5 bg-gray-50 rounded-full font-black text-[10px] uppercase tracking-widest">{appointments.length} {isGreek ? "ΘΕΡΑΠΕΙΕΣ" : "Total Procedures"}</div>
- </div>
- 
- <div className="space-y-4">
- {appointments.length > 0 ? appointments.map((apt: any) => (
- <div key={apt.id} className="p-4 md:p-6 bg-gray-50/50 border border-gray-100 rounded-3xl group hover:border-black transition-all">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
- <div className="flex items-center gap-5">
- <div className="size-12 bg-black text-[#CBFF38] rounded-2xl flex flex-col items-center justify-center shadow-lg group-hover:rotate-3 transition-transform">
- <span className="text-[8px] font-black uppercase">{new Date(apt.startTime).toLocaleDateString([], { month: 'short' })}</span>
- <span className="text-xl font-black leading-none">{new Date(apt.startTime).getDate()}</span>
- </div>
- <div>
- <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName ||(isGreek ? "Θεραπεία" : "Treatment")}</h4>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΙΑΤΡΟΣ" : "Practitioner"}: {apt.providerName || (isGreek ? "Χωρίς ανάθεση" : "Not assigned")}{apt.durationMinutes ? ` · ${apt.durationMinutes} ${isGreek ? 'ΛΕΠΤΑ' : 'MIN'}` : ''}</p>
- </div>
- </div>
- <div className="flex items-center gap-4">
- <div className="text-right">
- <div className="text-lg font-black text-gray-900 leading-none mb-1">€{Number(apt.totalAmount).toLocaleString()}</div>
- <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${
- apt.status === 'completed' ? 'bg-lime-100 text-lime-700 border-lime-200' : 'bg-gray-200 text-gray-500 border-gray-300'
- }`}>
- {apt.status}
- </span>
- </div>
- <button 
- onClick={handleBook}
- className="size-10 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center hover:scale-110 transition-transform"
- title={isGreek ? "Νέο ραντεβού" : "Rebook / Follow-up"}
- >
- <Plus size={18} />
- </button>
- </div>
- </div>
- </div>
- )) : (
- <div className="py-20 text-center bg-gray-50/30 rounded-[32px] border border-dashed border-gray-100">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΔΕΝ ΥΠΑΡΧΟΥΝ ΡΑΝΤΕΒΟΥ" : "No appointments yet."}</p>
- </div>
- )}
- </div>
- </section>
- </div>
+        <div className="p-5 md:p-10 flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
+          <div className="lg:col-span-2 space-y-8">
+            <section>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4">{isGreek ? "ΙΣΤΟΡΙΚΟ ΘΕΡΑΠΕΙΩΝ" : "Treatment History"}</h3>
+                <div className="px-4 py-1.5 bg-gray-50 rounded-full font-black text-[10px] uppercase tracking-widest">{appointments.length} {isGreek ? "ΘΕΡΑΠΕΙΕΣ" : "Total Procedures"}</div>
+              </div>
 
- <div className="space-y-8">
- <section className="bg-gray-50 rounded-[32px] p-5 md:p-8 border border-gray-100">
- <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">{isGreek ? "ΟΙΚΟΝΟΜΙΚΑ ΣΤΟΙΧΕΙΑ" : "Financials"}</h4>
- <div className="space-y-6">
- <div>
- <p className="text-3xl font-black tracking-tighter text-gray-900 leading-none mb-2">
- €{(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
- </p>
- <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΣΥΝΟΛΙΚΕΣ ΠΛΗΡΩΜΕΣ" : "Total spent"}</p>
- </div>
- <div className="grid grid-cols-2 gap-4">
- <div className="p-4 bg-white rounded-2xl shadow-sm">
- <p className="text-xl font-black text-gray-900 leading-none mb-1">{appointments.length}</p>
- <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΡΑΝΤΕΒΟΥ" : "Appointments"}</p>
- </div>
- <div className="p-4 bg-white rounded-2xl shadow-sm">
- <p className="text-xl font-black text-[#CBFF38] bg-black inline-block px-1 rounded leading-none mb-1">
- {appointments.length > 0 ? `€${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : `€0`}
- </p>
- <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΜΕΣΗ ΑΞΙΑ" : "Average per visit"}</p>
- </div>
- </div>
- </div>
- </section>
+              <div className="space-y-4">
+                {appointments.length > 0 ? appointments.map((apt: any) => (
+                  <div key={apt.id} className="p-4 md:p-6 bg-gray-50/50 border border-gray-100 rounded-3xl group hover:border-black transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-5">
+                        <div className="size-12 bg-black text-[#CBFF38] rounded-2xl flex flex-col items-center justify-center shadow-lg group-hover:rotate-3 transition-transform">
+                          <span className="text-[8px] font-black uppercase">{new Date(apt.startTime).toLocaleDateString([], { month: 'short' })}</span>
+                          <span className="text-xl font-black leading-none">{new Date(apt.startTime).getDate()}</span>
+                        </div>
+                        <div>
+                          <h4 className="font-black uppercase tracking-tighter text-gray-900 leading-none mb-1">{apt.serviceName || (isGreek ? "Θεραπεία" : "Treatment")}</h4>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΙΑΤΡΟΣ" : "Practitioner"}: {apt.providerName || (isGreek ? "Χωρίς ανάθεση" : "Not assigned")}{apt.durationMinutes ? ` · ${apt.durationMinutes} ${isGreek ? 'ΛΕΠΤΑ' : 'MIN'}` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-lg font-black text-gray-900 leading-none mb-1">€{Number(apt.totalAmount).toLocaleString()}</div>
+                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${apt.status === 'completed' ? 'bg-lime-100 text-lime-700 border-lime-200' : 'bg-gray-200 text-gray-500 border-gray-300'
+                            }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                        <button
+                          onClick={handleBook}
+                          className="size-10 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center hover:scale-110 transition-transform"
+                          title={isGreek ? "Νέο ραντεβού" : "Rebook / Follow-up"}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-20 text-center bg-gray-50/30 rounded-[32px] border border-dashed border-gray-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΔΕΝ ΥΠΑΡΧΟΥΝ ΡΑΝΤΕΒΟΥ" : "No appointments yet."}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
 
- <section className="bg-black text-white rounded-[32px] p-8 relative overflow-hidden">
- <div className="relative z-10">
- <h4 className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-4">{isGreek ? "ΙΑΤΡΙΚΟ ΙΣΤΟΡΙΚΟ" : "Medical Record"}</h4>
- <p className="text-xs font-bold leading-relaxed opacity-60">
- {isGreek ? "Λήψη PDF με τα ραντεβού του ασθενή στην κλινική σας." : "Download a PDF with this patient's appointments at your clinic."}
- </p>
- <button 
- onClick={async () => {
- try {
- await exportMedicalRecord(innerClient.id, isGreek);
- } catch (err: any) {
- toast.error(err?.response?.data?.message || err?.message || (isGreek ? 'Δεν ήταν δυνατή η εξαγωγή του ιατρικού ιστορικού' : 'Could not export the medical record'));
- }
- }}
- className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all"
- >
- {isGreek ? "ΕΞΑΓΩΓΗ PDF" : "Export Medical Record"}
- </button>
- </div>
- </section>
- </div>
- </div>
- </motion.div>
- </motion.div>
- );
+          <div className="space-y-8">
+            <section className="bg-gray-50 rounded-[32px] p-5 md:p-8 border border-gray-100">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">{isGreek ? "ΟΙΚΟΝΟΜΙΚΑ ΣΤΟΙΧΕΙΑ" : "Financials"}</h4>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-3xl font-black tracking-tighter text-gray-900 leading-none mb-2">
+                    €{(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
+                  </p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "ΣΥΝΟΛΙΚΕΣ ΠΛΗΡΩΜΕΣ" : "Total spent"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white rounded-2xl shadow-sm">
+                    <p className="text-xl font-black text-gray-900 leading-none mb-1">{appointments.length}</p>
+                    <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΡΑΝΤΕΒΟΥ" : "Appointments"}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-2xl shadow-sm">
+                    <p className="text-xl font-black text-[#CBFF38] bg-black inline-block px-1 rounded leading-none mb-1">
+                      {appointments.length > 0 ? `€${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : `€0`}
+                    </p>
+                    <p className="text-[8px] font-black uppercase text-gray-400">{isGreek ? "ΜΕΣΗ ΑΞΙΑ" : "Average per visit"}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-black text-white rounded-[32px] p-8 relative overflow-hidden">
+              <div className="relative z-10">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mb-4">{isGreek ? "ΙΑΤΡΙΚΟ ΙΣΤΟΡΙΚΟ" : "Medical Record"}</h4>
+                <p className="text-xs font-bold leading-relaxed opacity-60">
+                  {isGreek ? "Λήψη PDF με τα ραντεβού του ασθενή στην κλινική σας." : "Download a PDF with this patient's appointments at your clinic."}
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      await exportMedicalRecord(innerClient.id, isGreek);
+                    } catch (err: any) {
+                      toast.error(err?.response?.data?.message || err?.message || (isGreek ? 'Δεν ήταν δυνατή η εξαγωγή του ιατρικού ιστορικού' : 'Could not export the medical record'));
+                    }
+                  }}
+                  className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all"
+                >
+                  {isGreek ? "ΕΞΑΓΩΓΗ PDF" : "Export Medical Record"}
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 };
 
 export default ClientsPage;

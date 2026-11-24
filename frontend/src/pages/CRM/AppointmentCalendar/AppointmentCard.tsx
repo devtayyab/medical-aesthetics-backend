@@ -99,7 +99,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     ? '#9ca3af'  // gray
     : normalizedStatus === 'CONFIRMED' ? '#10b981'
     : normalizedStatus === 'PENDING' ? '#f97316'
-    : normalizedStatus === 'CANCELLED' ? '#ef4444'
+    : normalizedStatus === 'CANCELLED' ? '#9ca3af'
     : normalizedStatus === 'COMPLETED' ? '#8b5cf6'
     : normalizedStatus === 'ARRIVED' ? '#3b82f6'
     : normalizedStatus === 'IN_PROGRESS' ? '#6366f1'
@@ -110,13 +110,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     ? 'rgba(243,244,246,0.9)'
     : normalizedStatus === 'CONFIRMED' ? 'rgba(236,253,245,0.95)'
     : normalizedStatus === 'PENDING' ? 'rgba(255,247,237,0.95)'
-    : normalizedStatus === 'CANCELLED' ? 'rgba(254,242,242,0.95)'
+    : normalizedStatus === 'CANCELLED' ? 'rgba(243,244,246,0.9)'
     : normalizedStatus === 'COMPLETED' ? 'rgba(245,243,255,0.95)'
     : normalizedStatus === 'ARRIVED' ? 'rgba(239,246,255,0.95)'
     : normalizedStatus === 'IN_PROGRESS' ? 'rgba(238,242,255,0.95)'
     : 'rgba(249,250,251,0.95)';
 
   const isVeryShort = durationMin <= 20;
+  // Cancelled appointments stay readable but can never be mistaken for active ones
+  const isCancelled = !isBlocked && normalizedStatus === 'CANCELLED';
 
   return (
     <div
@@ -129,7 +131,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     >
       {/* ── Compact Card ── */}
       <div
-        className="w-full h-full rounded-md overflow-hidden transition-all duration-150 group-hover:shadow-lg group-hover:scale-[1.02]"
+        className={`w-full h-full rounded-md overflow-hidden transition-all duration-150 group-hover:shadow-lg group-hover:scale-[1.02] ${isCancelled ? 'opacity-60 grayscale' : ''}`}
         style={{
           background: bgColor,
           borderLeft: `3px solid ${borderColor}`,
@@ -143,7 +145,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: borderColor }}
             />
-            <span className="text-[10px] font-black text-slate-800 truncate leading-tight notranslate">
+            <span className={`text-[10px] font-black truncate leading-tight notranslate ${isCancelled ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
               {clientName}
             </span>
             {!isBlocked && totalServices > 1 && (

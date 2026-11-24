@@ -229,7 +229,7 @@ export const Integrations: React.FC = () => {
  <div className="p-5 md:p-8 border-b border-gray-100 flex justify-between items-center gap-3 bg-[#0B1120] text-white">
  <div>
  <h2 className="text-xl md:text-2xl font-bold">Configure {integrationList.find(i => i.id === activeConfig)?.title}</h2>
- <p className="text-sm text-gray-400 mt-1">Manage API keys and sync behavior</p>
+ <p className="text-sm text-gray-400 mt-1">Secret keys are never displayed. Type a new value only to replace the saved one.</p>
  </div>
  <button 
  onClick={() => setActiveConfig(null)}
@@ -263,7 +263,7 @@ export const Integrations: React.FC = () => {
  <div className="space-y-2">
  <label className="text-xs font-bold text-gray-500 uppercase">Stripe Public Key</label>
  <input 
- type="password"
+ type="text"
  value={settings.stripe_public_key || ''}
  onChange={(e) => handleInputChange('stripe_public_key', e.target.value)}
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38]"
@@ -277,7 +277,8 @@ export const Integrations: React.FC = () => {
  value={settings.stripe_secret_key || ''}
  onChange={(e) => handleInputChange('stripe_secret_key', e.target.value)}
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38]"
- placeholder="sk_test_..."
+ placeholder={settings.stripe_secret_key_set ? "Saved - leave blank to keep the current one" : "sk_test_..."}
+ autoComplete="new-password"
  />
  </div>
  </div>
@@ -311,7 +312,8 @@ export const Integrations: React.FC = () => {
  value={settings.facebook_app_secret || ''}
  onChange={(e) => handleInputChange('facebook_app_secret', e.target.value)}
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] text-xs font-semibold"
- placeholder="Enter Facebook App Secret..."
+ placeholder={settings.facebook_app_secret_set ? "Saved - leave blank to keep the current one" : "Enter Facebook App Secret..."}
+ autoComplete="new-password"
  />
  </div>
  </div>
@@ -322,7 +324,7 @@ export const Integrations: React.FC = () => {
  value={settings.facebook_access_token || ''}
  onChange={(e) => handleInputChange('facebook_access_token', e.target.value)}
  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] h-24 font-mono text-xs"
- placeholder="Enter Permanent Page Access Token..."
+ placeholder={settings.facebook_access_token_set ? "Saved - leave blank to keep the current one" : "Enter Permanent Page Access Token..."}
  />
  </div>
  </div>

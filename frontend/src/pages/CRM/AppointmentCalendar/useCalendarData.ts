@@ -211,7 +211,10 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
         }
       }
 
-      const spIdx = salespersons.findIndex(sp => sp.id === (apt.providerId || apt.provider?.id));
+      // The appointment's salesperson is its representative; who entered it (bookedBy) only
+      // counts when no representative is set.
+      const ownerId = apt.representativeId || apt.representative?.id || apt.bookedById || apt.providerId || apt.provider?.id;
+      const spIdx = salespersons.findIndex(sp => sp.id === ownerId);
 
       // Build additionalServices array with names if backend returns them
       // Backend may return apt.additionalServices = [{ id, name, price }]

@@ -38,7 +38,7 @@ import { FinancialService } from '../payments/financial.service';
 import { formatDateInTz, formatTimeInTz, formatDateTimeInTz } from '../../common/utils/timezone.util';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Clinic } from '../clinics/entities/clinic.entity';
-import { RevenueFilters, buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression } from '../payments/revenue.util';
+import { RevenueFilters, buildPaidRevenueQuery, getPaidRevenueTotal, netPaidExpression, revenueDayRange } from '../payments/revenue.util';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 import { loadAppointmentDisplayContext, appointmentDoctor, appointmentTreatments } from './appointment-display.util';
 
@@ -429,7 +429,10 @@ export class BookingsService {
       isBeautyDoctorsClient = true;
     }
 
-    if (!representativeId && existingCustomerRecord?.assignedSalespersonId) {
+    // A booking the client made themselves (app / website) is not assigned to any salesperson.
+    if ((createAppointmentDto as any).selfBooked) {
+      representativeId = null;
+    } else if (!representativeId && existingCustomerRecord?.assignedSalespersonId) {
       representativeId = existingCustomerRecord.assignedSalespersonId;
     } else if (!representativeId && matchedLead?.assignedSalesId) {
       representativeId = matchedLead.assignedSalesId;
@@ -867,6 +870,7 @@ export class BookingsService {
           return {
             ...appointmentWithRelations,
             redirectUrl: demoRedirectUrl,
+            confirmationEmailExpected: await this.isConfirmationEmailExpected(appointmentWithRelations, AppointmentStatus.CONFIRMED),
           };
         }
 
@@ -888,6 +892,7 @@ export class BookingsService {
         return {
           ...appointmentWithRelations,
           redirectUrl,
+          confirmationEmailExpected: await this.isConfirmationEmailExpected(appointmentWithRelations),
         };
       } catch (err) {
         // Log the full error details so we can debug
@@ -912,7 +917,40 @@ export class BookingsService {
       console.warn('⚠️ [BookingsService] Non-blocking event emission error:', eventErr?.message || eventErr);
     }
 
+    // Tells the booking confirmation page whether a confirmation email is really on its way
+    // (set on the entity itself so callers keep receiving the Appointment instance).
+    (appointmentWithRelations as any).confirmationEmailExpected =
+      await this.isConfirmationEmailExpected(appointmentWithRelations);
+
     return appointmentWithRelations;
+  }
+
+  /**
+   * True only when the client will really be emailed about this new booking. Mirrors what
+   * AppointmentNotificationsListener ('created') and NotificationsService do after the response
+   * has gone out: nothing is sent when notifications are disabled for the appointment / client
+   * (incl. Fresha imports), there is no real client account, the address is missing, a
+   * placeholder (noemail), bounced or suppressed, or the EMAIL template of the trigger
+   * (APPOINTMENT_CONFIRMED for a confirmed booking, otherwise APPOINTMENT_BOOKED) is inactive.
+   * Read-only; any failure counts as "no email" so the page never promises one wrongly.
+   */
+  private async isConfirmationEmailExpected(
+    appointment: Appointment,
+    status: AppointmentStatus | string = appointment?.status,
+  ): Promise<boolean> {
+    try {
+      if (!appointment?.clientId || appointment.clientId === '00000000-0000-0000-0000-000000000000' || !appointment.client) return false;
+      if ((appointment as any).disableNotifications === true) return false;
+      if (this.isFreshaImportedNotes(appointment.notes)) return false;
+      if ((appointment.client as any)?.profile?.disableNotifications === true) return false;
+      if (isPlaceholderEmail(appointment.client.email)) return false;
+      const trigger = String(status).toUpperCase() === AppointmentStatus.CONFIRMED
+        ? NotificationTrigger.APPOINTMENT_CONFIRMED
+        : NotificationTrigger.APPOINTMENT_BOOKED;
+      return await this.notificationsService.isTriggerEmailDeliverable(trigger, appointment.clientId);
+    } catch {
+      return false;
+    }
   }
 
   async findById(id: string): Promise<Appointment> {
@@ -1980,11 +2018,15 @@ export class BookingsService {
                 !['salesperson', 'manager', 'admin', 'super_admin'].includes(String(apt.bookedBy?.role || '').toLowerCase()) &&
                 !apt.representativeId));
 
+          // An appointment belongs to its assigned salesperson (representative). Who typed it in
+          // (bookedBy) only counts when no representative is set: an appointment the admin or a
+          // colleague entered for a salesperson must show as that salesperson's, not the creator's.
           const belongsToSelectedSalesperson =
             !salespersonFilterId ||
-            String(apt.representativeId || '') === String(salespersonFilterId) ||
-            String(apt.bookedById || '') === String(salespersonFilterId) ||
-            String(apt.providerId || '') === String(salespersonFilterId);
+            (apt.representativeId
+              ? String(apt.representativeId) === String(salespersonFilterId)
+              : String(apt.bookedById || '') === String(salespersonFilterId) ||
+                String(apt.providerId || '') === String(salespersonFilterId));
 
           // When filtering by a specific salesperson, hide other people's cancelled/no-show slots
           // (they don't occupy time), and show all other active appointments (other salespeople + clinic)
@@ -2801,11 +2843,18 @@ export class BookingsService {
       qb.where('appointment.providerId = :userId', { userId });
     }
 
-    if (query.startDate && query.endDate) {
-      qb.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      });
+    // Same appointments as the clinic Dashboard / calendar list: soft-deleted ones never count.
+    qb.andWhere('appointment.status != :deletedStatus', { deletedStatus: AppointmentStatus.DELETED });
+
+    // Period = whole Europe/Athens calendar days, both ends inclusive. A date-only endDate used
+    // to become 00:00 UTC of that day, which dropped every appointment of the last day (and so
+    // "today" and anything upcoming) from the count.
+    const period = revenueDayRange(query.startDate, query.endDate);
+    if (period.startDate) {
+      qb.andWhere('appointment.startTime >= :periodStart', { periodStart: period.startDate });
+    }
+    if (period.endDate) {
+      qb.andWhere('appointment.startTime <= :periodEnd', { periodEnd: period.endDate });
     }
 
     if (query.serviceId) {

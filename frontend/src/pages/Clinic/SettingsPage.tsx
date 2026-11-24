@@ -7,7 +7,7 @@ import {
  updateClinicProfile,
 } from"../../store/slices/clinicSlice";
 import { ClinicProfile } from"../../types/clinic.types";
-import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight, Camera, Landmark, CheckCircle, AlertCircle } from"lucide-react";
+import { Building2, Mail, Phone, Globe, MapPin, Save, Info, Camera, Landmark, CheckCircle, AlertCircle } from"lucide-react";
 import ImageUpload from"../../components/atoms/ImageUpload";
 import { bankDetailsApi } from"../../services/api/clinicApi";
 import GoogleCalendarSection from "../../components/organisms/GoogleCalendarSection/GoogleCalendarSection";
@@ -137,7 +137,7 @@ const SettingsPage: React.FC = () => {
  toast.success(isGreek ? "Οι ρυθμίσεις της κλινικής ενημερώθηκαν." : "Clinic configuration updated successfully!");
  } catch (error) {
  console.error("Failed to update profile:", error);
- toast.error(isGreek ? "Η ενημέρωση απέτυχε. Ελέγξτε τις ρυθμίσεις." : "Update failed. Verify operational parameters.");
+ toast.error(isGreek ? "Η ενημέρωση απέτυχε. Ελέγξτε τις ρυθμίσεις." : "Update failed. Please check the fields and try again.");
  } finally {
  setIsSaving(false);
  }
@@ -147,7 +147,7 @@ const SettingsPage: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-4">
  <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Accessing clinical registry settings...</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Φόρτωση ρυθμίσεων κλινικής..." : "Loading clinic settings..."}</p>
  </div>
  );
  }
@@ -165,7 +165,7 @@ const SettingsPage: React.FC = () => {
  </div>
  <div className="space-y-1">
  <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Ρυθμίσεις κλινικής" : "Clinic Settings"}</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Manage your clinic's digital identity and contact channels.</p>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Διαχειριστείτε τα στοιχεία, τις εικόνες, τη διεύθυνση και τα τραπεζικά στοιχεία της κλινικής σας." : "Manage your clinic's details, images, address and bank details."}</p>
  </div>
  </div>
  
@@ -186,7 +186,7 @@ const SettingsPage: React.FC = () => {
  <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
  <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
  {/* Main Content Area */}
- <div className="lg:col-span-8 space-y-6">
+ <div className="lg:col-span-12 space-y-6">
  <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 flex flex-col">
  <div className="flex items-center gap-4 mb-10">
  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
@@ -285,12 +285,12 @@ const SettingsPage: React.FC = () => {
  </div>
  
  <div className="space-y-4">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Gallery Asset (Hero Image)</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Εικόνα εξωφύλλου" : "Cover Image"}</p>
  <ImageUpload 
  value={formData.images?.[0] ||""} 
  onChange={(url) => setFormData({ ...formData, images: [url] })} 
  />
- <p className="text-[9px] text-gray-400 font-medium">The primary high-fidelity visual for your profile page.</p>
+ <p className="text-[9px] text-gray-400 font-medium">{isGreek ? "Η κύρια εικόνα που εμφανίζεται στη σελίδα της κλινικής σας." : "The main image shown on your clinic page."}</p>
  </div>
  </div>
  </div>
@@ -486,54 +486,6 @@ const SettingsPage: React.FC = () => {
 
  </div>
 
- {/* Sidebar / Info Area */}
- <div className="lg:col-span-4 space-y-6">
- <div className="bg-black text-white p-6 rounded-3xl shadow-sm relative overflow-hidden">
- <div className="absolute -right-4 -top-4 opacity-10">
- <Building2 size={100} className="text-[#CBFF38]" />
- </div>
- <div className="relative z-10">
- <div className="flex items-center gap-3 mb-6">
- <div className="size-7 rounded-lg bg-[#CBFF38] flex items-center justify-center text-black">
- <Info size={14} />
- </div>
- <h3 className="text-sm font-black uppercase tracking-tighter text-white">Registry Status</h3>
- </div>
- 
- <div className="space-y-3">
- <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-xl border border-white/10">
- <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Operations</span>
- <span className="text-[9px] font-black text-[#CBFF38] uppercase">Standard</span>
- </div>
- <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-xl border border-white/10">
- <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Data Sync</span>
- <span className="text-[9px] font-black text-[#CBFF38] uppercase">100% Verified</span>
- </div>
- </div>
-
- <p className="text-[9px] font-bold text-gray-600 mt-6 leading-relaxed uppercase opacity-60">
- Identity changes undergo validation protocol verification.
- </p>
- </div>
- </div>
-
- <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm group cursor-pointer hover:bg-black hover:text-[#CBFF38] transition-all">
- <div className="flex items-center justify-between mb-3">
- <h4 className="text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Clinical Branding</h4>
- <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform group-hover:text-[#CBFF38]" />
- </div>
- <p className="text-[10px] font-bold leading-tight uppercase text-gray-600 group-hover:text-gray-400 opacity-70">
- Manage clinical logos and brand assets.
- </p>
- </div>
-
- <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
- <h4 className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-6">Security Access</h4>
- <button type="button" className="w-full py-4 bg-gray-50 border border-gray-100 rounded-xl font-black uppercase text-[9px] tracking-widest text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all">
- Rotate API Keys
- </button>
- </div>
- </div>
  </form>
  </div>
  </div>

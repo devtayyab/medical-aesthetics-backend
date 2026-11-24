@@ -58,6 +58,22 @@ const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
     }
 };
 
+// Nominative month names for the calendar header (date-fns/Intl give the genitive: «Νοεμβρίου»).
+const GREEK_MONTHS_NOMINATIVE = [
+ "Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος",
+ "Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος",
+];
+
+const WEEKDAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+// True when the clinic's business hours mark this weekday as closed.
+// Without business hours nothing is closed (the availability API still decides).
+const isClinicClosedOn = (businessHours: any, day: Date): boolean => {
+ if (!businessHours || typeof businessHours !== 'object' || Object.keys(businessHours).length === 0) return false;
+ const cfg = businessHours[WEEKDAY_KEYS[day.getDay()]];
+ return !(cfg && cfg.isOpen !== false && cfg.open && cfg.close);
+};
+
 const containerStyle = css`
  max-width: 1100px;
  margin: 0 auto;
@@ -207,6 +223,8 @@ export const AppointmentBooking: React.FC = () => {
 
  const handleDateClick = (day: Date) => {
  if (isBefore(day, startOfToday())) return;
+ // Clinic closed that weekday (business hours): not selectable.
+ if (isClinicClosedOn((clinic as any)?.businessHours, day)) return;
  setSelectedDateState(day);
  setSelectedSlot(null);
  setShowMobileTimes(true);
@@ -250,7 +268,7 @@ export const AppointmentBooking: React.FC = () => {
  console.error('Failed to hold slot:', err);
  // Someone else holds or booked it: do not let the user continue with this slot.
  setSelectedSlot(null);
- toast.error('This time is no longer available. Please choose another time.');
+ toast.error(isGreek ? 'Η ώρα αυτή δεν είναι πλέον διαθέσιμη. Επιλέξτε άλλη ώρα.' : 'This time is no longer available. Please choose another time.');
  }
  }
  };
@@ -279,12 +297,15 @@ export const AppointmentBooking: React.FC = () => {
  while (day <= endDate) {
  for (let i = 0; i < 7; i++) {
  const cloneDay = day;
- const isPast = isBefore(cloneDay, startOfToday());
+ const isClosed = isClinicClosedOn((clinic as any)?.businessHours, cloneDay);
+ const isPast = isBefore(cloneDay, startOfToday()) || isClosed;
  days.push(
  <div
  key={day.toISOString()}
- className={dayStyle(isSameMonth(day, monthStart), isSameDay(day, selectedDateState), isPast)}
+ className={dayStyle(isSameMonth(day, monthStart), isSameDay(day, selectedDateState) && !isClosed, isPast)}
  onClick={() => handleDateClick(cloneDay)}
+ aria-disabled={isPast || undefined}
+ title={isClosed ? (isGreek ? "Κλειστά" : "Closed") : undefined}
  >
  <span>{format(day,"d")}</span>
  </div>
@@ -330,7 +351,7 @@ export const AppointmentBooking: React.FC = () => {
   <div className="flex items-center justify-between mb-4 sm:mb-6">
   <div>
   <h4 className="text-[8px] sm:text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-0.5 sm:mb-1">{isGreek ? "Επιλέξτε Ημερομηνία & Ώρα" : "Select the Exact Time"}</h4>
-  <h2 className="text-base sm:text-xl font-black uppercase text-gray-900">{format(currentMonth,"MMMM yyyy", dateLocale)}</h2>
+  <h2 className="text-base sm:text-xl font-black uppercase text-gray-900">{isGreek ? `${GREEK_MONTHS_NOMINATIVE[currentMonth.getMonth()]} ${currentMonth.getFullYear()}` : format(currentMonth,"MMMM yyyy")}</h2>
   </div>
   <div className="flex gap-1.5 sm:gap-2">
   <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-8 sm:size-10 rounded-lg sm:rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronLeft size={10} /></button>
@@ -393,7 +414,7 @@ export const AppointmentBooking: React.FC = () => {
  </div>
  ) : (
  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
- <p className="text-sm font-black uppercase text-gray-400">{isGreek ? 'Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημερομηνία' : 'No availability for this date'}</p>
+ <p className="text-sm font-black uppercase text-gray-400">{isGreek ? 'Δεν υπάρχει διαθεσιμότητα αυτή τη μέρα. Δοκιμάστε άλλη ημέρα.' : 'No availability for this date. Try another day.'}</p>
  {availabilityReason && (
  <p className="text-[10px] font-black uppercase text-red-500 mt-2">{availabilityReason}</p>
  )}
@@ -499,7 +520,7 @@ export const AppointmentBooking: React.FC = () => {
  </div>
  ) : (
  <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
- <p className="text-xs font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
+ <p className="text-xs font-black uppercase text-gray-400">{isGreek ? 'Δεν υπάρχει διαθεσιμότητα αυτή τη μέρα. Δοκιμάστε άλλη ημέρα.' : 'No availability for this date. Try another day.'}</p>
  </div>
  )}
  </div>
@@ -512,7 +533,7 @@ export const AppointmentBooking: React.FC = () => {
  onClick={() => { setShowMobileTimes(false); handleProceed(); }}
  className="bg-[#CBFF38] text-black hover:bg-lime-400 h-12 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg"
  >
- {bookingLoading ?"Establishing..." :"Continue"}
+ {bookingLoading ? (isGreek ? "Αναμονή..." : "Establishing...") : (isGreek ? "Συνέχεια" : "Continue")}
  </Button>
  </div>
  )}

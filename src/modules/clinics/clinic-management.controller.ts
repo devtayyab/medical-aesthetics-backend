@@ -865,7 +865,7 @@ export class ClinicManagementController {
       try {
         const clinic = await this.clinicsService.findByOwnerId(req.user.id);
         clinicToUse = clinic?.id;
-      } catch (err) {}
+      } catch (err) { }
     }
 
     return this.clinicsService.removeStaffById(id, clinicToUse);

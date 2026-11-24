@@ -141,11 +141,31 @@ export class AdminService {
     };
   }
 
+  /**
+   * Secret settings (API keys, tokens, passwords) are write-only: they are never sent back
+   * to the browser. The API returns an empty value plus "<key>_set: true" when one is stored.
+   */
+  private isSecretSettingKey(key: string): boolean {
+    const k = String(key || '').toLowerCase();
+    if (k.endsWith('_set')) return false;
+    if (/public_key|publishable|app_id|merchant_id|page_id|pixel_id|client_id$/.test(k)) return false;
+    return /secret|token|password|private|api_key|apikey|_key$/.test(k);
+  }
+
+  private hasSecretValue(value: any): boolean {
+    return value !== null && value !== undefined && String(value).trim() !== '';
+  }
+
   async getSettings(): Promise<any> {
     const settings = await this.settingsRepository.find();
     // Convert array of entities to a key-value object
     const settingsMap: Record<string, any> = {};
     settings.forEach(s => {
+      if (this.isSecretSettingKey(s.key)) {
+        settingsMap[s.key] = '';
+        settingsMap[`${s.key}_set`] = this.hasSecretValue(s.value);
+        return;
+      }
       settingsMap[s.key] = s.value;
     });
 
@@ -165,6 +185,10 @@ export class AdminService {
 
   async updateSettings(settings: Record<string, any>): Promise<any> {
     for (const [key, value] of Object.entries(settings)) {
+      // "<key>_set" flags are read-only, and a secret left empty means "keep the stored one"
+      // (the form never receives the stored value, so it posts it back empty).
+      if (key.endsWith('_set')) continue;
+      if (this.isSecretSettingKey(key) && !this.hasSecretValue(value)) continue;
       let setting = await this.settingsRepository.findOne({ where: { key } });
       if (setting) {
         setting.value = value;
@@ -1189,7 +1213,7 @@ export class AdminService {
     if (!setting) {
       throw new NotFoundException(`Setting '${key}' not found`);
     }
-    return setting;
+    return this.isSecretSettingKey(key) ? ({ ...setting, value: '' } as PlatformSettings) : setting;
   }
 
   async updateSetting(key: string, value: any): Promise<PlatformSettings> {
@@ -1209,7 +1233,8 @@ export class AdminService {
     if (category) {
       where.category = category;
     }
-    return this.settingsRepository.find({ where });
+    const all = await this.settingsRepository.find({ where });
+    return all.map(s => (this.isSecretSettingKey(s.key) ? ({ ...s, value: '' } as PlatformSettings) : s));
   }
 
   async getIntegrationLogs(): Promise<AuditLog[]> {

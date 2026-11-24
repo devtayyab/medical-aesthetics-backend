@@ -3,69 +3,69 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
-import { logout } from"@/store/slices/authSlice";
+import { logout } from "@/store/slices/authSlice";
 import { fetchClinicProfile, fetchMyClinics, fetchAppointments, fetchServices, fetchClients, fetchReviews, fetchReviewStatistics } from '@/store/slices/clinicSlice';
 import { getClinicLocalDate } from '@/utils/clinicTime';
 import { ChevronDown, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import {
- LayoutDashboard,
- Calendar,
- Users,
- Package,
- BarChart3,
- Star,
- Bell,
- Settings,
- LogOut,
- Clock,
- Menu,
- X,
- MessageSquare,
- BookOpen,
- UserCog,
- FileText,
- Phone,
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Package,
+  BarChart3,
+  Star,
+  Bell,
+  Settings,
+  LogOut,
+  Clock,
+  Menu,
+  X,
+  MessageSquare,
+  BookOpen,
+  UserCog,
+  FileText,
+  Phone,
 } from 'lucide-react';
 import { fetchUnreadCount } from '@/store/slices/notificationsSlice';
 
 const iconMap: Record<string, React.ReactNode> = {
- LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
- Calendar: <Calendar className="w-5 h-5" />,
- Users: <Users className="w-5 h-5" />,
- Package: <Package className="w-5 h-5" />,
- BarChart3: <BarChart3 className="w-5 h-5" />,
- Star: <Star className="w-5 h-5" />,
- Bell: <Bell className="w-5 h-5" />,
- Settings: <Settings className="w-5 h-5" />,
- Clock: <Clock className="w-5 h-5" />,
- MessageSquare: <MessageSquare className="w-5 h-5" />,
- BookOpen: <BookOpen className="w-5 h-5" />,
- UserCog: <UserCog className="w-5 h-5" />,
- FileText: <FileText className="w-5 h-5" />,
- Phone: <Phone className="w-5 h-5" />,
+  LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
+  Calendar: <Calendar className="w-5 h-5" />,
+  Users: <Users className="w-5 h-5" />,
+  Package: <Package className="w-5 h-5" />,
+  BarChart3: <BarChart3 className="w-5 h-5" />,
+  Star: <Star className="w-5 h-5" />,
+  Bell: <Bell className="w-5 h-5" />,
+  Settings: <Settings className="w-5 h-5" />,
+  Clock: <Clock className="w-5 h-5" />,
+  MessageSquare: <MessageSquare className="w-5 h-5" />,
+  BookOpen: <BookOpen className="w-5 h-5" />,
+  UserCog: <UserCog className="w-5 h-5" />,
+  FileText: <FileText className="w-5 h-5" />,
+  Phone: <Phone className="w-5 h-5" />,
 };
 
 const ClinicLayout: React.FC = () => {
- const navigate = useNavigate();
+  const navigate = useNavigate();
   const location = useLocation();
   const isDiaryOrCalendar = location.pathname.includes('/diary') || location.pathname.includes('/calendar');
- const dispatch = useDispatch<AppDispatch>();
- const user = useSelector((state: RootState) => state.auth.user);
- const { profile, myClinics, appointments } = useSelector((state: RootState) => state.clinic);
- const { unreadCount } = useSelector((state: RootState) => state.notifications);
+  const dispatch = useDispatch<AppDispatch>();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { profile, myClinics, appointments } = useSelector((state: RootState) => state.clinic);
+  const { unreadCount } = useSelector((state: RootState) => state.notifications);
 
- // Live upcoming appointments counter matching AppointmentsPage's "Upcoming" tab
- // (non-blocked, non-completed/cancelled/deleted, starting today or later in clinic local time).
- const upcomingAppointmentsCount = React.useMemo(() => {
-   const todayLocal = getClinicLocalDate(new Date().toISOString(), (profile as any)?.timezone);
-   return (appointments || []).filter((a: any) => {
-     if (a?.isBlocked) return false;
-     const status = String(a?.status || '').toUpperCase();
-     if (['COMPLETED', 'EXECUTED', 'CANCELLED', 'NO_SHOW', 'DELETED'].includes(status)) return false;
-     return getClinicLocalDate(a.startTime, a?.clinic?.timezone || (profile as any)?.timezone) >= todayLocal;
-   }).length;
- }, [appointments, profile]);
- const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Live upcoming appointments counter matching AppointmentsPage's "Upcoming" tab
+  // (non-blocked, non-completed/cancelled/deleted, starting today or later in clinic local time).
+  const upcomingAppointmentsCount = React.useMemo(() => {
+    const todayLocal = getClinicLocalDate(new Date().toISOString(), (profile as any)?.timezone);
+    return (appointments || []).filter((a: any) => {
+      if (a?.isBlocked) return false;
+      const status = String(a?.status || '').toUpperCase();
+      if (['COMPLETED', 'EXECUTED', 'CANCELLED', 'NO_SHOW', 'DELETED'].includes(status)) return false;
+      return getClinicLocalDate(a.startTime, a?.clinic?.timezone || (profile as any)?.timezone) >= todayLocal;
+    }).length;
+  }, [appointments, profile]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('clinic_sidebar_collapsed') === 'true';
   });
@@ -78,59 +78,59 @@ const ClinicLayout: React.FC = () => {
     });
   };
 
- React.useEffect(() => {
- dispatch(fetchMyClinics()).then((action: any) => {
-   const list: any[] = Array.isArray(action?.payload) ? action.payload : [];
-   const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
-   const savedIsValid = savedClinicId && (list.length === 0 || list.some((c: any) => c.id === savedClinicId));
-   if (savedClinicId && !savedIsValid) {
-     localStorage.removeItem('activeClinicId');
-   }
-   const effectiveClinicId = savedIsValid
-     ? savedClinicId
-     : (list[0]?.id || (user as any)?.assignedClinicId || undefined);
-   dispatch(fetchClinicProfile(effectiveClinicId));
-   if (effectiveClinicId) {
-     dispatch(fetchAppointments({ clinicId: effectiveClinicId }));
-   }
- });
- if (user) {
- dispatch(fetchUnreadCount());
- }
- }, [dispatch, user]);
+  React.useEffect(() => {
+    dispatch(fetchMyClinics()).then((action: any) => {
+      const list: any[] = Array.isArray(action?.payload) ? action.payload : [];
+      const savedClinicId = localStorage.getItem('activeClinicId') || undefined;
+      const savedIsValid = savedClinicId && (list.length === 0 || list.some((c: any) => c.id === savedClinicId));
+      if (savedClinicId && !savedIsValid) {
+        localStorage.removeItem('activeClinicId');
+      }
+      const effectiveClinicId = savedIsValid
+        ? savedClinicId
+        : (list[0]?.id || (user as any)?.assignedClinicId || undefined);
+      dispatch(fetchClinicProfile(effectiveClinicId));
+      if (effectiveClinicId) {
+        dispatch(fetchAppointments({ clinicId: effectiveClinicId }));
+      }
+    });
+    if (user) {
+      dispatch(fetchUnreadCount());
+    }
+  }, [dispatch, user]);
 
- const sortedClinics = React.useMemo(() => {
-   const base = myClinics && myClinics.length > 0 ? [...myClinics] : (profile ? [profile] : []);
-   return base.sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' }));
- }, [myClinics, profile]);
+  const sortedClinics = React.useMemo(() => {
+    const base = myClinics && myClinics.length > 0 ? [...myClinics] : (profile ? [profile] : []);
+    return base.sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' }));
+  }, [myClinics, profile]);
 
- const handleClinicChange = async (newClinicId: string) => {
- if (!newClinicId) return;
- localStorage.setItem('activeClinicId', newClinicId);
- try { sessionStorage.setItem('calendar.viewedClinicId', newClinicId); } catch {}
- await dispatch(fetchClinicProfile(newClinicId));
- dispatch(fetchAppointments({ clinicId: newClinicId }));
- dispatch(fetchServices(newClinicId));
- dispatch(fetchClients({ clinicId: newClinicId }));
- dispatch(fetchReviews({ clinicId: newClinicId }));
- dispatch(fetchReviewStatistics(newClinicId));
- };
+  const handleClinicChange = async (newClinicId: string) => {
+    if (!newClinicId) return;
+    localStorage.setItem('activeClinicId', newClinicId);
+    try { sessionStorage.setItem('calendar.viewedClinicId', newClinicId); } catch { }
+    await dispatch(fetchClinicProfile(newClinicId));
+    dispatch(fetchAppointments({ clinicId: newClinicId }));
+    dispatch(fetchServices(newClinicId));
+    dispatch(fetchClients({ clinicId: newClinicId }));
+    dispatch(fetchReviews({ clinicId: newClinicId }));
+    dispatch(fetchReviewStatistics(newClinicId));
+  };
 
- const menuItems = getMenuItemsForRole(user?.role || '');
+  const menuItems = getMenuItemsForRole(user?.role || '');
 
- const handleLogout = async () => {
- try {
- localStorage.removeItem('accessToken');
- localStorage.removeItem('refreshToken');
- localStorage.removeItem('activeClinicId');
- await dispatch(logout());
- navigate('/login');
- } catch (error) {
- console.error('Logout failed:', error);
- }
- };
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('activeClinicId');
+      await dispatch(logout());
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
- const closeSidebar = () => setIsSidebarOpen(false);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
     (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
@@ -144,324 +144,318 @@ const ClinicLayout: React.FC = () => {
   };
 
   return (
-  <div className="flex h-[calc(100vh-100px)] lg:h-[calc(100vh-108px)] bg-[#F8FAFC] overflow-hidden font-sans">
-  {/* Mobile sidebar toggle */}
-  <button
-  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-  aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
-  className="lg:hidden fixed bottom-5 right-5 z-[1002] size-12 bg-black text-[#CBFF38] rounded-2xl shadow-2xl flex items-center justify-center active:scale-95 transition-all"
-  >
-  {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-  </button>
+    <div className="flex h-[calc(100vh-100px)] lg:h-[calc(100vh-108px)] bg-[#F8FAFC] overflow-hidden font-sans">
+      {/* Mobile sidebar toggle */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+        className="lg:hidden fixed bottom-5 right-5 z-[1002] size-12 bg-black text-[#CBFF38] rounded-2xl shadow-2xl flex items-center justify-center active:scale-95 transition-all"
+      >
+        {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
 
-  {/* Mobile overlay */}
-  {isSidebarOpen && (
-  <div
-  className="lg:hidden fixed inset-0 top-[56px] sm:top-[64px] bg-black/40 z-[1000]"
-  onClick={closeSidebar}
-  />
-  )}
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 top-[56px] sm:top-[64px] bg-black/40 z-[1000]"
+          onClick={closeSidebar}
+        />
+      )}
 
-  {/* Sidebar */}
-  <aside
-    className={`fixed lg:static top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 bg-white flex flex-col transition-all duration-300 ease-in-out border-r border-gray-100 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full
+      {/* Sidebar */}
+      <aside
+        className={`fixed lg:static top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 bg-white flex flex-col transition-all duration-300 ease-in-out border-r border-gray-100 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full
     ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
     ${isCollapsed ? 'lg:w-[68px]' : 'lg:w-64'}
     `}
-  >
-    {/* Branding */}
-    <div className={`pt-4 pb-3 border-b border-gray-100 shrink-0 ${isCollapsed ? 'px-2 flex flex-col items-center' : 'px-4'}`}>
-      <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38] shrink-0 cursor-pointer shadow-xs"
-            onClick={() => isCollapsed && toggleCollapse()}
-            title={profile?.name || 'Clinic Portal'}
-          >
-            <LayoutDashboard size={17} />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1">
-              <h1 className="text-sm font-black uppercase tracking-tight text-gray-900 truncate notranslate" title={profile?.name || 'Clinic Portal'}>
-                {profile?.name || 'Clinic Portal'}
-              </h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <div className="size-1.5 rounded-full bg-green-500 shrink-0" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+      >
+        {/* Branding */}
+        <div className={`pt-4 pb-3 border-b border-gray-100 shrink-0 ${isCollapsed ? 'px-2 flex flex-col items-center' : 'px-4'}`}>
+          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'justify-between'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38] shrink-0 cursor-pointer shadow-xs"
+                onClick={() => isCollapsed && toggleCollapse()}
+                title={profile?.name || 'Clinic Portal'}
+              >
+                <LayoutDashboard size={17} />
               </div>
+              {!isCollapsed && (
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-sm font-black uppercase tracking-tight text-gray-900 truncate notranslate" title={profile?.name || 'Clinic Portal'}>
+                    {profile?.name || 'Clinic Portal'}
+                  </h1>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="size-1.5 rounded-full bg-green-500 shrink-0" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Desktop Collapse / Expand Toggle Button */}
+            <button
+              onClick={toggleCollapse}
+              className="hidden lg:flex size-7 rounded-lg bg-gray-50 hover:bg-black hover:text-[#CBFF38] text-gray-400 items-center justify-center transition-colors shrink-0 shadow-xs"
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            </button>
+          </div>
+
+          {/* Multi-Clinic Switcher Dropdown */}
+          {((myClinics && myClinics.length > 0) || profile) && (
+            isCollapsed ? (
+              <div className="mt-2.5 flex justify-center">
+                <button
+                  onClick={toggleCollapse}
+                  className="size-7 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 transition-colors shadow-xs"
+                  title={`Active Clinic: ${profile?.name || myClinics?.[0]?.name || 'Clinic'} (Click to switch)`}
+                >
+                  <Building2 className="w-3.5 h-3.5 text-[#CBFF38]" />
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2.5 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[9px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                    <Building2 className="w-3 h-3 text-[#CBFF38]" />
+                    {myClinics && myClinics.length > 1 ? 'Switch Clinic' : 'Active Clinic'}
+                  </label>
+                  {myClinics && myClinics.length > 1 && (
+                    <span className="text-[8px] font-bold bg-[#CBFF38]/20 text-[#0B1120] px-1.5 py-0.2 rounded">
+                      {myClinics.length}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <select
+                    value={profile?.id || (myClinics[0]?.id) || ''}
+                    onChange={(e) => handleClinicChange(e.target.value)}
+                    disabled={!myClinics || myClinics.length <= 1}
+                    className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-black text-gray-900 appearance-none pr-7 outline-none truncate transition-colors ${myClinics && myClinics.length > 1
+                      ? 'cursor-pointer hover:bg-gray-100 focus:ring-1 focus:ring-[#CBFF38]'
+                      : 'cursor-default opacity-90'
+                      }`}
+                  >
+                    {sortedClinics.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {myClinics && myClinics.length > 1 && (
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  )}
+                </div>
+              </div>
+            )
           )}
         </div>
 
-        {/* Desktop Collapse / Expand Toggle Button */}
-        <button
-          onClick={toggleCollapse}
-          className="hidden lg:flex size-7 rounded-lg bg-gray-50 hover:bg-black hover:text-[#CBFF38] text-gray-400 items-center justify-center transition-colors shrink-0 shadow-xs"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-        </button>
-      </div>
-
-      {/* Multi-Clinic Switcher Dropdown */}
-      {((myClinics && myClinics.length > 0) || profile) && (
-        isCollapsed ? (
-          <div className="mt-2.5 flex justify-center">
-            <button
-              onClick={toggleCollapse}
-              className="size-7 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 transition-colors shadow-xs"
-              title={`Active Clinic: ${profile?.name || myClinics?.[0]?.name || 'Clinic'} (Click to switch)`}
-            >
-              <Building2 className="w-3.5 h-3.5 text-[#CBFF38]" />
-            </button>
-          </div>
-        ) : (
-          <div className="mt-2.5 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[9px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-[#CBFF38]" />
-                {myClinics && myClinics.length > 1 ? 'Switch Clinic' : 'Active Clinic'}
-              </label>
-              {myClinics && myClinics.length > 1 && (
-                <span className="text-[8px] font-bold bg-[#CBFF38]/20 text-[#0B1120] px-1.5 py-0.2 rounded">
-                  {myClinics.length}
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <select
-                value={profile?.id || (myClinics[0]?.id) || ''}
-                onChange={(e) => handleClinicChange(e.target.value)}
-                disabled={!myClinics || myClinics.length <= 1}
-                className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-black text-gray-900 appearance-none pr-7 outline-none truncate transition-colors ${
-                  myClinics && myClinics.length > 1
-                    ? 'cursor-pointer hover:bg-gray-100 focus:ring-1 focus:ring-[#CBFF38]'
-                    : 'cursor-default opacity-90'
-                }`}
-              >
-                {sortedClinics.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    🏥 {c.name} {c.address?.city ? `(${c.address.city})` : ''}
-                  </option>
-                ))}
-              </select>
-              {myClinics && myClinics.length > 1 && (
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-              )}
-            </div>
-          </div>
-        )
-      )}
-    </div>
-
-    {/* Navigation */}
-    <nav className={`flex-1 min-h-0 py-2 overflow-y-auto custom-scrollbar ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
-      <div className="space-y-0.5">
-        {menuItems.map((item) => {
-          const label = currentLang === 'el' && (item as any).labelGr ? (item as any).labelGr : item.label;
-          return (
-            <NavLink
-              key={item.id}
-              to={item.path}
-              onClick={closeSidebar}
-              title={label}
-              className={({ isActive }) =>
-                `group relative flex items-center rounded-xl transition-all duration-200 ${
-                  isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2'
-                } ${
-                  isActive
-                    ? 'bg-black text-[#CBFF38] shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900'
-                }`
-              }
-            >
-              <div className="transition-transform duration-200 group-hover:scale-105 shrink-0 relative">
-                {iconMap[item.icon]}
-                {isCollapsed && item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-white" />
-                )}
-                {isCollapsed && item.id === 'my-notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-black" />
-                )}
-              </div>
-              {!isCollapsed && (
-                <>
-                  <span className="text-[10px] font-black uppercase tracking-wider truncate">
-                    {label}
-                  </span>
-                  {item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
-                    <div className="ml-auto bg-[#CBFF38] text-black text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
-                      {upcomingAppointmentsCount > 99 ? '99+' : upcomingAppointmentsCount}
-                    </div>
+        {/* Navigation */}
+        <nav className={`flex-1 min-h-0 py-2 overflow-y-auto custom-scrollbar ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
+          <div className="space-y-0.5">
+            {menuItems.map((item) => {
+              const label = currentLang === 'el' && (item as any).labelGr ? (item as any).labelGr : item.label;
+              return (
+                <NavLink
+                  key={item.id}
+                  to={item.path}
+                  onClick={closeSidebar}
+                  title={label}
+                  className={({ isActive }) =>
+                    `group relative flex items-center rounded-xl transition-all duration-200 ${isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2'
+                    } ${isActive
+                      ? 'bg-black text-[#CBFF38] shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900'
+                    }`
+                  }
+                >
+                  <div className="transition-transform duration-200 group-hover:scale-105 shrink-0 relative">
+                    {iconMap[item.icon]}
+                    {isCollapsed && item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-white" />
+                    )}
+                    {isCollapsed && item.id === 'my-notifications' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#CBFF38] ring-2 ring-black" />
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <>
+                      <span className="text-[10px] font-black uppercase tracking-wider truncate">
+                        {label}
+                      </span>
+                      {item.id === 'appointments' && upcomingAppointmentsCount > 0 && (
+                        <div className="ml-auto bg-[#CBFF38] text-black text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                          {upcomingAppointmentsCount > 99 ? '99+' : upcomingAppointmentsCount}
+                        </div>
+                      )}
+                      {item.id === 'my-notifications' && unreadCount > 0 && (
+                        <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </div>
+                      )}
+                    </>
                   )}
-                  {item.id === 'my-notifications' && unreadCount > 0 && (
-                    <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm shrink-0">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </div>
-                  )}
-                </>
-              )}
-            </NavLink>
-          );
-        })}
-      </div>
-    </nav>
-
-    {/* User Profile & Logout */}
-    <div className={`m-2 mt-1 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-2 shrink-0 ${isCollapsed ? 'p-1.5 items-center' : 'p-3'}`}>
-      {isCollapsed ? (
-        <>
-          {/* Mini language toggle */}
-          <button
-            onClick={() => handleLanguageSwitch(currentLang === 'en' ? 'el' : 'en')}
-            className="size-7 rounded-lg bg-white border border-gray-200 text-[9px] font-black uppercase text-gray-700 hover:bg-[#CBFF38] hover:text-black transition-all flex items-center justify-center shadow-xs"
-            title={`Language: ${currentLang.toUpperCase()} (Click to toggle)`}
-          >
-            {currentLang.toUpperCase()}
-          </button>
-
-          {/* Mini Avatar */}
-          <div
-            className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center notranslate cursor-pointer"
-            title={`${user?.firstName} ${user?.lastName} (${user?.role?.replace('_', ' ')})`}
-          >
-            <span className="text-black font-black text-[10px]">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </span>
+                </NavLink>
+              );
+            })}
           </div>
+        </nav>
 
-          {/* Mini Logout */}
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
-        </>
-      ) : (
-        <>
-          {/* Language Switcher */}
-          <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-lg border border-gray-100">
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Language</span>
-            <div className="flex items-center rounded-md overflow-hidden border border-gray-200 bg-white">
+        {/* User Profile & Logout */}
+        <div className={`m-2 mt-1 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-2 shrink-0 ${isCollapsed ? 'p-1.5 items-center' : 'p-3'}`}>
+          {isCollapsed ? (
+            <>
+              {/* Mini language toggle */}
               <button
-                onClick={() => handleLanguageSwitch('en')}
-                className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
-                  currentLang === 'en'
-                    ? 'bg-[#CBFF38] text-black shadow-xs'
-                    : 'text-gray-500 hover:text-black'
-                }`}
-                title="Switch to English"
+                onClick={() => handleLanguageSwitch(currentLang === 'en' ? 'el' : 'en')}
+                className="size-7 rounded-lg bg-white border border-gray-200 text-[9px] font-black uppercase text-gray-700 hover:bg-[#CBFF38] hover:text-black transition-all flex items-center justify-center shadow-xs"
+                title={`Language: ${currentLang.toUpperCase()} (Click to toggle)`}
               >
-                EN
+                {currentLang.toUpperCase()}
               </button>
-              <div className="w-px h-3 bg-gray-200" />
-              <button
-                onClick={() => handleLanguageSwitch('el')}
-                className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${
-                  currentLang === 'el'
-                    ? 'bg-[#CBFF38] text-black shadow-xs'
-                    : 'text-gray-500 hover:text-black'
-                }`}
-                title="Switch to Greek"
-              >
-                ΕΛ
-              </button>
-            </div>
-          </div>
 
-          {/* User Info & Sign Out */}
-          <div className="flex items-center justify-between gap-2 pt-0.5">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center shrink-0 notranslate">
+              {/* Mini Avatar */}
+              <div
+                className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center notranslate cursor-pointer"
+                title={`${user?.firstName} ${user?.lastName} (${user?.role?.replace('_', ' ')})`}
+              >
                 <span className="text-black font-black text-[10px]">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-black text-[10px] uppercase tracking-tight text-gray-900 truncate notranslate">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none notranslate">
-                  {user?.role?.replace('_', ' ')}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Sign Out"
-              className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs shrink-0"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  </aside>
 
- {/* Main Content */}
- <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-  {/* Always-Visible Top Clinic Switcher Bar for Multi-Clinic Users (Desktop, Tablet & Mobile) */}
-  {sortedClinics.length > 1 && (
-    <div className="shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2 flex items-center justify-between gap-3 flex-wrap z-20 shadow-2xs">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-gray-500 shrink-0">
-          <Building2 className="w-3.5 h-3.5 text-black" />
-          {currentLang === 'el' ? 'Ενεργή Κλινική' : 'Active Clinic'}
-          <span className="bg-[#CBFF38] text-black px-1.5 py-0.5 rounded text-[9px] font-black">
-            {sortedClinics.length}
-          </span>
-        </span>
-        {/* Quick-switch clinic pills on md+ screens when user has 2–5 clinics (e.g. multi-clinic secretariat) */}
-        {sortedClinics.length <= 5 && (
-          <div className="hidden md:flex items-center gap-1.5 flex-wrap">
-            {sortedClinics.map((c) => {
-              const isSelected = (profile?.id || sortedClinics[0]?.id) === c.id;
-              return (
+              {/* Mini Logout */}
+              <button
+                onClick={handleLogout}
+                title="Sign Out"
+                className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Language Switcher */}
+              <div className="flex items-center justify-between px-2.5 py-1 bg-white rounded-lg border border-gray-100">
+                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Language</span>
+                <div className="flex items-center rounded-md overflow-hidden border border-gray-200 bg-white">
+                  <button
+                    onClick={() => handleLanguageSwitch('en')}
+                    className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${currentLang === 'en'
+                      ? 'bg-[#CBFF38] text-black shadow-xs'
+                      : 'text-gray-500 hover:text-black'
+                      }`}
+                    title="Switch to English"
+                  >
+                    EN
+                  </button>
+                  <div className="w-px h-3 bg-gray-200" />
+                  <button
+                    onClick={() => handleLanguageSwitch('el')}
+                    className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all ${currentLang === 'el'
+                      ? 'bg-[#CBFF38] text-black shadow-xs'
+                      : 'text-gray-500 hover:text-black'
+                      }`}
+                    title="Switch to Greek"
+                  >
+                    ΕΛ
+                  </button>
+                </div>
+              </div>
+
+              {/* User Info & Sign Out */}
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="size-7 bg-white shadow-xs rounded-lg border border-gray-100 flex items-center justify-center shrink-0 notranslate">
+                    <span className="text-black font-black text-[10px]">
+                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black text-[10px] uppercase tracking-tight text-gray-900 truncate notranslate">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none notranslate">
+                      {user?.role?.replace('_', ' ')}
+                    </p>
+                  </div>
+                </div>
                 <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => handleClinicChange(c.id)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all whitespace-nowrap border ${
-                    isSelected
-                      ? 'bg-black text-[#CBFF38] border-black shadow-xs'
-                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-black'
-                  }`}
+                  onClick={handleLogout}
+                  title="Sign Out"
+                  className="size-7 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg border border-gray-100 transition-all shadow-xs shrink-0"
                 >
-                  {c.name}
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
-              );
-            })}
+              </div>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        {/* Always-Visible Top Clinic Switcher Bar for Multi-Clinic Users (Desktop, Tablet & Mobile) */}
+        {sortedClinics.length > 1 && (
+          <div className="shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2 flex items-center justify-between gap-3 flex-wrap z-20 shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-gray-500 shrink-0">
+                <Building2 className="w-3.5 h-3.5 text-black" />
+                {currentLang === 'el' ? 'Ενεργή Κλινική' : 'Active Clinic'}
+                <span className="bg-[#CBFF38] text-black px-1.5 py-0.5 rounded text-[9px] font-black">
+                  {sortedClinics.length}
+                </span>
+              </span>
+              {/* Quick-switch clinic pills on md+ screens when user has 2–5 clinics (e.g. multi-clinic secretariat) */}
+              {sortedClinics.length <= 5 && (
+                <div className="hidden md:flex items-center gap-1.5 flex-wrap">
+                  {sortedClinics.map((c) => {
+                    const isSelected = (profile?.id || sortedClinics[0]?.id) === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleClinicChange(c.id)}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all whitespace-nowrap border ${isSelected
+                          ? 'bg-black text-[#CBFF38] border-black shadow-xs'
+                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:text-black'
+                          }`}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Compact dropdown always available on smaller viewports (and when > 5 clinics) */}
+            <div className={`relative ${sortedClinics.length <= 5 ? 'md:hidden' : ''} min-w-[200px]`}>
+              <select
+                aria-label={currentLang === 'el' ? 'Αλλαγή Κλινικής' : 'Switch Clinic'}
+                value={profile?.id || sortedClinics[0]?.id || ''}
+                onChange={(e) => handleClinicChange(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-3 pr-8 py-1.5 text-xs font-black text-gray-900 appearance-none outline-none focus:ring-2 focus:ring-black cursor-pointer"
+              >
+                {sortedClinics.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.address?.city ? `(${c.address.city})` : ''}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Compact dropdown always available on smaller viewports (and when > 5 clinics) */}
-      <div className={`relative ${sortedClinics.length <= 5 ? 'md:hidden' : ''} min-w-[200px]`}>
-        <select
-          aria-label={currentLang === 'el' ? 'Αλλαγή Κλινικής' : 'Switch Clinic'}
-          value={profile?.id || sortedClinics[0]?.id || ''}
-          onChange={(e) => handleClinicChange(e.target.value)}
-          className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-3 pr-8 py-1.5 text-xs font-black text-gray-900 appearance-none outline-none focus:ring-2 focus:ring-black cursor-pointer"
-        >
-          {sortedClinics.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} {c.address?.city ? `(${c.address.city})` : ''}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
-      </div>
+        <div className={`flex-1 flex flex-col min-h-0 min-w-0 h-full ${isDiaryOrCalendar ? 'overflow-y-hidden overflow-x-auto' : 'overflow-y-auto overflow-x-auto no-scrollbar'}`}>
+          <Outlet />
+        </div>
+      </main>
     </div>
-  )}
-  <div className={`flex-1 flex flex-col min-h-0 min-w-0 h-full ${isDiaryOrCalendar ? 'overflow-y-hidden overflow-x-auto' : 'overflow-y-auto overflow-x-auto no-scrollbar'}`}>
-  <Outlet />
-  </div>
-  </main>
- </div>
- );
+  );
 };
 
 export default ClinicLayout;

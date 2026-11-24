@@ -795,6 +795,21 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     }
   };
 
+  const handleConfirm = async () => {
+    if (!existingAppointment) return;
+    setIsSubmitting(true);
+    try {
+      await bookingAPI.updateStatus(existingAppointment.id, 'CONFIRMED');
+      toast.success(isGreek ? 'Το ραντεβού επιβεβαιώθηκε.' : 'Appointment confirmed.');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || (isGreek ? 'Η επιβεβαίωση απέτυχε.' : 'Failed to confirm appointment.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handlePayAtVenue = async () => {
     if (isCompleted) return;
     if (!existingAppointment) return;
@@ -904,9 +919,21 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               {mode === 'create' ? 'Fill in the details below' : existingAppointment ? `ID: #${existingAppointment.id.slice(-8).toUpperCase()}` : ''}
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Pending appointment (e.g. booked online by the client): confirm in one click */}
+            {mode === 'edit' && existingAppointment && String(existingAppointment.status || '').toUpperCase() === 'PENDING' && (
+              <button
+                onClick={handleConfirm}
+                disabled={isSubmitting}
+                className="h-8 px-4 rounded-lg bg-white text-emerald-700 text-[11px] font-black uppercase tracking-wide hover:bg-emerald-50 transition-colors disabled:opacity-50"
+              >
+                {isGreek ? 'Επιβεβαίωση' : 'Confirm'}
+              </button>
+            )}
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
 

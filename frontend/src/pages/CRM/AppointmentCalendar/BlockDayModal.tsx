@@ -35,7 +35,7 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customReason, setCustomReason] = useState('');
   const [form, setForm] = useState<BlockDayFormData>({
-    clinicId: clinics[0]?.id || '',
+    clinicId: '',
     date: initialDate || format(new Date(), 'yyyy-MM-dd'),
     reason: 'CLINIC_CLOSED',
   });
@@ -44,7 +44,8 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
     if (isOpen) {
       setForm(prev => ({
         ...prev,
-        clinicId: (initialClinicId && initialClinicId !== 'all' ? initialClinicId : '') || prev.clinicId || clinics[0]?.id || '',
+        // With "All Clinics" selected the user must choose the clinic (no silent first-clinic fallback)
+        clinicId: initialClinicId && initialClinicId !== 'all' ? initialClinicId : (clinics.length === 1 ? clinics[0].id : ''),
         date: initialDate || format(new Date(), 'yyyy-MM-dd'),
       }));
       setCustomReason('');
