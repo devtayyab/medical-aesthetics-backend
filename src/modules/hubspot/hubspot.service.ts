@@ -266,6 +266,76 @@ export class HubspotService {
     }
   }
 
+  /**
+   * Contacts typed in by hand in HubSpot (computer or mobile app, not a form), created
+   * inside [from, to). Read only.
+   */
+  async listManualContacts(from: Date, to: Date): Promise<Array<{ id: string; properties: Record<string, string> }>> {
+    if (!this.HUBSPOT_TOKEN) {
+      throw new HttpException('HUBSPOT_API_TOKEN is not set on the server.', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    const contacts: Array<{ id: string; properties: Record<string, string> }> = [];
+    let after: string | undefined;
+    do {
+      const response = await this.hubspotRequest(() =>
+        axios.post(
+          `${this.BASE_URL}/v3/objects/contacts/search`,
+          {
+            filterGroups: [{
+              filters: [
+                { propertyName: 'hs_object_source_label', operator: 'IN', values: ['CRM_UI', 'MOBILE_IOS', 'MOBILE_ANDROID'] },
+                { propertyName: 'createdate', operator: 'GTE', value: String(from.getTime()) },
+                { propertyName: 'createdate', operator: 'LT', value: String(to.getTime()) },
+              ],
+            }],
+            properties: ['firstname', 'lastname', 'email', 'phone', 'mobilephone', 'hubspot_owner_id', 'createdate', 'hs_object_source_label'],
+            sorts: [{ propertyName: 'createdate', direction: 'ASCENDING' }],
+            limit: 200,
+            ...(after ? { after } : {}),
+          },
+          { headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` } },
+        ),
+      );
+      contacts.push(...(response.data.results || []));
+      after = response.data.paging?.next?.after;
+      // The search API stops at 10,000 results; a single year of manual contacts is far below that.
+    } while (after && contacts.length < 10000);
+    return contacts;
+  }
+
+  /** HubSpot contact owners (active and deactivated), to map a contact to a salesperson. */
+  async listOwners(): Promise<Array<{ id: string; email: string; firstName: string; lastName: string }>> {
+    const owners: Array<{ id: string; email: string; firstName: string; lastName: string }> = [];
+    for (const archived of [false, true]) {
+      let after: string | undefined;
+      do {
+        const response = await this.hubspotRequest(() =>
+          axios.get(`${this.BASE_URL}/v3/owners`, {
+            params: { limit: 500, archived, ...(after ? { after } : {}) },
+            headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` },
+          }),
+        );
+        for (const o of response.data.results || []) {
+          owners.push({ id: String(o.id), email: o.email || '', firstName: o.firstName || '', lastName: o.lastName || '' });
+        }
+        after = response.data.paging?.next?.after;
+      } while (after);
+    }
+    return owners;
+  }
+
+  /** Waits and retries when HubSpot answers 429 (rate limit). */
+  private async hubspotRequest<T>(request: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await request();
+      } catch (error: any) {
+        if (error?.response?.status !== 429 || attempt >= 4) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+      }
+    }
+  }
+
   public async searchContact(email?: string, phone?: string) {
     const filterGroups = [];
     if (email) {

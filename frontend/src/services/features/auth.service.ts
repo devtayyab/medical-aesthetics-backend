@@ -50,6 +50,8 @@ export const authService = {
   resetPassword: (password: string, resetToken: string) =>
     api.post('/auth/reset-password', { password, resetToken }),
 
+  renewSetupLink: (token: string) => api.post('/auth/renew-setup-link', { token }),
+
   forgotPassword: (email: string) =>
     api.post('/auth/forget-password', { email }),
 };

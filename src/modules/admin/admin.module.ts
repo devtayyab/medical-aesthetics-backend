@@ -17,6 +17,8 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { PaymentRecord } from '../payments/entities/payment-record.entity';
+import { AccountInvitationsController } from './account-invitations.controller';
+import { AccountInvitationsService } from './account-invitations.service';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
 import { GiftCardsController } from './gift-cards.controller';
@@ -71,8 +73,8 @@ import { AuditModule } from '../audit/audit.module';
     forwardRef(() => CrmModule),
     AuditModule,
   ],
-  controllers: [AdminController, WalletController, GiftCardsController, PaymentsController, BlogsController, PublicBlogsController],
-  providers: [AdminService, WalletService, GiftCardsService, PaymentsService, BlogsService, BlogSchedulerService],
+  controllers: [AccountInvitationsController, AdminController, WalletController, GiftCardsController, PaymentsController, BlogsController, PublicBlogsController],
+  providers: [AccountInvitationsService, AdminService, WalletService, GiftCardsService, PaymentsService, BlogsService, BlogSchedulerService],
   exports: [AdminService],
 })
 export class AdminModule { }

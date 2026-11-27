@@ -130,6 +130,13 @@ export class AuthController {
     return this.authService.forgotPassword(body.email);
   }
 
+  @Post('renew-setup-link')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Email a new "Set your password" link in place of an expired one' })
+  async renewSetupLink(@Body() body: { token: string }) {
+    return this.authService.renewSetupLink(body?.token);
+  }
+
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset or set password using the emailed token' })

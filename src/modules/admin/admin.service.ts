@@ -237,9 +237,13 @@ export class AdminService {
 
     if (query?.search && query.search.trim()) {
       const searchTrimmed = query.search.trim();
+      // Phone numbers are compared on digits only, so spaces, dashes and +30 do not matter.
+      const searchDigits = /^[ds+()-.]+$/.test(searchTrimmed)
+        ? searchTrimmed.replace(/D/g, '').replace(/^(00)?30(?=d{3})/, '')
+        : '';
       queryBuilder.andWhere(
-        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR CONCAT(COALESCE(user.firstName, \'\'), \' \', COALESCE(user.lastName, \'\')) ILIKE :search OR CONCAT(COALESCE(user.lastName, \'\'), \' \', COALESCE(user.firstName, \'\')) ILIKE :search OR user.email ILIKE :search)',
-        { search: `%${searchTrimmed}%` }
+        '(' + (searchDigits.length >= 3 ? "regexp_replace(COALESCE(user.phone, ''), '[^0-9]', '', 'g') LIKE :searchDigits OR " : '') + 'user.firstName ILIKE :search OR user.lastName ILIKE :search OR CONCAT(COALESCE(user.firstName, \'\'), \' \', COALESCE(user.lastName, \'\')) ILIKE :search OR CONCAT(COALESCE(user.lastName, \'\'), \' \', COALESCE(user.firstName, \'\')) ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${searchTrimmed}%`, searchDigits: `%${searchDigits}%` }
       );
     }
 

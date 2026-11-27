@@ -10,12 +10,13 @@ import { ConsentRecord } from './entities/consent-record.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { NotificationTemplate } from '../notifications/entities/notification-template.entity';
 import { EmailBounce } from '../notifications/entities/email-bounce.entity';
+import { PlatformSettings } from '../admin/entities/platform-settings.entity';
 import { MailService } from '../notifications/services/mail.service';
 import { EmailSuppressionService } from '../notifications/services/email-suppression.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, ConsentRecord, ClinicOwnership, NotificationTemplate, EmailBounce]),
+    TypeOrmModule.forFeature([User, ConsentRecord, ClinicOwnership, NotificationTemplate, EmailBounce, PlatformSettings]),
     // Secrets are passed per call in AccountLinksService.
     JwtModule.register({}),
   ],

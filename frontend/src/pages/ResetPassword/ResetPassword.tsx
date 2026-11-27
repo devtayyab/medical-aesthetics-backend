@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
-import { useNavigate, useSearchParams, Link } from"react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from"react-router-dom";
 import { resetPassword } from"@/store/slices/authSlice";
+import { authAPI } from"@/services/api";
 import { Button } from"@/components/atoms/Button/Button";
 import { Input } from"@/components/atoms/Input/Input";
 import { Card } from"@/components/atoms/Card/Card";
@@ -83,8 +84,34 @@ const ResetPassword: React.FC = () => {
  const navigate = useNavigate();
  const [searchParams] = useSearchParams();
  const token = searchParams.get("token");
- // setup=1: link for an account created by staff ("set your password" for the first time)
- const isSetup = searchParams.get("setup") ==="1";
+ // /set-password (older emails: /reset-password?setup=1): first password of an account created
+ // by staff. /reset-password alone is the forgotten-password flow.
+ const { pathname } = useLocation();
+ const isSetup = pathname ==="/set-password" || searchParams.get("setup") ==="1";
+ const isGreek = (localStorage.getItem("preferredLang") ||"el") ==="el";
+ const t = (en: string, el: string) => (isSetup && isGreek ? el : en);
+ const [renewState, setRenewState] = useState<"idle" |"sending" |"sent">("idle");
+ const [renewError, setRenewError] = useState("");
+
+ useEffect(() => {
+ const previous = document.title;
+ if (isSetup) document.title = t("Set Your Password","Ορισμός κωδικού") +" | Beauty Doctors";
+ return () => { document.title = previous; };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [isSetup]);
+
+ const handleRenew = async () => {
+ if (!token) return;
+ setRenewError("");
+ setRenewState("sending");
+ try {
+ await authAPI.renewSetupLink(token);
+ setRenewState("sent");
+ } catch (err: any) {
+ setRenewState("idle");
+ setRenewError(err?.response?.data?.message || t("Could not send a new link.","Δεν ήταν δυνατή η αποστολή νέου συνδέσμου."));
+ }
+ };
 
  const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
@@ -95,7 +122,7 @@ const ResetPassword: React.FC = () => {
 
  useEffect(() => {
  if (!token) {
- setPasswordError("Invalid or missing reset token.");
+ setPasswordError(t("Invalid or missing link.","Μη έγκυρος σύνδεσμος."));
  }
  }, [token]);
 
@@ -104,11 +131,11 @@ const ResetPassword: React.FC = () => {
  if (!token) return;
 
  if (password.length < 8) {
- setPasswordError("Password must be at least 8 characters.");
+ setPasswordError(t("Password must be at least 8 characters.","Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες."));
  return;
  }
  if (password !== confirmPassword) {
- setPasswordError("Passwords do not match.");
+ setPasswordError(t("Passwords do not match.","Οι κωδικοί δεν ταιριάζουν."));
  return;
  }
 
@@ -128,17 +155,17 @@ const ResetPassword: React.FC = () => {
  <div className={iconContainerStyle} style={{ background: '#dcfce7' }}>
  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
  </div>
- <h2 className={titleStyle}>{isSetup ?"Password set!" :"Password Reset!"}</h2>
+ <h2 className={titleStyle}>{isSetup ? t("Your password is set!","Ο κωδικός σας ορίστηκε!") :"Password Reset!"}</h2>
  <p className={subtitleStyle}>
- Your security credentials have been updated successfully.
+ {isSetup ? t("Log in with your email to see all your appointments.","Συνδεθείτε με το email σας για να δείτε όλα τα ραντεβού σας.") :"Your security credentials have been updated successfully."}
  </p>
  </div>
  <Button
- onClick={() => navigate("/login")}
+ onClick={() => navigate(isSetup ?"/login?redirect=%2Fappointments" :"/login")}
  fullWidth
  className="h-14 rounded-[16px] bg-slate-900 text-white font-black uppercase tracking-widest text-[12px] flex items-center justify-center gap-2"
  >
- Go to Login <ArrowRight size={18} />
+ {t("Go to Login","Σύνδεση")} <ArrowRight size={18} />
  </Button>
  </Card>
  </div>
@@ -152,8 +179,8 @@ const ResetPassword: React.FC = () => {
  <div className={iconContainerStyle}>
  <Lock className="h-8 w-8 text-slate-900" />
  </div>
- <h2 className={titleStyle}>{isSetup ?"Set your password" :"New Password"}</h2>
- <p className={subtitleStyle}>{isSetup ?"Choose a password (at least 8 characters) to activate your account." :"Please enter a strong new password below."}</p>
+ <h2 className={titleStyle}>{isSetup ? t("Set Your Password","Ορισμός κωδικού") :"New Password"}</h2>
+ <p className={subtitleStyle}>{isSetup ? t("Choose a password (at least 8 characters) to activate your account.","Επιλέξτε κωδικό (τουλάχιστον 8 χαρακτήρες) για να ενεργοποιήσετε τον λογαριασμό σας.") :"Please enter a strong new password below."}</p>
  </div>
 
  {(passwordError || error) && (
@@ -163,12 +190,25 @@ const ResetPassword: React.FC = () => {
  </div>
  )}
 
+ {isSetup && token && (passwordError || renewState !=="idle" || renewError) && (
+ <div className="mb-6 text-center text-[13px] font-semibold text-slate-600">
+ {renewState ==="sent" ? (
+ t("We sent a new link to your email.","Στείλαμε νέο σύνδεσμο στο email σας.")
+ ) : (
+ <button type="button" onClick={handleRenew} disabled={renewState ==="sending"} className="underline">
+ {t("Link expired? Send me a new one","Έληξε ο σύνδεσμος; Στείλτε μου νέο")}
+ </button>
+ )}
+ {renewError && <p className="text-red-500 mt-1">{renewError}</p>}
+ </div>
+ )}
+
  <form onSubmit={handleSubmit} className={formStyle}>
  <div className="space-y-2">
- <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">New Password</label>
+ <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("New Password","Νέος κωδικός")}</label>
  <Input
  type="password"
- placeholder="Min. 8 characters"
+ placeholder={t("Min. 8 characters","Τουλάχιστον 8 χαρακτήρες")}
  value={password}
  onChange={(e) => {
  setPassword(e.target.value);
@@ -182,10 +222,10 @@ const ResetPassword: React.FC = () => {
  </div>
 
  <div className="space-y-2">
- <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
+ <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("Confirm Password","Επιβεβαίωση κωδικού")}</label>
  <Input
  type="password"
- placeholder="Repeat new password"
+ placeholder={t("Repeat new password","Επαναλάβετε τον κωδικό")}
  value={confirmPassword}
  onChange={(e) => {
  setConfirmPassword(e.target.value);
@@ -204,7 +244,7 @@ const ResetPassword: React.FC = () => {
  disabled={isLoading || !token}
  className="mt-4 h-14 rounded-[16px] bg-[#CBFF38] text-slate-900 hover:bg-[#b0e625] font-black uppercase tracking-widest text-[12px]"
  >
- {isLoading ?"Updating..." :"Secure Account"}
+ {isLoading ? t("Saving...","Αποθήκευση...") : isSetup ? t("Set Password","Ορισμός κωδικού") :"Secure Account"}
  </Button>
  </form>
  </Card>

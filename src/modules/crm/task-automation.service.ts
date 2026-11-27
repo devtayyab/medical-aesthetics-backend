@@ -30,12 +30,8 @@ export interface TaskAutomationRule {
 export const CONFIRMATION_RULE_ID = 'appointment_confirmation';
 
 /** Roles that may own CRM tasks (BeautyDoctors staff). Doctors/clinic/clients never do. */
-export const TASK_OWNER_ROLES: string[] = [
-  UserRole.SALESPERSON,
-  UserRole.MANAGER,
-  UserRole.ADMIN,
-  UserRole.SUPER_ADMIN,
-];
+export { TASK_OWNER_ROLES } from './task-owner-roles';
+import { TASK_OWNER_ROLES } from './task-owner-roles';
 
 const ACTIVE_STATUSES: string[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 const DONE_STATUSES: string[] = [AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED];

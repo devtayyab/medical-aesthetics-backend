@@ -7,6 +7,7 @@ import { Brackets } from 'typeorm';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { BUSINESS_TIMEZONE, formatDateTimeInTz, parseWallClockInTz } from '../../common/utils/timezone.util';
 import { TASK_OWNER_ROLES } from './task-automation.service';
+import { importHubspotManualContacts, HubspotContactImportOptions } from './hubspot-contact-import';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { randomBytes } from 'crypto';
@@ -6082,6 +6083,16 @@ export class CrmService implements OnModuleInit {
     }
     if (field.length || row.length) { row.push(field); rows.push(row); }
     return rows;
+  }
+
+  /** Admin import of manually created HubSpot contacts as leads; see hubspot-contact-import.ts. */
+  async importHubspotManualContacts(options: HubspotContactImportOptions) {
+    const result = await importHubspotManualContacts(
+      { hubspot: this.hubspotService, leads: this.leadsRepository, users: this.usersRepository },
+      options,
+    );
+    if (result.created) this.leadStatsCache = null;
+    return result;
   }
 
   async bulkCreateActions(leadIds: string[], taskData: Partial<CrmAction>): Promise<any> {

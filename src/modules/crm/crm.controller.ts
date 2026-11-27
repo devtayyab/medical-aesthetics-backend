@@ -559,6 +559,23 @@ export class CrmController {
     return this.crmService.importTasksFromCsv(body?.csv, !!body?.dryRun, req.user?.id);
   }
 
+  @Post('leads/import-hubspot-contacts')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Import manually created HubSpot contacts as leads (one year, or all years when year is left out). Reports only unless dryRun is false.' })
+  importHubspotContacts(
+    @Body() body: { year?: number; dryRun?: boolean; ownerMap?: Record<string, string> },
+    @Request() req,
+  ) {
+    return this.crmService.importHubspotManualContacts({
+      year: body?.year === undefined || body?.year === null || (body.year as any) === '' ? null : Number(body.year),
+      // Writing needs an explicit `dryRun: false`.
+      dryRun: body?.dryRun !== false,
+      ownerMap: body?.ownerMap,
+      importedBy: req.user?.id,
+    });
+  }
+
   @Post('actions/bulk')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)

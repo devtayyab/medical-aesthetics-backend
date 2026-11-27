@@ -11,7 +11,6 @@ import { PendingList } from './PendingList';
 import { downloadXlsx, athensDateTime } from '@/utils/exportXlsx';
 
 import { CalendarToolbar } from './CalendarToolbar';
-import { SalesPersonSidebar } from './SalesPersonSidebar';
 import { CalendarGrid } from './CalendarGrid';
 import { AppointmentModal } from './AppointmentModal';
 import { BlockSlotModal } from './BlockSlotModal';
@@ -57,7 +56,7 @@ export const AppointmentCalendar: React.FC = () => {
     }
     return { ...DEFAULT_FILTERS, clinicId: last || 'all' };
   });
-  const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<string>(
+  const [selectedSalesPersonId] = useState<string>(
     canSeeAll ? 'all' : user?.id || 'all',
   );
   // Cancelled appointments are hidden unless the user asks for them
@@ -100,12 +99,6 @@ export const AppointmentCalendar: React.FC = () => {
       viewMode,
       filters: filtersWithSalesPerson,
     });
-
-  // Filter salespersons for sidebar based on role
-  const visibleSalespersons = useMemo(() => {
-    if (canSeeAll) return salespersons;
-    return salespersons.filter((sp: any) => sp.id === user?.id);
-  }, [salespersons, canSeeAll, user?.id]);
 
   // ── Filtered appointments (by payment status, which isn't server-side) ──────
   const displayAppointments = useMemo(() => {
@@ -413,18 +406,6 @@ export const AppointmentCalendar: React.FC = () => {
 
   return (
     <div className="flex flex-1 h-full w-full min-h-0 bg-slate-50 overflow-hidden">
-      {/* Salesperson Sidebar */}
-      <SalesPersonSidebar
-        salespersons={visibleSalespersons}
-        selectedId={selectedSalesPersonId}
-        currentUserId={user?.id}
-        currentUserName={
-          user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : undefined
-        }
-        isManager={canSeeAll}
-        onSelect={setSelectedSalesPersonId}
-      />
-
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden">
         {/* Toolbar */}

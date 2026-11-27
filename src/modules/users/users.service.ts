@@ -189,6 +189,8 @@ export class UsersService {
     assertPasswordPolicy(newPassword);
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.usersRepository.update(id, {
+      // The account now has a password: stop inviting the customer to set one.
+      accountSetupPending: false,
       ...extra,
       passwordHash,
       failedLoginAttempts: 0,

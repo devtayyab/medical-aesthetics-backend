@@ -1,5 +1,5 @@
 import React, { useState } from"react";
-import { Edit2, Save, X, Search, UserX } from "lucide-react";
+import { Edit2, Save, X, Search, UserX, Phone } from "lucide-react";
 import type { User, Clinic } from"@/types";
 import { adminAPI } from "@/services/api";
 import toast from "react-hot-toast";
@@ -166,9 +166,14 @@ export const AccessControl: React.FC<AccessControlProps> = ({
   const tabObj = tabs.find(t => t.name === activeTab);
   const matchesTab = activeTab === "All" || (tabObj && tabObj.roles.includes(user.role));
   const q = searchQuery.trim().toLowerCase();
+  // Phone: digits only on both sides, so "694 123" finds "+30 694-123..." and 0030/+30 do not matter.
+  const qDigits = q.replace(/D/g, "").replace(/^(00)?30(?=d{3})/, "");
+  const phoneDigits = String(user.phone || "").replace(/D/g, "");
   const matchesSearch = !q ||
   `${user.firstName} ${user.lastName}`.toLowerCase().includes(q) ||
-  user.email.toLowerCase().includes(q);
+  `${user.lastName} ${user.firstName}`.toLowerCase().includes(q) ||
+  (user.email || "").toLowerCase().includes(q) ||
+  (qDigits.length >= 3 && /^[ds+()-.]+$/.test(q) && phoneDigits.includes(qDigits));
   const matchesStatus = showInactive ? user.isActive === false : true;
   return matchesTab && matchesSearch && matchesStatus;
  }) : [];
@@ -209,7 +214,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search by name or email..."
+        placeholder={isGreek ? "Αναζήτηση με όνομα, email ή τηλέφωνο..." : "Search by name, email or phone number..."}
         className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent shadow-sm transition-all"
       />
       {searchQuery && (
@@ -248,6 +253,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  <thead className="bg-gray-50">
  <tr>
  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+ <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{isGreek ? 'Τηλέφωνο' : 'Phone Number'}</th>
  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clinics</th>
  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Target</th>
@@ -258,7 +264,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  <tbody className="bg-white divide-y divide-gray-200">
  {filteredUsers.length === 0 ? (
  <tr>
- <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+ <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
  No users found in this category.
  </td>
  </tr>
@@ -267,6 +273,15 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  <td className="px-6 py-4 whitespace-nowrap">
  <div className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</div>
  <div className="text-sm text-gray-500">{user.email}</div>
+ {/* Small screens have no phone column: the number sits under the email. */}
+ {user.phone && (
+ <a href={`tel:${user.phone}`} className="md:hidden mt-0.5 inline-flex items-center gap-1 text-sm text-gray-700">
+ <Phone className="w-3 h-3" /> {user.phone}
+ </a>
+ )}
+ </td>
+ <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+ {user.phone ? <a href={`tel:${user.phone}`} className="hover:underline">{user.phone}</a> : <span className="text-gray-400">-</span>}
  </td>
  <td className="px-6 py-4 whitespace-nowrap">
  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 uppercase">
@@ -322,6 +337,17 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  </div>
 
  <div className="space-y-4">
+ <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+ <div className="font-semibold text-gray-900 break-words">{editingUser.firstName} {editingUser.lastName}</div>
+ <div className="text-gray-600 break-all">{editingUser.email}</div>
+ <div className="mt-1 flex items-center gap-1.5 text-gray-800">
+ <Phone className="w-3.5 h-3.5 text-gray-500" />
+ <span className="text-gray-500">{isGreek ? 'Τηλέφωνο:' : 'Phone Number:'}</span>
+ {editingUser.phone
+ ? <a href={`tel:${editingUser.phone}`} className="font-medium hover:underline">{editingUser.phone}</a>
+ : <span className="text-gray-400">{isGreek ? 'Δεν υπάρχει' : 'Not available'}</span>}
+ </div>
+ </div>
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
  <select

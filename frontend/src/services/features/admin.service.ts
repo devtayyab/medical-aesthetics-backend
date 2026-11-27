@@ -2,6 +2,12 @@ import { api } from '../client';
 
 export const adminService = {
   getMetrics: () => api.get('/admin/metrics'),
+  getPendingAccounts: () => api.get('/admin/account-invitations'),
+  sendAccountInvitations: (userIds: string[], resend: boolean) =>
+    api.post('/admin/account-invitations/send', { userIds, resend }),
+  getInvitationSettings: () => api.get('/admin/account-invitations/settings'),
+  updateInvitationSettings: (data: { mode: string; testEmails: string[] }) =>
+    api.put('/admin/account-invitations/settings', data),
   getTags: () => api.get('/admin/tags'),
   createTag: (data: { name: string; color?: string; description?: string }) => api.post('/admin/tags', data),
   getClinics: () => api.get('/admin/clinics'),

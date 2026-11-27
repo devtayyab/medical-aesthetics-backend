@@ -413,10 +413,15 @@ export class AuthService {
       // claim it instead of creating a second account. The password is only set through
       // the emailed link, so nobody can take over an account without owning the mailbox.
       if (existing.role === UserRole.CLIENT && (existing.accountSetupPending || !existing.lastLoginAt) && existing.isActive) {
-        await this.usersService.update(existing.id, { accountSetupPending: true } as any);
-        const fresh = await this.usersService.findById(existing.id);
-        // The customer asked for it: always send, even if an invitation went out before.
-        await this.accountLinks.sendSetPasswordLink(fresh, "client", { force: true });
+        // The customer asked for this email themselves, so it goes out even while automatic
+        // invitations are switched off. Only promise an email that was really sent.
+        const result = await this.accountLinks.deliverClientInvitation(existing, { requestedBy: "customer" });
+        if (!result.sent && result.reason !== "just_sent") {
+          console.warn(`Set-password email for existing account ${existing.id} not sent: ${result.reason}`);
+          throw new ConflictException(
+            "Υπάρχει ήδη λογαριασμός με αυτό το email, αλλά δεν μπορέσαμε να στείλουμε το email ορισμού κωδικού. Επικοινωνήστε μαζί μας στο info@beautydoctors.gr. / An account with this email already exists, but we could not send the set-password email. Please contact us at info@beautydoctors.gr.",
+          );
+        }
         return {
           requiresVerification: true,
           claimedExistingAccount: true,
@@ -560,6 +565,20 @@ export class AuthService {
     return {
       message: 'If an account matches that email address, a password reset link has been dispatched.',
     };
+  }
+
+  /** Expired "Set your password" link: emails a new one to the same account. */
+  async renewSetupLink(token: string) {
+    const payload = token ? this.accountLinks.verifyExpiredSetupToken(token) : null;
+    const user = payload ? await this.usersService.findById(payload.sub).catch(() => null) : null;
+    if (!user || !user.accountSetupPending || normalizeEmail(user.email) !== normalizeEmail(payload!.email)) {
+      throw new BadRequestException("This link is no longer valid. If you already set a password, please log in.");
+    }
+    const result = await this.accountLinks.deliverClientInvitation(user, { requestedBy: "customer" });
+    if (!result.sent && result.reason !== "just_sent") {
+      throw new BadRequestException("We could not send a new link. Please contact us at info@beautydoctors.gr.");
+    }
+    return { message: "We sent a new link to your email." };
   }
 
   async resetPassword(password: string, resetToken: string) {

@@ -2,9 +2,18 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import { User } from './entities/user.entity';
+import { PlatformSettings } from '../admin/entities/platform-settings.entity';
+import {
+  INVITATION_MODE_KEY,
+  INVITATION_TEST_EMAILS_KEY,
+  InvitationSettings,
+  invitationAllowed,
+  invitationBodyForAppointmentEmail,
+  parseInvitationSettings,
+} from './account-invitation-settings';
 import { NotificationTemplate } from '../notifications/entities/notification-template.entity';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
@@ -20,8 +29,19 @@ export interface AccountInvitationOptions {
   clinicName?: string;
   clinicPhone?: string;
   disableNotifications?: boolean;
-  force?: boolean;
+  /** Who asked for this email; leave out for automatic sends. */
+  requestedBy?: 'admin' | 'customer';
+  /** Admin only: send again although an invitation went out before. */
+  resend?: boolean;
 }
+
+export interface InvitationResult {
+  sent: boolean;
+  reason?: string;
+}
+
+const CLIENT_SETUP_LINK_TTL = '30d';
+const INVITATION_COOLDOWN_MS = 2 * 60 * 1000;
 
 const DEFAULT_CLIENT_INVITATION_SUBJECT = 'Ο λογαριασμός σας στο Beauty Doctors';
 const DEFAULT_CLIENT_INVITATION_CONTENT =
@@ -30,7 +50,7 @@ const DEFAULT_CLIENT_INVITATION_CONTENT =
   'Μέσα από την πλατφόρμα μπορείτε να ανακαλύψετε όλες τις υπηρεσίες των συνεργαζόμενων κλινικών μας, να διαχειρίζεστε τα ραντεβού σας και να απολαμβάνετε αποκλειστικές προσφορές για τα μέλη μας.\n\n' +
   'Για να ενεργοποιήσετε τον λογαριασμό σας, ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n' +
   '{{link}}\n\n' +
-  '(Ο σύνδεσμος ισχύει για 7 ημέρες.)\n\n' +
+  '(Ο σύνδεσμος ισχύει για 30 ημέρες.)\n\n' +
   'Για οποιαδήποτε απορία, μη διστάσετε να επικοινωνήσετε μαζί μας στο {{phone}}.\n\n' +
   'Με εκτίμηση,\nΗ ομάδα Beauty Doctors';
 
@@ -55,6 +75,8 @@ export class AccountLinksService {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(NotificationTemplate)
     private readonly templateRepository: Repository<NotificationTemplate>,
+    @InjectRepository(PlatformSettings)
+    private readonly settingsRepository: Repository<PlatformSettings>,
   ) {}
 
   private async isBlockedRecipient(user?: User | null): Promise<boolean> {
@@ -211,19 +233,6 @@ export class AccountLinksService {
   }
 
   /**
-   * Personal one-click "Set your password" link for an account that staff created and the
-   * customer has not activated yet (`accountSetupPending`). Returns null for anyone else.
-   * Used inside appointment emails; the link is single use and valid for 7 days.
-   */
-  buildAccountSetupUrl(user?: User | null): string | null {
-    if (!user?.id || !user.accountSetupPending || !user.isActive) return null;
-    if (String(user.role || '').toLowerCase() !== 'client') return null;
-    if (!user.email || isPlaceholderEmail(user.email)) return null;
-    const token = this.signPasswordToken(user, 'password_set', '7d');
-    return `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
-  }
-
-  /**
    * Sends the Greek "Set your password" invitation link.
    *
    * For clients:
@@ -237,91 +246,20 @@ export class AccountLinksService {
     context: 'client' | 'staff' = 'client',
     options: AccountInvitationOptions = {},
   ): Promise<boolean> {
+    if (context === 'client') {
+      return (await this.deliverClientInvitation(user, options)).sent;
+    }
+
     if (await this.isBlockedRecipient(user)) {
       this.logger.debug(`Skipping set-password email for user ${user?.id}: missing, invalid/noemail, or bounced address`);
       return false;
-    }
-
-    if (context === 'client') {
-      if (options.disableNotifications || (user as any)?.profile?.disableNotifications === true) {
-        this.logger.debug(`Skipping client invitation for user ${user.id}: notifications disabled`);
-        return false;
-      }
-      // `force` = the customer asked for the link themselves (tried to register), so it is
-      // sent even to bulk-imported customers and even if an invitation went out before.
-      if ((user as any)?.profile?.bulkImported === true && !options.force) {
-        this.logger.debug(`Skipping client invitation for user ${user.id}: bulk-imported customer`);
-        return false;
-      }
-
-      // Reload latest invitationSentAt from DB so concurrent requests can never send twice.
-      const freshUser = await this.usersRepository.findOne({
-        where: { id: user.id },
-        select: ['id', 'invitationSentAt', 'isActive'] as any,
-      });
-      if (!freshUser || !freshUser.isActive) return false;
-      if (freshUser.invitationSentAt && !options.force) {
-        this.logger.debug(`Skipping client invitation for user ${user.id}: already sent at ${freshUser.invitationSentAt.toISOString()}`);
-        return false;
-      }
-
-      const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.ACCOUNT_INVITATION);
-      if (!allowed) {
-        this.logger.debug(`Skipping client invitation for user ${user.id}: ACCOUNT_INVITATION template is OFF`);
-        return false;
-      }
-
-      const token = this.signPasswordToken(user, 'password_set', '7d');
-      const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
-      const name = `${user.firstName || ''}`.trim() || 'πελάτη μας';
-      const supportPhone =
-        options.clinicPhone ||
-        this.configService.get<string>('SUPPORT_PHONE') ||
-        'info@beautydoctors.gr';
-      const apptDate = (options.appointmentDate || '').trim();
-      const clinicName = (options.clinicName || '').trim();
-
-      const ctx: Record<string, string> = {
-        name,
-        customerName: name,
-        date: apptDate,
-        appointmentDate: apptDate,
-        clinic: clinicName,
-        clinicName,
-        link: url,
-        phone: supportPhone,
-      };
-
-      const rawSubject = template?.subject || DEFAULT_CLIENT_INVITATION_SUBJECT;
-      let rawContent = template?.content || DEFAULT_CLIENT_INVITATION_CONTENT;
-
-      // When sent without an appointment context (e.g. direct online self-registration),
-      // remove the empty "Με αφορμή το ραντεβού σας στις {{date}} στο {{clinic}}, " prefix cleanly.
-      if (!apptDate || !clinicName) {
-        rawContent = rawContent.replace(
-          /Με αφορμή το ραντεβού σας στις\s*\{\{date\}\}\s*στο\s*\{\{clinic\}\},?\s*/gi,
-          '',
-        );
-      }
-
-      const subject = this.renderTemplateText(rawSubject, ctx);
-      const text = this.renderTemplateText(rawContent, ctx);
-      // Button right after "...από τον παρακάτω σύνδεσμο:", before the closing lines
-      const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός κωδικού' });
-
-      const sent = await this.safeSend(user.email, subject, text, html);
-      if (sent) {
-        await this.usersRepository.update(user.id, { invitationSentAt: new Date() });
-      }
-      return sent;
     }
 
     // Staff setup link
     const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.STAFF_ACCOUNT_INVITATION);
     if (!allowed) return false;
 
-    const token = this.signPasswordToken(user, 'password_set', '7d');
-    const url = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}&setup=1`;
+    const url = this.setPasswordUrl(user, '7d');
     const name = `${user.firstName || ''}`.trim();
     const ctx = { name, customerName: name, link: url };
     const subject = template?.subject
@@ -332,6 +270,128 @@ export class AccountLinksService {
       : `Γεια σας ${name},\n\nΔημιουργήθηκε λογαριασμός προσωπικού για εσάς στο Beauty Doctors. Ορίστε τον κωδικό σας από τον παρακάτω σύνδεσμο:\n\n${url}\n\nΟ σύνδεσμος ισχύει για 7 ημέρες και μπορεί να χρησιμοποιηθεί μία φορά.\n\nΜε εκτίμηση,\nΗ ομάδα Beauty Doctors`;
     const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός κωδικού' });
     return this.safeSend(user.email, subject, text, html);
+  }
+
+  /**
+   * Sends the ACCOUNT_INVITATION email with a new link. Says why when it was not sent.
+   *  - automatic (no `requestedBy`): needs the template ON, at most once per customer
+   *  - 'admin': an admin picked this customer; the template toggle does not matter
+   *  - 'customer': the customer asked for it (tried to register / opened an expired link)
+   */
+  async deliverClientInvitation(user: User, options: AccountInvitationOptions = {}): Promise<InvitationResult> {
+    if (await this.isBlockedRecipient(user)) return { sent: false, reason: 'no_valid_email' };
+    const { requestedBy } = options;
+
+    if (
+      requestedBy !== 'customer' &&
+      (options.disableNotifications || (user as any)?.profile?.disableNotifications === true)
+    ) {
+      return { sent: false, reason: 'notifications_disabled' };
+    }
+    if (!requestedBy && (user as any)?.profile?.bulkImported === true) {
+      return { sent: false, reason: 'bulk_imported' };
+    }
+
+    const fresh = await this.usersRepository.findOne({ where: { id: user.id } });
+    if (!fresh || !fresh.isActive || String(fresh.role).toLowerCase() !== 'client') {
+      return { sent: false, reason: 'not_an_active_customer' };
+    }
+    if (requestedBy === 'admin' && !fresh.accountSetupPending) return { sent: false, reason: 'password_already_set' };
+    if (fresh.invitationSentAt) {
+      if (!requestedBy || (requestedBy === 'admin' && !options.resend)) return { sent: false, reason: 'already_sent' };
+      // Public endpoints can trigger this: never flood a mailbox.
+      const age = Date.now() - new Date(fresh.invitationSentAt).getTime();
+      if (age < INVITATION_COOLDOWN_MS) return { sent: false, reason: 'just_sent' };
+    }
+
+    const { allowed, template } = await this.loadEmailTemplate(NotificationTrigger.ACCOUNT_INVITATION);
+    if (!allowed && !requestedBy) return { sent: false, reason: 'template_off' };
+
+    const url = this.setPasswordUrl(fresh, CLIENT_SETUP_LINK_TTL);
+    const ctx = this.invitationContext(fresh, url, options);
+    const subject = this.renderTemplateText(template?.subject || DEFAULT_CLIENT_INVITATION_SUBJECT, ctx);
+    const text = this.renderTemplateText(this.prepareInvitationContent(template?.content, ctx), ctx);
+    const html = this.mailService.renderLinkEmail(subject, text, { url, label: 'Ορισμός κωδικού' });
+
+    if (!(await this.safeSend(fresh.email, subject, text, html))) return { sent: false, reason: 'send_failed' };
+    await this.usersRepository.update(fresh.id, { invitationSentAt: new Date() });
+    return { sent: true };
+  }
+
+  /** Every call signs a new token, so each email carries its own link. */
+  private setPasswordUrl(user: User, expiresIn: string): string {
+    const token = this.signPasswordToken(user, 'password_set', expiresIn);
+    return `${this.frontendUrl}/set-password?token=${encodeURIComponent(token)}`;
+  }
+
+  private invitationContext(user: User, url: string, options: AccountInvitationOptions): Record<string, string> {
+    const name = `${user.firstName || ''}`.trim() || 'πελάτη μας';
+    const date = (options.appointmentDate || '').trim();
+    const clinic = (options.clinicName || '').trim();
+    return {
+      name,
+      customerName: name,
+      date,
+      appointmentDate: date,
+      clinic,
+      clinicName: clinic,
+      link: url,
+      phone: options.clinicPhone || this.configService.get<string>('SUPPORT_PHONE') || 'info@beautydoctors.gr',
+    };
+  }
+
+  private prepareInvitationContent(content: string | undefined, ctx: Record<string, string>): string {
+    // Templates already stored in the database still say 7 days.
+    let raw = (content || DEFAULT_CLIENT_INVITATION_CONTENT).replace(/ισχύει για 7 ημέρες/g, 'ισχύει για 30 ημέρες');
+    // Without an appointment, drop the "Με αφορμή το ραντεβού σας στις ... στο ..., " opening.
+    if (!ctx.date || !ctx.clinic) {
+      raw = raw.replace(
+        /Με αφορμή το ραντεβού σας στις\s*\{\{date\}\}\s*στο\s*\{\{clinic\}\},?\s*(\S)/gi,
+        (_match, first) => first.toLocaleUpperCase('el'),
+      );
+    }
+    return raw;
+  }
+
+  async getInvitationSettings(): Promise<InvitationSettings> {
+    const rows = await this.settingsRepository.find({
+      where: { key: In([INVITATION_MODE_KEY, INVITATION_TEST_EMAILS_KEY]) },
+    });
+    const value = (key: string) => rows.find((r) => r.key === key)?.value;
+    return parseInvitationSettings(value(INVITATION_MODE_KEY), value(INVITATION_TEST_EMAILS_KEY));
+  }
+
+  async isAutomaticInvitationAllowed(email?: string | null): Promise<boolean> {
+    return invitationAllowed(await this.getInvitationSettings(), email);
+  }
+
+  /**
+   * Invitation section for the bottom of an appointment email, with a new personal link; null
+   * when switched off or when the customer already has a password.
+   */
+  async buildAppointmentEmailInvitation(
+    user: User | null | undefined,
+    options: AccountInvitationOptions = {},
+  ): Promise<{ text: string; url: string } | null> {
+    if (!user?.id || !user.accountSetupPending || !user.isActive) return null;
+    if (String(user.role || '').toLowerCase() !== 'client') return null;
+    if (!user.email || isPlaceholderEmail(user.email)) return null;
+    if (!(await this.isAutomaticInvitationAllowed(user.email))) return null;
+    const { template } = await this.loadEmailTemplate(NotificationTrigger.ACCOUNT_INVITATION);
+    const url = this.setPasswordUrl(user, CLIENT_SETUP_LINK_TTL);
+    const ctx = this.invitationContext(user, url, options);
+    const body = invitationBodyForAppointmentEmail(this.prepareInvitationContent(template?.content, ctx));
+    return { text: this.renderTemplateText(body, ctx), url };
+  }
+
+  /** Signature check only: lets the owner of an EXPIRED set-password link ask for a new one. */
+  verifyExpiredSetupToken(token: string): { sub: string; email: string } | null {
+    try {
+      const payload: any = this.jwtService.verify(token, { secret: this.secret, ignoreExpiration: true });
+      return payload?.sub && payload.purpose === 'password_set' ? payload : null;
+    } catch {
+      return null;
+    }
   }
 
   async sendLoginCode(user: User, code: string): Promise<void> {

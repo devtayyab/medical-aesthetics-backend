@@ -10,18 +10,16 @@ import { NotificationTrigger } from '../../../common/enums/notification-trigger.
 import { isPlaceholderEmail } from '../utils/notification-format.util';
 import { AccountLinksService } from '../../users/account-links.service';
 
-/** Appointment emails that carry the "Set your password" link for not-yet-activated accounts. */
-const ACCOUNT_SETUP_LINK_TRIGGERS = new Set<string>([
-  NotificationTrigger.APPOINTMENT_BOOKED,
+/**
+ * Emails that carry the account invitation: confirmation, day-before and same-day reminder,
+ * and the review request (a customer without a password cannot log in to leave the review).
+ */
+const INVITATION_TRIGGERS = new Set<string>([
   NotificationTrigger.APPOINTMENT_CONFIRMED,
-  NotificationTrigger.APPOINTMENT_RESCHEDULED,
   NotificationTrigger.APPOINTMENT_REMINDER,
   NotificationTrigger.APPOINTMENT_REMINDER_SAME_DAY,
+  NotificationTrigger.REVIEW_REQUEST,
 ]);
-
-const ACCOUNT_SETUP_TEXT =
-  'Έχουμε δημιουργήσει λογαριασμό για εσάς στο Beauty Doctors. Ορίστε τον κωδικό σας με ένα κλικ, χωρίς νέα εγγραφή, για να βλέπετε και να διαχειρίζεστε τα ραντεβού σας:';
-const ACCOUNT_SETUP_LABEL = 'Ορισμός κωδικού';
 
 /**
  * Delivers one stored notification to its channel (FCM push or email). Used by the Bull
@@ -43,29 +41,29 @@ export class NotificationDeliveryService {
   ) {}
 
   /**
-   * Appointment emails to a customer whose account was created by staff and is still waiting
-   * for a password (`accountSetupPending`) get a personal "Set your password" button. The link
-   * is built at send time and never stored with the notification.
+   * Appointment emails to a customer who has not set a password yet end with the account
+   * invitation and a personal button. Built at send time (fresh link, current account state)
+   * and never stored with the notification. Off unless switched on by an admin.
    */
-  private withAccountSetupLink(notification: Notification): { text: string; html?: string } {
+  private async withAccountInvitation(notification: Notification): Promise<{ text: string; html?: string }> {
     const text = notification.message;
     try {
-      if (!ACCOUNT_SETUP_LINK_TRIGGERS.has(String(notification.data?.trigger || ''))) return { text };
-      const url = this.accountLinks.buildAccountSetupUrl(notification.recipient);
-      if (!url) return { text };
-
-      const block = `${ACCOUNT_SETUP_TEXT}\n\n${url}`;
-      // Before the closing lines ("Με εκτίμηση, ..."), not after the signature.
-      const closing = text.lastIndexOf('\n\nΜε εκτίμηση');
-      const withLink =
-        closing === -1 ? `${text}\n\n${block}` : `${text.slice(0, closing)}\n\n${block}${text.slice(closing)}`;
+      const data: any = notification.data || {};
+      if (!INVITATION_TRIGGERS.has(String(data.trigger || ''))) return { text };
+      const invitation = await this.accountLinks.buildAppointmentEmailInvitation(notification.recipient, {
+        appointmentDate: data.appointmentDate,
+        clinicName: data.clinicName,
+        clinicPhone: data.clinicPhone,
+      });
+      if (!invitation) return { text };
+      const full = `${text}\n\n────────────────\n\n${invitation.text}`;
       return {
-        text: withLink,
-        html: this.mailService.renderLinkEmail(notification.title, withLink, { url, label: ACCOUNT_SETUP_LABEL }),
+        text: full,
+        html: this.mailService.renderLinkEmail(notification.title, full, { url: invitation.url, label: 'Ορισμός κωδικού' }),
       };
     } catch (err: any) {
       // The appointment email itself must still go out.
-      this.logger.warn(`Could not add the set-password link to notification ${notification.id}: ${err?.message || err}`);
+      this.logger.warn(`Could not add the account invitation to notification ${notification.id}: ${err?.message || err}`);
       return { text };
     }
   }
@@ -130,7 +128,7 @@ export class NotificationDeliveryService {
             this.logger.warn(`Email notification ${notificationId} skipped: suppressed (${suppression.reason})`);
             return;
           }
-          const email = this.withAccountSetupLink(notification);
+          const email = await this.withAccountInvitation(notification);
           const mailInfo = await this.mailService.sendMail(to, notification.title, email.text, email.html);
           // Re-check suppression in case sendMail just caught a synchronous hard bounce
           if (!mailInfo?.messageId) {

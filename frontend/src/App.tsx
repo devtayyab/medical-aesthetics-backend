@@ -63,6 +63,7 @@ import { Payments as AdminPayments } from"@/pages/Admin/Payments";
 import { GiftCards as AdminGiftCards } from"@/pages/Admin/GiftCards";
 import { BlogManagement as AdminBlogManagement } from"@/pages/Admin/BlogManagement";
 import { Integrations as AdminIntegrations } from"@/pages/Admin/Integrations";
+import { AccountInvitations } from"@/pages/Admin/AccountInvitations";
 import { NotificationSettings as AdminNotificationSettings } from"@/pages/Admin/NotificationSettings";
 import { AuditLogs as AdminAuditLogs } from"@/pages/Admin/AuditLogs";
 import { SystemLists } from './pages/Admin/SystemLists';
@@ -347,6 +348,7 @@ function AppContent() {
  location.pathname ==="/register" ||
  location.pathname ==="/forgot-password" ||
  location.pathname ==="/reset-password" ||
+ location.pathname ==="/set-password" ||
  location.pathname ==="/verify-email";
 
  return (
@@ -390,6 +392,15 @@ function AppContent() {
  ) : (
  <Navigate to={getRoleHomePath(user?.role)} replace />
  )
+ }
+ />
+ {/* Always shown, even if another account is logged in on this browser */}
+ <Route
+ path="/set-password"
+ element={
+ <Suspense fallback={<div>Loading...</div>}>
+ <ResetPassword />
+ </Suspense>
  }
  />
  <Route
@@ -1164,6 +1175,16 @@ function AppContent() {
  <ProtectedLayout allowedRoles={["admin","SUPER_ADMIN","manager"]}>
  <AdminLayout>
  <AdminBlogManagement />
+ </AdminLayout>
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="/admin/account-invitations"
+ element={
+ <ProtectedLayout allowedRoles={["admin","SUPER_ADMIN"]}>
+ <AdminLayout>
+ <AccountInvitations />
  </AdminLayout>
  </ProtectedLayout>
  }
